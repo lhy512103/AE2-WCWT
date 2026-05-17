@@ -1,0 +1,88 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "高级编码面板 - 包含样板方向编辑器和元件工作台",
+  "background": {
+    "texture": "wcwt/textures/guis/wcwt_advanced_coding.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 134, 186]
+  },
+  "text": {
+    "pattern_direction_title": {
+      "text": {
+        "translate": "gui.advanced_ae.AdvPatternEncoder"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    },
+    "cell_workbench_title": {
+      "text": {
+        "translate": "gui.ae2.CellWorkbench"
+      },
+      "position": {
+        "left": 4,
+        "top": 110
+      }
+    }
+  },
+  "slots": {
+    "COPY_PATTERN": {
+      "comment": "复制样板槽位",
+      "left": 8,
+      "top": 20
+    },
+    "REPLACE_INPUT": {
+      "comment": "替换输入槽位",
+      "left": 28,
+      "top": 20
+    },
+    "REPLACE_OUTPUT": {
+      "comment": "替换输出槽位",
+      "left": 48,
+      "top": 20
+    },
+    "CELL_UPGRADE": {
+      "comment": "元件升级槽位（多个）",
+      "left": 8,
+      "top": 125,
+      "grid": "HORIZONTAL"
+    },
+    "CELL_CONFIG": {
+      "comment": "元件配置槽位（多个）",
+      "left": 8,
+      "top": 145,
+      "grid": "BREAK_AFTER_9COLS"
+    }
+  },
+  "widgets": {
+    "return_button": {
+      "comment": "返回按钮 - 关闭高级编码面板",
+      "left": 111,
+      "top": -8,
+      "width": 20,
+      "height": 20
+    },
+    "direction_scrollbar": {
+      "comment": "方向选择器滚动条",
+      "left": 115,
+      "top": 45,
+      "height": 50
+    },
+    "copy_pattern_button": {
+      "comment": "复制样板按钮",
+      "left": 70,
+      "top": 20,
+      "width": 16,
+      "height": 16
+    },
+    "replace_button": {
+      "comment": "执行替换按钮",
+      "left": 90,
+      "top": 20,
+      "width": 16,
+      "height": 16
+    }
+  }
+}

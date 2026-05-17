@@ -1,0 +1,45 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "Curios饰品面板 - 6列可滚动槽位网格",
+  "background": {
+    "texture": "wcwt:textures/guis/wcwt_curios.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 134, 186]
+  },
+  "text": {
+    "title": {
+      "text": {
+        "translate": "gui.wcwt.extended_ui.curios"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    }
+  },
+  "slots": {
+    "AE_CURIOS": {
+      "comment": "Curios槽位网格 - 动态显示，通过滚动条控制",
+      "left": 4,
+      "top": 16,
+      "grid": "BREAK_AFTER_6COLS",
+      "hidden": false
+    }
+  },
+  "widgets": {
+    "return_button": {
+      "comment": "返回按钮 - 关闭Curios面板",
+      "left": 111,
+      "top": -8,
+      "width": 20,
+      "height": 20
+    },
+    "curios_scrollbar": {
+      "comment": "Curios槽位滚动条",
+      "left": 118,
+      "top": 15,
+      "height": 160
+    }
+  }
+}

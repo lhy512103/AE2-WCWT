@@ -1,0 +1,19 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.lhy.wcwt.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "WcwtNetworkToolItemMixin",
+    "WcwtMenuProtectionMixin",
+    "WcwtServerPlayerRestockMixin",
+    "WcwtServerPlayerGameModeMixin"
+  ],
+  "client": [
+    "GuiMixin",
+    "WcwtMinecraftPickBlockMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

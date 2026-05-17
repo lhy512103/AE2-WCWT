@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "工具箱面板 - 网络工具卡槽",
+  "background": {
+    "comment": "使用AE2原版的extra_panels.png纹理",
+    "texture": "ae2:textures/guis/extra_panels.png",
+    "textureWidth": 128,
+    "textureHeight": 128,
+    "srcRect": [69, 62, 59, 66]
+  },
+  "text": {
+    "title": {
+      "text": {
+        "translate": "gui.wcwt.toolbox"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    }
+  },
+  "slots": {
+    "TOOLBOX": {
+      "comment": "工具箱槽位 - 由AE2的ToolboxMenu管理",
+      "left": 8,
+      "top": 20,
+      "grid": "BREAK_AFTER_3COLS"
+    }
+  },
+  "widgets": {
+    "return_button": {
+      "comment": "返回按钮（缩小版10x10）- 关闭工具箱面板",
+      "left": 46,
+      "top": -5,
+      "width": 10,
+      "height": 10
+    }
+  }
+}

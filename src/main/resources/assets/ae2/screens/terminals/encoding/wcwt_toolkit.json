@@ -1,0 +1,57 @@
+{
+  "$schema": "../../../schema.json",
+  "$comment": "工具包面板：复用饰品栏背景与返回按钮布局，显示 64 格工具槽和滚动条。",
+  "background": {
+    "texture": "wcwt:textures/guis/wcwt_curios.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 134, 186]
+  },
+  "text": {
+    "title": {
+      "text": {
+        "translate": "gui.wcwt.extended_ui.toolkit"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    }
+  },
+  "slots": {
+    "WCWT_TOOLKIT": {
+      "$comment": "工具包槽位网格：默认 6 列显示，实际 64 格由 Java 配合滑块分页定位。",
+      "left": 4,
+      "top": 16,
+      "grid": "BREAK_AFTER_6COLS",
+      "hidden": false
+    }
+  },
+  "widgets": {
+    "return_button": {
+      "$comment": "返回按钮：关闭工具包面板。",
+      "left": 111,
+      "top": -8,
+      "width": 20,
+      "height": 20
+    },
+    "toolkit_scrollbar": {
+      "$comment": "工具包滚动条：和饰品栏一致，位置可单独软编码调整。",
+      "left": 118,
+      "top": 15,
+      "height": 160
+    },
+    "toolkit_slot_icons": {
+      "$comment": "工具包前 11 个灰色槽位图标配置。图标会跟随前 11 个真实槽位一起滚动。offsetX/offsetY 是相对槽位左上角的像素偏移；textureU/textureV 是第一张图标在 wcwt_states.png 里的起点；stepX/stepY 是每个后续图标在贴图中的步进。",
+      "count": 11,
+      "offsetX": 0,
+      "offsetY": 0,
+      "textureU": 48,
+      "textureV": 16,
+      "width": 16,
+      "height": 16,
+      "stepX": 16,
+      "stepY": 0
+    }
+  }
+}

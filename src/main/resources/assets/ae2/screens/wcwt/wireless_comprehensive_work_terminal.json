@@ -1,0 +1,842 @@
+{
+  "$schema": "schema.json",
+  "$comment": "坐标均以终端 GUI 左上角为基准；left/top 直接表示渲染坐标，right/bottom 表示反向锚点（实际坐标为界面宽/高减去该值），-9999 表示隐藏到屏幕外。",
+  "includes": [
+    "../terminals/encoding/crafting.json",
+    "../terminals/encoding/processing.json",
+    "../terminals/encoding/smithing_table.json",
+    "../terminals/encoding/stonecutting.json",
+    "../terminals/crafting_terminal.json"
+  ],
+  "background": {
+    "$comment": "主终端固定背景图区域；srcRect 为从贴图中截取的 x/y/宽/高。",
+    "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
+    "textureWidth": 512,
+    "textureHeight": 512,
+    "srcRect": [0, 0, 354, 291]
+  },
+  "terminalStyle": {
+    "$comment": "AE2 终端库存列表的可伸缩背景行坐标。",
+    "slotsPerRow": 18,
+    "header": {
+      "$comment": "终端列表顶部背景切片。",
+      "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
+      "textureWidth": 512,
+      "textureHeight": 512,
+      "srcRect": [0, 0, 355, 17]
+    },
+    "firstRow": {
+      "$comment": "终端列表第一行背景切片。",
+      "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
+      "textureWidth": 512,
+      "textureHeight": 512,
+      "srcRect": [0, 17, 355, 18]
+    },
+    "row": {
+      "$comment": "终端列表中间重复行背景切片。",
+      "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
+      "textureWidth": 512,
+      "textureHeight": 512,
+      "srcRect": [0, 288, 355, 18]
+    },
+    "lastRow": {
+      "$comment": "终端列表最后一行背景切片。",
+      "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
+      "textureWidth": 512,
+      "textureHeight": 512,
+      "srcRect": [0, 35, 355, 18]
+    },
+    "bottom": {
+      "$comment": "终端列表下方固定背景切片。",
+      "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
+      "textureWidth": 512,
+      "textureHeight": 512,
+      "srcRect": [0, 53, 355, 235]
+    }
+  },
+  "text": {
+    "dialog_title": {
+      "$comment": "AE2 默认窗口标题；当前隐藏。",
+      "text": {
+        "translate": "gui.ae2.Terminal"
+      },
+      "position": {
+        "left": -9999,
+        "top": -9999
+      }
+    },
+    "crafting_grid_title": {
+      "$comment": "AE2 默认合成标题；当前隐藏。",
+      "text": {
+        "translate": "gui.ae2.CraftingTerminal"
+      },
+      "position": {
+        "left": -9999,
+        "top": -9999
+      }
+    },
+    "crafting_grid_title_area": {
+      "$comment": "左上合成区域标题。",
+      "text": {
+        "translate": "gui.ae2.CraftingArea"
+      },
+      "position": {
+        "left": 8,
+        "bottom": 232
+      }
+    },
+    "comprehensive_work_area": {
+      "$comment": "主界面顶部的综合工作终端标题。",
+      "text": {
+        "translate": "item.wcwt.wireless_comprehensive_work_terminal"
+      },
+      "position": {
+        "left": 8,
+        "top": 6
+      }
+    },
+    "pattern_encoding_area": {
+      "$comment": "右上样板编码区标题。",
+      "text": {
+        "translate": "gui.ae2.PatternEncodingArea"
+      },
+      "position": {
+        "left": 176,
+        "bottom": 232
+      }
+    },
+    "batch_processing_area": {
+      "$comment": "左侧批量处理区标题。",
+      "text": {
+        "translate": "gui.ae2.BatchProcessingArea"
+      },
+      "position": {
+        "left": 8,
+        "bottom": 149
+      }
+    },
+    "multiplication_processing_area": {
+      "$comment": "左侧倍增处理区标题。",
+      "text": {
+        "translate": "gui.wcwt.batch.pattern_multiplier"
+      },
+      "position": {
+        "left": -9999,
+        "bottom": 134
+      }
+    },
+    "replacement_mode": {
+      "$comment": "物品替换模式文字。",
+      "text": {
+        "translate": "gui.wcwt.batch.item_substitution"
+      },
+      "position": {
+        "left": -9999,
+        "bottom": 131
+      }
+    },
+    "fluid_replacement_mode": {
+      "$comment": "流体替换模式文字。",
+      "text": {
+        "translate": "gui.wcwt.batch.fluid_substitution"
+      },
+      "position": {
+        "left": -9999,
+        "bottom": 113
+      }
+    },
+    "pattern_caching_area": {
+      "$comment": "右侧样板缓存区标题。",
+      "text": {
+        "translate": "gui.ae2.PatternCachingArea"
+      },
+      "position": {
+        "left": 176,
+        "bottom": 153
+      }
+    },
+    "pattern_management_area": {
+      "$comment": "右侧样板管理区标题。",
+      "text": {
+        "translate": "gui.ae2.PatternManagementArea"
+      },
+      "position": {
+        "left": 176,
+        "bottom": 106
+      }
+    },
+    "player_inventory_title": {
+      "$comment": "玩家背包标题。",
+      "text": {
+        "translate": "container.inventory"
+      },
+      "position": {
+        "left": 8,
+        "bottom": 95
+      }
+    },
+    "entriesShown": {
+      "$comment": "AE2 终端条目数量提示文字，右上对齐。",
+      "color": "DEFAULT_TEXT_COLOR",
+      "align": "RIGHT",
+      "scale": 0.6,
+      "position": {
+        "right": 26,
+        "top": 8
+      }
+    }
+  },
+  "tooltips": {
+    "processing-primary-output": {
+      "$comment": "隐藏 AE2 原处理样板输出提示，避免覆盖 WCWT 批处理区。",
+      "left": -9999,
+      "top": -9999,
+      "width": 0,
+      "height": 0,
+      "tooltip": []
+    },
+    "processing-optional-output1": {
+      "$comment": "隐藏 AE2 原副产物提示。",
+      "left": -9999,
+      "top": -9999,
+      "width": 0,
+      "height": 0,
+      "tooltip": []
+    },
+    "processing-optional-output2": {
+      "$comment": "隐藏 AE2 原副产物提示。",
+      "left": -9999,
+      "top": -9999,
+      "width": 0,
+      "height": 0,
+      "tooltip": []
+    },
+    "processing-optional-output3": {
+      "$comment": "隐藏 AE2 原副产物提示。",
+      "left": -9999,
+      "top": -9999,
+      "width": 0,
+      "height": 0,
+      "tooltip": []
+    }
+  },
+  "widgets": {
+    "verticalToolbar": {
+      "$comment": "左侧 AE2 垂直工具栏锚点。",
+      "left": 3,
+      "top": 1
+    },
+    "upgrades": {
+      "$comment": "AE2 默认升级面板；当前隐藏，使用 scrollingUpgrades。",
+      "left": -9999,
+      "top": -9999
+    },
+    "scrollingUpgrades": {
+      "$comment": "右侧 WTLib 滚动升级面板位置。",
+      "right": 2,
+      "top": 0
+    },
+    "cellScrollingUpgrades": {
+      "$comment": "元件工作台升级槽面板默认位置，运行时会贴到高级编码面板顶部。",
+      "right": 2,
+      "top": 46
+    },
+    "upgradeScrollbar": {
+      "$comment": "WTLib 升级面板滑块位置，相对主界面右上角。",
+      "right": -17,
+      "top": 6
+    },
+    "cellUpgradeScrollbar": {
+      "$comment": "元件升级槽面板滑块位置，相对主界面右上角。",
+      "right": -17,
+      "top": 52
+    },
+    "viewCells": {
+      "$comment": "AE2 默认查看元件按钮；当前移到界面外。",
+      "right": 800,
+      "top": 0
+    },
+    "scrollbar": {
+      "$comment": "AE2 终端物品列表主滑块。",
+      "left": 336,
+      "top": 18
+    },
+    "search": {
+      "$comment": "AE2 终端搜索框。",
+      "left": 241,
+      "top": 4,
+      "width": 90,
+      "height": 12
+    },
+    "inventory_scrollbar": {
+      "$comment": "AE2 终端库存模式滑块，通常与 scrollbar 重合。",
+      "left": 336,
+      "top": 18
+    },
+    "craftingStatus": {
+      "$comment": "合成状态按钮/图标区域。",
+      "left": 332,
+      "top": -5,
+      "hideEdge": false,
+      "width": 20,
+      "height": 20
+    },
+    "inventory_search": {
+      "$comment": "AE2 终端库存模式搜索框，通常与 search 重合。",
+      "left": 241,
+      "top": 4,
+      "width": 90,
+      "height": 12
+    },
+    "item_display_button": {
+      "$comment": "顶部物品显示模式按钮。",
+      "left": 79,
+      "top": 4,
+      "width": 22,
+      "height": 12
+    },
+    "fluid_display_button": {
+      "$comment": "顶部流体显示模式按钮。",
+      "left": 104,
+      "top": 4,
+      "width": 22,
+      "height": 12
+    },
+    "no_item_fluid_display_button": {
+      "$comment": "顶部隐藏物品/流体显示模式按钮。",
+      "left": 129,
+      "top": 4,
+      "width": 22,
+      "height": 12
+    },
+    "turn_off_sound_button": {
+      "$comment": "顶部关闭声音按钮。",
+      "left": 169,
+      "top": 3,
+      "width": 14,
+      "height": 14
+    },
+    "wirelessTerminalSettingsButton": {
+      "$comment": "顶部无线终端设置按钮。",
+      "left": 184,
+      "top": 3,
+      "width": 14,
+      "height": 14
+    },
+    "magnetCardMenuButton": {
+      "$comment": "顶部磁铁卡菜单按钮。",
+      "left": 199,
+      "top": 3,
+      "width": 14,
+      "height": 14
+    },
+    "trashButton": {
+      "$comment": "顶部垃圾桶按钮。",
+      "left": 214,
+      "top": 3,
+      "width": 14,
+      "height": 14
+    },
+    "emptyTrash": {
+      "$comment": "清空垃圾桶按钮；当前隐藏。",
+      "left": -9999,
+      "bottom": -9999,
+      "hidden": true
+    },
+    "clearCraftingGrid": {
+      "$comment": "清空合成网格按钮。",
+      "left": 134,
+      "bottom": 214
+    },
+    "clearToPlayerInv": {
+      "$comment": "把合成网格物品清回玩家背包按钮。",
+      "left": 144,
+      "bottom": 214
+    },
+    "CRAFTING_Locking": {
+      "$comment": "合成网格锁定按钮。",
+      "left": 132,
+      "bottom": 195,
+      "width": 16,
+      "height": 16
+    },
+    "player": {
+      "$comment": "玩家模型渲染位置；当前左右方向比默认缩小 5 像素。",
+      "left": 25,
+      "bottom": 222
+    },
+    "modeTabButton0": {
+      "$comment": "右侧终端风格/扩展面板切换按钮 0。",
+      "left": 331,
+      "bottom": 232,
+      "width": 22,
+      "height": 22
+    },
+    "modeTabButton1": {
+      "$comment": "右侧终端风格/扩展面板切换按钮 1。",
+      "left": 331,
+      "bottom": 211,
+      "width": 22,
+      "height": 22
+    },
+    "modeTabButton2": {
+      "$comment": "右侧终端风格/扩展面板切换按钮 2。",
+      "left": 331,
+      "bottom": 190,
+      "width": 22,
+      "height": 22
+    },
+    "modeTabButton3": {
+      "$comment": "右侧终端风格/扩展面板切换按钮 3。",
+      "left": 331,
+      "bottom": 169,
+      "width": 22,
+      "height": 22
+    },
+    "modePanel0": {
+      "$comment": "终端风格面板 0 的锚点。",
+      "left": 177,
+      "bottom": 223
+    },
+    "modePanel1": {
+      "$comment": "终端风格面板 1 的锚点。",
+      "left": 177,
+      "bottom": 223
+    },
+    "modePanel2": {
+      "$comment": "终端风格面板 2 的锚点。",
+      "left": 177,
+      "bottom": 223
+    },
+    "modePanel3": {
+      "$comment": "终端风格面板 3 的锚点。",
+      "left": 177,
+      "bottom": 223
+    },
+    "modePanel4": {
+      "$comment": "终端风格面板 4 的锚点。",
+      "left": 177,
+      "bottom": 223
+    },
+    "modePanel5": {
+      "$comment": "终端风格面板 5 的锚点。",
+      "left": 177,
+      "bottom": 223
+    },
+    "encodePattern": {
+      "$comment": "右上编码样板按钮。",
+      "left": -9999,
+      "top": -9999
+    },
+    "wcwtEncodePattern": {
+      "$comment": "WCWT 样板编码区编写按钮；位于空白样板槽下方，顶部距空白样板槽底部 30px。",
+      "left": 308,
+      "bottom": 176,
+      "width": 16,
+      "height": 16
+    },
+    "wcwtPatternClearPattern": {
+      "$comment": "WCWT 样板编码区清除配置按钮；运行时按当前编码模式重定位。",
+      "left": -9999,
+      "top": -9999,
+      "width": 16,
+      "height": 16
+    },
+    "wcwtPatternMergeMaterials": {
+      "$comment": "处理样板：合并相同输入；运行时紧邻清除按钮右侧。",
+      "left": -9999,
+      "top": -9999,
+      "width": 8,
+      "height": 8
+    },
+    "wcwtPatternSubstitutions": {
+      "$comment": "WCWT 样板编码区物品替换按钮；运行时按当前编码模式重定位。",
+      "left": -9999,
+      "top": -9999,
+      "width": 16,
+      "height": 16
+    },
+    "wcwtPatternFluidSubstitutions": {
+      "$comment": "WCWT 样板编码区流体替换按钮；运行时按当前编码模式重定位。",
+      "left": -9999,
+      "top": -9999,
+      "width": 16,
+      "height": 16
+    },
+    "processingCycleOutput": {
+      "$comment": "WCWT 处理样板主产物轮换按钮；运行时按处理输出槽重定位。",
+      "left": -9999,
+      "top": -9999,
+      "width": 16,
+      "height": 16
+    },
+    "processingPatternModeScrollbar": {
+      "$comment": "AE2 处理样板编码区滑块；位置跟随 PROCESSING_INPUTS。",
+      "left": 183,
+      "bottom": 216,
+      "height": 52
+    },
+    "stonecuttingPatternModeScrollbar": {
+      "$comment": "WCWT 切石机样板结果滑块；运行时跟随切石机结果列表重定位。",
+      "left": -9999,
+      "top": -9999,
+      "height": 44
+    },
+    "caching_scrollbar": {
+      "$comment": "样板缓存区滑块位置和高度。",
+      "left": 342,
+      "bottom": 143,
+      "height": 34
+    },
+    "craftingSubstitutions": {
+      "$comment": "隐藏 AE2 原合成替代按钮，避免覆盖 WCWT 批处理区文字并弹出原 tooltip。",
+      "left": -9999,
+      "top": -9999
+    },
+    "craftingFluidSubstitutions": {
+      "$comment": "隐藏 AE2 原流体替代按钮，WCWT 使用下方自绘批处理按钮。",
+      "left": -9999,
+      "top": -9999
+    },
+    "curios_scrollbar": {
+      "$comment": "饰品栏滑块默认位置；运行时会跟随饰品面板 JSON 重新定位。",
+      "left": 0,
+      "top": 0,
+      "height": 160
+    },
+    "toolkit_scrollbar": {
+      "$comment": "工具包滑块默认位置；运行时会跟随工具包面板 JSON 重新定位。",
+      "left": 0,
+      "top": 0,
+      "height": 160
+    },
+    "toolbox": {
+      "$comment": "WCWT 使用自定义工具箱面板；这里隐藏 AE2 默认网络工具背景。",
+      "left": -9999,
+      "top": -9999,
+      "width": 59,
+      "height": 66
+    },
+    "Double_button0": {
+      "$comment": "左侧批量处理按钮第 1 行第 1 个。",
+      "left": 29,
+      "bottom": 134,
+      "width": 17,
+      "height": 16
+    },
+    "Double_button1": {
+      "$comment": "左侧批量处理按钮第 1 行第 2 个。",
+      "left": 48,
+      "bottom": 134,
+      "width": 17,
+      "height": 16
+    },
+    "Double_button2": {
+      "$comment": "左侧批量处理按钮第 1 行第 3 个。",
+      "left": 67,
+      "bottom": 134,
+      "width": 17,
+      "height": 16
+    },
+    "Double_button3": {
+      "$comment": "左侧批量处理按钮第 1 行第 4 个。",
+      "left": 86,
+      "bottom": 134,
+      "width": 17,
+      "height": 16
+    },
+    "Double_button4": {
+      "$comment": "左侧批量处理按钮第 2 行第 1 个。",
+      "left": 29,
+      "bottom": 117,
+      "width": 17,
+      "height": 16
+    },
+    "Double_button5": {
+      "$comment": "左侧批量处理按钮第 2 行第 2 个。",
+      "left": 48,
+      "bottom": 117,
+      "width": 17,
+      "height": 16
+    },
+    "Double_button6": {
+      "$comment": "左侧批量处理按钮第 2 行第 3 个。",
+      "left": 67,
+      "bottom": 117,
+      "width": 17,
+      "height": 16
+    },
+    "Double_button7": {
+      "$comment": "左侧批量处理按钮第 2 行第 4 个。",
+      "left": 86,
+      "bottom": 117,
+      "width": 17,
+      "height": 16
+    },
+    "pattern_Replace1": {
+      "$comment": "物品替换模式按钮。",
+      "left": 152,
+      "bottom": 135,
+      "width": 14,
+      "height": 14
+    },
+    "pattern_Replace2": {
+      "$comment": "流体替换模式按钮。",
+      "left": 152,
+      "bottom": 116,
+      "width": 14,
+      "height": 14
+    },
+    "manage_display_mode": {
+      "$comment": "样板管理区显示模式按钮。",
+      "left": 175,
+      "bottom": 97,
+      "width": 14,
+      "height": 14
+    },
+    "manage_displays_slots": {
+      "$comment": "样板管理区是否显示样板槽按钮。",
+      "left": 189,
+      "bottom": 97,
+      "width": 14,
+      "height": 14
+    },
+    "automatic_upload": {
+      "$comment": "样板管理区自动上传开关按钮。",
+      "left": 203,
+      "bottom": 97,
+      "width": 14,
+      "height": 14
+    },
+    "manage_output_mode": {
+      "$comment": "样板管理区输出模式按钮。",
+      "left": 217,
+      "bottom": 97,
+      "width": 14,
+      "height": 14
+    },
+    "manage_search": {
+      "$comment": "样板管理区供应器搜索输入框。",
+      "left": 230,
+      "bottom": 107,
+      "width": 60,
+      "height": 12
+    },
+    "manage_mapping": {
+      "$comment": "样板管理区映射输入框。",
+      "left": 230,
+      "bottom": 96,
+      "width": 60,
+      "height": 12
+    },
+    "increase_mapping": {
+      "$comment": "样板管理区新增映射按钮。",
+      "left": 291,
+      "bottom": 107,
+      "width": 30,
+      "height": 11
+    },
+    "heavy_load_mapping": {
+      "$comment": "样板管理区重载映射按钮。",
+      "left": 322,
+      "bottom": 107,
+      "width": 30,
+      "height": 11
+    },
+    "delete_mapping": {
+      "$comment": "样板管理区删除映射按钮。",
+      "left": 291,
+      "bottom": 95,
+      "width": 30,
+      "height": 11
+    },
+    "manage_cancel": {
+      "$comment": "样板管理区取消/清空输入按钮。",
+      "left": 322,
+      "bottom": 95,
+      "width": 30,
+      "height": 11
+    },
+    "manage_scrollbar": {
+      "$comment": "样板管理区供应器/样板列表滑块。",
+      "left": 343,
+      "bottom": 81,
+      "height": 71
+    },
+    "management_page": {
+      "$comment": "样板管理区主区域；第9列槽可在宽度不足18时仅绘制左侧像素（见 Java）。",
+      "left": 176,
+      "bottom": 81,
+      "width": 160,
+      "height": 71
+    },
+    "manage_upload_pattern": {
+      "$comment": "样板管理区每个供应器行内的上传按钮；top 是相对该行顶部的偏移。",
+      "left": 285,
+      "top": 2,
+      "width": 14,
+      "height": 15
+    },
+    "manage_open_ui": {
+      "$comment": "样板管理区每个供应器行内的打开机器 UI 按钮；top 是相对该行顶部的偏移。",
+      "left": 306,
+      "top": 2,
+      "width": 14,
+      "height": 15
+    },
+    "manage_highlight_provider": {
+      "$comment": "样板管理区每个供应器第一行样板右侧的世界高亮按钮；top 是相对第一行样板顶部的偏移。",
+      "left": 337,
+      "top": 3,
+      "width": 6,
+      "height": 11
+    },
+    "extended_functions": {
+      "$comment": "扩展功能占位按钮；当前隐藏。",
+      "left": -9999,
+      "top": -9999
+    },
+    "extended_functions_0": {
+      "$comment": "右侧扩展功能折叠列槽位 0（首颗可见按钮）；left/相对间距由 JSON 指定。顶边会被 Java 抬升到「滚动升级槽底 + 间距」之上，避免与大终端多行升级槽重叠。",
+      "left": 358,
+      "top": 48,
+      "width": 20,
+      "height": 17
+    },
+    "extended_functions_1": {
+      "$comment": "扩展功能槽位 1；相邻槽 JSON top 差建议保持 21（与 Java 内 extBtnSpacing 一致）。",
+      "left": 358,
+      "top": 69,
+      "width": 20,
+      "height": 17
+    },
+    "extended_functions_2": {
+      "$comment": "扩展功能槽位 2。",
+      "left": 358,
+      "top": 90,
+      "width": 20,
+      "height": 17
+    },
+    "extended_functions_3": {
+      "$comment": "扩展功能槽位 3。",
+      "left": 358,
+      "top": 111,
+      "width": 20,
+      "height": 17
+    },
+    "extended_functions_4": {
+      "$comment": "扩展功能槽位 4：新增工具包按钮位置。与上方槽位保持同样 21px 间距，可继续软编码调整。",
+      "left": 358,
+      "top": 132,
+      "width": 20,
+      "height": 17
+    },
+    "extended_functions_5": {
+      "$comment": "扩展功能槽位 5：谐振过载编码器按钮位置。默认继续排在工具包下方。",
+      "left": 358,
+      "top": 153,
+      "width": 20,
+      "height": 17
+    }
+  },
+  "slots": {
+    "CRAFTING_GRID": {
+      "$comment": "左上 3x3 合成输入槽起点。",
+      "left": 79,
+      "bottom": 214,
+      "grid": "BREAK_AFTER_3COLS"
+    },
+    "CRAFTING_RESULT": {
+      "$comment": "合成结果槽。",
+      "left": 149,
+      "bottom": 196
+    },
+    "PROCESSING_INPUTS": {
+      "$comment": "样板编码区处理样板输入槽。",
+      "left": 192,
+      "bottom": 216,
+      "grid": "BREAK_AFTER_3COLS"
+    },
+    "PROCESSING_OUTPUTS": {
+      "$comment": "样板编码区处理样板输出槽。",
+      "left": 277,
+      "bottom": 216,
+      "grid": "VERTICAL"
+    },
+    "AE2WTLIB_HELMET": {
+      "$comment": "玩家真实头盔槽显示位置。",
+      "left": 8,
+      "bottom": 223
+    },
+    "AE2WTLIB_CHESTPLATE": {
+      "$comment": "玩家真实胸甲槽显示位置。",
+      "left": 8,
+      "bottom": 205
+    },
+    "AE2WTLIB_LEGGINGS": {
+      "$comment": "玩家真实护腿槽显示位置。",
+      "left": 8,
+      "bottom": 187
+    },
+    "AE2WTLIB_BOOTS": {
+      "$comment": "玩家真实靴子槽显示位置。",
+      "left": 8,
+      "bottom": 169
+    },
+    "AE2WTLIB_OFFHAND": {
+      "$comment": "玩家副手槽显示位置。",
+      "left": 149,
+      "bottom": 174
+    },
+    "BLANK_PATTERN": {
+      "$comment": "空白样板槽。",
+      "left": 308,
+      "bottom": 223
+    },
+    "ENCODED_PATTERN": {
+      "$comment": "样板编辑槽（已编码样板槽）：编码结果默认输出到这里，也可放入现有已编码样板回填到编辑区。",
+      "left": 308,
+      "bottom": 199,
+      "width": 16,
+      "height": 16
+    },
+    "WCWT_PATTERN_CACHE": {
+      "$comment": "样板缓存区 9 列槽位起点，Java 会按滑块只显示部分行。",
+      "left": 176,
+      "bottom": 144,
+      "grid": "BREAK_AFTER_9COLS"
+    },
+    "PLAYER_INVENTORY": {
+      "$comment": "玩家背包 3 行槽位起点。",
+      "left": 8,
+      "bottom": 85,
+      "grid": "BREAK_AFTER_9COLS"
+    },
+    "PLAYER_HOTBAR": {
+      "$comment": "玩家快捷栏槽位起点。",
+      "left": 8,
+      "bottom": 27,
+      "grid": "HORIZONTAL"
+    },
+    "COPY_PATTERN": {
+      "$comment": "高级编码界面复制样板槽；面板关闭时 Java 会隐藏。",
+      "left": 358,
+      "bottom": 101
+    },
+    "REPLACE_INPUT": {
+      "$comment": "高级编码界面替换输入 ghost/占位槽坐标。",
+      "left": 403,
+      "bottom": 102
+    },
+    "REPLACE_OUTPUT": {
+      "$comment": "高级编码界面替换输出 ghost/占位槽坐标。",
+      "left": 438,
+      "bottom": 102
+    },
+    "WCWT_STORAGE_CELL": {
+      "$comment": "高级编码界面元件工作台存储元件槽；面板关闭时 Java 会隐藏。",
+      "left": 466,
+      "bottom": 80
+    }
+  }
+}
