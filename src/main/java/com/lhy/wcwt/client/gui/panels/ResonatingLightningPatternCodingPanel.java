@@ -20,6 +20,7 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.TooltipFlag;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,6 +31,8 @@ import java.util.Set;
 import java.util.function.Supplier;
 
 public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel implements ITooltip {
+    private static final boolean HAS_AE2LT = ModList.get().isLoaded("ae2lt");
+    private static final boolean HAS_AE2CS = ModList.get().isLoaded("ae2cs");
     private static final ResourceLocation PANEL_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_resonating_lightning_pattern_coding.png");
     private static final ResourceLocation AE2LT_ENCODER_TEXTURE =
@@ -62,15 +65,13 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     private static final int RESONATING_COLUMNS = 7;
     private static final int RESONATING_VISIBLE_ROWS = 3;
     private static final int RESONATING_SLOT_SIZE = 18;
-    private static final int RESONATING_STORAGE_RIGHT_COLUMNS_X_OFFSET = -1;
-    private static final int RESONATING_STORAGE_RIGHT_COLUMNS_START = 3;
+    private static final int DEFAULT_RESONATING_SLOT_SPACING = 16;
     private final ExtendedPanelLayout layout = ExtendedPanelLayout.load("wcwt_resonating_lightning_pattern_coding.json");
     private final Scrollbar lightningScrollbar = new Scrollbar(Scrollbar.SMALL);
     private ExtendedPanelLayout.Rect lightningArea = new ExtendedPanelLayout.Rect(13, 16, 116, 73);
     private ExtendedPanelLayout.Rect lightningScrollbarRect = new ExtendedPanelLayout.Rect(5, 19, 0, 67);
     private ExtendedPanelLayout.Rect resonatingConvertRect = new ExtendedPanelLayout.Rect(56, 98, 16, 16);
     private ExtendedPanelLayout.Rect resonatingStorageAnchor = new ExtendedPanelLayout.Rect(4, 124, 0, 0);
-    private int resonatingStorageRightColumnsOffset = RESONATING_STORAGE_RIGHT_COLUMNS_X_OFFSET;
     private Supplier<WirelessComprehensiveWorkTerminalMenu> menuSupplier;
     private IconButton resonatingConvertButton;
     private List<Component> currentTooltip = List.of();
@@ -99,23 +100,24 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         lightningScrollbarRect = layout.widget("rlpc_scrollbar", lightningScrollbarRect);
         resonatingConvertRect = layout.widget("resonating_convert", resonatingConvertRect);
         resonatingStorageAnchor = layout.slot("resonating_storage", resonatingStorageAnchor);
-        resonatingStorageRightColumnsOffset = layout.slotInt("resonating_storage", "rightColumnsXOffset",
-                RESONATING_STORAGE_RIGHT_COLUMNS_X_OFFSET);
         lightningScrollbar.setHeight(lightningScrollbarRect.height());
         lightningScrollbar.setCaptureMouseWheel(false);
-        resonatingConvertButton = new IconButton(
-                x + resonatingConvertRect.left(), y + resonatingConvertRect.top(),
-                16, 16,
-                0, 0, 0, 0, 1, 1,
-                STATES_TEXTURE,
-                Component.translatable("gui.wcwt.rlpc.resonating_convert"),
-                btn -> PacketDistributor.sendToServer(new ResonatingLightningPatternActionPacket(
-                        ResonatingLightningPatternActionPacket.Action.CONVERT_TO_RESONATING,
-                        new int[0], new int[0])))
-                .useAE2ToolbarBackground()
-                .setOverlayIcon(() -> Icon.SCHEDULING_RANDOM)
-                .setTooltipLines(List.of(Component.translatable("gui.wcwt.rlpc.resonating_convert")));
-        children.add(resonatingConvertButton);
+        resonatingConvertButton = null;
+        if (HAS_AE2CS) {
+            resonatingConvertButton = new IconButton(
+                    x + resonatingConvertRect.left(), y + resonatingConvertRect.top(),
+                    16, 16,
+                    0, 0, 0, 0, 1, 1,
+                    STATES_TEXTURE,
+                    Component.translatable("gui.wcwt.rlpc.resonating_convert"),
+                    btn -> PacketDistributor.sendToServer(new ResonatingLightningPatternActionPacket(
+                            ResonatingLightningPatternActionPacket.Action.CONVERT_TO_RESONATING,
+                            new int[0], new int[0])))
+                    .useAE2ToolbarBackground()
+                    .setOverlayIcon(() -> Icon.SCHEDULING_RANDOM)
+                    .setTooltipLines(List.of(Component.translatable("gui.wcwt.rlpc.resonating_convert")));
+            children.add(resonatingConvertButton);
+        }
         repositionControls();
         createReturnButton();
     }
@@ -146,18 +148,28 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         if (menu == null) {
             return;
         }
-        syncEntries(menu);
-        updateScrollbar(menu);
+        if (HAS_AE2LT) {
+            syncEntries(menu);
+            updateScrollbar(menu);
+        } else {
+            cachedEntries = List.of();
+            lightningScrollbar.setRange(0, 0, 1);
+            lightningScrollbar.setCurrentScroll(0);
+        }
 
         var font = Minecraft.getInstance().font;
-        guiGraphics.drawString(font,
-                Component.translatable("gui.wcwt_rlpattern_coding.lightningtitle"),
-                x + 3, y + 3, 0x404040, false);
-        guiGraphics.drawString(font,
-                Component.translatable("gui.wcwt_rlpattern_coding.resonatingtitle"),
-                x + 3, y + 95, 0x404040, false);
+        if (HAS_AE2LT) {
+            guiGraphics.drawString(font,
+                    Component.translatable("gui.wcwt_rlpattern_coding.lightningtitle"),
+                    x + 3, y + 3, 0x404040, false);
+            renderLightningEntries(guiGraphics, mouseX, mouseY);
+        }
+        if (HAS_AE2CS) {
+            guiGraphics.drawString(font,
+                    Component.translatable("gui.wcwt_rlpattern_coding.resonatingtitle"),
+                    x + 3, y + 95, 0x404040, false);
+        }
 
-        renderLightningEntries(guiGraphics, mouseX, mouseY);
         updateTooltip(mouseX, mouseY);
     }
 
@@ -245,14 +257,12 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         return layout.slotColumns("resonating_storage", RESONATING_COLUMNS);
     }
 
-    public int getResonatingSlotExtraOffsetX(int slotIndex) {
-        int columns = getResonatingColumns();
-        if (columns <= 0) {
-            return 0;
-        }
-        return (slotIndex % columns) >= RESONATING_STORAGE_RIGHT_COLUMNS_START
-                ? resonatingStorageRightColumnsOffset
-                : 0;
+    public int getResonatingSlotSpacingX() {
+        return layout.slotInt("resonating_storage", "slotSpacingX", DEFAULT_RESONATING_SLOT_SPACING);
+    }
+
+    public int getResonatingSlotSpacingY() {
+        return layout.slotInt("resonating_storage", "slotSpacingY", DEFAULT_RESONATING_SLOT_SPACING);
     }
 
     public void setFirstVisibleResonatingSlot(int firstVisibleSlot) {
@@ -260,7 +270,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (!visible) {
+        if (!visible || !HAS_AE2LT) {
             return false;
         }
         if (mouseX < x || mouseX >= x + width || mouseY < y || mouseY >= y + height) {
@@ -279,14 +289,14 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         if (!visible) {
             return false;
         }
-        if (button == 0 && isWithinScrollbar(mouseX, mouseY)) {
+        if (HAS_AE2LT && button == 0 && isWithinScrollbar(mouseX, mouseY)) {
             draggingScrollbar = true;
             updateScrollbarFromMouse(mouseY);
             return true;
         }
 
         var menu = getMenu();
-        if (menu != null && button == 0) {
+        if (HAS_AE2LT && menu != null && button == 0) {
             var entry = getEntryAt(menu, mouseX, mouseY);
             if (entry != null && isWithinEntrySwitch(mouseX, mouseY, entry.visibleRow, entry.rowY)) {
                 toggleEntry(entry.entry);
@@ -306,7 +316,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        if (draggingScrollbar) {
+        if (HAS_AE2LT && draggingScrollbar) {
             updateScrollbarFromMouse(mouseY);
             return true;
         }
@@ -328,6 +338,9 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
     @Nullable
     private EntryHit getEntryAt(WirelessComprehensiveWorkTerminalMenu menu, double mouseX, double mouseY) {
+        if (!HAS_AE2LT) {
+            return null;
+        }
         if (mouseX < x + lightningArea.left() || mouseX >= x + lightningArea.left() + lightningArea.width()
                 || mouseY < y + lightningArea.top() || mouseY >= y + lightningArea.top() + lightningArea.height()) {
             return null;
@@ -354,6 +367,14 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     }
 
     private void syncEntries(WirelessComprehensiveWorkTerminalMenu menu) {
+        if (!HAS_AE2LT) {
+            cachedSelectedIndex = -1;
+            cachedSelectedStack = ItemStack.EMPTY;
+            inputIdOnlySlots.clear();
+            outputIdOnlySlots.clear();
+            cachedEntries = List.of();
+            return;
+        }
         int selectedIndex = menu.getMenuHost() != null ? menu.getMenuHost().getSelectedPatternIndex() : -1;
         ItemStack selectedStack = ItemStack.EMPTY;
         List<Slot> cacheSlots = menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_CACHE);
@@ -442,6 +463,9 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     }
 
     private void sendOverloadConvert() {
+        if (!HAS_AE2LT) {
+            return;
+        }
         PacketDistributor.sendToServer(new ResonatingLightningPatternActionPacket(
                 ResonatingLightningPatternActionPacket.Action.CONVERT_TO_OVERLOAD,
                 inputIdOnlySlots.stream().mapToInt(Integer::intValue).sorted().toArray(),
@@ -463,6 +487,10 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     private void updateTooltip(int mouseX, int mouseY) {
         currentTooltip = List.of();
         currentTooltipArea = new Rect2i(mouseX, mouseY, 1, 1);
+
+        if (!HAS_AE2LT) {
+            return;
+        }
 
         var menu = getMenu();
         if (menu == null) {

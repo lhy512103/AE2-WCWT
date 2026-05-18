@@ -17,6 +17,7 @@ import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
+import com.lhy.wcwt.config.WcwtClientConfig;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -31,6 +32,8 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.InterModComms;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
@@ -53,6 +56,7 @@ public class WcwtMod {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::addCreativeTabItems);
         modEventBus.addListener(this::registerCapabilities);
+        modContainer.registerConfig(ModConfig.Type.CLIENT, WcwtClientConfig.SPEC);
         modContainer.registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
     }
 
@@ -70,6 +74,7 @@ public class WcwtMod {
                     (player, locator) -> ((WirelessComprehensiveWorkTerminalItem)
                             ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()).openFromInventory(player, locator),
                     HotkeyAction.WIRELESS_TERMINAL);
+            registerInventorySorterCompat();
 
             // 给 WCWT 物品注册兼容的升级卡。
             // 不注册的话 ScrollingUpgradesPanel 的"可用升级"为空，槽位 isItemValid 也会拒绝任何卡。
@@ -113,6 +118,14 @@ public class WcwtMod {
             LOGGER.debug("Optional upgrade '{}:{}' not present; skipping", namespace, path);
         } else {
             LOGGER.warn("Upgrade '{}:{}' not found at runtime; skipping registration", namespace, path);
+        }
+    }
+
+    private static void registerInventorySorterCompat() {
+        if (ModList.get().isLoaded("invtweaks")) {
+            InterModComms.sendTo("invtweaks", "blacklist-screen",
+                    () -> "com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen");
+            LOGGER.info("Registered InvTweaksRefoxed screen blacklist for WCWT");
         }
     }
 

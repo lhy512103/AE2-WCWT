@@ -149,6 +149,8 @@
 
   "wcwt.config.toolkitSlotCount": "工具包槽位数量",
   "wcwt.config.toolkitSlotCount.tooltip": "最小 11 格，用于保留前 11 个专用工具槽。保存配置后一般即生效。",
+  "wcwt.config.patternUploadFailFallbackToEditor": "上传失败优先回退到样板编辑槽",
+  "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "关：优先回退到样板缓存区，缓存区放不下再回退到样板编辑槽。开：优先回退到样板编辑槽。",
   "wcwt.config.patternManagementShiftQuick": "样板管理 Shift 快速移动",
   "wcwt.config.patternManagementShiftQuick.tooltip": "关：仅用普通点击。保存配置后一般即生效。",
 

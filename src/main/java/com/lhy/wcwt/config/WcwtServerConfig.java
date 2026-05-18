@@ -14,7 +14,6 @@ public final class WcwtServerConfig {
     public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec SPEC;
 
-    public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
     public static final ModConfigSpec.IntValue TOOLKIT_SLOT_COUNT;
 
     static {
@@ -22,18 +21,10 @@ public final class WcwtServerConfig {
                 .comment("Toolkit slot count. Minimum 11 keeps the dedicated tool slots available.")
                 .translation("wcwt.config.toolkitSlotCount")
                 .defineInRange("toolkitSlotCount", DEFAULT_TOOLKIT_SLOTS, MIN_TOOLKIT_SLOTS, MAX_TOOLKIT_SLOTS);
-        PATTERN_MANAGEMENT_SHIFT_QUICK = BUILDER
-                .comment("If false: server ignores shift quick pattern moves. Saving wcwt-server.toml usually reloads without restart.")
-                .translation("wcwt.config.patternManagementShiftQuick")
-                .define("patternManagementShiftQuick", true);
         SPEC = BUILDER.build();
     }
 
     private WcwtServerConfig() {
-    }
-
-    public static boolean patternManagementShiftQuickEnabled() {
-        return PATTERN_MANAGEMENT_SHIFT_QUICK.get();
     }
 
     public static int toolkitSlotCount() {

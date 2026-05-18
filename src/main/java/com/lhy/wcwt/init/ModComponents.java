@@ -93,6 +93,30 @@ public class ModComponents {
             register("pattern_management_upload_enabled", builder -> builder
                     .persistent(com.mojang.serialization.Codec.BOOL)
                     .networkSynchronized(ByteBufCodecs.BOOL));
+
+    /**
+     * 样板管理区显示模式。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> PATTERN_MANAGEMENT_DISPLAY_MODE =
+            register("pattern_management_display_mode", builder -> builder
+                    .persistent(com.mojang.serialization.Codec.INT)
+                    .networkSynchronized(ByteBufCodecs.INT));
+
+    /**
+     * 样板管理区是否显示样板槽。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> PATTERN_MANAGEMENT_SHOW_SLOTS =
+            register("pattern_management_show_slots", builder -> builder
+                    .persistent(com.mojang.serialization.Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL));
+
+    /**
+     * 样板管理区搜索模式。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> PATTERN_MANAGEMENT_SEARCH_MODE =
+            register("pattern_management_search_mode", builder -> builder
+                    .persistent(com.mojang.serialization.Codec.INT)
+                    .networkSynchronized(ByteBufCodecs.INT));
     
     private static <T> DeferredHolder<DataComponentType<?>, DataComponentType<T>> register(
             String name, Consumer<DataComponentType.Builder<T>> customizer) {

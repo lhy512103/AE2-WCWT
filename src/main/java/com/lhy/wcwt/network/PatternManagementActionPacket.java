@@ -5,7 +5,6 @@ import appeng.helpers.patternprovider.PatternContainer;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
@@ -32,7 +31,8 @@ public record PatternManagementActionPacket(Action action,
                                             long providerId,
                                             int cacheSlot,
                                             String searchText,
-                                            String mappingText) implements CustomPacketPayload {
+                                            String mappingText,
+                                            boolean shiftQuickEnabled) implements CustomPacketPayload {
     public static final Type<PatternManagementActionPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_action"));
 
@@ -47,6 +47,8 @@ public record PatternManagementActionPacket(Action action,
             PatternManagementActionPacket::searchText,
             ByteBufCodecs.STRING_UTF8,
             PatternManagementActionPacket::mappingText,
+            ByteBufCodecs.BOOL,
+            PatternManagementActionPacket::shiftQuickEnabled,
             PatternManagementActionPacket::new);
 
     @Override
@@ -58,17 +60,18 @@ public record PatternManagementActionPacket(Action action,
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player
                     && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+                menu.requestPatternProviderSyncSubscription();
                 switch (packet.action) {
                     case UPLOAD_CACHE_SLOT -> uploadCachePatterns(player, menu, packet.providerId);
                     case OPEN_PROVIDER_UI -> openProviderUi(player, packet.providerId);
                     case EXCHANGE_PROVIDER_SLOT -> exchangeProviderSlot(player, packet.providerId, packet.cacheSlot);
                     case QUICK_EXTRACT_PROVIDER_SLOT -> {
-                        if (WcwtServerConfig.patternManagementShiftQuickEnabled()) {
+                        if (packet.shiftQuickEnabled()) {
                             quickExtractProviderSlot(player, packet.providerId, packet.cacheSlot);
                         }
                     }
                     case QUICK_INSERT_FIRST_PROVIDER -> {
-                        if (WcwtServerConfig.patternManagementShiftQuickEnabled()) {
+                        if (packet.shiftQuickEnabled()) {
                             quickInsertEncodedPattern(player, packet.providerId, packet.cacheSlot);
                         }
                     }

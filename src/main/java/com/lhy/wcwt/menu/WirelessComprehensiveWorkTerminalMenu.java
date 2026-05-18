@@ -29,6 +29,7 @@ import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
 import com.lhy.wcwt.api.IExtendedUIHost;
+import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
@@ -82,6 +83,11 @@ import java.util.List;
 import java.util.Objects;
 
 public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu implements IOptionalSlotHost {
+    private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
+    private static final long PERF_LOG_THRESHOLD_NS = 1_000_000L;
+    private static final int PATTERN_PROVIDER_SYNC_INTERVAL_TICKS = 20;
+    private static final long PATTERN_PROVIDER_SYNC_SUBSCRIPTION_TICKS = 100L;
+
     public static final String TYPE_ID = "wireless_comprehensive_work_terminal";
     public static final String TOP_ACTION = "topAction";
     private static final boolean DEBUG_ENCODE = Boolean.getBoolean("wcwt.debug.encode");
@@ -89,6 +95,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     /** 元件可装升级卡的最大格数（与 AE2 CellWorkbenchMenu 保持一致：8）。*/
     public static final int CELL_UPGRADE_SLOTS = 8;
+    private static final int OPTIONAL_SLOT_GROUP_RESONATING_STORAGE_BASE = CELL_UPGRADE_SLOTS;
     private static final EquipmentSlot[] ARMOR_EQUIPMENT_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
     };
@@ -106,6 +113,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public CopyMode cellCopyMode = CopyMode.CLEAR_ON_REMOVE;
     private int syncedExtendedUiOrdinal = IExtendedUIHost.ExtendedUIType.NONE.ordinal();
     private boolean syncedPatternManagementUploadEnabled = true;
+    private int syncedPatternManagementDisplayMode = 1;
+    private boolean syncedPatternManagementShowSlots = true;
+    private int syncedPatternManagementSearchMode = 2;
 
     private final WirelessComprehensiveWorkTerminalMenuHost menuHost;
     private final PatternEncodingLogic patternEncodingLogic;
@@ -134,6 +144,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      * 打开界面期间定期推送一次，避免只能重开终端才能看到外部变化。
      */
     private int patternProviderSyncCooldown;
+    private long patternProviderSyncSubscriptionUntilTick;
+    private long lastPatternProviderRequestTick = Long.MIN_VALUE;
 
     public WirelessComprehensiveWorkTerminalMenu(int id, Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) {
         super(com.lhy.wcwt.init.ModMenus.WCWT_MENU.get(), id, ip, host, false);
@@ -203,8 +215,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var resonatingStorageInv = host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_RESONATING_PATTERN_CACHE);
         if (resonatingStorageInv != null) {
             for (int i = 0; i < resonatingStorageInv.size(); i++) {
-                addSlot(new RestrictedInputSlot(RestrictedInputSlot.PlacableItemType.ENCODED_PATTERN,
-                        resonatingStorageInv, i), WcwtSlotSemantics.WCWT_RESONATING_STORAGE);
+                addSlot(new OptionalRestrictedInputSlot(
+                                RestrictedInputSlot.PlacableItemType.ENCODED_PATTERN,
+                                resonatingStorageInv, this, i,
+                                OPTIONAL_SLOT_GROUP_RESONATING_STORAGE_BASE + i, ip),
+                        WcwtSlotSemantics.WCWT_RESONATING_STORAGE);
             }
         }
 
@@ -278,6 +293,39 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 syncedPatternManagementUploadEnabled = value != 0;
             }
         });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return menuHost != null ? menuHost.getPatternManagementDisplayMode() : syncedPatternManagementDisplayMode;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedPatternManagementDisplayMode = value;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return menuHost != null && menuHost.isPatternManagementShowSlots() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedPatternManagementShowSlots = value != 0;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return menuHost != null ? menuHost.getPatternManagementSearchMode() : syncedPatternManagementSearchMode;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedPatternManagementSearchMode = value;
+            }
+        });
         registerClientAction(TOP_ACTION, TopActionPacket.Action.class, this::handleTopAction);
 
         // 创建玩家物品栏槽位
@@ -342,6 +390,42 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         syncedPatternManagementUploadEnabled = enabled;
         if (menuHost != null) {
             menuHost.setPatternManagementUploadEnabled(enabled);
+        }
+        broadcastChanges();
+    }
+
+    public int getPatternManagementDisplayMode() {
+        return menuHost != null ? menuHost.getPatternManagementDisplayMode() : syncedPatternManagementDisplayMode;
+    }
+
+    public void setPatternManagementDisplayMode(int mode) {
+        syncedPatternManagementDisplayMode = mode;
+        if (menuHost != null) {
+            menuHost.setPatternManagementDisplayMode(mode);
+        }
+        broadcastChanges();
+    }
+
+    public boolean isPatternManagementShowSlots() {
+        return menuHost != null ? menuHost.isPatternManagementShowSlots() : syncedPatternManagementShowSlots;
+    }
+
+    public void setPatternManagementShowSlots(boolean showSlots) {
+        syncedPatternManagementShowSlots = showSlots;
+        if (menuHost != null) {
+            menuHost.setPatternManagementShowSlots(showSlots);
+        }
+        broadcastChanges();
+    }
+
+    public int getPatternManagementSearchMode() {
+        return menuHost != null ? menuHost.getPatternManagementSearchMode() : syncedPatternManagementSearchMode;
+    }
+
+    public void setPatternManagementSearchMode(int mode) {
+        syncedPatternManagementSearchMode = mode;
+        if (menuHost != null) {
+            menuHost.setPatternManagementSearchMode(mode);
         }
         broadcastChanges();
     }
@@ -655,27 +739,120 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     @Override
     public void broadcastChanges() {
+        long totalStartNs = 0L;
+        long preSuperNs = 0L;
+        long superNs = 0L;
+        long refreshNs = 0L;
+        long mergeNs = 0L;
+        long providerSyncNs = 0L;
+        boolean didProviderSync = false;
+        int cooldownBefore = patternProviderSyncCooldown;
+        if (DEBUG_PERF && isServerSide()) {
+            totalStartNs = System.nanoTime();
+        }
         if (isServerSide() && menuHost != null) {
+            long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
             menuHost.refreshMenuSyncState();
+            if (DEBUG_PERF) {
+                refreshNs = System.nanoTime() - stageStartNs;
+            }
         }
         if (isServerSide() && !wcwtMergeProcessingGuard && processingMaterialsMerge
                 && getPatternEncodingMode() == EncodingMode.PROCESSING && patternEncodingLogic != null) {
             wcwtMergeProcessingGuard = true;
             try {
+                long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
                 mergeProcessingPatternInputs();
+                if (DEBUG_PERF) {
+                    mergeNs = System.nanoTime() - stageStartNs;
+                }
             } finally {
                 wcwtMergeProcessingGuard = false;
             }
         }
         if (isServerSide() && getPlayer() instanceof ServerPlayer serverPlayer) {
-            if (patternProviderSyncCooldown <= 0) {
+            boolean shouldSyncProviders = shouldSyncPatternProviders(serverPlayer);
+            if (shouldSyncProviders && patternProviderSyncCooldown <= 0) {
+                long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
                 PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer));
-                patternProviderSyncCooldown = 20;
-            } else {
+                patternProviderSyncCooldown = PATTERN_PROVIDER_SYNC_INTERVAL_TICKS;
+                didProviderSync = true;
+                if (DEBUG_PERF) {
+                    providerSyncNs = System.nanoTime() - stageStartNs;
+                }
+            } else if (shouldSyncProviders) {
                 patternProviderSyncCooldown--;
+            } else {
+                patternProviderSyncCooldown = 0;
             }
         }
+        if (DEBUG_PERF && isServerSide()) {
+            preSuperNs = System.nanoTime() - totalStartNs;
+        }
+        long superStartNs = DEBUG_PERF && isServerSide() ? System.nanoTime() : 0L;
         super.broadcastChanges();
+        if (DEBUG_PERF && isServerSide()) {
+            superNs = System.nanoTime() - superStartNs;
+        }
+        if (DEBUG_PERF && isServerSide()) {
+            long totalNs = System.nanoTime() - totalStartNs;
+            if (totalNs >= PERF_LOG_THRESHOLD_NS
+                    || preSuperNs >= PERF_LOG_THRESHOLD_NS
+                    || superNs >= PERF_LOG_THRESHOLD_NS
+                    || refreshNs >= PERF_LOG_THRESHOLD_NS
+                    || mergeNs >= PERF_LOG_THRESHOLD_NS
+                    || providerSyncNs >= PERF_LOG_THRESHOLD_NS
+                    || didProviderSync) {
+                String playerName = getPlayer() != null ? getPlayer().getScoreboardName() : "<unknown>";
+                WcwtMod.LOGGER.info(
+                        "WCWT perf: broadcastChanges player={}, totalMs={}, preSuperMs={}, superMs={}, refreshMs={}, mergeMs={}, providerSyncMs={}, providerSync={}, cooldownBefore={}, cooldownAfter={}, mode={}, processingMerge={}",
+                        playerName,
+                        formatPerfMs(totalNs),
+                        formatPerfMs(preSuperNs),
+                        formatPerfMs(superNs),
+                        formatPerfMs(refreshNs),
+                        formatPerfMs(mergeNs),
+                        formatPerfMs(providerSyncNs),
+                        didProviderSync,
+                        cooldownBefore,
+                        patternProviderSyncCooldown,
+                        getPatternEncodingMode(),
+                        processingMaterialsMerge);
+            }
+        }
+    }
+
+    private static String formatPerfMs(long nanos) {
+        return String.format(java.util.Locale.ROOT, "%.3f", nanos / 1_000_000.0D);
+    }
+
+    public void requestPatternProviderSyncSubscription() {
+        if (!isServerSide() || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        long gameTime = serverPlayer.serverLevel().getGameTime();
+        if (gameTime - lastPatternProviderRequestTick < 5L) {
+            patternProviderSyncSubscriptionUntilTick = Math.max(
+                    patternProviderSyncSubscriptionUntilTick,
+                    gameTime + PATTERN_PROVIDER_SYNC_SUBSCRIPTION_TICKS);
+            return;
+        }
+        lastPatternProviderRequestTick = gameTime;
+        patternProviderSyncSubscriptionUntilTick = Math.max(
+                patternProviderSyncSubscriptionUntilTick,
+                gameTime + PATTERN_PROVIDER_SYNC_SUBSCRIPTION_TICKS);
+    }
+
+    public boolean shouldServeImmediatePatternProviderRequest() {
+        if (!isServerSide() || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return true;
+        }
+        long gameTime = serverPlayer.serverLevel().getGameTime();
+        return gameTime - lastPatternProviderRequestTick >= 5L;
+    }
+
+    private boolean shouldSyncPatternProviders(ServerPlayer serverPlayer) {
+        return serverPlayer.serverLevel().getGameTime() <= patternProviderSyncSubscriptionUntilTick;
     }
 
     private static boolean isValidEncodingModeOrdinal(int ordinal) {
@@ -1012,13 +1189,19 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public void encodePattern(EncodingMode mode) {
-        encodePattern(mode, false, "");
+        encodePattern(mode, false, "", false);
     }
 
     public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText) {
+        encodePattern(mode, uploadEnabled, providerSearchText, false);
+    }
+
+    public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
+                              boolean fallbackToEditSlot) {
         if (isClientSide()) {
             logEncode("client clicked encode, mode={}", mode);
-            PacketDistributor.sendToServer(new EncodePatternPacket(mode, uploadEnabled, providerSearchText));
+            PacketDistributor.sendToServer(new EncodePatternPacket(mode, uploadEnabled, providerSearchText,
+                    fallbackToEditSlot));
             return;
         }
 
@@ -1130,7 +1313,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
 
-        boolean preferEditSlot = uploadEnabled;
+        boolean preferEditSlot = uploadEnabled && fallbackToEditSlot;
         if (uploadEnabled && uploadAttempt.hadTarget() && getPlayer() instanceof ServerPlayer serverPlayer) {
             serverPlayer.sendSystemMessage(Component.translatable(
                     "extendedae_plus.screen.upload.auto_upload_failed", uploadAttempt.providerName()));
@@ -1679,7 +1862,24 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     @Override
     public ItemStack quickMoveStack(Player player, int slotIndex) {
-        return wcwtQuickMoveStackUnchecked(player, slotIndex);
+        long startNs = DEBUG_PERF && isServerSide() ? System.nanoTime() : 0L;
+        ItemStack result = wcwtQuickMoveStackUnchecked(player, slotIndex);
+        if (DEBUG_PERF && isServerSide()) {
+            long totalNs = System.nanoTime() - startNs;
+            if (totalNs >= PERF_LOG_THRESHOLD_NS) {
+                Slot sourceSlot = slotIndex >= 0 && slotIndex < slots.size() ? slots.get(slotIndex) : null;
+                ItemStack sourceStack = sourceSlot != null ? sourceSlot.getItem() : ItemStack.EMPTY;
+                WcwtMod.LOGGER.info(
+                        "WCWT perf: quickMoveStack player={}, slotIndex={}, sourceEmpty={}, sourceItem={}, resultEmpty={}, totalMs={}",
+                        player.getScoreboardName(),
+                        slotIndex,
+                        sourceStack.isEmpty(),
+                        sourceStack.isEmpty() ? "<empty>" : sourceStack.getItem().toString(),
+                        result.isEmpty(),
+                        formatPerfMs(totalNs));
+            }
+        }
+        return result;
     }
 
     private ItemStack wcwtQuickMoveStackUnchecked(Player player, int slotIndex) {
@@ -1687,6 +1887,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             Slot sourceSlot = slots.get(slotIndex);
             if (sourceSlot.hasItem() && !isPlayerArmorSlot(sourceSlot)) {
                 ItemStack sourceStack = sourceSlot.getItem();
+                ItemStack movedCurioToPlayer = tryMoveCurioToPlayerInventoryFirst(player, sourceSlot, sourceStack);
+                if (!movedCurioToPlayer.isEmpty()) {
+                    return movedCurioToPlayer;
+                }
+
                 EquipmentSlot equipmentSlot = player.getEquipmentSlotForItem(sourceStack);
                 if (equipmentSlot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
                     Slot targetSlot = getPlayerArmorSlot(equipmentSlot);
@@ -1715,6 +1920,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private ItemStack tryMoveStackToCurioSlot(Player player, Slot sourceSlot, ItemStack sourceStack) {
         if (sourceStack.isEmpty() || isCurioSlot(sourceSlot)) {
+            return ItemStack.EMPTY;
+        }
+        if (menuHost.getCurrentExtendedUI() != IExtendedUIHost.ExtendedUIType.CURIOS) {
             return ItemStack.EMPTY;
         }
 
@@ -1791,18 +1999,42 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return ItemStack.EMPTY;
     }
 
+    private ItemStack tryMoveCurioToPlayerInventoryFirst(Player player, Slot sourceSlot, ItemStack sourceStack) {
+        if (sourceStack.isEmpty() || !isCurioSlot(sourceSlot)) {
+            return ItemStack.EMPTY;
+        }
+        if (menuHost.getCurrentExtendedUI() != IExtendedUIHost.ExtendedUIType.CURIOS) {
+            return ItemStack.EMPTY;
+        }
+        int playerInventoryStart = getPlayerInventoryStartMenuIndex();
+        if (playerInventoryStart < 0) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack original = sourceStack.copy();
+        if (moveItemStackTo(sourceStack, playerInventoryStart, slots.size(), false)) {
+            finishPriorityQuickMove(player, sourceSlot, sourceStack);
+            return original;
+        }
+        return ItemStack.EMPTY;
+    }
+
     private boolean isPlayerHotbarOrStorageSemanticSlot(Slot slot) {
         var semantic = getSlotSemantic(slot);
         return semantic == SlotSemantics.PLAYER_HOTBAR || semantic == SlotSemantics.PLAYER_INVENTORY;
+    }
+
+    private int getPlayerInventoryStartMenuIndex() {
+        var inventory = getPlayerInventory();
+        int compartment = inventory.items.size();
+        int start = slots.size() - compartment;
+        return start < 0 || start >= slots.size() ? -1 : start;
     }
 
     private ItemStack tryQuickMoveToolkitToPlayerBulk(Slot toolkitSlot, ItemStack toolkitStack) {
         if (toolkitStack.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        var inventory = getPlayerInventory();
-        int compartment = inventory.items.size();
-        int mainStorageStartMenu = slots.size() - compartment;
+        int mainStorageStartMenu = getPlayerInventoryStartMenuIndex();
         if (mainStorageStartMenu < 0 || mainStorageStartMenu >= slots.size()) {
             return ItemStack.EMPTY;
         }
@@ -1919,15 +2151,25 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     /**
-     * IOptionalSlotHost 实现：决定第 idx 个升级卡槽是否可见/可交互。
-     * 与 AE2 CellWorkbenchMenu 一致 —— 仅当元件实际支持该数量的升级槽时才启用。
-     * 元件没放入 → 返回 false → 8 个槽全部 disabled（vanilla 不渲染、不接点击、不接拖拽）。
+     * IOptionalSlotHost 实现：
+     * 1. 前 8 格用于元件升级卡槽，仅当元件实际支持对应升级数时启用。
+     * 2. 后续一段索引用于谐振样板缓存区，仅在谐振过载编码器面板打开时启用。
      */
     @Override
     public boolean isSlotEnabled(int idx) {
-        if (menuHost == null) return false;
-        var upgrades = menuHost.getCellUpgrades();
-        return upgrades != null && idx < upgrades.size();
+        if (menuHost == null) {
+            return false;
+        }
+        if (idx < CELL_UPGRADE_SLOTS) {
+            var upgrades = menuHost.getCellUpgrades();
+            return upgrades != null && idx < upgrades.size();
+        }
+
+        int resonatingIndex = idx - OPTIONAL_SLOT_GROUP_RESONATING_STORAGE_BASE;
+        var resonatingStorage = getSlots(WcwtSlotSemantics.WCWT_RESONATING_STORAGE);
+        return resonatingIndex >= 0
+                && resonatingIndex < resonatingStorage.size()
+                && menuHost.getCurrentExtendedUI() == IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING;
     }
 
     @Override

@@ -1,6 +1,7 @@
 package com.lhy.wcwt.client;
 
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import appeng.init.client.InitScreens;
@@ -8,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
@@ -19,6 +21,9 @@ import java.lang.reflect.Method;
 
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public class ModClientSetup {
+    private static boolean ipnCompatInitialized;
+    private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
+
     @SubscribeEvent
     public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
         event.register(ModMenus.WCWT_MENU.get(), WirelessComprehensiveWorkTerminalScreen::new);
@@ -55,18 +60,40 @@ public class ModClientSetup {
         }
     }
 
+    /**
+     * 与 Inventory Profiles Next 相同：{@code Init.Post} 注入控件。使用最低优先级，
+     * 保证在 IPN 的 {@link ScreenEvent.Init.Post} 之后执行，再递归隐藏深层子控件。
+     */
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onWirelessTerminalScreenInitPost(ScreenEvent.Init.Post event) {
+        if (event.getScreen() instanceof WirelessComprehensiveWorkTerminalScreen) {
+            InventoryProfilesNextCompat.installRuntimeHints();
+        }
+    }
+
     @SubscribeEvent
     public static void onClientTickPost(ClientTickEvent.Post event) {
         var minecraft = Minecraft.getInstance();
+        if (!ipnCompatInitialized) {
+            ipnCompatInitialized = true;
+            InventoryProfilesNextCompat.ensureHintsInstalled();
+        }
         if (minecraft.player == null) {
             return;
         }
         if (minecraft.screen instanceof WirelessComprehensiveWorkTerminalScreen) {
             while (WcwtKeybindings.OPEN_TOOLKIT.consumeClick()) {
+                if (DEBUG_TOOLKIT) {
+                    WcwtMod.LOGGER.info("WCWT toolkit debug: consumed toolkit hotkey while WCWT screen already open");
+                }
             }
             return;
         }
         while (WcwtKeybindings.OPEN_TOOLKIT.consumeClick()) {
+            if (DEBUG_TOOLKIT) {
+                WcwtMod.LOGGER.info("WCWT toolkit debug: sending OpenToolkitHotkeyPacket, screen={}",
+                        minecraft.screen == null ? "<null>" : minecraft.screen.getClass().getName());
+            }
             net.neoforged.neoforge.network.PacketDistributor.sendToServer(new OpenToolkitHotkeyPacket());
         }
     }

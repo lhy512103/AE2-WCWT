@@ -9,13 +9,22 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record PatternManagementUploadSettingPacket(boolean enabled) implements CustomPacketPayload {
+public record PatternManagementUploadSettingPacket(boolean enabled,
+                                                   int displayMode,
+                                                   boolean showSlots,
+                                                   int searchMode) implements CustomPacketPayload {
     public static final Type<PatternManagementUploadSettingPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_upload_setting"));
 
     public static final StreamCodec<ByteBuf, PatternManagementUploadSettingPacket> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.BOOL,
             PatternManagementUploadSettingPacket::enabled,
+            ByteBufCodecs.INT,
+            PatternManagementUploadSettingPacket::displayMode,
+            ByteBufCodecs.BOOL,
+            PatternManagementUploadSettingPacket::showSlots,
+            ByteBufCodecs.INT,
+            PatternManagementUploadSettingPacket::searchMode,
             PatternManagementUploadSettingPacket::new);
 
     @Override
@@ -27,6 +36,9 @@ public record PatternManagementUploadSettingPacket(boolean enabled) implements C
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 menu.setPatternManagementUploadEnabled(packet.enabled());
+                menu.setPatternManagementDisplayMode(packet.displayMode());
+                menu.setPatternManagementShowSlots(packet.showSlots());
+                menu.setPatternManagementSearchMode(packet.searchMode());
             }
         });
     }

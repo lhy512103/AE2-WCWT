@@ -34,6 +34,8 @@ import java.util.Comparator;
 import java.util.List;
 
 public record PatternProviderListPacket(List<Entry> entries) implements CustomPacketPayload {
+    private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
+
     public static final Type<PatternProviderListPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list"));
 
@@ -115,6 +117,13 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
         public static void handle(Request packet, IPayloadContext context) {
             context.enqueueWork(() -> {
                 if (context.player() instanceof ServerPlayer player) {
+                    if (player.containerMenu instanceof com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu menu) {
+                        boolean serveNow = menu.shouldServeImmediatePatternProviderRequest();
+                        menu.requestPatternProviderSyncSubscription();
+                        if (!serveNow) {
+                            return;
+                        }
+                    }
                     PacketDistributor.sendToPlayer(player, buildForPlayer(player));
                 }
             });
@@ -122,6 +131,7 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
     }
 
     public static PatternProviderListPacket buildForPlayer(ServerPlayer player) {
+        long totalStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
         var entries = new ArrayList<Entry>();
         var menu = player.containerMenu;
         if (!(menu instanceof appeng.menu.AEBaseMenu baseMenu)) {
@@ -137,7 +147,9 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
         }
 
         var providers = new ArrayList<PatternContainer>();
+        int machineClassCount = 0;
         for (var machineClass : grid.getMachineClasses()) {
+            machineClassCount++;
             if (!PatternContainer.class.isAssignableFrom(machineClass)) {
                 continue;
             }
@@ -161,18 +173,34 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
 
         providers.sort(PatternProviderSorts.STABLE);
         long id = 1;
+        int copiedNonEmptySlots = 0;
+        int totalInventorySlots = 0;
         for (var container : providers) {
             InternalInventory inv = container.getTerminalPatternInventory();
+            totalInventorySlots += inv.size();
             var slots = new Int2ObjectArrayMap<ItemStack>();
             for (int i = 0; i < inv.size(); i++) {
                 var stack = inv.getStackInSlot(i);
                 if (!stack.isEmpty()) {
                     slots.put(i, stack.copy());
+                    copiedNonEmptySlots++;
                 }
             }
             var location = getLocation(container);
             entries.add(new Entry(id++, container.getTerminalGroup(), inv.size(), slots,
                     location.pos, location.dimension, location.face));
+        }
+
+        if (DEBUG_PERF) {
+            long totalNs = System.nanoTime() - totalStartNs;
+            WcwtMod.LOGGER.info(
+                    "WCWT perf: providerList build player={}, totalMs={}, machineClasses={}, providers={}, inventorySlots={}, copiedStacks={}",
+                    player.getScoreboardName(),
+                    String.format(java.util.Locale.ROOT, "%.3f", totalNs / 1_000_000.0D),
+                    machineClassCount,
+                    providers.size(),
+                    totalInventorySlots,
+                    copiedNonEmptySlots);
         }
 
         return new PatternProviderListPacket(entries);

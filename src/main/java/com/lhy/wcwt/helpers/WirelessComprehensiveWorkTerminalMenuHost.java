@@ -36,6 +36,8 @@ import com.lhy.wcwt.api.IPatternCachingHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -60,11 +62,22 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         implements ISegmentedInventory, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost {
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
+    private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
+    private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
+    private static final long PERF_LOG_THRESHOLD_NS = 1_000_000L;
     /**
      * 短暂链路抖动时保留最近一次稳定联网快照，避免 repo 在 1~2 拍内被清空成灰格。
      * 3 tick ~= 150ms，足够吞掉本次日志里看到的瞬时 false/true 抖动，又不会把真实断线拖得太久。
      */
     private static final long TRANSIENT_DISCONNECT_GRACE_TICKS = 3L;
+    private static final String PLAYER_PERSISTED_TAG = "PlayerPersisted";
+    private static final String WCWT_PLAYER_DATA_TAG = WcwtMod.MOD_ID;
+    private static final String PLAYER_TOOLKIT_DATA_TAG = "shared_toolkit";
+    private static final String PLAYER_PENDING_EXTENDED_UI_TAG = "pending_extended_ui";
+    private static final String TOOLKIT_SIZE_TAG = "size";
+    private static final String TOOLKIT_ITEMS_TAG = "items";
+    private static final String TOOLKIT_SLOT_TAG = "slot";
+    private static final String TOOLKIT_STACK_TAG = "stack";
     
     // 定义各种存储库存的ResourceLocation标识符
     public static final ResourceLocation INV_AE2WTLIB_ARMOR = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "ae2wtlib_armor");
@@ -135,6 +148,12 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private boolean craftingGridLocked;
     /** 样板管理区“启用上传样板功能”开关，持久化到终端物品自身。 */
     private boolean patternManagementUploadEnabled;
+    /** 样板管理区显示模式，持久化到终端物品自身。 */
+    private int patternManagementDisplayMode;
+    /** 样板管理区是否显示样板槽，持久化到终端物品自身。 */
+    private boolean patternManagementShowSlots;
+    /** 样板管理区搜索模式，持久化到终端物品自身。 */
+    private int patternManagementSearchMode;
     
     public WirelessComprehensiveWorkTerminalMenuHost(WirelessComprehensiveWorkTerminalItem item, Player player,
                                                       ItemMenuHostLocator locator,
@@ -204,6 +223,17 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         this.craftingGridLocked = getItemStack().getOrDefault(ModComponents.CRAFTING_GRID_LOCKED.get(), false);
         this.patternManagementUploadEnabled = getItemStack().getOrDefault(
                 ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED.get(), true);
+        this.patternManagementDisplayMode = getItemStack().getOrDefault(
+                ModComponents.PATTERN_MANAGEMENT_DISPLAY_MODE.get(), 1);
+        this.patternManagementShowSlots = getItemStack().getOrDefault(
+                ModComponents.PATTERN_MANAGEMENT_SHOW_SLOTS.get(), true);
+        this.patternManagementSearchMode = getItemStack().getOrDefault(
+                ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE.get(), 2);
+        this.currentExtendedUI = consumePendingExtendedUi(player);
+        if (DEBUG_TOOLKIT) {
+            WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, consumedPendingUi={}, locator={}",
+                    player.getScoreboardName(), this.currentExtendedUI, locator);
+        }
 
         // 父类构造期间会通过动态分派调用到本类的 updateConnectedAccessPoint/updateLinkStatus，
         // 但本类字段会在 super(...) 返回后才按这里的默认值重新初始化，导致首帧链路状态被覆盖回“断线”。
@@ -313,8 +343,34 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
      * 对无线终端来说，这会让首帧同步偶尔使用到上一拍的连接状态。
      */
     public void refreshMenuSyncState() {
+        long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
+        long updateConnectedNs = 0L;
+        long updateLinkNs = 0L;
+        long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
         updateConnectedAccessPoint();
+        if (DEBUG_PERF) {
+            updateConnectedNs = System.nanoTime() - stageStartNs;
+            stageStartNs = System.nanoTime();
+        }
         updateLinkStatus();
+        if (DEBUG_PERF) {
+            updateLinkNs = System.nanoTime() - stageStartNs;
+            long totalNs = System.nanoTime() - startNs;
+            if (totalNs >= PERF_LOG_THRESHOLD_NS
+                    || updateConnectedNs >= PERF_LOG_THRESHOLD_NS
+                    || updateLinkNs >= PERF_LOG_THRESHOLD_NS) {
+                var player = getPlayer();
+                WcwtMod.LOGGER.info(
+                        "WCWT perf: refreshMenuSyncState player={}, totalMs={}, updateConnectedMs={}, updateLinkMs={}, quantumConnected={}, linkConnected={}, hasStableNode={}",
+                        player != null ? player.getScoreboardName() : "<unknown>",
+                        String.format(java.util.Locale.ROOT, "%.3f", totalNs / 1_000_000.0D),
+                        String.format(java.util.Locale.ROOT, "%.3f", updateConnectedNs / 1_000_000.0D),
+                        String.format(java.util.Locale.ROOT, "%.3f", updateLinkNs / 1_000_000.0D),
+                        quantumStatus != null && quantumStatus.connected(),
+                        getLinkStatus() != null && getLinkStatus().connected(),
+                        cachedStableActionableNode != null && cachedStableActionableNode.getGrid() != null);
+            }
+        }
         debugRepoState("refreshMenuSyncState");
     }
 
@@ -535,6 +591,33 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     public void setPatternManagementUploadEnabled(boolean enabled) {
         this.patternManagementUploadEnabled = enabled;
         getItemStack().set(ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED.get(), enabled);
+    }
+
+    public int getPatternManagementDisplayMode() {
+        return patternManagementDisplayMode;
+    }
+
+    public void setPatternManagementDisplayMode(int mode) {
+        this.patternManagementDisplayMode = mode;
+        getItemStack().set(ModComponents.PATTERN_MANAGEMENT_DISPLAY_MODE.get(), mode);
+    }
+
+    public boolean isPatternManagementShowSlots() {
+        return patternManagementShowSlots;
+    }
+
+    public void setPatternManagementShowSlots(boolean showSlots) {
+        this.patternManagementShowSlots = showSlots;
+        getItemStack().set(ModComponents.PATTERN_MANAGEMENT_SHOW_SLOTS.get(), showSlots);
+    }
+
+    public int getPatternManagementSearchMode() {
+        return patternManagementSearchMode;
+    }
+
+    public void setPatternManagementSearchMode(int mode) {
+        this.patternManagementSearchMode = mode;
+        getItemStack().set(ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE.get(), mode);
     }
     
     @Nullable
@@ -818,12 +901,11 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     private InternalInventory createToolkitInventory(Player player, ItemStack stack) {
-        var componentType = ModComponents.TOOLKIT_INV.get();
         int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
-                stack.set(componentType, inv.toItemContainerContents());
+                saveSharedToolkitInventory(player, stack, inv);
             }
 
             @Override
@@ -831,7 +913,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 return player.level().isClientSide();
             }
         }, toolkitSlots);
-        inventory.fromItemContainerContents(stack.getOrDefault(componentType, ItemContainerContents.EMPTY));
+        loadSharedToolkitInventory(player, stack, inventory);
         inventory.setFilter(new ToolkitItemFilter());
         return inventory;
     }
@@ -863,6 +945,166 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         
         inventory.fromItemContainerContents(stack.getOrDefault(componentType, ItemContainerContents.EMPTY));
         return inventory;
+    }
+
+    private static void loadSharedToolkitInventory(Player player, ItemStack terminalStack, AppEngInternalInventory inventory) {
+        if (player.level().isClientSide()) {
+            loadToolkitInventoryMirror(terminalStack, inventory);
+            if (DEBUG_TOOLKIT) {
+                WcwtMod.LOGGER.info("WCWT toolkit debug: loaded toolkit from item mirror on client for player={}, nonEmptySlots={}",
+                        player.getScoreboardName(), countNonEmptySlots(inventory));
+            }
+            return;
+        }
+        var persisted = getOrCreateWcwtPlayerData(player);
+        var sharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        boolean hasSharedToolkit = !sharedToolkitTag.isEmpty();
+        if (!hasSharedToolkit) {
+            if (DEBUG_TOOLKIT) {
+                WcwtMod.LOGGER.info("WCWT toolkit debug: no shared toolkit for player={}, attempting legacy migration",
+                        player.getScoreboardName());
+            }
+            migrateLegacyToolkitIntoPlayer(player, terminalStack, inventory, persisted);
+            return;
+        }
+        if (sharedToolkitTag.contains(TOOLKIT_ITEMS_TAG, Tag.TAG_LIST)) {
+            readSharedToolkitSlots(player, sharedToolkitTag, inventory);
+        } else {
+            readLegacySharedToolkitContents(player, terminalStack, sharedToolkitTag, inventory);
+        }
+        saveToolkitInventoryMirror(terminalStack, inventory);
+        if (DEBUG_TOOLKIT) {
+            WcwtMod.LOGGER.info("WCWT toolkit debug: loaded shared toolkit for player={}, slotCount={}, nonEmptySlots={}",
+                    player.getScoreboardName(), inventory.size(), countNonEmptySlots(inventory));
+        }
+    }
+
+    private static void migrateLegacyToolkitIntoPlayer(Player player, ItemStack terminalStack,
+                                                       AppEngInternalInventory inventory, CompoundTag persisted) {
+        var legacyComponent = ModComponents.TOOLKIT_INV.get();
+        var legacyContents = terminalStack.getOrDefault(legacyComponent, ItemContainerContents.EMPTY);
+        if (!persisted.contains(PLAYER_TOOLKIT_DATA_TAG)) {
+            persisted.put(PLAYER_TOOLKIT_DATA_TAG, new CompoundTag());
+        }
+        inventory.fromItemContainerContents(legacyContents);
+        saveSharedToolkitInventory(player, terminalStack, inventory);
+        if (!legacyContents.equals(ItemContainerContents.EMPTY)) {
+            terminalStack.remove(legacyComponent);
+            if (DEBUG_TOOLKIT) {
+                WcwtMod.LOGGER.info("WCWT toolkit debug: migrated legacy item-bound toolkit into shared store for player={}, nonEmptySlots={}",
+                        player.getScoreboardName(), countNonEmptySlots(inventory));
+            }
+        }
+    }
+
+    private static void saveSharedToolkitInventory(Player player, ItemStack terminalStack, AppEngInternalInventory inventory) {
+        var persisted = getOrCreateWcwtPlayerData(player);
+        CompoundTag serialized = new CompoundTag();
+        serialized.putInt(TOOLKIT_SIZE_TAG, inventory.size());
+        ListTag items = new ListTag();
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            CompoundTag entry = new CompoundTag();
+            entry.putInt(TOOLKIT_SLOT_TAG, slot);
+            entry.put(TOOLKIT_STACK_TAG, stack.saveOptional(player.registryAccess()));
+            items.add(entry);
+        }
+        serialized.put(TOOLKIT_ITEMS_TAG, items);
+        persisted.put(PLAYER_TOOLKIT_DATA_TAG, serialized);
+        saveToolkitInventoryMirror(terminalStack, inventory);
+        if (DEBUG_TOOLKIT) {
+            WcwtMod.LOGGER.info("WCWT toolkit debug: saved shared toolkit for player={}, slotCount={}, nonEmptySlots={}",
+                    player.getScoreboardName(), inventory.size(), countNonEmptySlots(inventory));
+        }
+    }
+
+    private static void readSharedToolkitSlots(Player player, CompoundTag sharedToolkitTag,
+                                               AppEngInternalInventory inventory) {
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            inventory.setItemDirect(slot, ItemStack.EMPTY);
+        }
+        ListTag items = sharedToolkitTag.getList(TOOLKIT_ITEMS_TAG, Tag.TAG_COMPOUND);
+        for (int i = 0; i < items.size(); i++) {
+            CompoundTag entry = items.getCompound(i);
+            int slot = entry.getInt(TOOLKIT_SLOT_TAG);
+            if (slot < 0 || slot >= inventory.size() || !entry.contains(TOOLKIT_STACK_TAG, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+            ItemStack stack = ItemStack.parseOptional(player.registryAccess(), entry.getCompound(TOOLKIT_STACK_TAG));
+            inventory.setItemDirect(slot, stack);
+        }
+    }
+
+    private static void readLegacySharedToolkitContents(Player player, ItemStack terminalStack, CompoundTag sharedToolkitTag,
+                                                        AppEngInternalInventory inventory) {
+        ItemContainerContents contents = ItemContainerContents.EMPTY;
+        try {
+            contents = ItemContainerContents.CODEC.parse(player.registryAccess().createSerializationContext(
+                    net.minecraft.nbt.NbtOps.INSTANCE), sharedToolkitTag).result().orElse(ItemContainerContents.EMPTY);
+        } catch (Exception ignored) {
+        }
+        inventory.fromItemContainerContents(contents);
+        saveSharedToolkitInventory(player, terminalStack, inventory);
+        if (DEBUG_TOOLKIT) {
+            WcwtMod.LOGGER.info("WCWT toolkit debug: upgraded legacy shared toolkit codec data for player={}, nonEmptySlots={}",
+                    player.getScoreboardName(), countNonEmptySlots(inventory));
+        }
+    }
+
+    private static void loadToolkitInventoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
+        var component = ModComponents.TOOLKIT_INV.get();
+        inventory.fromItemContainerContents(terminalStack.getOrDefault(component, ItemContainerContents.EMPTY));
+    }
+
+    private static void saveToolkitInventoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
+        terminalStack.set(ModComponents.TOOLKIT_INV.get(), inventory.toItemContainerContents());
+    }
+
+    private static int countNonEmptySlots(AppEngInternalInventory inventory) {
+        int count = 0;
+        for (int i = 0; i < inventory.size(); i++) {
+            if (!inventory.getStackInSlot(i).isEmpty()) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static CompoundTag getOrCreateWcwtPlayerData(Player player) {
+        var persisted = player.getPersistentData().getCompound(PLAYER_PERSISTED_TAG);
+        player.getPersistentData().put(PLAYER_PERSISTED_TAG, persisted);
+        var wcwtData = persisted.getCompound(WCWT_PLAYER_DATA_TAG);
+        persisted.put(WCWT_PLAYER_DATA_TAG, wcwtData);
+        return wcwtData;
+    }
+
+    public static void setPendingExtendedUi(Player player, ExtendedUIType type) {
+        var wcwtData = getOrCreateWcwtPlayerData(player);
+        wcwtData.putInt(PLAYER_PENDING_EXTENDED_UI_TAG, type.ordinal());
+        if (DEBUG_TOOLKIT) {
+            WcwtMod.LOGGER.info("WCWT toolkit debug: set pending UI player={}, type={}",
+                    player.getScoreboardName(), type);
+        }
+    }
+
+    private static ExtendedUIType consumePendingExtendedUi(Player player) {
+        var wcwtData = getOrCreateWcwtPlayerData(player);
+        int ordinal = wcwtData.getInt(PLAYER_PENDING_EXTENDED_UI_TAG);
+        wcwtData.remove(PLAYER_PENDING_EXTENDED_UI_TAG);
+        if (ordinal >= 0 && ordinal < ExtendedUIType.values().length) {
+            if (DEBUG_TOOLKIT) {
+                WcwtMod.LOGGER.info("WCWT toolkit debug: consume pending UI player={}, ordinal={}",
+                        player.getScoreboardName(), ordinal);
+            }
+            return ExtendedUIType.values()[ordinal];
+        }
+        if (DEBUG_TOOLKIT) {
+            WcwtMod.LOGGER.info("WCWT toolkit debug: no pending UI for player={}", player.getScoreboardName());
+        }
+        return ExtendedUIType.NONE;
     }
 
     private static final class ToolkitItemFilter implements appeng.util.inv.filter.IAEItemFilter {
