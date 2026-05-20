@@ -54,6 +54,13 @@ public final class WcwtWirelessFeatures {
     private WcwtWirelessFeatures() {
     }
 
+    public static void tickPlayerMagnet(ServerPlayer player) {
+        ItemStack terminal = findTerminalStack(player, WcwtWirelessFeatures::hasMagnetCard);
+        if (!terminal.isEmpty()) {
+            tickMagnet(player, terminal);
+        }
+    }
+
     public static void tickMagnet(ServerPlayer player, ItemStack terminal) {
         syncRestockAmounts(player, terminal);
         boolean sneaking = player.isShiftKeyDown();

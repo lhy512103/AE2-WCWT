@@ -104,10 +104,13 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
         }
     }
 
-    public record Request() implements CustomPacketPayload {
+    public record Request(boolean subscribe) implements CustomPacketPayload {
         public static final Type<Request> TYPE =
                 new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list_request"));
-        public static final StreamCodec<ByteBuf, Request> STREAM_CODEC = StreamCodec.unit(new Request());
+        public static final StreamCodec<ByteBuf, Request> STREAM_CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL,
+                Request::subscribe,
+                Request::new);
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -119,7 +122,7 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
                 if (context.player() instanceof ServerPlayer player) {
                     if (player.containerMenu instanceof com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu menu) {
                         boolean serveNow = menu.shouldServeImmediatePatternProviderRequest();
-                        menu.requestPatternProviderSyncSubscription(false);
+                        menu.requestPatternProviderSyncSubscription(packet.subscribe());
                         if (!serveNow) {
                             return;
                         }

@@ -5,6 +5,7 @@ import appeng.client.gui.me.common.MEStorageScreen;
 import appeng.client.gui.me.common.RepoSlot;
 import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.me.items.CraftingTermScreen;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.menu.slot.AppEngSlot;
 import appeng.client.gui.widgets.ActionButton;
@@ -93,6 +94,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final long PERF_LOG_THRESHOLD_NS = 1_000_000L;
     private static final long PATTERN_PROVIDER_REFRESH_DEBOUNCE_MS = 180L;
+    private static final long PATTERN_PROVIDER_SUBSCRIPTION_KEEPALIVE_MS = 3_000L;
     
     // 扩展UI按钮
     private ExtendedUIButton advancedCodingButton;
@@ -171,6 +173,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private long focusedPatternProviderUntilMs;
     private boolean requestedPatternProviders;
     private long lastPatternProviderRefreshRequestMs;
+    private long lastPatternProviderSubscriptionRequestMs;
     private final ExtendedPanelLayout mainLayout = ExtendedPanelLayout.load(
             ResourceLocation.fromNamespaceAndPath("ae2", "screens/wcwt/wireless_comprehensive_work_terminal.json"));
     private ExtendedPanelLayout.Rect patternManagementPage =
@@ -294,6 +297,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean lastDebugRepoConnected;
     private @Nullable Slot lastAeNetworkToolkitDoubleClickSlot;
     private long lastAeNetworkToolkitDoubleClickMs;
+    private final Set<AEKey> craftableIndicatorKeys = new HashSet<>();
+    private @Nullable Method meStorageUpdateScrollbarMethod;
     
     public WirelessComprehensiveWorkTerminalScreen(WirelessComprehensiveWorkTerminalMenu menu, 
                                                      Inventory playerInventory, 
@@ -306,6 +311,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                                                      Component title,
                                                      ScreenStyle style) {
         super(menu, playerInventory, title, style);
+        hookRepoUpdateListener();
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
 
         var host = menu.getMenuHost();
@@ -379,6 +385,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         toolkitScrollbar.setHeight(ToolkitPanel.DEFAULT_SCROLLBAR_HEIGHT);
         toolkitScrollbar.setCaptureMouseWheel(false);
         syncPatternManagementSettingsFromMenu();
+        rebuildCraftableIndicatorCache();
 
         // 以下所有 widgets.add() 必须在构造函数中完成，确保 populateScreen() 在 init() 中运行时
         // compositeWidgets 已有内容，才能被正确定位显示。（AE2 的约定：composite widget 在构造函数注册）
@@ -627,6 +634,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void init() {
         super.init();
+        rebuildCraftableIndicatorCache();
         syncRepoRowSize();
         // 升级槽 maxRows 与终端风格联动（参考 WTLib WCT/WAT/WET 的标准做法）。
         // 切换"小/中/大终端"会让 ME 网格行数变化 → getVisibleRows() 变化 → 升级槽行数也跟着变。
@@ -668,6 +676,38 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         if (DEBUG_REPO) {
             logRepoViewState("syncRepoRowSize", columns);
+        }
+    }
+
+    private void hookRepoUpdateListener() {
+        repo.setUpdateViewListener(() -> {
+            invokeMeStorageUpdateScrollbar();
+            rebuildCraftableIndicatorCache();
+        });
+    }
+
+    private void invokeMeStorageUpdateScrollbar() {
+        try {
+            if (meStorageUpdateScrollbarMethod == null) {
+                meStorageUpdateScrollbarMethod = MEStorageScreen.class.getDeclaredMethod("updateScrollbar");
+                meStorageUpdateScrollbarMethod.setAccessible(true);
+            }
+            meStorageUpdateScrollbarMethod.invoke(this);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to invoke MEStorageScreen.updateScrollbar()", e);
+        }
+    }
+
+    private void rebuildCraftableIndicatorCache() {
+        craftableIndicatorKeys.clear();
+        if (!repo.isEnabled()) {
+            return;
+        }
+
+        for (var entry : repo.getAllEntries()) {
+            if (entry.isCraftable()) {
+                craftableIndicatorKeys.add(entry.getWhat());
+            }
         }
     }
 
@@ -1458,7 +1498,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (!requestedPatternProviders) {
             requestedPatternProviders = true;
             lastPatternProviderRefreshRequestMs = System.currentTimeMillis();
-            PacketDistributor.sendToServer(new PatternProviderListPacket.Request());
+            lastPatternProviderSubscriptionRequestMs = lastPatternProviderRefreshRequestMs;
+            PacketDistributor.sendToServer(new PatternProviderListPacket.Request(true));
         }
     }
 
@@ -1469,7 +1510,22 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         requestedPatternProviders = true;
         lastPatternProviderRefreshRequestMs = now;
-        PacketDistributor.sendToServer(new PatternProviderListPacket.Request());
+        lastPatternProviderSubscriptionRequestMs = now;
+        PacketDistributor.sendToServer(new PatternProviderListPacket.Request(true));
+    }
+
+    private void keepPatternProviderSubscriptionAlive() {
+        if (!requestedPatternProviders || !isPatternManagementActive()) {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        if (now - lastPatternProviderSubscriptionRequestMs < PATTERN_PROVIDER_SUBSCRIPTION_KEEPALIVE_MS) {
+            return;
+        }
+
+        lastPatternProviderSubscriptionRequestMs = now;
+        PacketDistributor.sendToServer(new PatternProviderListPacket.Request(true));
     }
 
     public void updatePatternProviders(List<PatternProviderListPacket.Entry> entries) {
@@ -1894,6 +1950,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void updatePatternManagement() {
         refreshPatternManagementLayout();
+        keepPatternProviderSubscriptionAlive();
         int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
         int maxScroll = Math.max(0, patternManagementRows.size() - visibleRows);
         if (patternManagementScrollbar != null) {
@@ -1901,6 +1958,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             patternManagementScrollbar.setRange(0, maxScroll, 1);
             patternManagementScrollbar.setVisible(maxScroll > 0);
         }
+    }
+
+    private boolean isPatternManagementActive() {
+        return patternManagementUploadEnabled
+                || (patternManageSearchField != null && patternManageSearchField.isFocused())
+                || selectedPatternProviderId >= 0
+                || !patternProviders.isEmpty();
     }
 
     private void refreshPatternManagementLayout() {
@@ -2206,14 +2270,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean shouldShowCraftableIndicatorForSlot(Slot slot) {
+        if (!slot.isActive() || craftableIndicatorKeys.isEmpty()) {
+            return false;
+        }
+
         var semantic = menu.getSlotSemantic(slot);
-        if (semantic != SlotSemantics.CRAFTING_GRID
-                && semantic != SlotSemantics.PROCESSING_INPUTS
-                && semantic != SlotSemantics.SMITHING_TABLE_ADDITION
-                && semantic != SlotSemantics.SMITHING_TABLE_BASE
-                && semantic != SlotSemantics.SMITHING_TABLE_TEMPLATE
-                && semantic != SlotSemantics.STONECUTTING_INPUT
-                && semantic != WcwtSlotSemantics.WCWT_PATTERN_CRAFTING_GRID
+        if (semantic != WcwtSlotSemantics.WCWT_PATTERN_CRAFTING_GRID
                 && semantic != WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_INPUTS
                 && semantic != WcwtSlotSemantics.WCWT_PATTERN_SMITHING_ADDITION
                 && semantic != WcwtSlotSemantics.WCWT_PATTERN_SMITHING_BASE
@@ -2223,7 +2285,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         var slotContent = GenericStack.fromItemStack(slot.getItem());
-        return slotContent != null && repo.isCraftable(slotContent.what());
+        return slotContent != null && craftableIndicatorKeys.contains(slotContent.what());
     }
 
     private void renderResonatingStorageSlot(GuiGraphics guiGraphics, Slot slot) {
