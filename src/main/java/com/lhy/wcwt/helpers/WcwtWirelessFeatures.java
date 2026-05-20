@@ -16,6 +16,7 @@ import appeng.util.prioritylist.IPartitionList;
 import com.google.common.collect.Maps;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
+import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.WcwtPickBlockPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
 import de.mari_023.ae2wtlib.api.TextConstants;
@@ -219,10 +220,11 @@ public final class WcwtWirelessFeatures {
     }
 
     public static boolean toggleMagnetHotkey(Player player) {
-        ItemStack terminal = findTerminalStack(player, WcwtWirelessFeatures::hasMagnetCard);
-        if (terminal.isEmpty()) {
+        TerminalTarget terminalTarget = findHotkeyTerminalTarget(player);
+        if (terminalTarget == null || terminalTarget.stack().isEmpty()) {
             return false;
         }
+        ItemStack terminal = terminalTarget.stack();
 
         String nextMode = switch (getMagnetModeName(terminal)) {
             case "OFF" -> {
@@ -352,6 +354,42 @@ public final class WcwtWirelessFeatures {
             }
         }
         return false;
+    }
+
+    @Nullable
+    private static TerminalTarget findHotkeyTerminalTarget(Player player) {
+        if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu
+                && menu.getLocator() instanceof ItemMenuHostLocator locator) {
+            ItemStack current = locator.locateItem(player);
+            if (current.getItem() instanceof WirelessComprehensiveWorkTerminalItem && hasMagnetCard(current)) {
+                return new TerminalTarget(current, locator);
+            }
+        }
+
+        if (player instanceof ServerPlayer serverPlayer) {
+            return findTerminalTarget(serverPlayer, WcwtWirelessFeatures::hasMagnetCard);
+        }
+
+        var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
+        if (cap != null) {
+            for (int i = 0; i < cap.getSlots(); i++) {
+                ItemStack stack = cap.getStackInSlot(i);
+                if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && hasMagnetCard(stack)) {
+                    var locator = MenuLocators.forCurioSlot(i);
+                    return new TerminalTarget(locator.locateItem(player), locator);
+                }
+            }
+        }
+
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && hasMagnetCard(stack)) {
+                var locator = MenuLocators.forInventorySlot(i);
+                return new TerminalTarget(locator.locateItem(player), locator);
+            }
+        }
+        return null;
     }
 
     private static ItemStack findTerminalStack(Player player, java.util.function.Predicate<ItemStack> predicate) {
