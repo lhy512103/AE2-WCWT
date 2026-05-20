@@ -31,8 +31,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * EMI 对 WCWT 的官方 recipe handler 接入。
@@ -80,17 +78,25 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     @Override
     public boolean canCraft(EmiRecipe recipe, EmiCraftContext<WirelessComprehensiveWorkTerminalMenu> context) {
         WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
-        if (!supportsRecipe(recipe)) {
+        EncodingMode mode = getTransferMode(recipe);
+        if (mode != EncodingMode.CRAFTING
+                && mode != EncodingMode.PROCESSING
+                && mode != EncodingMode.SMITHING_TABLE
+                && mode != EncodingMode.STONECUTTING) {
             return false;
         }
 
         if (isCraftingGridLocked(menu)) {
-            return !collectRequestedIngredients(recipe).isEmpty();
+            return hasNonEmptyIngredients(recipe.getInputs(), Integer.MAX_VALUE);
         }
 
-        List<@Nullable GenericStack> inputs = collectEncodingInputs(recipe);
-        List<@Nullable GenericStack> outputs = collectEncodingOutputs(recipe);
-        return inputs.stream().anyMatch(Objects::nonNull) || outputs.stream().anyMatch(Objects::nonNull);
+        if (mode == EncodingMode.PROCESSING) {
+            return hasNonEmptyIngredients(recipe.getInputs(), Integer.MAX_VALUE)
+                    || hasNonEmptyIngredients(recipe.getOutputs(), Integer.MAX_VALUE);
+        }
+
+        int inputLimit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
+        return hasNonEmptyIngredients(recipe.getInputs(), inputLimit);
     }
 
     @Override
@@ -126,6 +132,19 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     private static boolean isCraftingGridLocked(WirelessComprehensiveWorkTerminalMenu menu) {
         return menu.getMenuHost() != null && menu.getMenuHost().isCraftingGridLocked();
+    }
+
+    private static boolean hasNonEmptyIngredients(List<? extends EmiIngredient> ingredients, int limit) {
+        int checked = 0;
+        for (var ingredient : ingredients) {
+            if (checked++ >= limit) {
+                break;
+            }
+            if (ingredient != null && !ingredient.isEmpty()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static EncodingMode getTransferMode(EmiRecipe recipe) {
@@ -173,13 +192,20 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     @Nullable
     private static RequestedIngredient toRequestedIngredient(EmiIngredient ingredient) {
-        List<ItemStack> alternatives = WcwtPullIngredientOrdering.preferSpecificComponentsFirst(
-                ingredient.getEmiStacks().stream()
-                        .map(EmiStack::getItemStack)
-                        .filter(stack -> !stack.isEmpty())
-                        .map(ItemStack::copy)
-                        .distinct()
-                        .toList());
+        List<ItemStack> alternatives = new ArrayList<>();
+        for (var emiStack : ingredient.getEmiStacks()) {
+            ItemStack stack = emiStack.getItemStack();
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            ItemStack copy = stack.copy();
+            if (containsEquivalentStack(alternatives, copy)) {
+                continue;
+            }
+            alternatives.add(copy);
+        }
+        alternatives = WcwtPullIngredientOrdering.preferSpecificComponentsFirst(alternatives);
         if (alternatives.isEmpty()) {
             return null;
         }
@@ -198,22 +224,11 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return direct;
         }
 
-        Set<Object> keys = ingredient.getEmiStacks().stream()
-                .filter(stack -> !stack.isEmpty())
-                .map(EmiStack::getKey)
-                .collect(Collectors.toSet());
-        if (keys.size() > 1) {
-            return toGenericStack(Ingredient.of(ingredient.getEmiStacks().stream()
-                    .map(EmiStack::getItemStack)
-                    .filter(stack -> !stack.isEmpty())
-                    .toArray(ItemStack[]::new)));
-        }
-        ItemStack displayed = ingredient.getEmiStacks().stream()
-                .map(EmiStack::getItemStack)
-                .filter(stack -> !stack.isEmpty())
-                .findFirst()
-                .orElse(ItemStack.EMPTY);
-        if (!displayed.isEmpty()) {
+        for (var emiStack : ingredient.getEmiStacks()) {
+            ItemStack displayed = emiStack.getItemStack();
+            if (displayed.isEmpty()) {
+                continue;
+            }
             return GenericStack.fromItemStack(displayed.copyWithCount(Math.max(1, (int) Math.min(Integer.MAX_VALUE,
                     ingredient.getAmount()))));
         }
@@ -222,22 +237,37 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     @Nullable
     private static GenericStack tryConvertDirectSingleIngredient(EmiIngredient ingredient) {
-        List<EmiStack> stacks = ingredient.getEmiStacks().stream()
-                .filter(stack -> !stack.isEmpty())
-                .toList();
-        if (stacks.size() != 1) {
+        EmiStack onlyStack = null;
+        for (var stack : ingredient.getEmiStacks()) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+            if (onlyStack != null) {
+                return null;
+            }
+            onlyStack = stack;
+        }
+        if (onlyStack == null) {
             return null;
         }
-        EmiStack stack = stacks.get(0);
-        GenericStack fluid = convertFluid(stack, ingredient.getAmount());
+        GenericStack fluid = convertFluid(onlyStack, ingredient.getAmount());
         if (fluid != null) {
             return fluid;
         }
-        GenericStack chemical = convertMekanismChemical(stack.getKey(), ingredient.getAmount());
+        GenericStack chemical = convertMekanismChemical(onlyStack.getKey(), ingredient.getAmount());
         if (chemical != null) {
             return chemical;
         }
         return null;
+    }
+
+    private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
+        for (var existing : stacks) {
+            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Nullable
@@ -280,15 +310,4 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
     }
 
-    @Nullable
-    private static GenericStack toGenericStack(Ingredient ingredient) {
-        if (ingredient.isEmpty()) {
-            return null;
-        }
-        ItemStack[] items = ingredient.getItems();
-        if (items.length == 0 || items[0].isEmpty()) {
-            return null;
-        }
-        return GenericStack.fromItemStack(items[0].copyWithCount(1));
-    }
 }
