@@ -126,9 +126,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 tooltip = List.of(ItemModText.NO_ITEMS.text());
             }
         } else {
-            Set<AEKey> craftableKeys = collectCraftableKeys(menu);
-            boolean anyCraftable = recipe.getInputs().stream().anyMatch(ingredient -> isCraftable(craftableKeys, ingredient));
-            if (anyCraftable) {
+            Set<AEKey> availableNetworkKeys = collectAvailableNetworkKeys(menu);
+            boolean anyHighlighted = recipe.getInputs().stream()
+                    .anyMatch(ingredient -> isAvailableFromNetwork(availableNetworkKeys, ingredient));
+            if (anyHighlighted) {
                 tooltip = TransferHelper.createEncodingTooltip(true, true);
             }
         }
@@ -168,13 +169,13 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return;
         }
 
-        Set<AEKey> craftableKeys = collectCraftableKeys(menu);
-        if (craftableKeys.isEmpty()) {
+        Set<AEKey> availableNetworkKeys = collectAvailableNetworkKeys(menu);
+        if (availableNetworkKeys.isEmpty()) {
             return;
         }
 
         for (var entry : inputSlots.entrySet()) {
-            if (isCraftable(craftableKeys, recipe.getInputs().get(entry.getKey()))) {
+            if (isAvailableFromNetwork(availableNetworkKeys, recipe.getInputs().get(entry.getKey()))) {
                 renderSlotOverlay(entry.getValue(), draw, TransferHelper.BLUE_SLOT_HIGHLIGHT_COLOR);
             }
         }
@@ -325,19 +326,19 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return EncodingMode.PROCESSING;
     }
 
-    private static Set<AEKey> collectCraftableKeys(WirelessComprehensiveWorkTerminalMenu menu) {
+    private static Set<AEKey> collectAvailableNetworkKeys(WirelessComprehensiveWorkTerminalMenu menu) {
         var repo = menu.getClientRepo();
         if (repo == null) {
             return Set.of();
         }
 
-        Set<AEKey> craftableKeys = new HashSet<>();
+        Set<AEKey> availableKeys = new HashSet<>();
         for (var entry : repo.getAllEntries()) {
-            if (entry.isCraftable()) {
-                craftableKeys.add(entry.getWhat());
+            if (entry.getWhat() != null && (entry.getStoredAmount() > 0 || entry.isCraftable())) {
+                availableKeys.add(entry.getWhat());
             }
         }
-        return craftableKeys;
+        return availableKeys;
     }
 
     private static boolean hasCraftableAlternative(WirelessComprehensiveWorkTerminalMenu menu, Ingredient ingredient) {
@@ -361,10 +362,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return false;
     }
 
-    private static boolean isCraftable(Set<AEKey> craftableKeys, EmiIngredient ingredient) {
+    private static boolean isAvailableFromNetwork(Set<AEKey> availableNetworkKeys, EmiIngredient ingredient) {
         return ingredient.getEmiStacks().stream().anyMatch(emiIngredient -> {
             var stack = toGenericStack(emiIngredient);
-            return stack != null && craftableKeys.contains(stack.what());
+            return stack != null && availableNetworkKeys.contains(stack.what());
         });
     }
 
@@ -385,6 +386,26 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                     break;
                 }
             }
+        }
+
+        if (inputSlots.size() == recipe.getInputs().size()) {
+            return inputSlots;
+        }
+
+        // JEMI/部分第三方 EMI 配方不会复用 recipe.getInputs() 里的同一个 Ingredient 实例，
+        // 这时按对象 identity 匹配会漏掉高亮槽位。回退到按输入槽出现顺序映射，
+        // 与 JEI 的 slotView 顺序语义保持一致。
+        List<SlotWidget> orderedInputSlots = new ArrayList<>();
+        for (var widget : widgets) {
+            if (widget instanceof SlotWidget slot && slot.getRecipe() == null) {
+                orderedInputSlots.add(slot);
+            }
+        }
+
+        inputSlots.clear();
+        int count = Math.min(recipe.getInputs().size(), orderedInputSlots.size());
+        for (int i = 0; i < count; i++) {
+            inputSlots.put(i, orderedInputSlots.get(i));
         }
         return inputSlots;
     }
