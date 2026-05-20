@@ -3,7 +3,8 @@ package com.lhy.wcwt.compat.emi;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import appeng.menu.me.common.GridInventoryEntry;
+import appeng.core.localization.ItemModText;
+import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -18,7 +19,15 @@ import dev.emi.emi.api.recipe.handler.EmiCraftContext;
 import dev.emi.emi.api.recipe.handler.EmiRecipeHandler;
 import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
+import dev.emi.emi.api.widget.Bounds;
+import dev.emi.emi.api.widget.SlotWidget;
+import dev.emi.emi.api.widget.Widget;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.material.Fluid;
@@ -29,8 +38,12 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
 
 /**
  * EMI 对 WCWT 的官方 recipe handler 接入。
@@ -40,7 +53,6 @@ import java.util.Objects;
  * 锁定合成网格 -> 走 WCWT 现有从 ME 拉料的网络包。
  */
 public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehensiveWorkTerminalMenu> {
-
     @Override
     public EmiPlayerInventory getInventory(AbstractContainerScreen<WirelessComprehensiveWorkTerminalMenu> screen) {
         List<EmiStack> inventory = new ArrayList<>();
@@ -51,16 +63,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 inventory.add(EmiStack.of(stack.copy()));
             }
         }
-
-        var repo = menu.getClientRepo();
-        if (repo != null) {
-            for (GridInventoryEntry entry : repo.getAllEntries()) {
-                if (!(entry.getWhat() instanceof AEItemKey itemKey)) {
-                    continue;
-                }
-                long amount = Math.max(1, entry.getStoredAmount());
-                inventory.add(EmiStack.of(itemKey.toStack((int) Math.min(amount, itemKey.getMaxStackSize())), amount));
-            }
+        if (!menu.getCarried().isEmpty()) {
+            inventory.add(EmiStack.of(menu.getCarried().copy()));
         }
 
         return new EmiPlayerInventory(inventory);
@@ -77,6 +81,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     @Override
     public boolean canCraft(EmiRecipe recipe, EmiCraftContext<WirelessComprehensiveWorkTerminalMenu> context) {
+        if (context.getType() != EmiCraftContext.Type.FILL_BUTTON) {
+            return false;
+        }
+
         WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
         EncodingMode mode = getTransferMode(recipe);
         if (mode != EncodingMode.CRAFTING
@@ -87,7 +95,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
 
         if (isCraftingGridLocked(menu)) {
-            return hasNonEmptyIngredients(recipe.getInputs(), Integer.MAX_VALUE);
+            PreviewResult preview = buildLockedGridPreview(menu, recipe);
+            return preview.anyResolved();
         }
 
         if (mode == EncodingMode.PROCESSING) {
@@ -97,6 +106,78 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
         int inputLimit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
         return hasNonEmptyIngredients(recipe.getInputs(), inputLimit);
+    }
+
+    @Override
+    public List<ClientTooltipComponent> getTooltip(EmiRecipe recipe,
+                                                   EmiCraftContext<WirelessComprehensiveWorkTerminalMenu> context) {
+        if (context.getType() != EmiCraftContext.Type.FILL_BUTTON || !supportsRecipe(recipe)) {
+            return EmiRecipeHandler.super.getTooltip(recipe, context);
+        }
+
+        WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
+        List<Component> tooltip = null;
+
+        if (isCraftingGridLocked(menu)) {
+            PreviewResult preview = buildLockedGridPreview(menu, recipe);
+            if (preview.anyMissingOrCraftable()) {
+                tooltip = createLockedGridTooltip(preview);
+            } else if (!preview.anyResolved()) {
+                tooltip = List.of(ItemModText.NO_ITEMS.text());
+            }
+        } else {
+            Set<AEKey> craftableKeys = collectCraftableKeys(menu);
+            boolean anyCraftable = recipe.getInputs().stream().anyMatch(ingredient -> isCraftable(craftableKeys, ingredient));
+            if (anyCraftable) {
+                tooltip = TransferHelper.createEncodingTooltip(true, true);
+            }
+        }
+
+        if (tooltip == null) {
+            return EmiRecipeHandler.super.getTooltip(recipe, context);
+        }
+        return tooltip.stream()
+                .map(Component::getVisualOrderText)
+                .map(ClientTooltipComponent::create)
+                .toList();
+    }
+
+    @Override
+    public void render(EmiRecipe recipe,
+                       EmiCraftContext<WirelessComprehensiveWorkTerminalMenu> context,
+                       List<Widget> widgets,
+                       GuiGraphics draw) {
+        if (context.getType() != EmiCraftContext.Type.FILL_BUTTON || !supportsRecipe(recipe)) {
+            return;
+        }
+
+        WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
+        Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
+        if (inputSlots.isEmpty()) {
+            return;
+        }
+
+        if (isCraftingGridLocked(menu)) {
+            PreviewResult preview = buildLockedGridPreview(menu, recipe);
+            for (int index : preview.missingSlots()) {
+                renderSlotOverlay(inputSlots.get(index), draw, TransferHelper.RED_SLOT_HIGHLIGHT_COLOR);
+            }
+            for (int index : preview.craftableSlots()) {
+                renderSlotOverlay(inputSlots.get(index), draw, TransferHelper.BLUE_SLOT_HIGHLIGHT_COLOR);
+            }
+            return;
+        }
+
+        Set<AEKey> craftableKeys = collectCraftableKeys(menu);
+        if (craftableKeys.isEmpty()) {
+            return;
+        }
+
+        for (var entry : inputSlots.entrySet()) {
+            if (isCraftable(craftableKeys, recipe.getInputs().get(entry.getKey()))) {
+                renderSlotOverlay(entry.getValue(), draw, TransferHelper.BLUE_SLOT_HIGHLIGHT_COLOR);
+            }
+        }
     }
 
     @Override
@@ -134,6 +215,90 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return menu.getMenuHost() != null && menu.getMenuHost().isCraftingGridLocked();
     }
 
+    private static PreviewResult buildLockedGridPreview(WirelessComprehensiveWorkTerminalMenu menu, EmiRecipe recipe) {
+        var reservedTerminalAmounts = new Object2IntOpenHashMap<Object>();
+        var playerItems = menu.getPlayerInventory().items;
+        var reservedPlayerItems = new int[playerItems.size()];
+        Set<Integer> missingSlots = new HashSet<>();
+        Set<Integer> craftableSlots = new HashSet<>();
+        boolean anyResolved = false;
+
+        int inputCount = 0;
+        for (int index = 0; index < recipe.getInputs().size(); index++) {
+            EmiIngredient emiIngredient = recipe.getInputs().get(index);
+            Ingredient ingredient = toIngredient(emiIngredient);
+            if (ingredient.isEmpty()) {
+                continue;
+            }
+            inputCount++;
+
+            int requiredCount = Math.max(1, (int) Math.min(Integer.MAX_VALUE, emiIngredient.getAmount()));
+            boolean missing = false;
+            boolean craftable = false;
+
+            for (int i = 0; i < requiredCount; i++) {
+                boolean found = false;
+                for (int slot = 0; slot < playerItems.size(); slot++) {
+                    if (menu.isPlayerInventorySlotLocked(slot)) {
+                        continue;
+                    }
+
+                    var stack = playerItems.get(slot);
+                    if (stack.getCount() - reservedPlayerItems[slot] > 0 && ingredient.test(stack)) {
+                        reservedPlayerItems[slot]++;
+                        found = true;
+                        anyResolved = true;
+                        break;
+                    }
+                }
+
+                if (!found && menu.hasIngredient(ingredient, reservedTerminalAmounts)) {
+                    reservedTerminalAmounts.mergeInt(ingredient, 1, Integer::sum);
+                    found = true;
+                    anyResolved = true;
+                }
+
+                if (!found && hasCraftableAlternative(menu, ingredient)) {
+                    craftable = true;
+                    found = true;
+                    anyResolved = true;
+                }
+
+                if (!found) {
+                    missing = true;
+                }
+            }
+
+            if (missing) {
+                missingSlots.add(index);
+            }
+            if (craftable) {
+                craftableSlots.add(index);
+            }
+        }
+
+        return new PreviewResult(missingSlots, craftableSlots, anyResolved, inputCount);
+    }
+
+    private static List<Component> createLockedGridTooltip(PreviewResult preview) {
+        List<Component> tooltip = new ArrayList<>();
+        tooltip.add(ItemModText.MOVE_ITEMS.text());
+
+        if (!preview.craftableSlots().isEmpty()) {
+            var line = Screen.hasControlDown() ? ItemModText.WILL_CRAFT.text() : ItemModText.CTRL_CLICK_TO_CRAFT.text();
+            tooltip.add(line.withStyle(net.minecraft.ChatFormatting.BLUE));
+        }
+
+        if (!preview.missingSlots().isEmpty()) {
+            var line = preview.anyResolved() ? ItemModText.MISSING_ITEMS.text() : ItemModText.NO_ITEMS.text();
+            tooltip.add(line.withStyle(net.minecraft.ChatFormatting.RED));
+        }
+
+        tooltip.add(Component.translatable("message.wcwt.pull_shift_hint")
+                .withStyle(net.minecraft.ChatFormatting.GRAY));
+        return tooltip;
+    }
+
     private static boolean hasNonEmptyIngredients(List<? extends EmiIngredient> ingredients, int limit) {
         int checked = 0;
         for (var ingredient : ingredients) {
@@ -158,6 +323,83 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return EncodingMode.STONECUTTING;
         }
         return EncodingMode.PROCESSING;
+    }
+
+    private static Set<AEKey> collectCraftableKeys(WirelessComprehensiveWorkTerminalMenu menu) {
+        var repo = menu.getClientRepo();
+        if (repo == null) {
+            return Set.of();
+        }
+
+        Set<AEKey> craftableKeys = new HashSet<>();
+        for (var entry : repo.getAllEntries()) {
+            if (entry.isCraftable()) {
+                craftableKeys.add(entry.getWhat());
+            }
+        }
+        return craftableKeys;
+    }
+
+    private static boolean hasCraftableAlternative(WirelessComprehensiveWorkTerminalMenu menu, Ingredient ingredient) {
+        var clientRepo = menu.getClientRepo();
+        if (clientRepo == null) {
+            return false;
+        }
+
+        for (var entry : clientRepo.getAllEntries()) {
+            if (!entry.isCraftable() || !(entry.getWhat() instanceof AEItemKey itemKey)) {
+                continue;
+            }
+
+            for (ItemStack alternative : ingredient.getItems()) {
+                if (itemKey.matches(alternative)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean isCraftable(Set<AEKey> craftableKeys, EmiIngredient ingredient) {
+        return ingredient.getEmiStacks().stream().anyMatch(emiIngredient -> {
+            var stack = toGenericStack(emiIngredient);
+            return stack != null && craftableKeys.contains(stack.what());
+        });
+    }
+
+    private static Ingredient toIngredient(EmiIngredient ingredient) {
+        return Ingredient.of(ingredient.getEmiStacks().stream()
+                .map(EmiStack::getItemStack)
+                .filter(stack -> !stack.isEmpty())
+                .map(ItemStack::copy));
+    }
+
+    private static Map<Integer, SlotWidget> getRecipeInputSlots(EmiRecipe recipe, List<Widget> widgets) {
+        Map<Integer, SlotWidget> inputSlots = new IdentityHashMap<>();
+        for (int i = 0; i < recipe.getInputs().size(); i++) {
+            EmiIngredient ingredient = recipe.getInputs().get(i);
+            for (var widget : widgets) {
+                if (widget instanceof SlotWidget slot && slot.getRecipe() == null && slot.getStack() == ingredient) {
+                    inputSlots.put(i, slot);
+                    break;
+                }
+            }
+        }
+        return inputSlots;
+    }
+
+    private static void renderSlotOverlay(@Nullable SlotWidget slot, GuiGraphics guiGraphics, int color) {
+        if (slot == null) {
+            return;
+        }
+
+        var poseStack = guiGraphics.pose();
+        poseStack.pushPose();
+        poseStack.translate(0, 0, 400);
+        Bounds bounds = slot.getBounds();
+        guiGraphics.fill(bounds.x() + 1, bounds.y() + 1, bounds.right() - 1, bounds.bottom() - 1, color);
+        poseStack.popPose();
     }
 
     private static List<@Nullable GenericStack> collectEncodingInputs(EmiRecipe recipe) {
@@ -307,6 +549,15 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return new GenericStack(key, Math.max(1L, amount));
         } catch (ReflectiveOperationException | LinkageError ignored) {
             return null;
+        }
+    }
+
+    private record PreviewResult(Set<Integer> missingSlots,
+                                 Set<Integer> craftableSlots,
+                                 boolean anyResolved,
+                                 int inputCount) {
+        private boolean anyMissingOrCraftable() {
+            return !missingSlots.isEmpty() || !craftableSlots.isEmpty();
         }
     }
 
