@@ -11,22 +11,32 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.BooleanValue PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR;
-    public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
+    public static final ModConfigSpec.BooleanValue ENABLE_RECIPE_PULL_TRANSFER;
     public static final ModConfigSpec.BooleanValue AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER;
+    public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
+    public static final ModConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
 
     static {
         PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR = BUILDER
                 .comment("If true: failed pattern uploads fall back to the pattern edit slot first. If false: fall back to the pattern cache first.")
                 .translation("wcwt.config.patternUploadFailFallbackToEditor")
                 .define("patternUploadFailFallbackToEditor", false);
-        PATTERN_MANAGEMENT_SHIFT_QUICK = BUILDER
-                .comment("If false: pattern management shift quick moves use normal clicks only. Saving wcwt-client.toml usually reloads without restart.")
-                .translation("wcwt.config.patternManagementShiftQuick")
-                .define("patternManagementShiftQuick", true);
+        ENABLE_RECIPE_PULL_TRANSFER = BUILDER
+                .comment("If false: disable WCWT JEI/EMI recipe pull and encoding transfer handling, including preview highlights.")
+                .translation("wcwt.config.enableRecipePullTransfer")
+                .define("enableRecipePullTransfer", true);
         AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER = BUILDER
                 .comment("If true: JEI/EMI recipe transfers switch the manual workspace to crafting or smithing when the recipe type is known.")
                 .translation("wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer")
                 .define("autoSwitchManualWorkspaceOnRecipeTransfer", true);
+        PATTERN_MANAGEMENT_SHIFT_QUICK = BUILDER
+                .comment("If false: pattern management shift quick moves use normal clicks only. Saving wcwt-client.toml usually reloads without restart.")
+                .translation("wcwt.config.patternManagementShiftQuick")
+                .define("patternManagementShiftQuick", true);
+        PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING = BUILDER
+                .comment("If true: the batch pattern multiplier also applies to the current processing pattern in the pattern editor. Saving wcwt-client.toml usually reloads without restart.")
+                .translation("wcwt.config.patternMultiplierApplyToEditorProcessing")
+                .define("patternMultiplierApplyToEditorProcessing", true);
         SPEC = BUILDER.build();
     }
 
@@ -43,5 +53,13 @@ public final class WcwtClientConfig {
 
     public static boolean autoSwitchManualWorkspaceOnRecipeTransfer() {
         return AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER.get();
+    }
+
+    public static boolean enableRecipePullTransfer() {
+        return ENABLE_RECIPE_PULL_TRANSFER.get();
+    }
+
+    public static boolean patternMultiplierApplyToEditorProcessing() {
+        return PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING.get();
     }
 }

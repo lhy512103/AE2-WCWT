@@ -5,7 +5,9 @@ import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.itemlists.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
+import com.simibubi.create.content.processing.basin.BasinRecipe;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
+import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
@@ -18,6 +20,8 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import mezz.jei.api.recipe.transfer.IUniversalRecipeTransferHandler;
+import mezz.jei.library.plugins.jei.info.IngredientInfoRecipe;
+import mezz.jei.library.plugins.jei.tags.ITagInfoRecipe;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
@@ -26,6 +30,7 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,7 +43,6 @@ import java.util.stream.Collectors;
 
 public class WcwtRecipeTransferHandler
         implements IUniversalRecipeTransferHandler<WirelessComprehensiveWorkTerminalMenu> {
-
     private final IRecipeTransferHandlerHelper transferHelper;
 
     public WcwtRecipeTransferHandler(IRecipeTransferHandlerHelper transferHelper) {
@@ -63,6 +67,13 @@ public class WcwtRecipeTransferHandler
     public IRecipeTransferError transferRecipe(WirelessComprehensiveWorkTerminalMenu menu, Object recipe,
                                                IRecipeSlotsView recipeSlots, Player player,
                                                boolean maxTransfer, boolean doTransfer) {
+        if (!WcwtClientConfig.enableRecipePullTransfer()) {
+            return null;
+        }
+        if (shouldSkipTransferAnalysis(recipe)) {
+            return null;
+        }
+
         RecipeHolder<?> recipeHolder = recipe instanceof RecipeHolder<?> holder ? holder : null;
         Recipe<?> minecraftRecipe = recipeHolder != null ? recipeHolder.value()
                 : recipe instanceof Recipe<?> directRecipe ? directRecipe
@@ -79,23 +90,23 @@ public class WcwtRecipeTransferHandler
 
         boolean encodingRecipe = mode != EncodingMode.PROCESSING;
 
+        if (!doTransfer) {
+            int inputHighlightLimit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
+            var craftableSlots = findCraftableEncodingSlots(menu, recipeSlots, inputHighlightLimit);
+            return new WcwtEncodingRecipeTransferError(craftableSlots);
+        }
+
         List<@Nullable GenericStack> inputs = encodingRecipe
                 ? collectCraftingLikeInputs(menu, recipeHolder, minecraftRecipe, recipeSlots, mode)
-                : collectStacksPreservingSlots(menu, recipeSlots, RecipeIngredientRole.INPUT, Integer.MAX_VALUE);
+                : collectProcessingInputs(menu, minecraftRecipe, recipeSlots);
         List<@Nullable GenericStack> outputs = encodingRecipe ? List.of()
-                : collectStacksPreservingSlots(menu, recipeSlots, RecipeIngredientRole.OUTPUT, Integer.MAX_VALUE);
+                : collectProcessingOutputs(minecraftRecipe, recipeSlots);
         if (mode == EncodingMode.PROCESSING) {
             inputs = compactProcessingIngredientOrder(inputs);
             outputs = compactProcessingIngredientOrder(outputs);
         }
         if (inputs.stream().allMatch(Objects::isNull) && outputs.stream().allMatch(Objects::isNull)) {
             return null;
-        }
-
-        if (!doTransfer) {
-            int inputHighlightLimit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
-            var craftableSlots = findCraftableEncodingSlots(menu, recipeSlots, inputHighlightLimit);
-            return new WcwtEncodingRecipeTransferError(craftableSlots);
         }
 
         if (doTransfer) {
@@ -107,7 +118,7 @@ public class WcwtRecipeTransferHandler
     }
 
     /**
-     * JEI encoding preview: blue slots ME can satisfy (network stock or autocraft), aligned with terminal usability.
+     * JEI encoding preview: follow AE2 original behavior and only highlight inputs whose candidates are craftable.
      */
     public static List<IRecipeSlotView> findCraftableEncodingSlots(WirelessComprehensiveWorkTerminalMenu menu,
                                                                    IRecipeSlotsView slotsView,
@@ -116,8 +127,8 @@ public class WcwtRecipeTransferHandler
         if (repo == null) {
             return List.of();
         }
-        var networkKeys = repo.getAllEntries().stream()
-                .filter(e -> e.getWhat() != null && (e.getStoredAmount() > 0 || e.isCraftable()))
+        var craftableKeys = repo.getAllEntries().stream()
+                .filter(e -> e.getWhat() != null && e.isCraftable())
                 .map(GridInventoryEntry::getWhat)
                 .collect(Collectors.toSet());
 
@@ -128,7 +139,7 @@ public class WcwtRecipeTransferHandler
         return stream
                 .filter(slotView -> slotView.getAllIngredients().anyMatch(ingredient -> {
                     GenericStack stack = toGenericStack(ingredient);
-                    return stack != null && networkKeys.contains(stack.what());
+                    return stack != null && craftableKeys.contains(stack.what());
                 }))
                 .toList();
     }
@@ -225,8 +236,41 @@ public class WcwtRecipeTransferHandler
                                                                              int limit) {
         return recipeSlots.getSlotViews(role).stream()
                 .limit(limit)
-                .map(slotView -> toBestGenericStack(menu, slotView))
+                .map(slotView -> toPreferredGenericStack(menu, slotView))
                 .toList();
+    }
+
+    private static List<@Nullable GenericStack> collectProcessingInputs(WirelessComprehensiveWorkTerminalMenu menu,
+                                                                        @Nullable Recipe<?> recipe,
+                                                                        IRecipeSlotsView recipeSlots) {
+        if (recipe instanceof BasinRecipe basinRecipe) {
+            List<@Nullable GenericStack> resolved = new ArrayList<>();
+            for (Ingredient ingredient : basinRecipe.getIngredients()) {
+                resolved.add(toBestGenericStack(menu, ingredient, List.of(), -1));
+            }
+            for (SizedFluidIngredient fluidIngredient : basinRecipe.getFluidIngredients()) {
+                resolved.add(toGenericStack(fluidIngredient));
+            }
+            return resolved;
+        }
+        return collectStacksPreservingSlots(menu, recipeSlots, RecipeIngredientRole.INPUT, Integer.MAX_VALUE);
+    }
+
+    private static List<@Nullable GenericStack> collectProcessingOutputs(@Nullable Recipe<?> recipe,
+                                                                         IRecipeSlotsView recipeSlots) {
+        if (recipe instanceof BasinRecipe basinRecipe) {
+            List<@Nullable GenericStack> resolved = new ArrayList<>();
+            for (var result : basinRecipe.getRollableResults()) {
+                resolved.add(GenericStack.fromItemStack(result.getStack().copyWithCount(1)));
+            }
+            for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
+                if (!fluidStack.isEmpty()) {
+                    resolved.add(GenericStack.fromFluidStack(fluidStack.copy()));
+                }
+            }
+            return resolved;
+        }
+        return collectStacksPreservingSlots(null, recipeSlots, RecipeIngredientRole.OUTPUT, Integer.MAX_VALUE);
     }
 
     @Nullable
@@ -246,19 +290,34 @@ public class WcwtRecipeTransferHandler
     }
 
     @Nullable
-    private static GenericStack toBestGenericStack(WirelessComprehensiveWorkTerminalMenu menu, IRecipeSlotView slotView) {
-        List<GenericStack> candidates = slotView.getAllIngredients()
+    private static GenericStack toPreferredGenericStack(WirelessComprehensiveWorkTerminalMenu menu,
+                                                        IRecipeSlotView slotView) {
+        GenericStack displayed = toGenericStack(getDisplayedStack(slotView));
+        if (displayed != null) {
+            return displayed;
+        }
+
+        List<GenericStack> fallbackCandidates = slotView.getAllIngredients()
+                .limit(8)
                 .map(WcwtRecipeTransferHandler::toGenericStack)
                 .filter(Objects::nonNull)
                 .toList();
-        GenericStack best = WcwtIngredientPriorities.chooseBestGenericStack(menu, candidates);
-        return best != null ? best : toGenericStack(getDisplayedStack(slotView));
+        if (fallbackCandidates.isEmpty()) {
+            return null;
+        }
+
+        GenericStack best = WcwtIngredientPriorities.chooseBestGenericStack(menu, fallbackCandidates);
+        return best != null ? best : fallbackCandidates.getFirst();
     }
 
     private static ITypedIngredient<?> getDisplayedStack(IRecipeSlotView slotView) {
         return slotView.getDisplayedIngredient()
                 .or(() -> slotView.getAllIngredients().findFirst())
                 .orElse(null);
+    }
+
+    private static boolean shouldSkipTransferAnalysis(Object recipe) {
+        return recipe instanceof ITagInfoRecipe || recipe instanceof IngredientInfoRecipe;
     }
 
     @Nullable
@@ -271,6 +330,18 @@ public class WcwtRecipeTransferHandler
             return null;
         }
         return GenericStack.fromItemStack(items[0].copyWithCount(1));
+    }
+
+    @Nullable
+    private static GenericStack toGenericStack(SizedFluidIngredient ingredient) {
+        for (FluidStack fluidStack : ingredient.getFluids()) {
+            if (!fluidStack.isEmpty()) {
+                FluidStack copy = fluidStack.copy();
+                copy.setAmount(Math.max(1, ingredient.amount()));
+                return GenericStack.fromFluidStack(copy);
+            }
+        }
+        return null;
     }
 
     @Nullable

@@ -478,6 +478,14 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     @Override
     protected void updateLinkStatus() {
+        if (getPlayer().level().isClientSide()) {
+            super.updateLinkStatus();
+            // 客户端只应展示服务端/AE2 同步过来的链路状态。
+            // 若在本地再次套用 WCWT 的量子桥/稳定快照逻辑，容易把稍后才到达的 true 状态覆盖成 false。
+            effectiveLinkStatus = null;
+            debugRepoState("updateLinkStatus/client-pass-through");
+            return;
+        }
         super.updateLinkStatus();
         effectiveLinkStatus = super.getLinkStatus();
         if (effectiveLinkStatus.connected()) {
@@ -501,11 +509,19 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     @Override
     public ILinkStatus getLinkStatus() {
+        if (getPlayer().level().isClientSide()) {
+            return super.getLinkStatus();
+        }
         return effectiveLinkStatus != null ? effectiveLinkStatus : super.getLinkStatus();
     }
 
     @Override
     protected void updateConnectedAccessPoint() {
+        if (getPlayer().level().isClientSide()) {
+            super.updateConnectedAccessPoint();
+            debugRepoState("updateConnectedAccessPoint/client-pass-through");
+            return;
+        }
         long tick = getPlayer().level().getGameTime();
         if (!forceConnectedAccessPointUpdate && lastConnectedAccessPointUpdateTick == tick) {
             skippedConnectedAccessPointUpdates++;

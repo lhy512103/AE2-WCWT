@@ -6,7 +6,6 @@ import appeng.items.tools.NetworkToolItem;
 import appeng.menu.locator.ItemMenuHostLocator;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
-import appeng.util.inv.SupplierInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.google.common.primitives.Ints;
 import net.minecraft.core.component.DataComponents;
@@ -24,16 +23,21 @@ import appeng.items.contents.NetworkToolMenuHost;
  * 让 AE 网络工具放在 WCWT 工具包中时，内部 9 格升级卡库存的修改能够正确回写到工具包槽位。
  */
 public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost<NetworkToolItem> {
+    private static final int FLUSH_INTERVAL_TICKS = Math.max(1,
+            Integer.getInteger("wcwt.toolkitNetworkToolFlushTicks", 10));
+
     private final WirelessComprehensiveWorkTerminalMenuHost terminalHost;
     private final int toolkitSlot;
-    private final SupplierInternalInventory<InternalInventory> toolkitInventory;
+    private final AppEngInternalInventory toolkitInventory;
+    private boolean toolkitInventoryDirty;
+    private int ticksUntilFlush = FLUSH_INTERVAL_TICKS;
 
     public WcwtToolkitNetworkToolMenuHost(NetworkToolItem item, Player player, ItemMenuHostLocator locator,
             @Nullable IInWorldGridNodeHost host, WirelessComprehensiveWorkTerminalMenuHost terminalHost, int toolkitSlot) {
         super(item, player, locator, host);
         this.terminalHost = terminalHost;
         this.toolkitSlot = toolkitSlot;
-        this.toolkitInventory = new SupplierInternalInventory<>(() -> createToolkitAwareNetworkToolInventory(player));
+        this.toolkitInventory = createToolkitAwareNetworkToolInventory(player);
     }
 
     @Override
@@ -51,11 +55,32 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost<NetworkT
         return toolkitInventory;
     }
 
-    private InternalInventory createToolkitAwareNetworkToolInventory(Player player) {
+    @Override
+    public void tick() {
+        super.tick();
+        if (isClientSide() || !toolkitInventoryDirty) {
+            return;
+        }
+
+        if (--ticksUntilFlush <= 0) {
+            flushDirtyToolInventory();
+        }
+    }
+
+    @Override
+    public boolean isValid() {
+        boolean valid = super.isValid();
+        if (!valid) {
+            flushDirtyToolInventory();
+        }
+        return valid;
+    }
+
+    private AppEngInternalInventory createToolkitAwareNetworkToolInventory(Player player) {
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
-                persistToolInventory(inv);
+                markToolInventoryDirty();
             }
 
             @Override
@@ -69,19 +94,38 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost<NetworkT
         return inventory;
     }
 
-    private void persistToolInventory(AppEngInternalInventory inv) {
+    private void markToolInventoryDirty() {
+        if (isClientSide()) {
+            return;
+        }
+        toolkitInventoryDirty = true;
+        ticksUntilFlush = FLUSH_INTERVAL_TICKS;
+    }
+
+    private void flushDirtyToolInventory() {
+        if (isClientSide() || !toolkitInventoryDirty) {
+            return;
+        }
+
         var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
         if (toolkit == null || toolkitSlot < 0 || toolkitSlot >= toolkit.size()) {
             return;
         }
 
         ItemStack currentTool = toolkit.getStackInSlot(toolkitSlot);
-        if (currentTool.isEmpty()) {
+        if (currentTool.isEmpty() || !(currentTool.getItem() instanceof NetworkToolItem)) {
             return;
         }
 
-        currentTool.set(DataComponents.CONTAINER, inv.toItemContainerContents());
-        toolkit.setItemDirect(toolkitSlot, currentTool);
+        ItemContainerContents contents = toolkitInventory.toItemContainerContents();
+        ItemContainerContents currentContents = currentTool.getOrDefault(DataComponents.CONTAINER, ItemContainerContents.EMPTY);
+        if (!contents.equals(currentContents)) {
+            currentTool.set(DataComponents.CONTAINER, contents);
+            toolkit.setItemDirect(toolkitSlot, currentTool);
+        }
+
+        toolkitInventoryDirty = false;
+        ticksUntilFlush = FLUSH_INTERVAL_TICKS;
     }
 
     private static final class NetworkToolInventoryFilter implements IAEItemFilter {

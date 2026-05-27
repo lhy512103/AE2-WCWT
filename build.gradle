@@ -67,6 +67,10 @@ configurations {
 repositories {
     mavenCentral()
     maven {
+        name = "CreateMod Maven"
+        url = "https://maven.createmod.net"
+    }
+    maven {
         name = "Jared's Maven"
         url = "https://maven.blamejared.com/"
     }
@@ -91,6 +95,13 @@ repositories {
             includeGroup "de.mari_023"
         }
     }
+    maven {
+        name = "Modrinth Maven"
+        url = "https://api.modrinth.com/maven"
+        content {
+            includeGroup "maven.modrinth"
+        }
+    }
 }
 
 dependencies {
@@ -98,6 +109,7 @@ dependencies {
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
     compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}"
+    compileOnly "maven.modrinth:create:6.0.10+mc${minecraft_version}"
     implementation "curse.maven:advancedae-1084104:7849217"
     runtimeOnly "curse.maven:geckolib-388172:7707149"
     implementation "curse.maven:ex-pattern-provider-892005:8025439"

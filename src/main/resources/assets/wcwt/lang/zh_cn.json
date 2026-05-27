@@ -155,8 +155,12 @@
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "关：优先回退到样板缓存区，缓存区放不下再回退到样板编辑槽。开：优先回退到样板编辑槽。",
   "wcwt.config.patternManagementShiftQuick": "样板管理 Shift 快速移动",
   "wcwt.config.patternManagementShiftQuick.tooltip": "关：仅用普通点击。保存配置后一般即生效。",
+  "wcwt.config.patternMultiplierApplyToEditorProcessing": "样板倍增器同时作用于样板编辑区处理样板",
+  "wcwt.config.patternMultiplierApplyToEditorProcessing.tooltip": "开：批处理区的样板倍增器也会修改当前样板编辑区里处理样板模式的输入/输出数量与输出轮换。关：仅作用于样板缓存区里的已编码样板。",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer": "拉取配方时自动切换手动工作区",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "开：JEI/EMI 拉取配方时，会按已识别的配方类型自动切到工作台或锻造台。",
+  "wcwt.config.enableRecipePullTransfer": "启用配方拉取/编码处理",
+  "wcwt.config.enableRecipePullTransfer.tooltip": "开：启用 WCWT 的 JEI/EMI 配方拉取、编码传输与预览高亮。关：关闭这些处理。",
 
   "message.wcwt.pull_no_link": "WCWT：终端未连接到可用的 ME 网络。",
   "message.wcwt.pull_no_inputs": "WCWT：该 JEI 配方没有可拉取的物品输入。",

@@ -40,7 +40,15 @@ public final class WcwtPullRecipeTransfer {
     public static IRecipeTransferError transfer(WirelessComprehensiveWorkTerminalMenu menu, Object recipeIgnored,
             IRecipeSlotsView recipeSlots, Player player,
             boolean maxTransfer, boolean doTransfer, IRecipeTransferHandlerHelper transferHelper) {
+        boolean effectiveMaxTransfer = maxTransfer || Screen.hasShiftDown();
         boolean craftMissing = Screen.hasControlDown();
+
+        if (!doTransfer) {
+            if (hasAnyInput(recipeSlots)) {
+                return new TerminalPullTransferError(findTransferPreview(menu, recipeSlots), craftMissing);
+            }
+            return null;
+        }
 
         List<RequestedIngredient> requestedIngredients = collectRequestedIngredients(menu, recipeSlots);
         if (requestedIngredients.isEmpty()) {
@@ -48,15 +56,7 @@ public final class WcwtPullRecipeTransfer {
                     Component.translatable("message.wcwt.pull_no_inputs"));
         }
 
-        if (!doTransfer) {
-            var preview = findTransferPreview(menu, recipeSlots);
-            if (preview.anyMissingOrCraftable()) {
-                return new TerminalPullTransferError(preview, craftMissing);
-            }
-            return null;
-        }
-
-        PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, requestedIngredients,
+        PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(effectiveMaxTransfer, craftMissing, requestedIngredients,
                 menu.getManualWorkspaceMode().ordinal()));
         return null;
     }
@@ -139,6 +139,11 @@ public final class WcwtPullRecipeTransfer {
                 .toList();
     }
 
+    private static boolean hasAnyInput(IRecipeSlotsView recipeSlots) {
+        return recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream()
+                .anyMatch(WcwtPullRecipeTransfer::hasItemStack);
+    }
+
     private static boolean hasCraftableAlternative(MEStorageMenu container, Ingredient ingredient) {
         var clientRepo = container.getClientRepo();
         if (clientRepo == null) {
@@ -170,12 +175,41 @@ public final class WcwtPullRecipeTransfer {
 
     private static RequestedIngredient toRequestedIngredient(WirelessComprehensiveWorkTerminalMenu menu,
                                                              IRecipeSlotView slotView) {
-        List<ItemStack> alternatives = WcwtIngredientPriorities.sortItemAlternatives(menu, slotView.getItemStacks()
-                .filter(stack -> !stack.isEmpty())
-                .map(ItemStack::copy)
-                .toList());
+        List<ItemStack> alternatives = chooseRequestedAlternative(menu, slotView);
         int count = Math.max(getDisplayedStack(slotView).getCount(), 1);
         return new RequestedIngredient(alternatives, count);
+    }
+
+    private static List<ItemStack> chooseRequestedAlternative(WirelessComprehensiveWorkTerminalMenu menu,
+                                                              IRecipeSlotView slotView) {
+        List<ItemStack> visibleAlternatives = new ArrayList<>();
+        ItemStack displayed = getDisplayedStack(slotView);
+        if (!displayed.isEmpty()) {
+            visibleAlternatives.add(displayed.copy());
+        }
+        slotView.getItemStacks()
+                .filter(stack -> !stack.isEmpty())
+                .forEach(stack -> {
+                    ItemStack copy = stack.copy();
+                    if (!containsEquivalentStack(visibleAlternatives, copy)) {
+                        visibleAlternatives.add(copy);
+                    }
+                });
+        if (visibleAlternatives.isEmpty()) {
+            return List.of();
+        }
+        Ingredient ingredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
+        ItemStack best = WcwtIngredientPriorities.chooseBestItem(menu, ingredient, visibleAlternatives);
+        return best.isEmpty() ? List.of() : List.of(best);
+    }
+
+    private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
+        for (ItemStack existing : stacks) {
+            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static ItemStack getDisplayedStack(IRecipeSlotView slotView) {
@@ -220,60 +254,59 @@ public final class WcwtPullRecipeTransfer {
             this.craftMissing = craftMissing;
         }
 
+        private static TerminalPullTransferError previewOnly(boolean craftMissing) {
+            return new TerminalPullTransferError(new PreviewSlots(List.of(), List.of(), false), craftMissing);
+        }
+
         @Override
         public Type getType() {
-            return preview.anyCraftable() || preview.canIgnoreMissing() ? Type.COSMETIC : Type.USER_FACING;
+            return Type.COSMETIC;
         }
 
         @Override
         public int getButtonHighlightColor() {
-            if (preview.anyMissing()) {
-                return ORANGE_BUTTON_HIGHLIGHT_COLOR;
-            }
-            if (preview.anyCraftable()) {
+            if (!preview.anyMissingOrCraftable()) {
                 return BLUE_BUTTON_HIGHLIGHT_COLOR;
             }
-            return 0;
+            return preview.anyMissing() ? ORANGE_BUTTON_HIGHLIGHT_COLOR : BLUE_BUTTON_HIGHLIGHT_COLOR;
         }
 
         @Override
         public void showError(GuiGraphics guiGraphics, int mouseX, int mouseY, IRecipeSlotsView recipeSlotsView, int recipeX, int recipeY) {
             var poseStack = guiGraphics.pose();
             poseStack.pushPose();
-            poseStack.translate(recipeX, recipeY, 0);
-
-            for (IRecipeSlotView slot : preview.missingSlots()) {
-                slot.drawHighlight(guiGraphics, RED_SLOT_HIGHLIGHT_COLOR);
+            try {
+                poseStack.translate(recipeX, recipeY, 0);
+                for (IRecipeSlotView slotView : preview.missingSlots()) {
+                    slotView.drawHighlight(guiGraphics, RED_SLOT_HIGHLIGHT_COLOR);
+                }
+                for (IRecipeSlotView slotView : preview.craftableSlots()) {
+                    if (!preview.missingSlots().contains(slotView)) {
+                        slotView.drawHighlight(guiGraphics, BLUE_SLOT_HIGHLIGHT_COLOR);
+                    }
+                }
+            } finally {
+                poseStack.popPose();
             }
-            for (IRecipeSlotView slot : preview.craftableSlots()) {
-                slot.drawHighlight(guiGraphics, BLUE_SLOT_HIGHLIGHT_COLOR);
-            }
-
-            poseStack.popPose();
         }
 
         @Override
         public void getTooltip(ITooltipBuilder tooltip) {
             tooltip.add(ItemModText.MOVE_ITEMS.text());
-
             if (preview.anyCraftable()) {
                 var line = craftMissing ? ItemModText.WILL_CRAFT.text() : ItemModText.CTRL_CLICK_TO_CRAFT.text();
                 tooltip.add(line.withStyle(ChatFormatting.BLUE));
             }
-
             if (preview.anyMissing()) {
-                var line = preview.canIgnoreMissing()
-                        ? ItemModText.MISSING_ITEMS.text()
-                        : ItemModText.NO_ITEMS.text();
+                var line = preview.canIgnoreMissing() ? ItemModText.MISSING_ITEMS.text() : ItemModText.NO_ITEMS.text();
                 tooltip.add(line.withStyle(ChatFormatting.RED));
             }
-
             tooltip.add(Component.translatable("message.wcwt.pull_shift_hint").withStyle(ChatFormatting.GRAY));
         }
 
         @Override
         public int getMissingCountHint() {
-            return preview.totalSize();
+            return 0;
         }
     }
 }

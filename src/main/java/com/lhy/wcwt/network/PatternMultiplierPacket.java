@@ -15,7 +15,8 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * 客户端 → 服务器：应用倍增/除法/交换操作
  */
 public record PatternMultiplierPacket(
-    PatternMultiplierButton.MultiplierType multiplierType
+    PatternMultiplierButton.MultiplierType multiplierType,
+    boolean applyToEditorProcessing
 ) implements CustomPacketPayload {
     
     public static final CustomPacketPayload.Type<PatternMultiplierPacket> TYPE = 
@@ -29,6 +30,8 @@ public record PatternMultiplierPacket(
             PatternMultiplierButton.MultiplierType::ordinal
         ),
         PatternMultiplierPacket::multiplierType,
+        ByteBufCodecs.BOOL,
+        PatternMultiplierPacket::applyToEditorProcessing,
         PatternMultiplierPacket::new
     );
     
@@ -40,7 +43,7 @@ public record PatternMultiplierPacket(
     public static void handle(PatternMultiplierPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
-                menu.applyPatternMultiplier(packet.multiplierType());
+                menu.applyPatternMultiplier(packet.multiplierType(), packet.applyToEditorProcessing());
             }
         });
     }

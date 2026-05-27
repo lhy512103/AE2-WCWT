@@ -2,11 +2,16 @@ package com.lhy.wcwt.client;
 
 import appeng.client.gui.Icon;
 import appeng.client.gui.me.common.MEStorageScreen;
+import appeng.client.gui.me.common.ClientDisplaySlot;
 import appeng.client.gui.me.common.RepoSlot;
 import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.me.items.CraftingTermScreen;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
+import appeng.core.network.ServerboundPacket;
+import appeng.client.gui.NumberEntryType;
+import appeng.core.network.serverbound.InventoryActionPacket;
+import appeng.helpers.InventoryAction;
 import appeng.menu.slot.AppEngSlot;
 import appeng.client.gui.widgets.ActionButton;
 import appeng.client.gui.widgets.AETextField;
@@ -16,6 +21,7 @@ import appeng.client.gui.widgets.ToggleButton;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.StyleManager;
 import appeng.client.gui.widgets.Scrollbar;
+import appeng.client.gui.widgets.NumberEntryWidget;
 import appeng.client.Point;
 import appeng.core.localization.ButtonToolTips;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
@@ -26,6 +32,7 @@ import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
 import de.mari_023.ae2wtlib.api.gui.ScrollingUpgradesPanel;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
+import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -93,6 +100,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import net.minecraft.world.item.crafting.RecipeHolder;
+import com.google.common.primitives.Longs;
 
 /**
  * 无线综合工作终端界面
@@ -314,6 +322,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private int lastDebugRepoSlots = -1;
     private int lastDebugRepoVisibleEntries = -1;
     private boolean lastDebugRepoConnected;
+    private boolean lastObservedLinkConnected;
+    private boolean observedLinkConnectionOnce;
     private @Nullable Slot lastAeNetworkToolkitDoubleClickSlot;
     private long lastAeNetworkToolkitDoubleClickMs;
     private final Set<AEKey> craftableIndicatorKeys = new HashSet<>();
@@ -1163,7 +1173,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     
     private void onMultiplierButtonClick(PatternMultiplierButton.MultiplierType type) {
         // 发送样板倍增器数据包到服务端
-        PacketDistributor.sendToServer(new PatternMultiplierPacket(type));
+        PacketDistributor.sendToServer(new PatternMultiplierPacket(
+                type,
+                WcwtClientConfig.patternMultiplierApplyToEditorProcessing()));
     }
 
     private void handleEncodePatternButton() {
@@ -1592,6 +1604,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        refreshRepoViewAfterTransientReconnect();
         boolean syncedPatternManagementUploadEnabled = menu.isPatternManagementUploadEnabled();
         var syncedPatternManagementDisplayMode = patternManagementDisplayModeFromOrdinal(menu.getPatternManagementDisplayMode());
         boolean syncedPatternManagementShowSlots = menu.isPatternManagementShowSlots();
@@ -1657,6 +1670,36 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (DEBUG_REPO) {
             logRepoViewState("updateBeforeRender", -1);
         }
+    }
+
+    private void refreshRepoViewAfterTransientReconnect() {
+        boolean connected = menu.getLinkStatus().connected();
+        if (!observedLinkConnectionOnce) {
+            observedLinkConnectionOnce = true;
+            lastObservedLinkConnected = connected;
+            if (DEBUG_REPO) {
+                WcwtMod.LOGGER.info(
+                        "WCWT repo debug: link init connected={} linkStatus={}",
+                        connected,
+                        menu.getLinkStatus());
+            }
+            return;
+        }
+        if (DEBUG_REPO && lastObservedLinkConnected != connected) {
+            WcwtMod.LOGGER.info(
+                    "WCWT repo debug: link transition prevConnected={} connected={} linkStatus={}",
+                    lastObservedLinkConnected,
+                    connected,
+                    menu.getLinkStatus());
+            logRepoViewState("linkTransitionBeforeRefresh", -1);
+        }
+        if (!lastObservedLinkConnected && connected) {
+            repo.updateView();
+            if (DEBUG_REPO) {
+                logRepoViewState("transientReconnectRepoRefresh", -1);
+            }
+        }
+        lastObservedLinkConnected = connected;
     }
 
     private void syncPatternManagementSettingsFromMenu() {
@@ -2014,12 +2057,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void syncSelectedPatternProviderFromSearch(String uploadSearchText) {
-        String normalizedQuery = uploadSearchText.trim().toLowerCase();
+        String normalizedQuery = uploadSearchText.trim();
         if (normalizedQuery.isEmpty()) {
             return;
         }
         var matchingEntries = patternProviders.stream()
-                .filter(entry -> entry.group().name().getString().toLowerCase().contains(normalizedQuery))
+                .filter(entry -> JecSearchCompat.contains(entry.group().name().getString(), normalizedQuery))
                 .toList();
         var distinctNames = matchingEntries.stream()
                 .map(entry -> entry.group().name().getString())
@@ -2247,7 +2290,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean patternProviderMatches(PatternProviderListPacket.Entry entry, String filter) {
-        if (entry.group().name().getString().toLowerCase().contains(filter)) {
+        if (JecSearchCompat.contains(entry.group().name().getString(), filter)) {
             return true;
         }
         for (var stack : entry.slots().values()) {
@@ -2262,11 +2305,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var level = Minecraft.getInstance().level;
         var details = level != null ? appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level) : null;
         if (details == null) {
-            return stack.getHoverName().getString().toLowerCase().contains(filter);
+            return JecSearchCompat.contains(stack.getHoverName().getString(), filter);
         }
         if (patternManagementSearchMode.searchOutputs()) {
             for (var output : details.getOutputs()) {
-                if (output.what().getDisplayName().getString().toLowerCase().contains(filter)) {
+                if (JecSearchCompat.contains(output.what().getDisplayName().getString(), filter)) {
                     return true;
                 }
             }
@@ -2274,7 +2317,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (patternManagementSearchMode.searchInputs()) {
             for (var input : details.getInputs()) {
                 for (var candidate : input.getPossibleInputs()) {
-                    if (candidate.what().getDisplayName().getString().toLowerCase().contains(filter)) {
+                    if (JecSearchCompat.contains(candidate.what().getDisplayName().getString(), filter)) {
                         return true;
                     }
                 }
@@ -3326,6 +3369,27 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.minecraft.options.keyPickItem.matchesMouse(button)) {
+            var slot = getSlotAt(mouseX, mouseY);
+            if (menu.canModifyAmountForSlot(slot)) {
+                var currentStack = GenericStack.fromItemStack(slot.getItem());
+                if (currentStack != null) {
+                    var screen = new WcwtSetProcessingPatternAmountSubScreen(
+                            this,
+                            currentStack,
+                            newStack -> {
+                                ServerboundPacket message = new InventoryActionPacket(
+                                        InventoryAction.SET_FILTER,
+                                        slot.index,
+                                        GenericStack.wrapInItemStack(newStack));
+                                PacketDistributor.sendToServer(message);
+                            });
+                    switchToScreen(screen);
+                    return true;
+                }
+            }
+        }
+
         int relX = (int) Math.round(mouseX - leftPos);
         int relY = (int) Math.round(mouseY - topPos);
         if (button == 1) {
@@ -3420,6 +3484,72 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Nullable
+    private Slot getSlotAt(double mouseX, double mouseY) {
+        int relX = (int) Math.round(mouseX - leftPos);
+        int relY = (int) Math.round(mouseY - topPos);
+        for (Slot slot : menu.slots) {
+            if (!slot.isActive()) {
+                continue;
+            }
+            if (relX >= slot.x && relX < slot.x + 16 && relY >= slot.y && relY < slot.y + 16) {
+                return slot;
+            }
+        }
+        return null;
+    }
+
+    private static class WcwtSetProcessingPatternAmountSubScreen extends
+            appeng.client.gui.AESubScreen<WirelessComprehensiveWorkTerminalMenu, WirelessComprehensiveWorkTerminalScreen> {
+        private final NumberEntryWidget amount;
+        private final GenericStack currentStack;
+        private final java.util.function.Consumer<GenericStack> setter;
+
+        WcwtSetProcessingPatternAmountSubScreen(WirelessComprehensiveWorkTerminalScreen parent,
+                                                GenericStack currentStack,
+                                                java.util.function.Consumer<GenericStack> setter) {
+            super(parent, "/screens/set_processing_pattern_amount.json");
+            this.currentStack = currentStack;
+            this.setter = setter;
+
+            widgets.addButton("save", Component.translatable("gui.ae2.Set"), btn -> confirm());
+            var icon = getMenu().getHost().getMainMenuIcon();
+            widgets.add("back", new TabButton(Icon.BACK, icon.getHoverName(), btn -> returnToParent()));
+
+            this.amount = widgets.addNumberEntryWidget("amountToStock", NumberEntryType.of(currentStack.what()));
+            this.amount.setLongValue(currentStack.amount());
+            this.amount.setMaxValue(getMaxAmount());
+            this.amount.setTextFieldStyle(style.getWidget("amountToStockInput"));
+            this.amount.setMinValue(0);
+            this.amount.setHideValidationIcon(true);
+            this.amount.setOnConfirm(this::confirm);
+
+            addClientSideSlot(new ClientDisplaySlot(currentStack), SlotSemantics.MACHINE_OUTPUT);
+        }
+
+        @Override
+        protected void init() {
+            super.init();
+            setSlotsHidden(SlotSemantics.TOOLBOX, true);
+        }
+
+        private void confirm() {
+            this.amount.getLongValue().ifPresent(newAmount -> {
+                newAmount = Longs.constrainToRange(newAmount, 0, getMaxAmount());
+                if (newAmount <= 0) {
+                    setter.accept(null);
+                } else {
+                    setter.accept(new GenericStack(currentStack.what(), newAmount));
+                }
+                returnToParent();
+            });
+        }
+
+        private long getMaxAmount() {
+            return 999999L * (long) currentStack.what().getAmountPerUnit();
+        }
     }
 
     private boolean handleManualAnvilNameFieldClick(double mouseX, double mouseY) {

@@ -5,6 +5,7 @@ import appeng.helpers.patternprovider.PatternContainer;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderSorts;
@@ -376,11 +377,10 @@ public record PatternManagementActionPacket(Action action,
         if (searchText == null || searchText.isBlank()) {
             return null;
         }
-        String normalizedQuery = searchText.toLowerCase();
         var matches = providers.stream()
                 .filter(provider -> {
                     String displayName = getProviderDisplayName(provider);
-                    return displayName != null && displayName.toLowerCase().contains(normalizedQuery);
+                    return JecSearchCompat.contains(displayName, searchText);
                 })
                 .map(PatternManagementActionPacket::getProviderDisplayName)
                 .distinct()

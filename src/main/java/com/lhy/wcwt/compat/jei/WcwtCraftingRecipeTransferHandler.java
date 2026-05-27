@@ -5,6 +5,7 @@ import appeng.integration.modules.itemlists.CraftingHelper;
 import appeng.menu.me.items.CraftingTermMenu;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
+import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
@@ -59,6 +60,9 @@ public class WcwtCraftingRecipeTransferHandler
                                                Player player,
                                                boolean maxTransfer,
                                                boolean doTransfer) {
+        if (!WcwtClientConfig.enableRecipePullTransfer()) {
+            return null;
+        }
         var recipe = recipeHolder.value();
         if (recipe.getType() != RecipeType.CRAFTING) {
             return transferHelper.createInternalError();
