@@ -9,7 +9,9 @@ import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
+import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
+import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.renderer.Rect2i;
@@ -33,6 +35,13 @@ public class WcwtJeiPlugin implements IModPlugin {
 
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
+        registration.addGuiContainerHandler(WirelessComprehensiveWorkTerminalScreen.class,
+                new IGuiContainerHandler<>() {
+                    @Override
+                    public List<Rect2i> getGuiExtraAreas(WirelessComprehensiveWorkTerminalScreen screen) {
+                        return screen.getExclusionZones();
+                    }
+                });
         registration.addGhostIngredientHandler(WirelessComprehensiveWorkTerminalScreen.class,
                 new CellConfigGhostHandler());
     }
@@ -44,6 +53,16 @@ public class WcwtJeiPlugin implements IModPlugin {
                 RecipeTypes.CRAFTING);
         registration.addUniversalRecipeTransferHandler(new WcwtRecipeTransferHandler(
                 registration.getTransferHelper()));
+    }
+
+    @Override
+    public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
+        WcwtJeiBookmarkKeys.setRuntime(jeiRuntime);
+    }
+
+    @Override
+    public void onRuntimeUnavailable() {
+        WcwtJeiBookmarkKeys.setRuntime(null);
     }
 
     private static class CellConfigGhostHandler

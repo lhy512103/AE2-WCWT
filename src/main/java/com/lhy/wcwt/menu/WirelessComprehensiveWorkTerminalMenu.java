@@ -52,6 +52,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -880,6 +882,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             this.resultSlots.setItem(0, stack.copy());
             resultSlot.remove(stack.getCount());
             resultSlot.onTake(player, stack);
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.SMITHING_TABLE_USE, SoundSource.BLOCKS, 1.0F,
+                    player.level().random.nextFloat() * 0.1F + 0.9F);
             if (inv != null) {
                 for (int i = 0; i < 3; i++) {
                     inv.setItemDirect(i, this.inputSlots.getItem(i).copy());
@@ -930,6 +935,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             this.resultSlots.setItem(0, stack.copy());
             resultSlot.remove(stack.getCount());
             resultSlot.onTake(player, stack);
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
+                    SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 1.0F,
+                    player.level().random.nextFloat() * 0.1F + 0.9F);
             var inv = menuHost == null ? null
                     : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
             if (inv != null) {
@@ -1257,6 +1265,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public void clearPatternEncoding() {
         if (patternEncodingLogic == null) {
             return;
+        }
+
+        if (encodedPatternSlot != null) {
+            var encodedPattern = encodedPatternSlot.getItem();
+            if (PatternDetailsHelper.isEncodedPattern(encodedPattern)) {
+                encodedPatternSlot.set(AEItems.BLANK_PATTERN.stack(encodedPattern.getCount()));
+            }
         }
 
         patternEncodingLogic.getEncodedInputInv().clear();

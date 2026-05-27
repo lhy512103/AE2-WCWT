@@ -161,6 +161,8 @@
   "wcwt.config.patternManagementShiftQuick.tooltip": "ВЫКЛ: только обычные клики. Обычно применяется сразу после сохранения.",
   "wcwt.config.patternMultiplierApplyToEditorProcessing": "Применять множитель и к редактируемому шаблону обработки",
   "wcwt.config.patternMultiplierApplyToEditorProcessing.tooltip": "ВКЛ: пакетный множитель также меняет количества входов/выходов и поворот выходов у текущего шаблона обработки в редакторе. ВЫКЛ: влияет только на закодированные шаблоны в кэше.",
+  "wcwt.config.preferJeiBookmarksForPatternEncoding": "При JEI-переносе отдавать приоритет закладкам",
+  "wcwt.config.preferJeiBookmarksForPatternEncoding.tooltip": "ВКЛ: при переносе через JEI из терминала WCWT в область кодирования шаблонов, если у входа есть несколько допустимых предметов, сначала выбираются совпадающие предметы из панели закладок JEI, в порядке закладок сверху вниз. ВЫКЛ: используется только существующая логика выбора WCWT/AE2.",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer": "Автопереключение ручей зоны при переносе рецепта",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "ВКЛ: переносы JEI/EMI переключают ручую зону на верстак или кузницу, если тип рецепта распознан.",
   "wcwt.config.enableRecipePullTransfer": "Включить получение/кодирование рецептов",

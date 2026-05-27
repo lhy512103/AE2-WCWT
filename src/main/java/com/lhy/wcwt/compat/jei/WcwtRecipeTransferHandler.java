@@ -285,6 +285,12 @@ public class WcwtRecipeTransferHandler
         List<ItemStack> visibleAlternatives = slot < inputSlots.size()
                 ? inputSlots.get(slot).getItemStacks().filter(stack -> !stack.isEmpty()).map(ItemStack::copy).toList()
                 : List.of();
+        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding()) {
+            ItemStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedItem(ingredient, visibleAlternatives);
+            if (!bookmarked.isEmpty()) {
+                return GenericStack.fromItemStack(bookmarked.copyWithCount(1));
+            }
+        }
         ItemStack best = WcwtIngredientPriorities.chooseBestItem(menu, ingredient, visibleAlternatives);
         return best.isEmpty() ? null : GenericStack.fromItemStack(best.copyWithCount(1));
     }
@@ -292,6 +298,13 @@ public class WcwtRecipeTransferHandler
     @Nullable
     private static GenericStack toPreferredGenericStack(WirelessComprehensiveWorkTerminalMenu menu,
                                                         IRecipeSlotView slotView) {
+        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding()) {
+            GenericStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedStack(slotView);
+            if (bookmarked != null) {
+                return bookmarked;
+            }
+        }
+
         GenericStack displayed = toGenericStack(getDisplayedStack(slotView));
         if (displayed != null) {
             return displayed;
@@ -342,6 +355,11 @@ public class WcwtRecipeTransferHandler
             }
         }
         return null;
+    }
+
+    @Nullable
+    static GenericStack toGenericStackForBookmark(@Nullable ITypedIngredient<?> ingredient) {
+        return toGenericStack(ingredient);
     }
 
     @Nullable

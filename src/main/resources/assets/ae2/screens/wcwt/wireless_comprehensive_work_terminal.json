@@ -408,7 +408,7 @@
     "manual_anvil_cost": {
       "$comment": "左上铁砧工作区附魔/修复花费提示。",
       "left": 79,
-      "bottom": 180
+      "bottom": 178
     },
     "manual_smithing_template_slot": {
       "$comment": "左上手动锻造台模板槽定位节点，仅供 Java 读取，不参与样式系统默认槽位绘制。",

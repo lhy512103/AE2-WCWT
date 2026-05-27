@@ -159,6 +159,8 @@
   "wcwt.config.patternManagementShiftQuick.tooltip": "關：僅用普通點擊。保存配置後一般即生效。",
   "wcwt.config.patternMultiplierApplyToEditorProcessing": "樣板倍增器同時作用於樣板編輯區處理樣板",
   "wcwt.config.patternMultiplierApplyToEditorProcessing.tooltip": "開：批處理區的樣板倍增器也會修改當前樣板編輯區裡處理樣板模式的輸入/輸出數量與輸出輪換。關：僅作用於樣板緩存區裡的已編碼樣板。",
+  "wcwt.config.preferJeiBookmarksForPatternEncoding": "JEI 拉取樣板時優先使用書籤欄物品",
+  "wcwt.config.preferJeiBookmarksForPatternEncoding.tooltip": "開：從 WCWT 終端通過 JEI 拉取到樣板編碼區時，若某個輸入存在多種可選物品，優先使用 JEI 書籤欄中匹配的物品，且按書籤從前到後的順序優先。關：僅使用現有 WCWT/AE2 選擇邏輯。",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer": "拉取配方時自動切換手動工作區",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "開：JEI/EMI 拉取配方時，會按已識別的配方類型自動切到工作台或鍛造台。",
   "wcwt.config.enableRecipePullTransfer": "啟用配方拉取/編碼處理",

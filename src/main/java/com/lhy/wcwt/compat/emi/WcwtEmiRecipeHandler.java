@@ -7,6 +7,7 @@ import appeng.core.localization.ItemModText;
 import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
+import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
 import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -25,6 +26,7 @@ import dev.emi.emi.api.stack.EmiStack;
 import dev.emi.emi.api.widget.Bounds;
 import dev.emi.emi.api.widget.SlotWidget;
 import dev.emi.emi.api.widget.Widget;
+import dev.emi.emi.api.widget.WidgetHolder;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -214,7 +216,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
         EncodingMode mode = getTransferMode(recipe);
         WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
-        List<@Nullable GenericStack> inputs = collectEncodingInputs(menu, recipe);
+        List<Widget> widgets = collectRecipeWidgets(recipe);
+        List<@Nullable GenericStack> inputs = collectEncodingInputs(menu, recipe, widgets);
         List<@Nullable GenericStack> outputs = collectEncodingOutputs(recipe);
         if (inputs.stream().allMatch(Objects::isNull) && outputs.stream().allMatch(Objects::isNull)) {
             return false;
@@ -453,16 +456,28 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     }
 
     private static List<@Nullable GenericStack> collectEncodingInputs(WirelessComprehensiveWorkTerminalMenu menu,
-                                                                      EmiRecipe recipe) {
+                                                                      EmiRecipe recipe,
+                                                                      List<Widget> widgets) {
         EncodingMode mode = getTransferMode(recipe);
-        List<@Nullable GenericStack> sparseInputs = recipe.getInputs().stream()
-                .map(ingredient -> toGenericStack(menu, ingredient))
-                .limit(mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE)
-                .toList();
+        List<@Nullable GenericStack> sparseInputs = new ArrayList<>();
+        Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
+        int limit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
+        int count = Math.min(recipe.getInputs().size(), limit);
+        for (int i = 0; i < count; i++) {
+            SlotWidget slot = inputSlots.get(i);
+            EmiIngredient ingredient = slot != null && slot.getStack() != null ? slot.getStack() : recipe.getInputs().get(i);
+            sparseInputs.add(toGenericStack(menu, ingredient));
+        }
         if (mode == EncodingMode.PROCESSING) {
             return sparseInputs.stream().filter(Objects::nonNull).toList();
         }
         return sparseInputs;
+    }
+
+    private static List<Widget> collectRecipeWidgets(EmiRecipe recipe) {
+        SimpleWidgetCollector collector = new SimpleWidgetCollector(recipe.getDisplayWidth(), recipe.getDisplayHeight());
+        recipe.addWidgets(collector);
+        return collector.widgets();
     }
 
     private static List<@Nullable GenericStack> collectEncodingOutputs(EmiRecipe recipe) {
@@ -513,6 +528,13 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return null;
         }
         Ingredient wideIngredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
+        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding()) {
+            ItemStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedItem(wideIngredient, visibleAlternatives);
+            if (!bookmarked.isEmpty()) {
+                int count = Math.max(1, (int) Math.min(Integer.MAX_VALUE, ingredient.getAmount()));
+                return new RequestedIngredient(List.of(bookmarked), count);
+            }
+        }
         ItemStack best = WcwtIngredientPriorities.chooseBestItem(menu, wideIngredient, visibleAlternatives);
         if (best.isEmpty()) {
             return null;
@@ -533,6 +555,18 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             GenericStack candidate = toGenericStack(emiStack, ingredient.getAmount());
             if (candidate != null) {
                 candidates.add(candidate);
+            }
+        }
+        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding()) {
+            var priorities = WcwtJeiBookmarkKeys.getBookmarkPriorities();
+            if (!priorities.isEmpty()) {
+                GenericStack bookmarked = candidates.stream()
+                        .filter(candidate -> candidate.what() != null && priorities.containsKey(candidate.what()))
+                        .min(java.util.Comparator.comparingInt(candidate -> priorities.get(candidate.what())))
+                        .orElse(null);
+                if (bookmarked != null) {
+                    return bookmarked;
+                }
             }
         }
         GenericStack best = WcwtIngredientPriorities.chooseBestGenericStack(menu, candidates);
@@ -561,6 +595,28 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
         return GenericStack.fromItemStack(displayed.copyWithCount(
                 Math.max(1, (int) Math.min(Integer.MAX_VALUE, amount))));
+    }
+
+    private record SimpleWidgetCollector(int width, int height, List<Widget> widgets) implements WidgetHolder {
+        private SimpleWidgetCollector(int width, int height) {
+            this(width, height, new ArrayList<>());
+        }
+
+        @Override
+        public int getWidth() {
+            return width;
+        }
+
+        @Override
+        public int getHeight() {
+            return height;
+        }
+
+        @Override
+        public <T extends Widget> T add(T widget) {
+            widgets.add(widget);
+            return widget;
+        }
     }
 
     private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {

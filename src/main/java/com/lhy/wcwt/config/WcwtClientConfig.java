@@ -15,6 +15,7 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec.BooleanValue AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER;
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
     public static final ModConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
+    public static final ModConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
 
     static {
         PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR = BUILDER
@@ -37,6 +38,10 @@ public final class WcwtClientConfig {
                 .comment("If true: the batch pattern multiplier also applies to the current processing pattern in the pattern editor. Saving wcwt-client.toml usually reloads without restart.")
                 .translation("wcwt.config.patternMultiplierApplyToEditorProcessing")
                 .define("patternMultiplierApplyToEditorProcessing", true);
+        PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING = BUILDER
+                .comment("If true: when JEI transfers ingredients into the WCWT pattern encoding area, matching items from the JEI bookmark list are preferred first, in bookmark order. If false: use the existing WCWT/AE2 selection logic only.")
+                .translation("wcwt.config.preferJeiBookmarksForPatternEncoding")
+                .define("preferJeiBookmarksForPatternEncoding", true);
         SPEC = BUILDER.build();
     }
 
@@ -61,5 +66,9 @@ public final class WcwtClientConfig {
 
     public static boolean patternMultiplierApplyToEditorProcessing() {
         return PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING.get();
+    }
+
+    public static boolean preferJeiBookmarksForPatternEncoding() {
+        return PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING.get();
     }
 }
