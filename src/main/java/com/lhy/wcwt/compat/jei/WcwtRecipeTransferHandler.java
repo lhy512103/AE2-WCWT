@@ -5,6 +5,7 @@ import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.itemlists.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
+import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
@@ -62,16 +63,20 @@ public class WcwtRecipeTransferHandler
     public IRecipeTransferError transferRecipe(WirelessComprehensiveWorkTerminalMenu menu, Object recipe,
                                                IRecipeSlotsView recipeSlots, Player player,
                                                boolean maxTransfer, boolean doTransfer) {
-        if (isCraftingGridLocked(menu)) {
-            return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, doTransfer,
-                    transferHelper);
-        }
-
         RecipeHolder<?> recipeHolder = recipe instanceof RecipeHolder<?> holder ? holder : null;
         Recipe<?> minecraftRecipe = recipeHolder != null ? recipeHolder.value()
                 : recipe instanceof Recipe<?> directRecipe ? directRecipe
                 : null;
         EncodingMode mode = getTransferMode(minecraftRecipe, recipeSlots);
+
+        if (isCraftingGridLocked(menu)) {
+            if (doTransfer) {
+                WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
+            }
+            return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, doTransfer,
+                    transferHelper);
+        }
+
         boolean encodingRecipe = mode != EncodingMode.PROCESSING;
 
         List<@Nullable GenericStack> inputs = encodingRecipe
@@ -94,6 +99,7 @@ public class WcwtRecipeTransferHandler
         }
 
         if (doTransfer) {
+            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
             updateEaepProviderSearchKey(recipe, minecraftRecipe, mode);
             PacketDistributor.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         }

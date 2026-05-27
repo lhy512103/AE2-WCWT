@@ -38,6 +38,8 @@ public class IconButton extends Button implements ITooltip {
     @Nullable
     private Supplier<Icon> overlayIcon;
     private int overlayOffsetY = 0;
+    private boolean scaleTextureToButton = true;
+    private boolean pressOffsetOnHover = true;
 
     public IconButton(int x, int y, int w, int h,
                       int normalU, int normalV,
@@ -85,10 +87,20 @@ public class IconButton extends Button implements ITooltip {
         return this;
     }
 
+    public IconButton drawTextureUnscaledCentered() {
+        this.scaleTextureToButton = false;
+        return this;
+    }
+
+    public IconButton disableHoverPressOffset() {
+        this.pressOffsetOnHover = false;
+        return this;
+    }
+
     @Override
     public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
-        int pressOffsetY = isHoveredOrFocused() ? 1 : 0;
+        int pressOffsetY = pressOffsetOnHover && isHoveredOrFocused() ? 1 : 0;
 
         // ── 底图 ──
         if (useAE2ToolbarBg) {
@@ -105,7 +117,9 @@ public class IconButton extends Button implements ITooltip {
         } else {
             int u = isHovered() ? hoverU : normalU;
             int v = isHovered() ? hoverV : normalV;
-            if (texW == width && texH == height) {
+            if (!scaleTextureToButton) {
+                guiGraphics.blit(texture, getX(), getY() + pressOffsetY, u, v, texW, texH, 256, 256);
+            } else if (texW == width && texH == height) {
                 guiGraphics.blit(texture, getX(), getY(), u, v, texW, texH, 256, 256);
             } else {
                 float scaleX = (float) width / texW;

@@ -94,6 +94,8 @@
   "gui.wcwt.batch.pattern_multiplier": "样板倍增器",
   "gui.wcwt.batch.item_substitution": "物品替换",
   "gui.wcwt.batch.fluid_substitution": "流体替换",
+  "gui.wcwt.manual_workspace.smithing": "锻造台",
+  "gui.wcwt.manual_workspace.anvil": "铁砧",
 
   "gui.ae2.CraftingArea": "手动合成区",
   "gui.ae2.PatternEncodingArea": "样板编码区",
@@ -153,6 +155,8 @@
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "关：优先回退到样板缓存区，缓存区放不下再回退到样板编辑槽。开：优先回退到样板编辑槽。",
   "wcwt.config.patternManagementShiftQuick": "样板管理 Shift 快速移动",
   "wcwt.config.patternManagementShiftQuick.tooltip": "关：仅用普通点击。保存配置后一般即生效。",
+  "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer": "拉取配方时自动切换手动工作区",
+  "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "开：JEI/EMI 拉取配方时，会按已识别的配方类型自动切到工作台或锻造台。",
 
   "message.wcwt.pull_no_link": "WCWT：终端未连接到可用的 ME 网络。",
   "message.wcwt.pull_no_inputs": "WCWT：该 JEI 配方没有可拉取的物品输入。",

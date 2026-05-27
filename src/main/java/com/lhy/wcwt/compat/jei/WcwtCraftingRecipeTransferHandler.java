@@ -4,6 +4,7 @@ import appeng.core.localization.ItemModText;
 import appeng.integration.modules.itemlists.CraftingHelper;
 import appeng.menu.me.items.CraftingTermMenu;
 import appeng.parts.encoding.EncodingMode;
+import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
@@ -74,6 +75,7 @@ public class WcwtCraftingRecipeTransferHandler
         boolean craftingToManualGrid = menu.getMenuHost() != null && menu.getMenuHost().isCraftingGridLocked();
         if (!craftingToManualGrid) {
             if (doTransfer) {
+                WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
                 WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipeHolder, recipe, EncodingMode.CRAFTING);
                 PacketDistributor.sendToServer(new JeiCraftingTransferPacket(
                         WcwtRecipeTransferHandler.collectCraftingLikeInputs(
@@ -109,6 +111,11 @@ public class WcwtCraftingRecipeTransferHandler
         }
 
         if (doTransfer) {
+            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
+            if (menu.getManualWorkspaceMode() != WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
+                return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, true,
+                        transferHelper);
+            }
             ResourceLocation recipeId = recipeHolder.id();
             CraftingHelper.performTransfer(menu, recipeId, recipe, craftMissing);
         }

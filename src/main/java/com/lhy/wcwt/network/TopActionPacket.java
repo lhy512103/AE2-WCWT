@@ -37,7 +37,8 @@ public record TopActionPacket(Action action) implements CustomPacketPayload {
         COPY_DOWN(3),
         SWITCH_FILTERS(4),
         OPEN_MAGNET_MENU(5),
-        OPEN_TRASH_MENU(6);
+        OPEN_TRASH_MENU(6),
+        CLEAR_MANUAL_WORKSPACE(7);
 
         private final int id;
 

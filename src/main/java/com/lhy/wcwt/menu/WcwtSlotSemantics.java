@@ -33,6 +33,13 @@ public class WcwtSlotSemantics {
     public static final SlotSemantic WCWT_PATTERN_SMITHING_ADDITION = SlotSemantics.register("WCWT_PATTERN_SMITHING_ADDITION", false);
     public static final SlotSemantic WCWT_PATTERN_STONECUTTING_INPUT = SlotSemantics.register("WCWT_PATTERN_STONECUTTING_INPUT", false);
     public static final SlotSemantic WCWT_PATTERN_PREVIEW = SlotSemantics.register("WCWT_PATTERN_PREVIEW", false);
+    public static final SlotSemantic WCWT_MANUAL_SMITHING_TEMPLATE = SlotSemantics.register("WCWT_MANUAL_SMITHING_TEMPLATE", false);
+    public static final SlotSemantic WCWT_MANUAL_SMITHING_BASE = SlotSemantics.register("WCWT_MANUAL_SMITHING_BASE", false);
+    public static final SlotSemantic WCWT_MANUAL_SMITHING_ADDITION = SlotSemantics.register("WCWT_MANUAL_SMITHING_ADDITION", false);
+    public static final SlotSemantic WCWT_MANUAL_SMITHING_RESULT = SlotSemantics.register("WCWT_MANUAL_SMITHING_RESULT", false);
+    public static final SlotSemantic WCWT_MANUAL_ANVIL_LEFT = SlotSemantics.register("WCWT_MANUAL_ANVIL_LEFT", false);
+    public static final SlotSemantic WCWT_MANUAL_ANVIL_RIGHT = SlotSemantics.register("WCWT_MANUAL_ANVIL_RIGHT", false);
+    public static final SlotSemantic WCWT_MANUAL_ANVIL_RESULT = SlotSemantics.register("WCWT_MANUAL_ANVIL_RESULT", false);
 
     // 元件工作台 - 存储元件槽位（单槽）
     public static final SlotSemantic WCWT_STORAGE_CELL = SlotSemantics.register("WCWT_STORAGE_CELL", false);

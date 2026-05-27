@@ -6,6 +6,7 @@ import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ItemModText;
 import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
+import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
@@ -190,17 +191,21 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
 
         if (isCraftingGridLocked(menu)) {
+            EncodingMode mode = getTransferMode(recipe);
+            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
             List<RequestedIngredient> requestedIngredients = collectRequestedIngredients(menu, recipe);
             if (requestedIngredients.isEmpty()) {
                 return false;
             }
             boolean maxTransfer = context.getAmount() > 1;
             boolean craftMissing = context.getDestination() != EmiCraftContext.Destination.NONE;
-            PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, requestedIngredients));
+            PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
+                    requestedIngredients, menu.getManualWorkspaceMode().ordinal()));
             return true;
         }
 
         EncodingMode mode = getTransferMode(recipe);
+        WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
         List<@Nullable GenericStack> inputs = collectEncodingInputs(menu, recipe);
         List<@Nullable GenericStack> outputs = collectEncodingOutputs(recipe);
         if (inputs.stream().allMatch(Objects::isNull) && outputs.stream().allMatch(Objects::isNull)) {

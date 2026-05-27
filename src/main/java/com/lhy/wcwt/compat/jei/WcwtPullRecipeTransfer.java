@@ -56,7 +56,8 @@ public final class WcwtPullRecipeTransfer {
             return null;
         }
 
-        PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, requestedIngredients));
+        PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, requestedIngredients,
+                menu.getManualWorkspaceMode().ordinal()));
         return null;
     }
 

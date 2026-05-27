@@ -31,6 +31,7 @@ import appeng.menu.me.crafting.CraftConfirmMenu;
 import appeng.util.prioritylist.IPartitionList;
 
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 
@@ -39,6 +40,7 @@ import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
  */
 public final class WcwtTerminalPullService {
     private static final int MAX_DETAIL_ITEMS = 5;
+    private static final int MAX_PROCESSING_TRANSFER_STACK_SIZE = 64;
 
     private WcwtTerminalPullService() {
     }
@@ -74,7 +76,9 @@ public final class WcwtTerminalPullService {
                 : null;
         var playerInventory = menu.getPlayerInventory();
 
-        InternalInventory craftingGrid = menu.getCraftingMatrix();
+        var targetMode = WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode
+                .fromOrdinal(payload.manualWorkspaceMode());
+        InternalInventory craftingGrid = getPullTargetInventory(menu, targetMode);
 
         var playerInventorySnapshot = snapshotInventory(playerInventory.items);
         var reservedPlayerItems = new int[playerInventorySnapshot.size()];
@@ -82,7 +86,7 @@ public final class WcwtTerminalPullService {
         var reservedCraftingGridItems = craftingGrid != null ? new int[craftingGridSnapshot.size()] : null;
         int transferSets = payload.maxTransfer()
                 ? Math.max(1, computeMaxTransferSets(menu, storage, filter, craftingService, payload.craftMissing(),
-                        requestedIngredients, playerInventorySnapshot, craftingGridSnapshot))
+                        requestedIngredients, playerInventorySnapshot, craftingGridSnapshot, targetMode))
                 : 1;
         List<RequestedIngredient> scaledIngredients = scaleRequestedIngredients(requestedIngredients, transferSets);
         boolean craftingGridChanged = false;
@@ -161,6 +165,18 @@ public final class WcwtTerminalPullService {
         }
     }
 
+    @Nullable
+    private static InternalInventory getPullTargetInventory(WirelessComprehensiveWorkTerminalMenu menu,
+            WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
+        return switch (mode) {
+            case CRAFTING -> menu.getCraftingMatrix();
+            case SMITHING -> menu.getMenuHost() == null ? null
+                    : menu.getMenuHost().getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
+            case ANVIL -> menu.getMenuHost() == null ? null
+                    : menu.getMenuHost().getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
+        };
+    }
+
     private static List<RequestedIngredient> scaleRequestedIngredients(List<RequestedIngredient> requestedIngredients, int transferSets) {
         if (transferSets <= 1) {
             return requestedIngredients;
@@ -172,6 +188,28 @@ public final class WcwtTerminalPullService {
                     Math.max(1, Math.multiplyExact(ingredient.count(), transferSets))));
         }
         return scaled;
+    }
+
+    private static int getMaxTransferSetsForTarget(
+            WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode targetMode,
+            List<RequestedIngredient> requestedIngredients) {
+        if (targetMode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
+            return 64;
+        }
+
+        int maxSets = MAX_PROCESSING_TRANSFER_STACK_SIZE;
+        for (RequestedIngredient ingredient : requestedIngredients) {
+            int maxStackSize = ingredient.alternatives().stream()
+                    .filter(stack -> stack != null && !stack.isEmpty())
+                    .mapToInt(ItemStack::getMaxStackSize)
+                    .max()
+                    .orElse(MAX_PROCESSING_TRANSFER_STACK_SIZE);
+            if (maxStackSize <= 1) {
+                return 1;
+            }
+            maxSets = Math.min(maxSets, Math.max(1, maxStackSize / Math.max(1, ingredient.count())));
+        }
+        return Math.max(1, maxSets);
     }
 
     private static List<RequestedIngredient> sanitizeRequestedIngredients(List<RequestedIngredient> requestedIngredients) {
@@ -214,7 +252,8 @@ public final class WcwtTerminalPullService {
 
     private static int computeMaxTransferSets(MEStorageMenu menu, MEStorage storage, @Nullable IPartitionList filter,
             @Nullable ICraftingService craftingService, boolean craftMissing, List<RequestedIngredient> requestedIngredients,
-            List<ItemStack> playerInventorySnapshot, List<ItemStack> craftingGridSnapshot) {
+            List<ItemStack> playerInventorySnapshot, List<ItemStack> craftingGridSnapshot,
+            WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode targetMode) {
         Map<AEItemKey, Long> availableByKey = new LinkedHashMap<>();
 
         for (int i = 0; i < playerInventorySnapshot.size(); i++) {
@@ -240,7 +279,8 @@ public final class WcwtTerminalPullService {
         orderedIngredients.sort((left, right) -> Integer.compare(left.alternatives().size(), right.alternatives().size()));
 
         int completedSets = 0;
-        while (completedSets < 64
+        int maxSets = getMaxTransferSetsForTarget(targetMode, requestedIngredients);
+        while (completedSets < maxSets
                 && tryReserveSingleSet(availableByKey, orderedIngredients, filter, craftingService, craftMissing)) {
             completedSets++;
         }

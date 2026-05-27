@@ -353,12 +353,111 @@
       "left": 144,
       "bottom": 214
     },
+    "manual_clearCraftingGrid_anvil": {
+      "$comment": "铁砧模式下的清空合成网格按钮位置。",
+      "left": 78,
+      "bottom": 168
+    },
+    "manual_clearToPlayerInv_anvil": {
+      "$comment": "铁砧模式下把合成网格物品清回玩家背包按钮位置。",
+      "left": 88,
+      "bottom": 168
+    },
     "CRAFTING_Locking": {
       "$comment": "合成网格锁定按钮。",
       "left": 132,
-      "bottom": 195,
+      "bottom": 196,
       "width": 16,
       "height": 16
+    },
+    "manual_workspace_background": {
+      "$comment": "左上手动工作区扩展背景（锻造台/铁砧）。",
+      "left": 78,
+      "bottom": 215,
+      "width": 88,
+      "height": 58
+    },
+    "manual_mode_button0": {
+      "$comment": "铁砧模式下显示的模式按钮 0：工作台。",
+      "left": 98,
+      "bottom": 168,
+      "width": 12,
+      "height": 12
+    },
+    "manual_mode_button1": {
+      "$comment": "左上手动工作区模式按钮 1：锻造台。",
+      "left": 154,
+      "bottom": 214,
+      "width": 12,
+      "height": 12
+    },
+    "manual_mode_button2": {
+      "$comment": "左上手动工作区模式按钮 2：铁砧。",
+      "left": 154,
+      "bottom": 214,
+      "width": 12,
+      "height": 12
+    },
+    "manual_anvil_name": {
+      "$comment": "左上铁砧工作区命名输入框。",
+      "left": 79,
+      "bottom": 213,
+      "width": 88,
+      "height": 12
+    },
+    "manual_anvil_cost": {
+      "$comment": "左上铁砧工作区附魔/修复花费提示。",
+      "left": 79,
+      "bottom": 180
+    },
+    "manual_smithing_template_slot": {
+      "$comment": "左上手动锻造台模板槽定位节点，仅供 Java 读取，不参与样式系统默认槽位绘制。",
+      "left": 79,
+      "bottom": 196,
+      "width": 18,
+      "height": 18
+    },
+    "manual_smithing_base_slot": {
+      "$comment": "左上手动锻造台基础物品槽定位节点，仅供 Java 读取。",
+      "left": 97,
+      "bottom": 196,
+      "width": 18,
+      "height": 18
+    },
+    "manual_smithing_addition_slot": {
+      "$comment": "左上手动锻造台添加物槽定位节点，仅供 Java 读取。",
+      "left": 115,
+      "bottom": 196,
+      "width": 18,
+      "height": 18
+    },
+    "manual_smithing_result_slot": {
+      "$comment": "左上手动锻造台结果槽定位节点，仅供 Java 读取。",
+      "left": 149,
+      "bottom": 196,
+      "width": 18,
+      "height": 18
+    },
+    "manual_anvil_left_slot": {
+      "$comment": "左上手动铁砧左输入槽定位节点，仅供 Java 读取。",
+      "left": 79,
+      "bottom": 196,
+      "width": 18,
+      "height": 18
+    },
+    "manual_anvil_right_slot": {
+      "$comment": "左上手动铁砧右输入槽定位节点，仅供 Java 读取。",
+      "left": 115,
+      "bottom": 196,
+      "width": 18,
+      "height": 18
+    },
+    "manual_anvil_result_slot": {
+      "$comment": "左上手动铁砧结果槽定位节点，仅供 Java 读取。",
+      "left": 149,
+      "bottom": 196,
+      "width": 18,
+      "height": 18
     },
     "player": {
       "$comment": "玩家模型渲染位置；当前左右方向比默认缩小 5 像素。",

@@ -12,10 +12,11 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.pull.WcwtTerminalPullService;
 
 public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissing,
-        List<RequestedIngredient> requestedIngredients)
+        List<RequestedIngredient> requestedIngredients, int manualWorkspaceMode)
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<WcwtPullRecipeInputsPacket> TYPE =
@@ -26,9 +27,18 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
 
     public WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissing,
             List<RequestedIngredient> requestedIngredients) {
+        this(maxTransfer, craftMissing, requestedIngredients,
+                WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING.ordinal());
+    }
+
+    public WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissing,
+            List<RequestedIngredient> requestedIngredients, int manualWorkspaceMode) {
         this.maxTransfer = maxTransfer;
         this.craftMissing = craftMissing;
         this.requestedIngredients = requestedIngredients.stream().map(RequestedIngredient::copy).toList();
+        this.manualWorkspaceMode = WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode
+                .fromOrdinal(manualWorkspaceMode)
+                .ordinal();
     }
 
     private static WcwtPullRecipeInputsPacket decode(RegistryFriendlyByteBuf buffer) {
@@ -39,7 +49,8 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
         for (int i = 0; i < size; i++) {
             ingredients.add(RequestedIngredient.decode(buffer));
         }
-        return new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, ingredients);
+        int manualWorkspaceMode = buffer.readVarInt();
+        return new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, ingredients, manualWorkspaceMode);
     }
 
     private void write(RegistryFriendlyByteBuf buffer) {
@@ -49,6 +60,7 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
         for (RequestedIngredient ingredient : requestedIngredients) {
             ingredient.write(buffer);
         }
+        buffer.writeVarInt(manualWorkspaceMode);
     }
 
     @Override

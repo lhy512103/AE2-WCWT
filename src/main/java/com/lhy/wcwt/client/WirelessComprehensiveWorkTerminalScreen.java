@@ -33,10 +33,13 @@ import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.client.gui.panels.*;
 import com.lhy.wcwt.client.gui.widgets.*;
+import com.lhy.wcwt.client.gui.widgets.IconButton;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.EncodePatternPacket;
 import com.lhy.wcwt.network.ExtendedUIPacket;
+import com.lhy.wcwt.network.ManualAnvilNamePacket;
+import com.lhy.wcwt.network.ManualWorkspaceModePacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import com.lhy.wcwt.network.PatternMultiplierPacket;
 import com.lhy.wcwt.network.PatternModePacket;
@@ -55,6 +58,8 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu.WcwtActivatableSl
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractWidget;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.ChatFormatting;
@@ -62,6 +67,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -77,10 +83,12 @@ import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -118,6 +126,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     
     // 合成锁定按钮
     private CraftingLockButton craftingLockButton;
+    private IconButton manualCraftingButton;
+    private IconButton manualSmithingButton;
+    private IconButton manualAnvilButton;
+    private EditBox manualAnvilNameField;
+    private boolean syncingManualAnvilNameField;
+    private @Nullable AbstractWidget clearCraftingGridButton;
+    private @Nullable AbstractWidget clearToPlayerInvButton;
     private ActionButton encodePatternButton;
     private ActionButton clearPatternEncodingButton;
     private WcwtProcessingMaterialsMergeButton processingMaterialsMergeButton;
@@ -240,6 +255,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SLOT_Y_OFFSET = 0;
     private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET = 4;
     private static final int BUTTON_PRESS_OFFSET_Y = 1;
+    private static final int ANVIL_TOO_EXPENSIVE_COST = 40;
     private static final long FOCUSED_PATTERN_FLASH_PERIOD_MS = 480L;
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
     private static final int PLAYER_INVENTORY_SLOT_HIT_SIZE = 18;
@@ -258,6 +274,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wireless_comprehensive_work_terminal_gui.png");
     private static final ResourceLocation WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/background1.png");
+    private static final ResourceLocation WCWT_EXTENDED_CRAFTING_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_extended_crafting.png");
     private static final ResourceLocation WCWT_MANAGEMENT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_management.png");
     private static final ResourceLocation WCWT_STATES_TEXTURE =
@@ -399,6 +417,50 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             });
             widgets.add("CRAFTING_Locking", craftingLockButton);
         }
+
+        manualCraftingButton = new IconButton(0, 0, 12, 12,
+                0, 32, 0, 32, 8, 8,
+                WCWT_STATES_TEXTURE,
+                Component.translatable("gui.ae2.CraftingTerminal"),
+                btn -> switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING))
+                .drawTextureUnscaledCentered()
+                .disableHoverPressOffset();
+        widgets.add("manual_mode_button0", manualCraftingButton);
+
+        manualSmithingButton = new IconButton(0, 0, 12, 12,
+                16, 32, 16, 32, 8, 8,
+                WCWT_STATES_TEXTURE,
+                Component.translatable("gui.wcwt.manual_workspace.smithing"),
+                btn -> switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.SMITHING))
+                .drawTextureUnscaledCentered()
+                .disableHoverPressOffset();
+        widgets.add("manual_mode_button1", manualSmithingButton);
+
+        manualAnvilButton = new IconButton(0, 0, 12, 12,
+                32, 32, 32, 32, 8, 8,
+                WCWT_STATES_TEXTURE,
+                Component.translatable("gui.wcwt.manual_workspace.anvil"),
+                btn -> switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL))
+                .drawTextureUnscaledCentered()
+                .disableHoverPressOffset();
+        widgets.add("manual_mode_button2", manualAnvilButton);
+
+        manualAnvilNameField = new TransparentEditBox(font, 0, 0, 88, 12, Component.empty());
+        manualAnvilNameField.setCanLoseFocus(true);
+        manualAnvilNameField.setTextColor(-1);
+        manualAnvilNameField.setTextColorUneditable(-1);
+        manualAnvilNameField.setBordered(false);
+        manualAnvilNameField.setMaxLength(AnvilMenu.MAX_NAME_LENGTH);
+        manualAnvilNameField.setResponder(value -> {
+            if (syncingManualAnvilNameField) {
+                return;
+            }
+            if (menu.setManualAnvilName(value)) {
+                PacketDistributor.sendToServer(new ManualAnvilNamePacket(value));
+            }
+        });
+        manualAnvilNameField.setFocused(false);
+        widgets.add("manual_anvil_name", manualAnvilNameField);
 
         encodePatternButton = new ActionButton(appeng.api.config.ActionItems.ENCODE, this::handleEncodePatternButton);
         encodePatternButton.setMessage(Component.translatable("gui.tooltips.ae2.Encode"));
@@ -639,6 +701,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         super.init();
         rebuildCraftableIndicatorCache();
         syncRepoRowSize();
+        clearCraftingGridButton = resolveWidgetById("clearCraftingGrid");
+        clearToPlayerInvButton = resolveWidgetById("clearToPlayerInv");
         // 升级槽 maxRows 与终端风格联动（参考 WTLib WCT/WAT/WET 的标准做法）。
         // 切换"小/中/大终端"会让 ME 网格行数变化 → getVisibleRows() 变化 → 升级槽行数也跟着变。
         if (upgradesPanel != null) {
@@ -650,6 +714,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         // 扩展按钮位置依赖升级槽实际高度，必须在 setMaxRows 之后调用。
         initExtendedUIButtons();
         initializePanels();
+        updateManualWorkspaceUi();
     }
 
     private void syncRepoRowSize() {
@@ -1311,6 +1376,200 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             tabStonecutting.setSelected(patternEncodingMode == EncodingMode.STONECUTTING);
         }
     }
+
+    private void updateManualWorkspaceUi() {
+        var mode = menu.getManualWorkspaceMode();
+
+        updateManualWorkspaceButtons(mode);
+        updateManualCraftingControls(mode);
+        updateManualCraftingSlots(mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING);
+        updateManualSmithingSlots(mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.SMITHING);
+        updateManualAnvilSlots(mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL);
+        updateManualAnvilField(mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL);
+    }
+
+    private void switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
+        menu.setManualWorkspaceMode(mode);
+        updateManualWorkspaceUi();
+        PacketDistributor.sendToServer(new ManualWorkspaceModePacket(mode.ordinal()));
+    }
+
+    private void updateManualWorkspaceButtons(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
+        var first = mainLayout.widget("manual_mode_button0",
+                new ExtendedPanelLayout.Rect(108, imageHeight - 168, 12, 12), imageWidth, imageHeight);
+        var second = mainLayout.widget("manual_mode_button1",
+                new ExtendedPanelLayout.Rect(92, imageHeight - 168, 12, 12), imageWidth, imageHeight);
+        var third = mainLayout.widget("manual_mode_button2",
+                new ExtendedPanelLayout.Rect(106, imageHeight - 168, 12, 12), imageWidth, imageHeight);
+
+        if (manualCraftingButton != null) {
+            manualCraftingButton.setX(leftPos + first.left());
+            manualCraftingButton.setY(topPos + first.top());
+            manualCraftingButton.setWidth(first.width());
+            manualCraftingButton.setHeight(first.height());
+            manualCraftingButton.visible = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL;
+            manualCraftingButton.active = manualCraftingButton.visible;
+        }
+        if (manualSmithingButton != null) {
+            manualSmithingButton.setX(leftPos + second.left());
+            manualSmithingButton.setY(topPos + second.top());
+            manualSmithingButton.setWidth(second.width());
+            manualSmithingButton.setHeight(second.height());
+            manualSmithingButton.visible = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING;
+            manualSmithingButton.active = manualSmithingButton.visible;
+        }
+        if (manualAnvilButton != null) {
+            manualAnvilButton.setX(leftPos + third.left());
+            manualAnvilButton.setY(topPos + third.top());
+            manualAnvilButton.setWidth(third.width());
+            manualAnvilButton.setHeight(third.height());
+            manualAnvilButton.visible = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.SMITHING;
+            manualAnvilButton.active = manualAnvilButton.visible;
+        }
+    }
+
+    private void updateManualCraftingControls(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
+        if (craftingLockButton != null) {
+            craftingLockButton.visible = true;
+            craftingLockButton.active = true;
+        }
+
+        var clearGridRect = mainLayout.widget("clearCraftingGrid",
+                new ExtendedPanelLayout.Rect(134, imageHeight - 214, 8, 8), imageWidth, imageHeight);
+        var clearToPlayerRect = mainLayout.widget("clearToPlayerInv",
+                new ExtendedPanelLayout.Rect(144, imageHeight - 214, 8, 8), imageWidth, imageHeight);
+        var clearGridAnvilRect = mainLayout.widget("manual_clearCraftingGrid_anvil",
+                new ExtendedPanelLayout.Rect(78, imageHeight - 168, 8, 8), imageWidth, imageHeight);
+        var clearToPlayerAnvilRect = mainLayout.widget("manual_clearToPlayerInv_anvil",
+                new ExtendedPanelLayout.Rect(88, imageHeight - 168, 8, 8), imageWidth, imageHeight);
+        var activeClearGridRect = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL
+                ? clearGridAnvilRect
+                : clearGridRect;
+        var activeClearToPlayerRect = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL
+                ? clearToPlayerAnvilRect
+                : clearToPlayerRect;
+
+        if (clearCraftingGridButton != null) {
+            clearCraftingGridButton.setX(leftPos + activeClearGridRect.left());
+            clearCraftingGridButton.setY(topPos + activeClearGridRect.top());
+            clearCraftingGridButton.visible = true;
+            clearCraftingGridButton.active = true;
+        }
+        if (clearToPlayerInvButton != null) {
+            clearToPlayerInvButton.setX(leftPos + activeClearToPlayerRect.left());
+            clearToPlayerInvButton.setY(topPos + activeClearToPlayerRect.top());
+            clearToPlayerInvButton.visible = true;
+            clearToPlayerInvButton.active = true;
+        }
+    }
+
+    private void updateManualCraftingSlots(boolean visible) {
+        var base = mainLayout.slot("CRAFTING_GRID",
+                new ExtendedPanelLayout.Rect(79, imageHeight - 214, 18, 18), imageWidth, imageHeight);
+        var result = mainLayout.slot("CRAFTING_RESULT",
+                new ExtendedPanelLayout.Rect(149, imageHeight - 196, 18, 18), imageWidth, imageHeight);
+
+        var craftingSlots = menu.getSlots(SlotSemantics.CRAFTING_GRID);
+        for (int i = 0; i < craftingSlots.size(); i++) {
+            if (visible) {
+                showSlot(craftingSlots.get(i), base.left() + (i % 3) * 18, base.top() + (i / 3) * 18);
+            } else {
+                hideSlot(craftingSlots.get(i));
+            }
+        }
+
+        for (var slot : menu.getSlots(SlotSemantics.CRAFTING_RESULT)) {
+            if (visible) {
+                showSlot(slot, result.left(), result.top());
+            } else {
+                hideSlot(slot);
+            }
+        }
+    }
+
+    private void updateManualSmithingSlots(boolean visible) {
+        var template = mainLayout.widget("manual_smithing_template_slot",
+                new ExtendedPanelLayout.Rect(79, imageHeight - 194, 18, 18), imageWidth, imageHeight);
+        var base = mainLayout.widget("manual_smithing_base_slot",
+                new ExtendedPanelLayout.Rect(97, imageHeight - 194, 18, 18), imageWidth, imageHeight);
+        var addition = mainLayout.widget("manual_smithing_addition_slot",
+                new ExtendedPanelLayout.Rect(115, imageHeight - 194, 18, 18), imageWidth, imageHeight);
+        var result = mainLayout.widget("manual_smithing_result_slot",
+                new ExtendedPanelLayout.Rect(149, imageHeight - 196, 18, 18), imageWidth, imageHeight);
+        updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_SMITHING_TEMPLATE, visible, template.left(),
+                template.top());
+        updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_SMITHING_BASE, visible, base.left(), base.top());
+        updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_SMITHING_ADDITION, visible, addition.left(),
+                addition.top());
+        updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_SMITHING_RESULT, visible, result.left(), result.top());
+    }
+
+    private void updateManualAnvilSlots(boolean visible) {
+        var left = mainLayout.widget("manual_anvil_left_slot",
+                new ExtendedPanelLayout.Rect(79, imageHeight - 194, 18, 18), imageWidth, imageHeight);
+        var right = mainLayout.widget("manual_anvil_right_slot",
+                new ExtendedPanelLayout.Rect(115, imageHeight - 194, 18, 18), imageWidth, imageHeight);
+        var result = mainLayout.widget("manual_anvil_result_slot",
+                new ExtendedPanelLayout.Rect(149, imageHeight - 196, 18, 18), imageWidth, imageHeight);
+        updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT, visible, left.left(), left.top());
+        updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RIGHT, visible, right.left(), right.top());
+        updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT, visible, result.left(), result.top());
+    }
+
+    private void updateSingleSemanticSlot(appeng.menu.SlotSemantic semantic, boolean visible, int x, int y) {
+        for (var slot : menu.getSlots(semantic)) {
+            if (visible) {
+                showSlot(slot, x, y);
+            } else {
+                hideSlot(slot);
+            }
+        }
+    }
+
+    private void updateManualAnvilField(boolean visible) {
+        if (manualAnvilNameField == null) {
+            return;
+        }
+        var rect = mainLayout.widget("manual_anvil_name",
+                new ExtendedPanelLayout.Rect(78, imageHeight - 213, 88, 12), imageWidth, imageHeight);
+        manualAnvilNameField.setX(leftPos + rect.left());
+        manualAnvilNameField.setY(topPos + rect.top());
+        manualAnvilNameField.setWidth(rect.width());
+        manualAnvilNameField.setHeight(rect.height());
+        manualAnvilNameField.setVisible(visible);
+        manualAnvilNameField.active = visible;
+        if (!visible) {
+            manualAnvilNameField.setFocused(false);
+            if (getFocused() == manualAnvilNameField) {
+                setFocused(null);
+            }
+            return;
+        }
+        if (!manualAnvilNameField.isFocused()
+                && !Objects.equals(manualAnvilNameField.getValue(), menu.getManualAnvilName())) {
+            syncingManualAnvilNameField = true;
+            try {
+                manualAnvilNameField.setValue(menu.getManualAnvilName());
+            } finally {
+                syncingManualAnvilNameField = false;
+            }
+        }
+    }
+
+    private static final class TransparentEditBox extends EditBox {
+        private TransparentEditBox(net.minecraft.client.gui.Font font, int x, int y, int width, int height,
+                                   Component message) {
+            super(font, x, y, width, height, message);
+            setBordered(false);
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            if (isVisible()) {
+                super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
+            }
+        }
+    }
     
     /**
      * 仅高级编码面板专属的真实槽位（不含 CONFIG/替换 ghost —— 这些区域现在是面板内部自绘）。
@@ -1388,6 +1647,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         requestPatternProvidersIfNeeded();
         updateExtendedUIVisibility();
         updatePanelSlotActivity();
+        updateManualWorkspaceUi();
         updatePatternEncodingModeButtons();
         updatePatternEncodingSlots();
         syncPatternManagementSearchFromEncodedPatternSlot();
@@ -1917,6 +2177,23 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         slot.y = y;
     }
 
+    @SuppressWarnings("unchecked")
+    private @Nullable AbstractWidget resolveWidgetById(String id) {
+        try {
+            Field field = appeng.client.gui.WidgetContainer.class.getDeclaredField("widgets");
+            field.setAccessible(true);
+            Object value = field.get(widgets);
+            if (value instanceof Map<?, ?> map) {
+                Object widget = map.get(id);
+                if (widget instanceof AbstractWidget abstractWidget) {
+                    return abstractWidget;
+                }
+            }
+        } catch (ReflectiveOperationException ignored) {
+        }
+        return null;
+    }
+
     private void setSemanticSlotsHidden(appeng.menu.SlotSemantic semantic, boolean hidden) {
         setSlotsHidden(semantic, hidden);
         for (var slot : menu.getSlots(semantic)) {
@@ -2427,7 +2704,23 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void drawBG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX, int mouseY, float partialTicks) {
         super.drawBG(guiGraphics, offsetX, offsetY, mouseX, mouseY, partialTicks);
+        renderManualWorkspaceBackground(guiGraphics, offsetX, offsetY);
         renderPatternEncodingBackground(guiGraphics, offsetX, offsetY);
+    }
+
+    private void renderManualWorkspaceBackground(GuiGraphics guiGraphics, int offsetX, int offsetY) {
+        var mode = menu.getManualWorkspaceMode();
+        if (mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
+            return;
+        }
+
+        var rect = mainLayout.widget("manual_workspace_background",
+                new ExtendedPanelLayout.Rect(78, imageHeight - 213, 88, 58), imageWidth, imageHeight);
+        int srcY = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.SMITHING ? 0 : 59;
+        int renderHeight = Math.min(rect.height(), 58);
+        guiGraphics.blit(WCWT_EXTENDED_CRAFTING_TEXTURE,
+                offsetX + rect.left(), offsetY + rect.top(),
+                0, srcY, rect.width(), renderHeight, 256, 256);
     }
 
     private void renderPatternEncodingBackground(GuiGraphics guiGraphics, int offsetX, int offsetY) {
@@ -2522,7 +2815,41 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void drawFG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX, int mouseY) {
         super.drawFG(guiGraphics, offsetX, offsetY, mouseX, mouseY);
+        renderManualAnvilCost(guiGraphics);
         renderPatternManagement(guiGraphics, mouseX, mouseY);
+    }
+
+    private void renderManualAnvilCost(GuiGraphics guiGraphics) {
+        if (menu.getManualWorkspaceMode() != WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL) {
+            return;
+        }
+        int cost = menu.getManualAnvilCost();
+        if (cost <= 0 || !hasManualAnvilResult()) {
+            return;
+        }
+
+        boolean tooExpensive = cost >= ANVIL_TOO_EXPENSIVE_COST
+                && (minecraft == null || minecraft.player == null || !minecraft.player.getAbilities().instabuild);
+        Component text = tooExpensive
+                ? Component.translatable("container.repair.expensive")
+                : Component.translatable("container.repair.cost", cost);
+        int color = tooExpensive || !mayPickupManualAnvilResult() ? 0xFF6060 : 0x80FF20;
+        var rect = mainLayout.widget("manual_anvil_cost",
+                new ExtendedPanelLayout.Rect(79, imageHeight - 194, 0, 0), imageWidth, imageHeight);
+        guiGraphics.drawString(font, text, rect.left(), rect.top(), color);
+    }
+
+    private boolean hasManualAnvilResult() {
+        return menu.getSlots(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT).stream()
+                .anyMatch(slot -> !slot.getItem().isEmpty());
+    }
+
+    private boolean mayPickupManualAnvilResult() {
+        if (minecraft == null || minecraft.player == null) {
+            return false;
+        }
+        return menu.getSlots(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT).stream()
+                .anyMatch(slot -> slot.mayPickup(minecraft.player));
     }
 
     private void renderPatternManagement(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -3018,6 +3345,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (button == 0 && handlePatternManagementProviderSlotInteract(mouseX, mouseY)) {
             return true;
         }
+        if (button == 0 && handleManualAnvilNameFieldClick(mouseX, mouseY)) {
+            return true;
+        }
         // 先检查扩展UI面板是否处理点击
         if (advancedCodingPanel != null && advancedCodingPanel.isVisible()) {
             if (advancedCodingPanel.mouseClicked(mouseX, mouseY, button)) {
@@ -3090,6 +3420,38 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    private boolean handleManualAnvilNameFieldClick(double mouseX, double mouseY) {
+        if (manualAnvilNameField == null || !manualAnvilNameField.isVisible()) {
+            return false;
+        }
+
+        if (!manualAnvilNameField.isMouseOver(mouseX, mouseY)) {
+            manualAnvilNameField.setFocused(false);
+            if (getFocused() == manualAnvilNameField) {
+                setFocused(null);
+            }
+            return false;
+        }
+
+        setFocused(manualAnvilNameField);
+        return manualAnvilNameField.mouseClicked(mouseX, mouseY, 0);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (manualAnvilNameField != null && manualAnvilNameField.isVisible() && manualAnvilNameField.isFocused()
+                && (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
+                || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER
+                || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE)) {
+            manualAnvilNameField.setFocused(false);
+            if (getFocused() == manualAnvilNameField) {
+                setFocused(null);
+            }
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     private boolean handleStonecuttingRecipeClick(double mouseX, double mouseY) {

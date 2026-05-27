@@ -13,6 +13,7 @@ import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.core.network.serverbound.FillCraftingGridFromRecipePacket;
 import appeng.core.definitions.AEItems;
 import appeng.helpers.patternprovider.PatternContainer;
+import appeng.items.storage.ViewCellItem;
 import appeng.menu.MenuOpener;
 import appeng.menu.SlotSemantics;
 import appeng.menu.me.items.CraftingTermMenu;
@@ -26,6 +27,7 @@ import appeng.parts.encoding.EncodingMode;
 import appeng.parts.encoding.PatternEncodingLogic;
 import appeng.util.ConfigInventory;
 import appeng.util.inv.FilteredInternalInventory;
+import appeng.util.inv.PlayerInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
 import com.lhy.wcwt.api.IExtendedUIHost;
@@ -50,6 +52,7 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
+import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.crafting.CraftingInput;
@@ -57,12 +60,18 @@ import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
+import net.minecraft.world.item.crafting.SmithingRecipe;
 import net.minecraft.world.item.crafting.SmithingRecipeInput;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AnvilMenu;
+import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.inventory.ItemCombinerMenuSlotDefinition;
 import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.inventory.ResultContainer;
+import net.minecraft.world.inventory.SmithingMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
@@ -81,6 +90,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu implements IOptionalSlotHost {
@@ -95,6 +105,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     public static final String TYPE_ID = "wireless_comprehensive_work_terminal";
     public static final String TOP_ACTION = "topAction";
+    private static final String ACTION_CLEAR_MANUAL_TO_PLAYER = "clearManualToPlayer";
     private static final boolean DEBUG_ENCODE = Boolean.getBoolean("wcwt.debug.encode");
     private static final boolean DEBUG_ADVANCED = Boolean.getBoolean("wcwt.debug.advanced");
     private static final String DEFAULT_CRAFTING_PROVIDER_SEARCH_KEY = "crafting";
@@ -114,6 +125,19 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     public interface WcwtActivatableSlot {
         void setWcwtActive(boolean active);
+    }
+
+    public enum ManualWorkspaceMode {
+        CRAFTING,
+        SMITHING,
+        ANVIL;
+
+        public static ManualWorkspaceMode fromOrdinal(int ordinal) {
+            if (ordinal < 0 || ordinal >= values().length) {
+                return CRAFTING;
+            }
+            return values()[ordinal];
+        }
     }
 
     /**
@@ -136,6 +160,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private FakeSlot smithingTableBaseSlot;
     private FakeSlot smithingTableAdditionSlot;
     private FakeSlot stonecuttingInputSlot;
+    private AppEngSlot manualSmithingTemplateSlot;
+    private AppEngSlot manualSmithingBaseSlot;
+    private AppEngSlot manualSmithingAdditionSlot;
+    private Slot manualSmithingResultSlot;
+    private AppEngSlot manualAnvilLeftSlot;
+    private AppEngSlot manualAnvilRightSlot;
+    private Slot manualAnvilResultSlot;
     private PatternTermSlot patternPreviewSlot;
     private RestrictedInputSlot blankPatternSlot;
     private RestrictedInputSlot encodedPatternSlot;
@@ -157,11 +188,19 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private long patternProviderSyncSubscriptionUntilTick;
     private long lastPatternProviderRequestTick = Long.MIN_VALUE;
     private long lastInventorySyncTick = Long.MIN_VALUE;
+    private final ManualSmithingMenuBridge manualSmithingBridge;
+    private final ManualAnvilMenuBridge manualAnvilBridge;
+    private int manualAnvilCost;
+    private String manualAnvilName = "";
+    private int syncedManualWorkspaceMode = ManualWorkspaceMode.CRAFTING.ordinal();
+    private int syncedManualAnvilCost;
 
     public WirelessComprehensiveWorkTerminalMenu(int id, Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) {
         super(com.lhy.wcwt.init.ModMenus.WCWT_MENU.get(), id, ip, host, false);
         this.menuHost = host;
         this.patternEncodingLogic = host.getLogic();
+        this.manualSmithingBridge = new ManualSmithingMenuBridge();
+        this.manualAnvilBridge = new ManualAnvilMenuBridge();
         // 注意：不要在这里 new ToolboxMenu(this)！
         // 父类 MEStorageMenu 的构造器已经 new ToolboxMenu(this) 并添加了 9 个 TOOLBOX 槽，
         // 若在此重复创建则共有 18 个槽，界面会显示"两重"效果。
@@ -170,6 +209,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         addCosmeticArmorSlots(ip);
         
         addCuriosSlots(ip);
+        addManualWorkspaceSlots();
 
         addPatternEncodingSlots();
         tryFillBlankPatternFromNetwork();
@@ -337,10 +377,42 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 syncedPatternManagementSearchMode = value;
             }
         });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return menuHost != null ? menuHost.getManualWorkspaceMode() : syncedManualWorkspaceMode;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedManualWorkspaceMode = value;
+                if (isClientSide() && menuHost != null) {
+                    menuHost.setManualWorkspaceMode(value);
+                }
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return manualAnvilCost;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedManualAnvilCost = value;
+            }
+        });
         registerClientAction(TOP_ACTION, TopActionPacket.Action.class, this::handleTopAction);
+        registerClientAction(ACTION_CLEAR_MANUAL_TO_PLAYER, this::clearManualWorkspaceToPlayerInventory);
 
         // 创建玩家物品栏槽位
         this.createPlayerInventorySlots(ip);
+        if (menuHost != null) {
+            manualAnvilName = menuHost.getManualAnvilName();
+            syncedManualWorkspaceMode = menuHost.getManualWorkspaceMode();
+        }
+        applyManualWorkspaceSlotActivation(ManualWorkspaceMode.fromOrdinal(syncedManualWorkspaceMode));
+        updateManualWorkspaceResults();
     }
 
     private void addPlayerEquipmentSlots(Inventory inventory) {
@@ -486,6 +558,47 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (curiosInv != null) {
             addSlot(new AppEngSlot(curiosInv, 0), WcwtSlotSemantics.AE_CURIOS);
         }
+    }
+
+    private void addManualWorkspaceSlots() {
+        if (menuHost == null) {
+            return;
+        }
+
+        var smithingInv = menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
+        if (smithingInv != null) {
+            manualSmithingTemplateSlot = new ManualWorkspaceAppEngSlot(smithingInv, 0,
+                    stack -> manualSmithingBridge.mayPlaceInInputSlot(0, stack));
+            manualSmithingTemplateSlot.setActive(false);
+            addSlot(manualSmithingTemplateSlot, WcwtSlotSemantics.WCWT_MANUAL_SMITHING_TEMPLATE);
+
+            manualSmithingBaseSlot = new ManualWorkspaceAppEngSlot(smithingInv, 1,
+                    stack -> manualSmithingBridge.mayPlaceInInputSlot(1, stack));
+            manualSmithingBaseSlot.setActive(false);
+            addSlot(manualSmithingBaseSlot, WcwtSlotSemantics.WCWT_MANUAL_SMITHING_BASE);
+
+            manualSmithingAdditionSlot = new ManualWorkspaceAppEngSlot(smithingInv, 2,
+                    stack -> manualSmithingBridge.mayPlaceInInputSlot(2, stack));
+            manualSmithingAdditionSlot.setActive(false);
+            addSlot(manualSmithingAdditionSlot, WcwtSlotSemantics.WCWT_MANUAL_SMITHING_ADDITION);
+        }
+
+        manualSmithingResultSlot = new ManualSmithingResultSlot();
+        addSlot(manualSmithingResultSlot, WcwtSlotSemantics.WCWT_MANUAL_SMITHING_RESULT);
+
+        var anvilInv = menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
+        if (anvilInv != null) {
+            manualAnvilLeftSlot = new ManualWorkspaceAppEngSlot(anvilInv, 0, stack -> true);
+            manualAnvilLeftSlot.setActive(false);
+            addSlot(manualAnvilLeftSlot, WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT);
+
+            manualAnvilRightSlot = new ManualWorkspaceAppEngSlot(anvilInv, 1, stack -> true);
+            manualAnvilRightSlot.setActive(false);
+            addSlot(manualAnvilRightSlot, WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RIGHT);
+        }
+
+        manualAnvilResultSlot = new ManualAnvilResultSlot();
+        addSlot(manualAnvilResultSlot, WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT);
     }
 
     private static class PlayerArmorSlot extends Slot implements WcwtActivatableSlot {
@@ -640,6 +753,188 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             this.active = active;
         }
     }
+
+    private static final class ManualWorkspaceAppEngSlot extends AppEngSlot {
+        private final java.util.function.Predicate<ItemStack> mayPlacePredicate;
+
+        private ManualWorkspaceAppEngSlot(InternalInventory inventory, int invSlot,
+                                          java.util.function.Predicate<ItemStack> mayPlacePredicate) {
+            super(inventory, invSlot);
+            this.mayPlacePredicate = mayPlacePredicate;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return super.mayPlace(stack) && mayPlacePredicate.test(stack);
+        }
+    }
+
+    private final class ManualSmithingResultSlot extends Slot implements WcwtActivatableSlot {
+        private boolean active;
+
+        private ManualSmithingResultSlot() {
+            super(manualSmithingBridge.getResultContainer(), 0, 0, 0);
+            this.active = false;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return active && manualSmithingBridge.mayPickupResult(player);
+        }
+
+        @Override
+        public void onTake(Player player, ItemStack stack) {
+            manualSmithingBridge.takeResult(player, stack);
+            updateManualWorkspaceResults();
+        }
+
+        @Override
+        public boolean isActive() {
+            return active;
+        }
+
+        @Override
+        public void setWcwtActive(boolean active) {
+            this.active = active;
+        }
+    }
+
+    private final class ManualAnvilResultSlot extends Slot implements WcwtActivatableSlot {
+        private boolean active;
+
+        private ManualAnvilResultSlot() {
+            super(manualAnvilBridge.getResultContainer(), 0, 0, 0);
+            this.active = false;
+        }
+
+        @Override
+        public boolean mayPlace(ItemStack stack) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            return active && manualAnvilBridge.mayPickupResult(player);
+        }
+
+        @Override
+        public void onTake(Player player, ItemStack stack) {
+            manualAnvilBridge.takeResult(player, stack);
+            updateManualWorkspaceResults();
+        }
+
+        @Override
+        public boolean isActive() {
+            return active;
+        }
+
+        @Override
+        public void setWcwtActive(boolean active) {
+            this.active = active;
+        }
+    }
+
+    private final class ManualSmithingMenuBridge extends SmithingMenu {
+        private ManualSmithingMenuBridge() {
+            super(-1, WirelessComprehensiveWorkTerminalMenu.this.getPlayerInventory(), ContainerLevelAccess.NULL);
+        }
+
+        private ResultContainer getResultContainer() {
+            return this.resultSlots;
+        }
+
+        private boolean mayPlaceInInputSlot(int slotIndex, ItemStack stack) {
+            return slotIndex >= 0 && slotIndex < 3 && this.slots.get(slotIndex).mayPlace(stack);
+        }
+
+        private void syncFrom(InternalInventory inventory) {
+            this.inputSlots.setItem(0, inventory.getStackInSlot(0).copy());
+            this.inputSlots.setItem(1, inventory.getStackInSlot(1).copy());
+            this.inputSlots.setItem(2, inventory.getStackInSlot(2).copy());
+            this.createResult();
+        }
+
+        private boolean mayPickupResult(Player player) {
+            return this.getSlot(3).mayPickup(player);
+        }
+
+        private void takeResult(Player player, ItemStack stack) {
+            var inv = menuHost == null ? null
+                    : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
+            ItemStack[] before = new ItemStack[3];
+            if (inv != null) {
+                for (int i = 0; i < before.length; i++) {
+                    before[i] = inv.getStackInSlot(i).copy();
+                }
+            }
+            var resultSlot = this.getSlot(3);
+            this.resultSlots.setItem(0, stack.copy());
+            resultSlot.remove(stack.getCount());
+            resultSlot.onTake(player, stack);
+            if (inv != null) {
+                for (int i = 0; i < 3; i++) {
+                    inv.setItemDirect(i, this.inputSlots.getItem(i).copy());
+                }
+                restockManualSmithingInputs(inv, before);
+                this.syncFrom(inv);
+            }
+        }
+    }
+
+    private final class ManualAnvilMenuBridge extends AnvilMenu {
+        ManualAnvilMenuBridge() {
+            super(-1, WirelessComprehensiveWorkTerminalMenu.this.getPlayerInventory(), ContainerLevelAccess.NULL);
+        }
+
+        @Override
+        protected boolean isValidBlock(net.minecraft.world.level.block.state.BlockState state) {
+            return true;
+        }
+
+        @Override
+        protected boolean mayPickup(Player player, boolean hasStack) {
+            return super.mayPickup(player, hasStack);
+        }
+
+        @Override
+        protected void onTake(Player player, ItemStack stack) {
+            super.onTake(player, stack);
+        }
+
+        private void syncFrom(ItemStack left, ItemStack right, String name) {
+            this.inputSlots.setItem(0, left.copy());
+            this.inputSlots.setItem(1, right.copy());
+            this.setItemName(name);
+            this.createResult();
+        }
+
+        private ResultContainer getResultContainer() {
+            return this.resultSlots;
+        }
+
+        private boolean mayPickupResult(Player player) {
+            return this.getSlot(2).mayPickup(player);
+        }
+
+        private void takeResult(Player player, ItemStack stack) {
+            var resultSlot = this.getSlot(2);
+            this.resultSlots.setItem(0, stack.copy());
+            resultSlot.remove(stack.getCount());
+            resultSlot.onTake(player, stack);
+            var inv = menuHost == null ? null
+                    : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
+            if (inv != null) {
+                inv.setItemDirect(0, this.inputSlots.getItem(0).copy());
+                inv.setItemDirect(1, this.inputSlots.getItem(1).copy());
+            }
+            manualAnvilCost = this.getCost();
+        }
+    }
     
     public WirelessComprehensiveWorkTerminalMenu(MenuType<?> menuType, int id, Inventory ip, ITerminalHost host) {
         super(menuType, id, ip, host, true);
@@ -647,10 +942,114 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         this.patternEncodingLogic = host instanceof appeng.helpers.IPatternTerminalMenuHost patternHost
                 ? patternHost.getLogic()
                 : null;
+        this.manualSmithingBridge = new ManualSmithingMenuBridge();
+        this.manualAnvilBridge = new ManualAnvilMenuBridge();
     }
     
     public WirelessComprehensiveWorkTerminalMenuHost getMenuHost() {
         return menuHost;
+    }
+
+    public ManualWorkspaceMode getManualWorkspaceMode() {
+        if (!isClientSide() && menuHost != null) {
+            return ManualWorkspaceMode.fromOrdinal(menuHost.getManualWorkspaceMode());
+        }
+        return ManualWorkspaceMode.fromOrdinal(syncedManualWorkspaceMode);
+    }
+
+    public void setManualWorkspaceMode(ManualWorkspaceMode mode) {
+        if (mode == null) {
+            mode = ManualWorkspaceMode.CRAFTING;
+        }
+        syncedManualWorkspaceMode = mode.ordinal();
+        applyManualWorkspaceSlotActivation(mode);
+        if (isClientSide()) {
+            if (menuHost != null) {
+                menuHost.setManualWorkspaceMode(syncedManualWorkspaceMode);
+            }
+            updateManualWorkspaceResults();
+            return;
+        }
+        if (menuHost != null) {
+            menuHost.setManualWorkspaceMode(mode.ordinal());
+        }
+        updateManualWorkspaceResults();
+        broadcastChanges();
+    }
+
+    public String getManualAnvilName() {
+        return manualAnvilName;
+    }
+
+    public boolean setManualAnvilName(String name) {
+        String normalized = normalizeManualAnvilName(name);
+        if (Objects.equals(normalized, manualAnvilName)) {
+            return false;
+        }
+        manualAnvilName = normalized;
+        if (menuHost != null) {
+            menuHost.setManualAnvilName(normalized);
+        }
+        manualAnvilBridge.setItemName(normalized);
+        updateManualAnvilResult();
+        broadcastChanges();
+        return true;
+    }
+
+    public int getManualAnvilCost() {
+        return isClientSide() ? syncedManualAnvilCost : manualAnvilCost;
+    }
+
+    @Override
+    public boolean hasIngredient(net.minecraft.world.item.crafting.Ingredient ingredient,
+                                 it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap<Object> reservedAmounts) {
+        if (getManualWorkspaceMode() == ManualWorkspaceMode.CRAFTING) {
+            return super.hasIngredient(ingredient, reservedAmounts);
+        }
+        for (var slot : getCurrentManualWorkspaceInputSlots()) {
+            var stackInSlot = slot.getItem();
+            if (!stackInSlot.isEmpty() && ingredient.test(stackInSlot)) {
+                var reservedAmount = reservedAmounts.getOrDefault(slot, 0);
+                if (stackInSlot.getCount() > reservedAmount) {
+                    reservedAmounts.merge(slot, 1, Integer::sum);
+                    return true;
+                }
+            }
+        }
+        var clientRepo = getClientRepo();
+        if (clientRepo != null && getLinkStatus().connected()) {
+            for (var stack : clientRepo.getByIngredient(ingredient)) {
+                var reservedAmount = reservedAmounts.getOrDefault(stack, 0);
+                if (stack.getStoredAmount() - reservedAmount >= 1) {
+                    reservedAmounts.merge(stack, 1, Integer::sum);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private List<Slot> getCurrentManualWorkspaceInputSlots() {
+        List<Slot> slots = new ArrayList<>();
+        switch (getManualWorkspaceMode()) {
+            case CRAFTING -> slots.addAll(getSlots(SlotSemantics.CRAFTING_GRID));
+            case SMITHING -> {
+                addIfNotNull(slots, manualSmithingTemplateSlot);
+                addIfNotNull(slots, manualSmithingBaseSlot);
+                addIfNotNull(slots, manualSmithingAdditionSlot);
+            }
+            case ANVIL -> {
+                addIfNotNull(slots, manualAnvilLeftSlot);
+                addIfNotNull(slots, manualAnvilRightSlot);
+            }
+        }
+        return slots;
+    }
+
+    private static void addIfNotNull(List<Slot> slots, @Nullable Slot slot) {
+        if (slot != null) {
+            slots.add(slot);
+        }
     }
 
     public EncodingMode getPatternEncodingMode() {
@@ -672,6 +1071,96 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             updatePatternPreview(mode);
             broadcastChanges();
         }
+    }
+
+    @Override
+    public void slotsChanged(Container inventory) {
+        super.slotsChanged(inventory);
+        updateManualWorkspaceResults();
+    }
+
+    private void updateManualWorkspaceResults() {
+        updateManualSmithingResult();
+        updateManualAnvilResult();
+    }
+
+    private boolean isManualResultSlot(Slot slot) {
+        return slot == manualSmithingResultSlot || slot == manualAnvilResultSlot;
+    }
+
+    private void applyManualWorkspaceSlotActivation(ManualWorkspaceMode mode) {
+        boolean crafting = mode == ManualWorkspaceMode.CRAFTING;
+        boolean smithing = mode == ManualWorkspaceMode.SMITHING;
+        boolean anvil = mode == ManualWorkspaceMode.ANVIL;
+
+        setManualSlotActive(manualSmithingTemplateSlot, smithing);
+        setManualSlotActive(manualSmithingBaseSlot, smithing);
+        setManualSlotActive(manualSmithingAdditionSlot, smithing);
+        setManualSlotActive(manualSmithingResultSlot, smithing);
+
+        setManualSlotActive(manualAnvilLeftSlot, anvil);
+        setManualSlotActive(manualAnvilRightSlot, anvil);
+        setManualSlotActive(manualAnvilResultSlot, anvil);
+
+        for (var slot : getSlots(SlotSemantics.CRAFTING_GRID)) {
+            setManualSlotActive(slot, crafting);
+        }
+        for (var slot : getSlots(SlotSemantics.CRAFTING_RESULT)) {
+            setManualSlotActive(slot, crafting);
+        }
+    }
+
+    private static void setManualSlotActive(@Nullable Slot slot, boolean active) {
+        if (slot == null) {
+            return;
+        }
+        if (slot instanceof AppEngSlot appEngSlot) {
+            appEngSlot.setActive(active);
+        } else if (slot instanceof WcwtActivatableSlot activatableSlot) {
+            activatableSlot.setWcwtActive(active);
+        }
+    }
+
+    private void updateManualSmithingResult() {
+        if (menuHost == null) {
+            return;
+        }
+        var inv = menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
+        if (inv == null) {
+            return;
+        }
+        manualSmithingBridge.syncFrom(inv);
+    }
+
+    private void updateManualAnvilResult() {
+        if (menuHost == null) {
+            return;
+        }
+        var inv = menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
+        if (inv == null) {
+            return;
+        }
+
+        var left = inv.getStackInSlot(0);
+        var right = inv.getStackInSlot(1);
+        if (left.isEmpty()) {
+            manualAnvilBridge.syncFrom(ItemStack.EMPTY, ItemStack.EMPTY, manualAnvilName);
+            manualAnvilCost = 0;
+            return;
+        }
+
+        manualAnvilBridge.syncFrom(left, right, manualAnvilName);
+        manualAnvilCost = manualAnvilBridge.getCost();
+    }
+
+    private static String normalizeManualAnvilName(String name) {
+        if (name == null) {
+            return "";
+        }
+        String filtered = net.minecraft.util.StringUtil.filterText(name);
+        return filtered.length() <= AnvilMenu.MAX_NAME_LENGTH
+                ? filtered
+                : filtered.substring(0, AnvilMenu.MAX_NAME_LENGTH);
     }
 
     public List<RecipeHolder<StonecutterRecipe>> getStonecuttingRecipes() {
@@ -1655,9 +2144,142 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             case SWITCH_FILTERS -> menuHost.switchMagnetFilters();
             case OPEN_MAGNET_MENU -> openWcwtSubMenu(ModMenus.WCWT_MAGNET_MENU.get());
             case OPEN_TRASH_MENU -> openWcwtSubMenu(ModMenus.WCWT_TRASH_MENU.get());
+            case CLEAR_MANUAL_WORKSPACE -> clearManualWorkspaceToNetwork();
             default -> {
             }
         }
+    }
+
+    @Override
+    public void clearCraftingGrid() {
+        if (getManualWorkspaceMode() == ManualWorkspaceMode.CRAFTING) {
+            super.clearCraftingGrid();
+            return;
+        }
+        if (isClientSide()) {
+            PacketDistributor.sendToServer(new TopActionPacket(TopActionPacket.Action.CLEAR_MANUAL_WORKSPACE));
+            return;
+        }
+        clearManualWorkspaceToNetwork();
+    }
+
+    @Override
+    public void clearToPlayerInventory() {
+        if (getManualWorkspaceMode() == ManualWorkspaceMode.CRAFTING) {
+            super.clearToPlayerInventory();
+            return;
+        }
+        if (isClientSide()) {
+            sendClientAction(ACTION_CLEAR_MANUAL_TO_PLAYER);
+            return;
+        }
+        clearManualWorkspaceToPlayerInventory();
+    }
+
+    private void clearManualWorkspaceToNetwork() {
+        if (menuHost == null) {
+            return;
+        }
+        var target = getCurrentManualWorkspaceInputInventory();
+        if (target == null) {
+            return;
+        }
+        var storage = menuHost.getInventory();
+        var energy = getEnergySource();
+        var source = getActionSource();
+        for (int i = 0; i < target.size(); i++) {
+            ItemStack stack = target.getStackInSlot(i);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            var key = AEItemKey.of(stack);
+            if (key == null) {
+                continue;
+            }
+            long inserted = StorageHelper.poweredInsert(energy, storage, key, stack.getCount(), source);
+            if (inserted > 0) {
+                ItemStack remaining = stack.copy();
+                remaining.shrink((int) Math.min(inserted, Integer.MAX_VALUE));
+                target.setItemDirect(i, remaining);
+            }
+        }
+        updateManualWorkspaceResults();
+        broadcastChanges();
+    }
+
+    private void clearManualWorkspaceToPlayerInventory() {
+        if (menuHost == null) {
+            return;
+        }
+        var target = getCurrentManualWorkspaceInputInventory();
+        if (target == null) {
+            return;
+        }
+        var playerInv = new PlayerInternalInventory(getPlayerInventory());
+        for (int i = 0; i < target.size(); ++i) {
+            for (int emptyLoop = 0; emptyLoop < 2; ++emptyLoop) {
+                boolean allowEmpty = emptyLoop == 1;
+                final int hotbarSize = 9;
+                for (int j = hotbarSize; j-- > 0;) {
+                    if (playerInv.getStackInSlot(j).isEmpty() == allowEmpty) {
+                        target.setItemDirect(i, playerInv.getSlotInv(j).addItems(target.getStackInSlot(i)));
+                    }
+                }
+                for (int j = hotbarSize; j < Inventory.INVENTORY_SIZE; ++j) {
+                    if (playerInv.getStackInSlot(j).isEmpty() == allowEmpty) {
+                        target.setItemDirect(i, playerInv.getSlotInv(j).addItems(target.getStackInSlot(i)));
+                    }
+                }
+            }
+        }
+        updateManualWorkspaceResults();
+        broadcastChanges();
+    }
+
+    private void restockManualSmithingInputs(InternalInventory inventory, ItemStack[] before) {
+        if (isClientSide() || menuHost == null || before == null) {
+            return;
+        }
+        var filter = ViewCellItem.createItemFilter(getViewCells());
+        for (int slot = 0; slot < Math.min(3, before.length); slot++) {
+            ItemStack previous = before[slot];
+            if (previous == null || previous.isEmpty()) {
+                continue;
+            }
+            ItemStack current = inventory.getStackInSlot(slot);
+            if (!current.isEmpty() && !ItemStack.isSameItemSameComponents(previous, current)) {
+                continue;
+            }
+            int missing = previous.getCount() - current.getCount();
+            if (missing <= 0) {
+                continue;
+            }
+            AEItemKey key = AEItemKey.of(previous);
+            if (key == null || filter != null && !filter.isListed(key)) {
+                continue;
+            }
+            long extracted = StorageHelper.poweredExtraction(energySource, storage, key, missing, getActionSource());
+            if (extracted <= 0) {
+                continue;
+            }
+            ItemStack remainder = inventory.insertItem(slot, key.toStack((int) Math.min(extracted, Integer.MAX_VALUE)),
+                    false);
+            if (!remainder.isEmpty()) {
+                StorageHelper.poweredInsert(energySource, storage, key, remainder.getCount(), getActionSource());
+            }
+        }
+    }
+
+    @Nullable
+    private InternalInventory getCurrentManualWorkspaceInputInventory() {
+        if (menuHost == null) {
+            return null;
+        }
+        return switch (getManualWorkspaceMode()) {
+            case CRAFTING -> getCraftingMatrix();
+            case SMITHING -> menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
+            case ANVIL -> menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
+        };
     }
 
     private void openWcwtSubMenu(MenuType<?> menuType) {
@@ -2090,6 +2712,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private ItemStack wcwtQuickMoveStackUnchecked(Player player, int slotIndex) {
         if (slotIndex >= 0 && slotIndex < slots.size()) {
             Slot sourceSlot = slots.get(slotIndex);
+            if (isManualResultSlot(sourceSlot)) {
+                ItemStack result = super.quickMoveStack(player, slotIndex);
+                updateManualWorkspaceResults();
+                broadcastChanges();
+                return result;
+            }
             if (sourceSlot.hasItem() && !isPlayerArmorSlot(sourceSlot)) {
                 ItemStack sourceStack = sourceSlot.getItem();
                 ItemStack movedCurioToPlayer = tryMoveCurioToPlayerInventoryFirst(player, sourceSlot, sourceStack);
@@ -2380,6 +3008,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     @Override
     public void onSlotChange(Slot slot) {
         super.onSlotChange(slot);
+        if (slot == manualSmithingTemplateSlot
+                || slot == manualSmithingBaseSlot
+                || slot == manualSmithingAdditionSlot
+                || slot == manualAnvilLeftSlot
+                || slot == manualAnvilRightSlot) {
+            updateManualWorkspaceResults();
+        }
         updatePatternPreview(getPatternEncodingMode());
         if (menuHost != null && getSlots(WcwtSlotSemantics.WCWT_CELL_UPGRADE).contains(slot)) {
             menuHost.persistStorageCellItem();

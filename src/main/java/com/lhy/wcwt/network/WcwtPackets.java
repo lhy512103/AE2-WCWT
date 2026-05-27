@@ -49,6 +49,18 @@ public class WcwtPackets {
         );
 
         registrar.playToServer(
+            ManualWorkspaceModePacket.TYPE,
+            ManualWorkspaceModePacket.STREAM_CODEC,
+            ManualWorkspaceModePacket::handle
+        );
+
+        registrar.playToServer(
+            ManualAnvilNamePacket.TYPE,
+            ManualAnvilNamePacket.STREAM_CODEC,
+            ManualAnvilNamePacket::handle
+        );
+
+        registrar.playToServer(
             EncodePatternPacket.TYPE,
             EncodePatternPacket.STREAM_CODEC,
             EncodePatternPacket::handle

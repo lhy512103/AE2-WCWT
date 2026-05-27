@@ -92,6 +92,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     public static final ResourceLocation INV_TOOLKIT = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit");
     public static final ResourceLocation INV_STORAGE_CELL = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "storage_cell");
     public static final ResourceLocation INV_RESONATING_PATTERN_CACHE = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "resonating_pattern_cache");
+    public static final ResourceLocation INV_MANUAL_SMITHING = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "manual_smithing");
+    public static final ResourceLocation INV_MANUAL_ANVIL = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "manual_anvil");
     public static final ResourceLocation INV_TRASH = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "trash");
     /** 缠绕态奇点槽位库存标识（与 ae2wtlib 保持一致，复用其 ResourceLocation） */
     public static final ResourceLocation INV_SINGULARITY = ResourceLocation.fromNamespaceAndPath("ae2wtlib", "singularity");
@@ -129,6 +131,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private final SupplierInternalInventory<InternalInventory> storageCellInv;
     // 谐振样板缓存区 - 21个槽位（3行×7列）
     private final SupplierInternalInventory<InternalInventory> resonatingPatternCacheInv;
+    // 左上手动锻造台工作区 - 3个槽位
+    private final SupplierInternalInventory<InternalInventory> manualSmithingInv;
+    // 左上手动铁砧工作区 - 2个槽位
+    private final SupplierInternalInventory<InternalInventory> manualAnvilInv;
     private final AppEngInternalInventory trashInv = new AppEngInternalInventory(27);
     private final ConfigInventory magnetPickupConfig = ConfigInventory.configTypes(27)
             .changeListener(this::updateMagnetPickupConfig)
@@ -164,6 +170,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private boolean patternManagementShowSlots;
     /** 样板管理区搜索模式，持久化到终端物品自身。 */
     private int patternManagementSearchMode;
+    /** 左上手动工作区模式。 */
+    private int manualWorkspaceMode;
+    /** 左上铁砧工作区当前命名文本。 */
+    private String manualAnvilName;
     
     public WirelessComprehensiveWorkTerminalMenuHost(WirelessComprehensiveWorkTerminalItem item, Player player,
                                                       ItemMenuHostLocator locator,
@@ -224,6 +234,16 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 new StackDependentSupplier<>(
                         this::getItemStack,
                         stack -> createInventory(player, stack, "resonating_pattern_cache", 21)));
+
+        this.manualSmithingInv = new SupplierInternalInventory<>(
+                new StackDependentSupplier<>(
+                        this::getItemStack,
+                        stack -> createInventory(player, stack, "manual_smithing", 3)));
+
+        this.manualAnvilInv = new SupplierInternalInventory<>(
+                new StackDependentSupplier<>(
+                        this::getItemStack,
+                        stack -> createInventory(player, stack, "manual_anvil", 2)));
         patternEncodingLogic.readFromNBT(getItemStack().getOrDefault(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new net.minecraft.nbt.CompoundTag()),
                 player.registryAccess());
         magnetPickupConfig.readFromChildTag(getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag()),
@@ -239,6 +259,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 ModComponents.PATTERN_MANAGEMENT_SHOW_SLOTS.get(), true);
         this.patternManagementSearchMode = getItemStack().getOrDefault(
                 ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE.get(), 2);
+        this.manualWorkspaceMode = getItemStack().getOrDefault(ModComponents.MANUAL_WORKSPACE_MODE.get(), 0);
+        this.manualAnvilName = getItemStack().getOrDefault(ModComponents.MANUAL_ANVIL_NAME.get(), "");
         this.currentExtendedUI = consumePendingExtendedUi(player);
         if (DEBUG_TOOLKIT) {
             WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, consumedPendingUi={}, locator={}",
@@ -810,6 +832,24 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         this.patternManagementSearchMode = mode;
         getItemStack().set(ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE.get(), mode);
     }
+
+    public int getManualWorkspaceMode() {
+        return manualWorkspaceMode;
+    }
+
+    public void setManualWorkspaceMode(int mode) {
+        this.manualWorkspaceMode = mode;
+        getItemStack().set(ModComponents.MANUAL_WORKSPACE_MODE.get(), mode);
+    }
+
+    public String getManualAnvilName() {
+        return manualAnvilName;
+    }
+
+    public void setManualAnvilName(String name) {
+        this.manualAnvilName = name == null ? "" : name;
+        getItemStack().set(ModComponents.MANUAL_ANVIL_NAME.get(), this.manualAnvilName);
+    }
     
     @Nullable
     @Override
@@ -832,6 +872,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             return storageCellInv;
         } else if (id.equals(INV_RESONATING_PATTERN_CACHE)) {
             return resonatingPatternCacheInv;
+        } else if (id.equals(INV_MANUAL_SMITHING)) {
+            return manualSmithingInv;
+        } else if (id.equals(INV_MANUAL_ANVIL)) {
+            return manualAnvilInv;
         } else if (id.equals(INV_TRASH)) {
             return trashInv;
         } else {
@@ -1119,6 +1163,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             case "toolkit" -> ModComponents.TOOLKIT_INV.get();
             case "storage_cell"  -> ModComponents.STORAGE_CELL_INV.get();
             case "resonating_pattern_cache" -> ModComponents.RESONATING_PATTERN_CACHE_INV.get();
+            case "manual_smithing" -> ModComponents.MANUAL_SMITHING_INV.get();
+            case "manual_anvil" -> ModComponents.MANUAL_ANVIL_INV.get();
             default -> throw new IllegalArgumentException("Unknown inventory name: " + inventoryName);
         };
         
