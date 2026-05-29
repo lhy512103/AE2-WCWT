@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "卡槽箱面板 - 网络工具提供的升级卡 3x3 卡槽",
+  "background": {
+    "comment": "使用AE2原版的extra_panels.png纹理",
+    "texture": "ae2:textures/guis/extra_panels.png",
+    "textureWidth": 128,
+    "textureHeight": 128,
+    "srcRect": [69, 62, 59, 66]
+  },
+  "text": {
+    "title": {
+      "text": {
+        "translate": "gui.wcwt.extended_ui.tool_slots_box"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    }
+  },
+  "slots": {
+    "TOOLBOX": {
+      "comment": "卡槽箱槽位 - 由 AE2 的 ToolboxMenu 管理，用于放升级卡。",
+      "left": 1,
+      "top": 6,
+      "grid": "BREAK_AFTER_3COLS"
+    }
+  },
+  "widgets": {
+    "return_button": {
+      "comment": "返回按钮（缩小版10x10）- 关闭卡槽箱面板",
+      "left": 44,
+      "top": -7,
+      "width": 12,
+      "height": 12
+    }
+  }
+}

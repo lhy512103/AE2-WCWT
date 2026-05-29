@@ -1,0 +1,80 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "装饰装甲面板 - 4个装备槽位和显示开关",
+  "background": {
+    "texture": "wcwt/textures/guis/wcwt_cosmetic_armor.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 80, 38]
+  },
+  "text": {
+    "title": {
+      "text": {
+        "translate": "gui.wcwt.cosmetic_armor"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    }
+  },
+  "slots": {
+    "DECORATIVE_HELMET": {
+      "comment": "装饰头盔槽位",
+      "left": 3,
+      "top": 20
+    },
+    "DECORATIVE_ARMOR": {
+      "comment": "装饰胸甲槽位",
+      "left": 21,
+      "top": 20
+    },
+    "DECORATIVE_SHIN_GUARDS": {
+      "comment": "装饰护腿槽位",
+      "left": 39,
+      "top": 20
+    },
+    "DECORATIVE_BOOTS": {
+      "comment": "装饰靴子槽位",
+      "left": 57,
+      "top": 20
+    }
+  },
+  "widgets": {
+    "return_button": {
+      "comment": "返回按钮 - 关闭装饰装甲面板",
+      "left": 57,
+      "top": -8,
+      "width": 20,
+      "height": 20
+    },
+    "helmet_display_toggle": {
+      "comment": "头盔显示开关",
+      "left": 3,
+      "top": 15,
+      "width": 5,
+      "height": 5
+    },
+    "chestplate_display_toggle": {
+      "comment": "胸甲显示开关",
+      "left": 21,
+      "top": 15,
+      "width": 5,
+      "height": 5
+    },
+    "leggings_display_toggle": {
+      "comment": "护腿显示开关",
+      "left": 39,
+      "top": 15,
+      "width": 5,
+      "height": 5
+    },
+    "boots_display_toggle": {
+      "comment": "靴子显示开关",
+      "left": 57,
+      "top": 15,
+      "width": 5,
+      "height": 5
+    }
+  }
+}

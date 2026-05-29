@@ -1,0 +1,123 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "高级编码面板 - 包含样板输入方向编辑区和元件编辑区",
+  "background": {
+    "comment": "整个扩展页面的背景纹理和大小",
+    "texture": "wcwt:textures/guis/wcwt_advanced_coding.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 134, 186]
+  },
+  "text": {
+    "input_direction_title": {
+      "comment": "样板输入方向编辑区标题",
+      "text": {
+        "translate": "gui.wcwt.advanced_coding.input_direction_title"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    },
+    "cell_edit_title": {
+      "comment": "元件编辑区标题",
+      "text": {
+        "translate": "gui.wcwt.advanced_coding.cell_edit_title"
+      },
+      "position": {
+        "left": 4,
+        "top": 110
+      }
+    }
+  },
+  "slots": {
+    "copy_pattern": {
+      "comment": "复制样板的输出槽（目标样板=样板缓存槽里高亮的样板）",
+      "left": 4,
+      "top": 86,
+      "width": 16,
+      "height": 16
+    },
+    "replace_input": {
+      "comment": "替换样板内物品-被替换物品槽位。该坐标同时控制 ghost 物品显示位置、悬停高亮区和点击/JEI 交互区。",
+      "left": 51,
+      "top": 86,
+      "width": 16,
+      "height": 16
+    },
+    "replace_output": {
+      "comment": "替换样板内物品-目标物品槽位。该坐标同时控制 ghost 物品显示位置、悬停高亮区和点击/JEI 交互区。",
+      "left": 86,
+      "top": 86,
+      "width": 16,
+      "height": 16
+    },
+    "STORAGE_CELL": {
+      "comment": "元件工作台-存储元件插槽",
+      "left": 112,
+      "top": 107
+    },
+    "CONFIG": {
+      "comment": "元件工作台-配置物品槽位（6列后换行）",
+      "left": 4,
+      "top": 126,
+      "grid": "BREAK_AFTER_6COLS"
+    }
+  },
+  "widgets": {
+    "manage_scrollbar": {
+      "comment": "样板输入方向编辑区滚动条",
+      "left": 6,
+      "top": 20,
+      "height": 56
+    },
+    "copy_pattern_button": {
+      "comment": "复制样板按钮（默认 192:160, 高亮 224:160, 17x16）",
+      "left": 24,
+      "top": 86,
+      "width": 17,
+      "height": 16
+    },
+    "replace_button": {
+      "comment": "执行替换按钮（默认 0:192, 高亮 32:192, 23x16）",
+      "left": 106,
+      "top": 86,
+      "width": 23,
+      "height": 16
+    },
+    "cell_scrollbar": {
+      "comment": "元件工作台滚动条",
+      "left": 118,
+      "top": 126,
+      "height": 52
+    },
+    "partitioned_storage": {
+      "comment": "分区存储按钮（默认 192:168, 高亮 224:128, 24x24 缩放至 12x12）",
+      "left": 68,
+      "top": 112,
+      "width": 12,
+      "height": 12
+    },
+    "cell_clear": {
+      "comment": "清除按钮（默认 192:168, 高亮 224:128, 24x24 缩放至 12x12）",
+      "left": 82,
+      "top": 112,
+      "width": 12,
+      "height": 12
+    },
+    "cell_copy_mode": {
+      "comment": "复制模式按钮（默认 192:168, 高亮 224:128, 24x24 缩放至 12x12）",
+      "left": 96,
+      "top": 112,
+      "width": 12,
+      "height": 12
+    },
+    "expandui_return": {
+      "comment": "扩展UI关闭按钮 - 引用AE2的返回按钮纹理",
+      "right": 23,
+      "top": -8,
+      "width": 20,
+      "height": 20
+    }
+  }
+}

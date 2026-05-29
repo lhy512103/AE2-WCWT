@@ -1,0 +1,33 @@
+# eclipse
+bin
+*.launch
+.settings
+.metadata
+.classpath
+.project
+
+# idea
+out
+*.ipr
+*.iws
+*.iml
+.idea
+
+# gradle
+build
+.gradle
+
+# other
+eclipse
+run
+logs
+*.log
+hs_err_pid*
+replay_pid*
+
+# Files from Forge MDK
+forge*changelog.txt
+
+# keep only intentionally vendored jars
+libs/*
+!libs/ae2wtlib-15.2.2-forge.jar

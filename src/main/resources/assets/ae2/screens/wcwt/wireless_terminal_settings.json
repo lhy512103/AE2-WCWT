@@ -1,0 +1,100 @@
+{
+  "$schema": "../schema.json",
+  "includes": ["../common/common.json"],
+  "background": {
+    "$comment": "WCWT 打开的无线终端设置子界面背景。",
+    "texture": "guis/wcwt/wcwt_setup.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 200, 201]
+  },
+  "text": {
+    "dialog_title": {
+      "$comment": "顶部标题。",
+      "position": {
+        "left": 8,
+        "top": 7
+      },
+      "text": {
+        "translate": "gui.ae2wtlib.wireless_terminal_settings_title"
+      }
+    },
+    "search_settings_title": {
+      "$comment": "磁卡设置分组标题。",
+      "position": {
+        "left": 8,
+        "top": 73
+      },
+      "text": {
+        "translate": "gui.ae2wtlib.magnet_settings_title"
+      }
+    },
+    "other_settings_title": {
+      "$comment": "其他设置分组标题。",
+      "position": {
+        "left": 8,
+        "top": 114
+      },
+      "text": {
+        "text": "其他设置"
+      }
+    }
+  },
+  "widgets": {
+    "back": {
+      "$comment": "返回父界面的按钮。",
+      "left": 176,
+      "top": -5,
+      "width": 20,
+      "height": 20
+    },
+    "pickBlock": {
+      "$comment": "Pick Block 复选框。",
+      "left": 10,
+      "top": 25,
+      "width": 180
+    },
+    "craftIfMissing": {
+      "$comment": "缺失时自动合成复选框。",
+      "left": 10,
+      "top": 41,
+      "width": 180
+    },
+    "restock": {
+      "$comment": "自动补货复选框。",
+      "left": 10,
+      "top": 57,
+      "width": 180
+    },
+    "magnet": {
+      "$comment": "磁卡吸附复选框。",
+      "left": 10,
+      "top": 83,
+      "width": 180
+    },
+    "pickupToME": {
+      "$comment": "拾取直入 ME 复选框。",
+      "left": 10,
+      "top": 98,
+      "width": 180
+    },
+    "patternUploadFailFallbackToEditor": {
+      "$comment": "上传失败优先回退到编辑槽开关。",
+      "left": 10,
+      "top": 124,
+      "width": 180
+    },
+    "patternMultiplierApplyToEditorProcessing": {
+      "$comment": "样板倍增器同时作用于样板编码区处理样板开关。",
+      "left": 10,
+      "top": 144,
+      "width": 180
+    },
+    "autoSwitchManualWorkspaceOnRecipeTransfer": {
+      "$comment": "拉取样板时自动切换手动工作区开关。",
+      "left": 10,
+      "top": 164,
+      "width": 180
+    }
+  }
+}

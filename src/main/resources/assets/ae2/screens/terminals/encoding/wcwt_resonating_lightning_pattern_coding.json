@@ -1,0 +1,63 @@
+{
+  "$schema": "schema.json",
+  "includes": ["common/common.json"],
+  "text": {
+    "lightning_title": {
+	  "$comment": "过载样板编辑区标题",
+      "text": {
+        "translate": "gui.wcwt_rlpattern_coding.lightningtitle"
+      },
+      "position": {
+        "left": 3,
+        "top": 3
+      }
+    },
+	"resonating_title": {
+	  "$comment": "谐振样板转换区标题",
+      "text": {
+        "translate": "gui.wcwt_rlpattern_coding.resonatingtitle"
+      },
+      "position": {
+        "left": 3,
+        "top": 95
+      }
+    }
+  },
+  "background": {
+	"$comment": "整个扩展页面的背景纹理和大小",
+    "texture": "guis/wcwt/wcwt_resonating_lightning_pattern_coding",
+	"textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 134, 186]
+  },
+  "widgets": {
+    "rlpc_scrollbar": {
+	  "$comment": "过载编辑区滚动条位置和高度",
+      "left": 5,
+      "top": 19,
+      "height": 67
+    },
+    "lightning_area": {
+	  "$comment": "过载编辑区硬编码区域位置和大小",
+      "left": 13,
+      "top": 16,
+      "width": 116,
+      "height": 73
+    },
+    "resonating_convert": {
+	  "$comment": "谐振样板转换按钮位置",
+      "left": 56,
+      "top": 105
+    }
+  },
+  "slots": {
+	"resonating_storage": {
+	  "$comment": "谐振样板转换后缓存的位置，一行7个总共21个；slotSpacingX / slotSpacingY 为槽位起点步进，默认 16。",
+      "left": 3,
+      "top": 124,
+      "slotSpacingX": 18,
+      "slotSpacingY": 18,
+      "grid": "BREAK_AFTER_7COLS"
+    }
+  }
+}

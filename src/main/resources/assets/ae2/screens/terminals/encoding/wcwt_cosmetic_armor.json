@@ -1,0 +1,39 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "装饰装甲面板 - 4个装备槽位",
+  "background": {
+    "texture": "wcwt:textures/guis/wcwt_cosmetic_armor.png",
+    "textureWidth": 256,
+    "textureHeight": 256,
+    "srcRect": [0, 0, 80, 38]
+  },
+  "text": {
+    "title": {
+      "text": {
+        "translate": "gui.wcwt.extended_ui.cosmetic_armor"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    }
+  },
+  "slots": {
+    "DECORATIVE_HELMET": {
+      "left": 4,
+      "top": 16
+    },
+    "DECORATIVE_ARMOR": {
+      "left": 22,
+      "top": 16
+    },
+    "DECORATIVE_SHIN_GUARDS": {
+      "left": 40,
+      "top": 16
+    },
+    "DECORATIVE_BOOTS": {
+      "left": 58,
+      "top": 16
+    }
+  }
+}
