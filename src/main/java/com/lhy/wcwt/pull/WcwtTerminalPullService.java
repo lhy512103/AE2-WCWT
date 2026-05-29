@@ -24,7 +24,6 @@ import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.storage.MEStorage;
 import appeng.api.storage.StorageHelper;
-import appeng.helpers.ICraftingGridMenu;
 import appeng.items.storage.ViewCellItem;
 import appeng.menu.me.common.MEStorageMenu;
 import appeng.menu.me.crafting.CraftConfirmMenu;
@@ -70,7 +69,7 @@ public final class WcwtTerminalPullService {
         var storage = host.getInventory();
         var energy = resolveEnergySource(host);
         var actionSource = resolveActionSource(serverPlayer, host);
-        var gridNode = menu.getGridNode();
+        var gridNode = menu.getNetworkNode();
         ICraftingService craftingService = payload.craftMissing() && gridNode != null && menu.getLinkStatus().connected()
                 ? gridNode.getGrid().getCraftingService()
                 : null;
@@ -398,7 +397,8 @@ public final class WcwtTerminalPullService {
     private static boolean matchesAnyAlternative(ItemStack stack, List<ItemStack> alternatives,
             @Nullable Ingredient wideIngredient) {
         for (ItemStack alternative : alternatives) {
-            if (ItemStack.isSameItemSameComponents(stack, alternative)) {
+            if (ItemStack.isSameItem(stack, alternative)
+                    && java.util.Objects.equals(stack.getTag(), alternative.getTag())) {
                 return true;
             }
         }
@@ -416,7 +416,7 @@ public final class WcwtTerminalPullService {
     private static ItemStack getDisplayStack(RequestedIngredient requestedIngredient) {
         return requestedIngredient.alternatives().isEmpty()
                 ? ItemStack.EMPTY
-                : requestedIngredient.alternatives().getFirst().copyWithCount(requestedIngredient.count());
+                : requestedIngredient.alternatives().get(0).copyWithCount(requestedIngredient.count());
     }
 
     private static ItemStack insertIntoCraftingGrid(InternalInventory craftingGrid, int requestedSlot, ItemStack stack) {
@@ -483,7 +483,9 @@ public final class WcwtTerminalPullService {
     }
 
     private static boolean canStacksMerge(ItemStack first, ItemStack second) {
-        return !first.isEmpty() && !second.isEmpty() && ItemStack.isSameItemSameComponents(first, second);
+        return !first.isEmpty() && !second.isEmpty()
+                && ItemStack.isSameItem(first, second)
+                && java.util.Objects.equals(first.getTag(), second.getTag());
     }
 
     private static IEnergySource resolveEnergySource(Object host) {
@@ -499,7 +501,7 @@ public final class WcwtTerminalPullService {
                 return 0.0;
             };
         }
-        return IEnergySource.empty();
+        return (amount, mode, multiplier) -> 0.0;
     }
 
     private static IActionSource resolveActionSource(ServerPlayer player, Object host) {
@@ -511,14 +513,14 @@ public final class WcwtTerminalPullService {
 
     private static void openAutoCraftMenu(ServerPlayer player, MEStorageMenu menu, Object host,
             Map<AEItemKey, List<Integer>> autoCraftRequests) {
-        List<ICraftingGridMenu.AutoCraftEntry> entries = autoCraftRequests.entrySet().stream()
-                .map(entry -> new ICraftingGridMenu.AutoCraftEntry(entry.getKey(), List.copyOf(entry.getValue())))
+        List<appeng.helpers.IMenuCraftingPacket.AutoCraftEntry> entries = autoCraftRequests.entrySet().stream()
+                .map(entry -> new appeng.helpers.IMenuCraftingPacket.AutoCraftEntry(entry.getKey(), List.copyOf(entry.getValue())))
                 .toList();
         if (entries.isEmpty()) {
             return;
         }
 
-        if (menu instanceof ICraftingGridMenu craftingGridMenu) {
+        if (menu instanceof appeng.helpers.IMenuCraftingPacket craftingGridMenu) {
             craftingGridMenu.startAutoCrafting(entries);
             return;
         }

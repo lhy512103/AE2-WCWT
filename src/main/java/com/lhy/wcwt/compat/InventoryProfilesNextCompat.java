@@ -3,8 +3,8 @@ package com.lhy.wcwt.compat;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
-import net.neoforged.fml.ModList;
-import net.neoforged.fml.loading.FMLPaths;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.loading.FMLPaths;
 
 import java.io.IOException;
 import java.lang.reflect.Field;

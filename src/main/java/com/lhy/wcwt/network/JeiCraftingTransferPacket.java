@@ -58,14 +58,11 @@ public record JeiCraftingTransferPacket(List<@Nullable GenericStack> inputs, Lis
 
     @Nullable
     private static GenericStack readNullableStack(RegistryFriendlyByteBuf buffer) {
-        return buffer.readBoolean() ? GenericStack.STREAM_CODEC.decode(buffer) : null;
+        return GenericStack.readBuffer(buffer);
     }
 
     private static void writeNullableStack(RegistryFriendlyByteBuf buffer, @Nullable GenericStack stack) {
-        buffer.writeBoolean(stack != null);
-        if (stack != null) {
-            GenericStack.STREAM_CODEC.encode(buffer, stack);
-        }
+        GenericStack.writeBuffer(stack, buffer);
     }
 
     @Override

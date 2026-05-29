@@ -205,7 +205,8 @@ public final class WcwtPullRecipeTransfer {
 
     private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
         for (ItemStack existing : stacks) {
-            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
+            if (ItemStack.isSameItem(existing, candidate)
+                    && java.util.Objects.equals(existing.getTag(), candidate.getTag())) {
                 return true;
             }
         }

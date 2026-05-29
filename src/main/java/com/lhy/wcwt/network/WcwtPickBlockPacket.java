@@ -15,7 +15,9 @@ public record WcwtPickBlockPacket(ItemStack itemStack) implements CustomPacketPa
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pick_block"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, WcwtPickBlockPacket> STREAM_CODEC =
-            ItemStack.STREAM_CODEC.map(WcwtPickBlockPacket::new, WcwtPickBlockPacket::itemStack);
+            StreamCodec.of(
+                    (buf, packet) -> buf.writeItem(packet.itemStack()),
+                    buf -> new WcwtPickBlockPacket(buf.readItem()));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

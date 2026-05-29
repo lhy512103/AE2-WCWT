@@ -214,7 +214,7 @@ public abstract class ExtendedUIPanel implements Renderable, GuiEventListener {
 
             var bg = isHovered() ? Icon.TAB_BUTTON_BACKGROUND_FOCUS : Icon.TAB_BUTTON_BACKGROUND;
             bg.getBlitter().dest(0, 0).blit(guiGraphics);
-            Icon.BACK.getBlitter().dest(2, 1).blit(guiGraphics);
+            Icon.ARROW_LEFT.getBlitter().dest(2, 1).blit(guiGraphics);
 
             pose.popPose();
         }

@@ -4,9 +4,8 @@ import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
-import appeng.integration.modules.curios.CuriosIntegration;
-import appeng.menu.locator.ItemMenuHostLocator;
-import appeng.menu.locator.MenuLocators;
+import appeng.menu.locator.MenuLocator;
+import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import net.minecraft.network.FriendlyByteBuf;
@@ -18,7 +17,7 @@ import net.minecraft.world.phys.BlockHitResult;
  * 定位 WCWT 终端工具包中的 AE 网络工具。
  */
 public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlot, int toolkitSlot)
-        implements ItemMenuHostLocator {
+        implements MenuLocator {
 
     public enum SourceKind {
         INVENTORY,
@@ -26,34 +25,32 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
     }
 
     @Override
-    public ItemStack locateItem(Player player) {
+    public <T> T locate(Player player, Class<T> hostInterface) {
         ItemStack terminalStack = locateTerminalStack(player);
         if (terminalStack.isEmpty() || !(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
-            return ItemStack.EMPTY;
+            return null;
         }
 
-        ItemMenuHostLocator terminalLocator = switch (sourceKind) {
-            case INVENTORY -> MenuLocators.forInventorySlot(sourceSlot);
-            case CURIOS -> MenuLocators.forCurioSlot(sourceSlot);
-        };
-        var terminalHost = terminalItem.getMenuHost(player, terminalLocator, null);
-        if (terminalHost == null) {
-            return ItemStack.EMPTY;
+        if (sourceKind == SourceKind.CURIOS) {
+            return null;
+        }
+        var terminalHost = terminalItem.getMenuHost(player, sourceSlot, terminalStack, null);
+        if (!(terminalHost instanceof WirelessComprehensiveWorkTerminalMenuHost wcwtHost)) {
+            return null;
         }
 
-        var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
+        var toolkit = wcwtHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
         if (toolkit == null || toolkitSlot < 0 || toolkitSlot >= toolkit.size()) {
-            return ItemStack.EMPTY;
+            return null;
         }
-        return toolkit.getStackInSlot(toolkitSlot);
+        ItemStack stack = toolkit.getStackInSlot(toolkitSlot);
+        return hostInterface.isInstance(stack) ? hostInterface.cast(stack) : null;
     }
 
-    @Override
     public @Nullable Integer getPlayerInventorySlot() {
         return sourceKind == SourceKind.INVENTORY ? sourceSlot : null;
     }
 
-    @Override
     public @Nullable BlockHitResult hitResult() {
         return null;
     }
@@ -79,11 +76,13 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
     }
 
     private static ItemStack locateCurioStack(Player player, int curioSlot) {
-        var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
-        if (cap == null || curioSlot < 0 || curioSlot >= cap.getSlots()) {
-            return ItemStack.EMPTY;
+        var curios = CuriosBridge.getVisibleSlots(player);
+        for (var curio : curios) {
+            if (curio.slotIndex() == curioSlot) {
+                return curio.handler().getStackInSlot(curio.slotIndex());
+            }
         }
-        return cap.getStackInSlot(curioSlot);
+        return ItemStack.EMPTY;
     }
 
     @Override

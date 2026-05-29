@@ -3,22 +3,22 @@ package com.lhy.wcwt;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.EventPriority;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
-import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
-import net.neoforged.neoforge.event.entity.player.ArrowLooseEvent;
-import net.neoforged.neoforge.event.entity.player.ArrowNockEvent;
-import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
-import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
+import net.minecraftforge.event.entity.player.ArrowLooseEvent;
+import net.minecraftforge.event.entity.player.ArrowNockEvent;
+import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
+import net.minecraftforge.eventbus.api.EventPriority;
+import net.minecraftforge.eventbus.api.Event.Result;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod.EventBusSubscriber;
 
 @EventBusSubscriber(modid = WcwtMod.MOD_ID)
 public class WcwtWirelessFeatureEvents {
     @SubscribeEvent
-    public static void onPlayerTick(PlayerTickEvent.Post event) {
-        if (event.getEntity() instanceof ServerPlayer player) {
+    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
+        if (event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player) {
             WcwtWirelessFeatures.tickPlayerMagnet(player);
         }
     }
@@ -71,19 +71,15 @@ public class WcwtWirelessFeatureEvents {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public static void onItemPickup(ItemEntityPickupEvent.Pre event) {
-        if (event.canPickup().isFalse()) {
+    public static void onItemPickup(EntityItemPickupEvent event) {
+        var entity = event.getItem();
+        var player = event.getEntity();
+        if (entity.hasPickUpDelay()) {
             return;
         }
-        var entity = event.getItemEntity();
-        var player = event.getPlayer();
-        if (event.canPickup().isDefault()) {
-            if (entity.hasPickUpDelay()) {
-                return;
-            }
-        }
         if (WcwtWirelessFeatures.insertPickupIntoME(entity, player)) {
-            event.setCanPickup(TriState.FALSE);
+            event.setCanceled(true);
+            event.setResult(Result.DENY);
         }
     }
 }

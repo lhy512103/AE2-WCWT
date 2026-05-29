@@ -22,7 +22,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
@@ -38,20 +37,22 @@ public record PatternManagementActionPacket(Action action,
     public static final Type<PatternManagementActionPacket> TYPE =
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pattern_management_action"));
 
-    public static final StreamCodec<ByteBuf, PatternManagementActionPacket> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal),
-            PatternManagementActionPacket::action,
-            ByteBufCodecs.VAR_LONG,
-            PatternManagementActionPacket::providerId,
-            ByteBufCodecs.VAR_INT,
-            PatternManagementActionPacket::cacheSlot,
-            ByteBufCodecs.STRING_UTF8,
-            PatternManagementActionPacket::searchText,
-            ByteBufCodecs.STRING_UTF8,
-            PatternManagementActionPacket::mappingText,
-            ByteBufCodecs.BOOL,
-            PatternManagementActionPacket::shiftQuickEnabled,
-            PatternManagementActionPacket::new);
+    public static final StreamCodec<ByteBuf, PatternManagementActionPacket> STREAM_CODEC = StreamCodec.of(
+            (buf, packet) -> {
+                ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal).encode(buf, packet.action());
+                ByteBufCodecs.VAR_LONG.encode(buf, packet.providerId());
+                ByteBufCodecs.VAR_INT.encode(buf, packet.cacheSlot());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.searchText());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.mappingText());
+                ByteBufCodecs.BOOL.encode(buf, packet.shiftQuickEnabled());
+            },
+            buf -> new PatternManagementActionPacket(
+                    ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal).decode(buf),
+                    ByteBufCodecs.VAR_LONG.decode(buf),
+                    ByteBufCodecs.VAR_INT.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.BOOL.decode(buf)));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -92,7 +93,7 @@ public record PatternManagementActionPacket(Action action,
                         player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.mapping_deleted", removed), true);
                     }
                 }
-                PacketDistributor.sendToPlayer(player, PatternProviderListPacket.buildForPlayer(player));
+                ModNetworking.sendToPlayer(player, PatternProviderListPacket.buildForPlayer(player));
             }
         });
     }
@@ -287,12 +288,12 @@ public record PatternManagementActionPacket(Action action,
             return;
         }
         if (provider instanceof MenuProvider menuProvider) {
-            player.openMenu(menuProvider, location.pos);
+            player.openMenu(menuProvider);
             return;
         }
         var selfProvider = location.level.getBlockState(location.pos).getMenuProvider(location.level, location.pos);
         if (selfProvider != null) {
-            player.openMenu(selfProvider, location.pos);
+            player.openMenu(selfProvider);
             return;
         }
         player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.open_ui_failed"), true);
@@ -316,12 +317,12 @@ public record PatternManagementActionPacket(Action action,
         }
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof MenuProvider menuProvider) {
-            player.openMenu(menuProvider, pos);
+            player.openMenu(menuProvider);
             return true;
         }
         var provider = level.getBlockState(pos).getMenuProvider(level, pos);
         if (provider != null) {
-            player.openMenu(provider, pos);
+            player.openMenu(provider);
             return true;
         }
         return false;

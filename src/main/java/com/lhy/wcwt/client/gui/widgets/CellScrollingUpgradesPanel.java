@@ -124,20 +124,17 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
 
             if (!slot.isSlotEnabled()) {
                 slot.setActive(false);
-                rawSlot.x = HIDDEN_SLOT_POS.getX();
-                rawSlot.y = HIDDEN_SLOT_POS.getY();
+                setSlotPosition(rawSlot, HIDDEN_SLOT_POS.getX(), HIDDEN_SLOT_POS.getY());
                 continue;
             }
 
             boolean slotVisible = enabledIndex >= currentFirstSlot && enabledIndex < currentFirstSlot + maxRows;
             slot.setActive(slotVisible);
             if (slotVisible) {
-                rawSlot.x = slotOriginX;
-                rawSlot.y = slotOriginY;
+                setSlotPosition(rawSlot, slotOriginX, slotOriginY);
                 slotOriginY += SLOT_SIZE;
             } else {
-                rawSlot.x = HIDDEN_SLOT_POS.getX();
-                rawSlot.y = HIDDEN_SLOT_POS.getY();
+                setSlotPosition(rawSlot, HIDDEN_SLOT_POS.getX(), HIDDEN_SLOT_POS.getY());
             }
             enabledIndex++;
         }
@@ -222,8 +219,18 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
             if (rawSlot instanceof AppEngSlot slot) {
                 slot.setActive(false);
             }
-            rawSlot.x = HIDDEN_SLOT_POS.getX();
-            rawSlot.y = HIDDEN_SLOT_POS.getY();
+            setSlotPosition(rawSlot, HIDDEN_SLOT_POS.getX(), HIDDEN_SLOT_POS.getY());
+        }
+    }
+
+    private static void setSlotPosition(Slot slot, int x, int y) {
+        try {
+            var xField = Slot.class.getField("x");
+            var yField = Slot.class.getField("y");
+            xField.setInt(slot, x);
+            yField.setInt(slot, y);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to position slot", e);
         }
     }
 }

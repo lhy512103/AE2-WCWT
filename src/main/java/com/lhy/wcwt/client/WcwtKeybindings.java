@@ -3,7 +3,7 @@ package com.lhy.wcwt.client;
 import com.lhy.wcwt.WcwtMod;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
-import net.neoforged.neoforge.client.settings.KeyConflictContext;
+import net.minecraftforge.client.settings.KeyConflictContext;
 
 /**
  * WCWT 自定义按键。

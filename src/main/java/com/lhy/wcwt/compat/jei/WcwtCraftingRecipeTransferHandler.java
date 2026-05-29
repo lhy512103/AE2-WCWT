@@ -1,13 +1,14 @@
 package com.lhy.wcwt.compat.jei;
 
 import appeng.core.localization.ItemModText;
-import appeng.integration.modules.itemlists.CraftingHelper;
+import appeng.integration.modules.jeirei.CraftingHelper;
 import appeng.menu.me.items.CraftingTermMenu;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
@@ -17,20 +18,19 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
 public class WcwtCraftingRecipeTransferHandler
-        implements IRecipeTransferHandler<WirelessComprehensiveWorkTerminalMenu, RecipeHolder<CraftingRecipe>> {
+        implements IRecipeTransferHandler<WirelessComprehensiveWorkTerminalMenu, CraftingRecipe> {
 
     private final IRecipeTransferHandlerHelper transferHelper;
 
@@ -49,13 +49,16 @@ public class WcwtCraftingRecipeTransferHandler
     }
 
     @Override
-    public mezz.jei.api.recipe.RecipeType<RecipeHolder<CraftingRecipe>> getRecipeType() {
-        return RecipeTypes.CRAFTING;
+    public mezz.jei.api.recipe.RecipeType<CraftingRecipe> getRecipeType() {
+        return mezz.jei.api.recipe.RecipeType.create(
+                "minecraft",
+                "crafting",
+                CraftingRecipe.class);
     }
 
     @Override
     public IRecipeTransferError transferRecipe(WirelessComprehensiveWorkTerminalMenu menu,
-                                               RecipeHolder<CraftingRecipe> recipeHolder,
+                                               CraftingRecipe recipe,
                                                IRecipeSlotsView recipeSlots,
                                                Player player,
                                                boolean maxTransfer,
@@ -63,7 +66,6 @@ public class WcwtCraftingRecipeTransferHandler
         if (!WcwtClientConfig.enableRecipePullTransfer()) {
             return null;
         }
-        var recipe = recipeHolder.value();
         if (recipe.getType() != RecipeType.CRAFTING) {
             return transferHelper.createInternalError();
         }
@@ -80,10 +82,10 @@ public class WcwtCraftingRecipeTransferHandler
         if (!craftingToManualGrid) {
             if (doTransfer) {
                 WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
-                WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipeHolder, recipe, EncodingMode.CRAFTING);
-                PacketDistributor.sendToServer(new JeiCraftingTransferPacket(
+                WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipe, recipe, EncodingMode.CRAFTING);
+                ModNetworking.sendToServer(new JeiCraftingTransferPacket(
                         WcwtRecipeTransferHandler.collectCraftingLikeInputs(
-                                menu, recipeHolder, recipe, recipeSlots, EncodingMode.CRAFTING),
+                                menu, null, recipe, recipeSlots, EncodingMode.CRAFTING),
                         java.util.List.of(),
                         false,
                         EncodingMode.CRAFTING));
@@ -95,7 +97,7 @@ public class WcwtCraftingRecipeTransferHandler
         }
 
         boolean craftMissing = Screen.hasControlDown();
-        var slotToIngredientMap = transferHelper.getGuiSlotIndexToIngredientMap(recipeHolder);
+        var slotToIngredientMap = createCraftingSlotMap(recipe);
         CraftingTermMenu.MissingIngredientSlots missingSlots = menu.findMissingIngredients(slotToIngredientMap);
 
         if (missingSlots.missingSlots().size() == slotToIngredientMap.size()) {
@@ -117,13 +119,24 @@ public class WcwtCraftingRecipeTransferHandler
         if (doTransfer) {
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
             if (menu.getManualWorkspaceMode() != WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
-                return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, true,
+                return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, true,
                         transferHelper);
             }
-            ResourceLocation recipeId = recipeHolder.id();
-            CraftingHelper.performTransfer(menu, recipeId, recipe, craftMissing);
+            CraftingHelper.performTransfer(menu, recipe, craftMissing);
         }
 
         return null;
+    }
+
+    private static Map<Integer, net.minecraft.world.item.crafting.Ingredient> createCraftingSlotMap(CraftingRecipe recipe) {
+        var ingredients = appeng.util.CraftingRecipeUtil.ensure3by3CraftingMatrix(recipe);
+        Map<Integer, net.minecraft.world.item.crafting.Ingredient> result = new LinkedHashMap<>();
+        for (int i = 0; i < ingredients.size(); i++) {
+            var ingredient = ingredients.get(i);
+            if (!ingredient.isEmpty()) {
+                result.put(i, ingredient);
+            }
+        }
+        return result;
     }
 }

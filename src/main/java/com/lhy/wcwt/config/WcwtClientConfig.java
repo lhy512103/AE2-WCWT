@@ -1,21 +1,21 @@
 package com.lhy.wcwt.config;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
  * {@code config/wcwt-client.toml} 客户端个人配置。
  * 联机时也只影响当前玩家自己的界面与发包行为。
  */
 public final class WcwtClientConfig {
-    public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
-    public static final ModConfigSpec SPEC;
+    public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
+    public static final ForgeConfigSpec SPEC;
 
-    public static final ModConfigSpec.BooleanValue PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR;
-    public static final ModConfigSpec.BooleanValue ENABLE_RECIPE_PULL_TRANSFER;
-    public static final ModConfigSpec.BooleanValue AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER;
-    public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
-    public static final ModConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
-    public static final ModConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
+    public static final ForgeConfigSpec.BooleanValue PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR;
+    public static final ForgeConfigSpec.BooleanValue ENABLE_RECIPE_PULL_TRANSFER;
+    public static final ForgeConfigSpec.BooleanValue AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER;
+    public static final ForgeConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
+    public static final ForgeConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
+    public static final ForgeConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
 
     static {
         PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR = BUILDER

@@ -1,6 +1,6 @@
 package com.lhy.wcwt.config;
 
-import net.neoforged.neoforge.common.ModConfigSpec;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
  * {@code config/wcwt-server.toml} 服务端配置。
@@ -11,10 +11,10 @@ public final class WcwtServerConfig {
     private static final int MAX_TOOLKIT_SLOTS = 640;
     private static final int DEFAULT_TOOLKIT_SLOTS = 64;
 
-    public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
-    public static final ModConfigSpec SPEC;
+    public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
+    public static final ForgeConfigSpec SPEC;
 
-    public static final ModConfigSpec.IntValue TOOLKIT_SLOT_COUNT;
+    public static final ForgeConfigSpec.IntValue TOOLKIT_SLOT_COUNT;
 
     static {
         TOOLKIT_SLOT_COUNT = BUILDER

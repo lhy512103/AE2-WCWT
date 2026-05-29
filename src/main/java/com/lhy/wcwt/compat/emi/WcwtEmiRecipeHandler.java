@@ -4,7 +4,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ItemModText;
-import appeng.integration.modules.itemlists.TransferHelper;
+import appeng.integration.modules.jeirei.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
@@ -12,6 +12,7 @@ import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
+import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
@@ -37,8 +38,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.fluids.FluidStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
@@ -141,7 +141,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             boolean anyHighlighted = recipe.getInputs().stream()
                     .anyMatch(ingredient -> isAvailableFromNetwork(availableNetworkKeys, ingredient));
             if (anyHighlighted) {
-                tooltip = TransferHelper.createEncodingTooltip(true, true);
+                tooltip = TransferHelper.createEncodingTooltip(true);
             }
         }
 
@@ -209,7 +209,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             }
             boolean maxTransfer = context.getAmount() > 1;
             boolean craftMissing = context.getDestination() != EmiCraftContext.Destination.NONE;
-            PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
+            ModNetworking.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
                     requestedIngredients, menu.getManualWorkspaceMode().ordinal()));
             return true;
         }
@@ -224,9 +224,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return false;
         }
 
-        WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipe, recipe.getBackingRecipe() != null
-                ? recipe.getBackingRecipe().value() : null, mode);
-        PacketDistributor.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
+        WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipe, recipe.getBackingRecipe(), mode);
+        ModNetworking.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         return true;
     }
 
@@ -631,7 +630,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
         for (var existing : stacks) {
-            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
+            if (ItemStack.isSameItem(existing, candidate) && java.util.Objects.equals(existing.getTag(), candidate.getTag())) {
                 return true;
             }
         }
@@ -644,9 +643,9 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (fluid == null || fluid == Fluids.EMPTY) {
             return null;
         }
-        FluidStack neoFluidStack = new FluidStack(fluid.builtInRegistryHolder(),
+        FluidStack neoFluidStack = new FluidStack(fluid,
                 (int) Math.max(1L, Math.min(Integer.MAX_VALUE, amount)),
-                stack.getComponentChanges());
+                stack.getNbt());
         if (neoFluidStack.isEmpty()) {
             return null;
         }

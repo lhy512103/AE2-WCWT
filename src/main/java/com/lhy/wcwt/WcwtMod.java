@@ -8,6 +8,7 @@ import appeng.api.upgrades.Upgrades;
 import appeng.core.definitions.AEItems;
 import appeng.core.localization.GuiText;
 import appeng.hotkeys.HotkeyActions;
+import appeng.hotkeys.InventoryHotkeyAction;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -32,7 +33,6 @@ import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.InterModComms;
-import net.minecraftforge.fml.ModContainer;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -51,9 +51,9 @@ public class WcwtMod {
             Registries.CREATIVE_MODE_TAB,
             ResourceLocationCompat.id("ae2wtlib", "main"));
 
+    @SuppressWarnings("removal")
     public WcwtMod() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
-        ModContainer modContainer = ModLoadingContext.get().getActiveContainer();
 
         WcwtSlotSemantics.init();
         ModItems.ITEMS.register(modEventBus);
@@ -63,9 +63,9 @@ public class WcwtMod {
         modEventBus.addListener(this::addCreativeTabItems);
         MinecraftForge.EVENT_BUS.register(WcwtPacketsBootstrap.class);
 
-        modContainer.registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
-            modContainer.registerConfig(ModConfig.Type.CLIENT, WcwtClientConfig.SPEC);
+            ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, WcwtClientConfig.SPEC);
         });
     }
 
@@ -79,9 +79,9 @@ public class WcwtMod {
                     ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);
             HotkeyActions.register(
-                    ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
-                    (player, locator) -> ((WirelessComprehensiveWorkTerminalItem)
-                            ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()).openFromInventory(player, locator),
+                    new InventoryHotkeyAction(
+                            ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
+                            ((WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get())::openFromInventory),
                     HotkeyAction.WIRELESS_TERMINAL);
             HotkeyActions.register(new WcwtMagnetHotkeyAction(), "ae2wtlib_magnet");
             registerInventorySorterCompat();

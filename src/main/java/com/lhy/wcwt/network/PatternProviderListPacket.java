@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -25,7 +26,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
-import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -39,12 +39,38 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
     public static final Type<PatternProviderListPacket> TYPE =
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pattern_provider_list"));
 
-    private static final StreamCodec<RegistryFriendlyByteBuf, Int2ObjectMap<ItemStack>> SLOTS_CODEC =
-            ByteBufCodecs.map(Int2ObjectArrayMap::new, ByteBufCodecs.SHORT.map(Short::intValue, Integer::shortValue),
-                    ItemStack.OPTIONAL_STREAM_CODEC, 512);
+    private static final StreamCodec<RegistryFriendlyByteBuf, Int2ObjectMap<ItemStack>> SLOTS_CODEC = StreamCodec.of(
+            (buf, slots) -> {
+                buf.writeVarInt(slots.size());
+                for (var entry : slots.int2ObjectEntrySet()) {
+                    buf.writeShort(entry.getIntKey());
+                    buf.writeItem(entry.getValue());
+                }
+            },
+            buf -> {
+                int size = buf.readVarInt();
+                Int2ObjectMap<ItemStack> result = new Int2ObjectArrayMap<>(size);
+                for (int i = 0; i < size; i++) {
+                    result.put((int) buf.readShort(), buf.readItem());
+                }
+                return result;
+            });
 
-    public static final StreamCodec<RegistryFriendlyByteBuf, PatternProviderListPacket> STREAM_CODEC =
-            Entry.STREAM_CODEC.apply(ByteBufCodecs.list()).map(PatternProviderListPacket::new, PatternProviderListPacket::entries);
+    public static final StreamCodec<RegistryFriendlyByteBuf, PatternProviderListPacket> STREAM_CODEC = StreamCodec.of(
+            (buf, packet) -> {
+                buf.writeVarInt(packet.entries().size());
+                for (var entry : packet.entries()) {
+                    Entry.STREAM_CODEC.encode(buf, entry);
+                }
+            },
+            buf -> {
+                int size = buf.readVarInt();
+                List<Entry> entries = new ArrayList<>(size);
+                for (int i = 0; i < size; i++) {
+                    entries.add(Entry.STREAM_CODEC.decode(buf));
+                }
+                return new PatternProviderListPacket(entries);
+            });
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -107,10 +133,9 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
     public record Request(boolean subscribe) implements CustomPacketPayload {
         public static final Type<Request> TYPE =
                 new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pattern_provider_list_request"));
-        public static final StreamCodec<ByteBuf, Request> STREAM_CODEC = StreamCodec.composite(
-                ByteBufCodecs.BOOL,
-                Request::subscribe,
-                Request::new);
+        public static final StreamCodec<ByteBuf, Request> STREAM_CODEC = StreamCodec.of(
+                (buf, packet) -> ByteBufCodecs.BOOL.encode(buf, packet.subscribe()),
+                buf -> new Request(ByteBufCodecs.BOOL.decode(buf)));
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -127,7 +152,7 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
                             return;
                         }
                     }
-                    PacketDistributor.sendToPlayer(player, buildForPlayer(player));
+                    ModNetworking.sendToPlayer(player, buildForPlayer(player));
                 }
             });
         }

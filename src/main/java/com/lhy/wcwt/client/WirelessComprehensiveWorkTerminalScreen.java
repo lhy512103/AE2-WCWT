@@ -8,9 +8,9 @@ import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.me.items.CraftingTermScreen;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import appeng.core.network.ServerboundPacket;
 import appeng.client.gui.NumberEntryType;
-import appeng.core.network.serverbound.InventoryActionPacket;
+import appeng.core.sync.BasePacket;
+import appeng.core.sync.packets.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.slot.AppEngSlot;
 import appeng.client.gui.widgets.ActionButton;
@@ -24,12 +24,11 @@ import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.NumberEntryWidget;
 import appeng.client.Point;
 import appeng.core.localization.ButtonToolTips;
-import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
+import com.lhy.wcwt.init.ModComponents;
 import appeng.integration.abstraction.ItemListMod;
 import appeng.menu.SlotSemantics;
 import appeng.api.stacks.AEKeyType;
-import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
-import de.mari_023.ae2wtlib.api.gui.ScrollingUpgradesPanel;
+import de.mari_023.ae2wtlib.AE2wtlibSlotSemantics;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
@@ -41,12 +40,14 @@ import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.client.gui.panels.*;
 import com.lhy.wcwt.client.gui.widgets.*;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
+import com.lhy.wcwt.client.gui.widgets.WcwtScrollingUpgradesPanel;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.EncodePatternPacket;
 import com.lhy.wcwt.network.ExtendedUIPacket;
 import com.lhy.wcwt.network.ManualAnvilNamePacket;
 import com.lhy.wcwt.network.ManualWorkspaceModePacket;
+import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import com.lhy.wcwt.network.PatternMultiplierPacket;
 import com.lhy.wcwt.network.PatternModePacket;
@@ -79,11 +80,11 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.fml.ModList;
 import com.mojang.blaze3d.platform.InputConstants;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraftforge.fml.ModList;
 import appeng.parts.encoding.EncodingMode;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
@@ -99,7 +100,6 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import net.minecraft.world.item.crafting.RecipeHolder;
 import com.google.common.primitives.Longs;
 
 /**
@@ -172,7 +172,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     // 如果以后想恢复“奇点槽始终占位、不随量子桥卡出现而跳位”的自定义行为：
     // 1. 把这里改回 `private WcwtScrollingUpgradesPanel upgradesPanel;`
     // 2. 构造器里把 `new ScrollingUpgradesPanel(...)` 改回 `new WcwtScrollingUpgradesPanel(...)`
-    private ScrollingUpgradesPanel upgradesPanel;
+    private WcwtScrollingUpgradesPanel upgradesPanel;
     /** 元件工作台升级槽滚动面板：显示在右侧 WTLib 升级槽面板正下方，默认 2 行。 */
     private CellScrollingUpgradesPanel cellUpgradesPanel;
     /** 样板缓存区滑块：36槽库存，主界面只显示2行×9列。 */
@@ -357,7 +357,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (host != null) {
             var allUpgradeSlots = new ArrayList<>(menu.getSlots(AE2wtlibSlotSemantics.SINGULARITY));
             allUpgradeSlots.addAll(menu.getSlots(SlotSemantics.UPGRADE));
-            upgradesPanel = new ScrollingUpgradesPanel(allUpgradeSlots, host, widgets, host::getUpgrades);
+            upgradesPanel = new WcwtScrollingUpgradesPanel(allUpgradeSlots, host, widgets, host::getUpgrades);
             widgets.add("scrollingUpgrades", upgradesPanel);
 
             cellUpgradesPanel = new CellScrollingUpgradesPanel(
@@ -423,7 +423,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (host != null) {
             craftingLockButton = new CraftingLockButton(host, btn -> {
                 host.toggleCraftingGridLock();
-                PacketDistributor.sendToServer(new CraftingLockPacket(host.isCraftingGridLocked()));
+                ModNetworking.sendToServer(new CraftingLockPacket(host.isCraftingGridLocked()));
             });
             widgets.add("CRAFTING_Locking", craftingLockButton);
         }
@@ -466,7 +466,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 return;
             }
             if (menu.setManualAnvilName(value)) {
-                PacketDistributor.sendToServer(new ManualAnvilNamePacket(value));
+                ModNetworking.sendToServer(new ManualAnvilNamePacket(value));
             }
         });
         manualAnvilNameField.setFocused(false);
@@ -476,9 +476,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         encodePatternButton.setMessage(Component.translatable("gui.tooltips.ae2.Encode"));
         widgets.add("wcwtEncodePattern", encodePatternButton);
 
-        clearPatternEncodingButton = new ActionButton(appeng.api.config.ActionItems.S_CLOSE, () -> {
+        clearPatternEncodingButton = new ActionButton(appeng.api.config.ActionItems.CLOSE, () -> {
             menu.clearPatternEncoding();
-            PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
+            ModNetworking.sendToServer(new PatternEncodingOptionPacket(
                     PatternEncodingOptionPacket.ACTION_CLEAR, false));
         });
         clearPatternEncodingButton.setHalfSize(true);
@@ -490,17 +490,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 Component.translatable("gui.wcwt.processing_merge.desc.on"),
                 Component.translatable("gui.wcwt.processing_merge.off"),
                 Component.translatable("gui.wcwt.processing_merge.desc.off"),
-                btn -> PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
+                btn -> ModNetworking.sendToServer(new PatternEncodingOptionPacket(
                         PatternEncodingOptionPacket.ACTION_PROCESSING_MERGE_MATERIALS,
                         !menu.isProcessingMaterialsMerge())));
         widgets.add("wcwtPatternMergeMaterials", processingMaterialsMergeButton);
 
         patternSubstitutionButton = new ToggleButton(
-                Icon.S_SUBSTITUTION_ENABLED,
-                Icon.S_SUBSTITUTION_DISABLED,
+                Icon.SUBSTITUTION_ENABLED,
+                Icon.SUBSTITUTION_DISABLED,
                 state -> {
                     menu.setPatternSubstitute(state);
-                    PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
+                    ModNetworking.sendToServer(new PatternEncodingOptionPacket(
                             PatternEncodingOptionPacket.ACTION_SUBSTITUTE, state));
                 });
         patternSubstitutionButton.setHalfSize(true);
@@ -514,11 +514,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         widgets.add("wcwtPatternSubstitutions", patternSubstitutionButton);
 
         patternFluidSubstitutionButton = new ToggleButton(
-                Icon.S_FLUID_SUBSTITUTION_ENABLED,
-                Icon.S_FLUID_SUBSTITUTION_DISABLED,
+                Icon.FLUID_SUBSTITUTION_ENABLED,
+                Icon.FLUID_SUBSTITUTION_DISABLED,
                 state -> {
                     menu.setPatternFluidSubstitute(state);
-                    PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
+                    ModNetworking.sendToServer(new PatternEncodingOptionPacket(
                             PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
                 });
         patternFluidSubstitutionButton.setHalfSize(true);
@@ -531,10 +531,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 ButtonToolTips.FluidSubstitutionsDescDisabled.text()));
         widgets.add("wcwtPatternFluidSubstitutions", patternFluidSubstitutionButton);
 
-        cycleProcessingOutputButton = new ActionButton(appeng.api.config.ActionItems.S_CYCLE_PROCESSING_OUTPUT,
+        cycleProcessingOutputButton = new ActionButton(appeng.api.config.ActionItems.CYCLE_PROCESSING_OUTPUT,
                 () -> {
                     menu.cycleProcessingOutput();
-                    PacketDistributor.sendToServer(new CycleProcessingOutputPacket());
+                    ModNetworking.sendToServer(new CycleProcessingOutputPacket());
                 });
         cycleProcessingOutputButton.setHalfSize(true);
         cycleProcessingOutputButton.setDisableBackground(true);
@@ -542,7 +542,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         // 样板模式 tab 按钮（合成 / 处理 / 锻造台 / 切石机）
         tabCrafting = new TabButton(
-                appeng.client.gui.Icon.TAB_CRAFTING,
+                appeng.client.gui.Icon.CRAFT_HAMMER,
                 Component.translatable("gui.ae2.CraftingPattern"),
                 btn -> setPatternEncodingMode(EncodingMode.CRAFTING));
         tabCrafting.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
@@ -551,21 +551,21 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         topModeTabButton = tabCrafting;
 
         tabProcessing = new TabButton(
-                appeng.client.gui.Icon.TAB_PROCESSING,
+                appeng.client.gui.Icon.WHITE_ARROW_DOWN,
                 Component.translatable("gui.ae2.ProcessingPattern"),
                 btn -> setPatternEncodingMode(EncodingMode.PROCESSING));
         tabProcessing.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
         widgets.add("modeTabButton1", tabProcessing);
 
         tabSmithing = new TabButton(
-                appeng.client.gui.Icon.TAB_SMITHING,
+                appeng.client.gui.Icon.WRENCH,
                 Component.translatable("gui.ae2.SmithingTablePattern"),
                 btn -> setPatternEncodingMode(EncodingMode.SMITHING_TABLE));
         tabSmithing.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
         widgets.add("modeTabButton2", tabSmithing);
 
         tabStonecutting = new TabButton(
-                appeng.client.gui.Icon.TAB_STONECUTTING,
+                appeng.client.gui.Icon.VALID,
                 Component.translatable("gui.ae2.StonecuttingPattern"),
                 btn -> setPatternEncodingMode(EncodingMode.STONECUTTING));
         tabStonecutting.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
@@ -660,14 +660,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         WcwtWirelessTerminalSettingsSubScreen(WirelessComprehensiveWorkTerminalScreen parent) {
             super(parent, "/screens/wcwt/wireless_terminal_settings.json");
-            widgets.add("back", new TabButton(Icon.BACK, getMenu().getHost().getMainMenuIcon().getHoverName(),
+            widgets.add("back", new TabButton(Icon.ARROW_LEFT, getMenu().getHost().getMainMenuIcon().getHoverName(),
                     btn -> returnToParent()));
 
             ItemStack stack = stack();
-            pickBlock.setSelected(stack.getOrDefault(AE2wtlibComponents.PICK_BLOCK, false));
-            craftIfMissing.setSelected(stack.getOrDefault(AE2wtlibComponents.CRAFT_IF_MISSING, false));
+            pickBlock.setSelected(readTerminalBoolean(stack, "pick_block"));
+            craftIfMissing.setSelected(readTerminalBoolean(stack, "craft_if_missing"));
             craftIfMissing.active = pickBlock.isSelected();
-            restock.setSelected(stack.getOrDefault(AE2wtlibComponents.RESTOCK, false));
+            restock.setSelected(readTerminalBoolean(stack, "restock"));
             magnet.setSelected(readMagnetSetting(stack, "magnet"));
             pickupToME.setSelected(readMagnetSetting(stack, "pickupToME"));
             patternUploadFailFallbackToEditor.setSelected(WcwtClientConfig.patternUploadFailFallbackToEditor());
@@ -701,7 +701,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         private void save() {
-            PacketDistributor.sendToServer(new WirelessSettingsPacket(
+            ModNetworking.sendToServer(new WirelessSettingsPacket(
                     pickBlock.isSelected(), restock.isSelected(), magnet.isSelected(), pickupToME.isSelected(),
                     craftIfMissing.isSelected()));
         }
@@ -716,20 +716,20 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             WcwtClientConfig.SPEC.save();
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
         private static boolean readMagnetSetting(ItemStack stack, String methodName) {
-            try {
-                Field componentField = Class.forName("de.mari_023.ae2wtlib.AE2wtlibAdditionalComponents")
-                        .getField("MAGNET_SETTINGS");
-                net.minecraft.core.component.DataComponentType component =
-                        (net.minecraft.core.component.DataComponentType) componentField.get(null);
-                Class<?> modeClass = Class.forName("de.mari_023.ae2wtlib.wct.magnet_card.MagnetMode");
-                Object fallback = Enum.valueOf((Class<Enum>) modeClass.asSubclass(Enum.class), "OFF");
-                Object mode = stack.getOrDefault(component, fallback);
-                return (boolean) modeClass.getMethod(methodName).invoke(mode);
-            } catch (ReflectiveOperationException e) {
+            return switch (methodName) {
+                case "magnet" -> readTerminalBoolean(stack, "magnet");
+                case "pickupToME" -> readTerminalBoolean(stack, "pickup_to_me");
+                default -> false;
+            };
+        }
+
+        private static boolean readTerminalBoolean(ItemStack stack, String key) {
+            var tag = stack.getTag();
+            if (tag == null || !tag.contains(ModComponents.ROOT_TAG, net.minecraft.nbt.Tag.TAG_COMPOUND)) {
                 return false;
             }
+            return tag.getCompound(ModComponents.ROOT_TAG).getBoolean(key);
         }
     }
 
@@ -741,9 +741,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         clearCraftingGridButton = resolveWidgetById("clearCraftingGrid");
         clearToPlayerInvButton = resolveWidgetById("clearToPlayerInv");
         // 升级槽 maxRows 与终端风格联动（参考 WTLib WCT/WAT/WET 的标准做法）。
-        // 切换"小/中/大终端"会让 ME 网格行数变化 → getVisibleRows() 变化 → 升级槽行数也跟着变。
+        // 切换"小/中/大终端"会让 ME 网格行数变化，从而影响升级槽行数。
         if (upgradesPanel != null) {
-            upgradesPanel.setMaxRows(Math.max(2, getVisibleRows()));
+            upgradesPanel.setMaxRows(Math.max(2, getRepoRowCount()));
         }
         if (cellUpgradesPanel != null) {
             cellUpgradesPanel.setMaxRows(2);
@@ -784,6 +784,25 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
+    private int getRepoRowCount() {
+        int rowCount = 0;
+        int firstRepoRowY = Integer.MIN_VALUE;
+        for (Slot slot : menu.slots) {
+            if (!(slot instanceof RepoSlot)) {
+                continue;
+            }
+            if (firstRepoRowY == Integer.MIN_VALUE) {
+                firstRepoRowY = slot.y;
+            }
+            if (slot.y == firstRepoRowY) {
+                rowCount++;
+            } else {
+                break;
+            }
+        }
+        return Math.max(2, rowCount > 0 ? rowCount : 2);
+    }
+
     private void hookRepoUpdateListener() {
         repo.setUpdateViewListener(() -> {
             invokeMeStorageUpdateScrollbar();
@@ -805,7 +824,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void rebuildCraftableIndicatorCache() {
         craftableIndicatorKeys.clear();
-        if (!repo.isEnabled()) {
+        if (!repo.hasPower()) {
             return;
         }
 
@@ -1011,7 +1030,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         host.closeExtendedUI();
-        PacketDistributor.sendToServer(new ExtendedUIPacket(IExtendedUIHost.ExtendedUIType.NONE));
+        ModNetworking.sendToServer(new ExtendedUIPacket(IExtendedUIHost.ExtendedUIType.NONE));
         updateExtendedUIVisibility();
     }
 
@@ -1067,7 +1086,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         
         // 发送网络数据包同步状态
-        PacketDistributor.sendToServer(new ExtendedUIPacket(newType));
+        ModNetworking.sendToServer(new ExtendedUIPacket(newType));
         updateExtendedUIVisibility();
     }
     
@@ -1217,7 +1236,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     
     private void onMultiplierButtonClick(PatternMultiplierButton.MultiplierType type) {
         // 发送样板倍增器数据包到服务端
-        PacketDistributor.sendToServer(new PatternMultiplierPacket(
+        ModNetworking.sendToServer(new PatternMultiplierPacket(
                 type,
                 WcwtClientConfig.patternMultiplierApplyToEditorProcessing()));
     }
@@ -1243,7 +1262,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             encodePatternButton.setFocused(false);
         }
         setFocused(null);
-        PacketDistributor.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
+        ModNetworking.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
                 searchKey == null ? "" : searchKey,
                 WcwtClientConfig.patternUploadFailFallbackToEditor()));
     }
@@ -1447,7 +1466,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private void switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
         menu.setManualWorkspaceMode(mode);
         updateManualWorkspaceUi();
-        PacketDistributor.sendToServer(new ManualWorkspaceModePacket(mode.ordinal()));
+        ModNetworking.sendToServer(new ManualWorkspaceModePacket(mode.ordinal()));
     }
 
     private void updateManualWorkspaceButtons(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
@@ -1762,7 +1781,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         pendingPatternManagementShowSlots = patternManagementShowSlots;
         pendingPatternManagementUploadEnabled = patternManagementUploadEnabled;
         pendingPatternManagementSearchMode = patternManagementSearchMode;
-        PacketDistributor.sendToServer(new PatternManagementUploadSettingPacket(
+        ModNetworking.sendToServer(new PatternManagementUploadSettingPacket(
                 patternManagementUploadEnabled,
                 patternManagementDisplayMode.ordinal(),
                 patternManagementShowSlots,
@@ -1850,7 +1869,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             requestedPatternProviders = true;
             lastPatternProviderRefreshRequestMs = System.currentTimeMillis();
             lastPatternProviderSubscriptionRequestMs = lastPatternProviderRefreshRequestMs;
-            PacketDistributor.sendToServer(new PatternProviderListPacket.Request(true));
+            ModNetworking.sendToServer(new PatternProviderListPacket.Request(true));
         }
     }
 
@@ -1862,7 +1881,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         requestedPatternProviders = true;
         lastPatternProviderRefreshRequestMs = now;
         lastPatternProviderSubscriptionRequestMs = now;
-        PacketDistributor.sendToServer(new PatternProviderListPacket.Request(true));
+        ModNetworking.sendToServer(new PatternProviderListPacket.Request(true));
     }
 
     private void keepPatternProviderSubscriptionAlive() {
@@ -1876,7 +1895,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         lastPatternProviderSubscriptionRequestMs = now;
-        PacketDistributor.sendToServer(new PatternProviderListPacket.Request(true));
+        ModNetworking.sendToServer(new PatternProviderListPacket.Request(true));
     }
 
     public void updatePatternProviders(List<PatternProviderListPacket.Entry> entries) {
@@ -1939,11 +1958,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
             if (visible) {
                 int visibleIndex = i - firstSlot;
-                slot.x = PATTERN_CACHE_SLOT_X + (visibleIndex % PATTERN_CACHE_COLS) * 18;
-                slot.y = slotY + (visibleIndex / PATTERN_CACHE_COLS) * 18;
+                showSlot(slot,
+                        PATTERN_CACHE_SLOT_X + (visibleIndex % PATTERN_CACHE_COLS) * 18,
+                        slotY + (visibleIndex / PATTERN_CACHE_COLS) * 18);
             } else {
-                slot.x = HIDDEN_SLOT_POS.getX();
-                slot.y = HIDDEN_SLOT_POS.getY();
+                hideSlot(slot);
             }
         }
     }
@@ -2063,8 +2082,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (slot instanceof AppEngSlot appEngSlot) {
                 appEngSlot.setActive(true);
             }
-            slot.x = encodedPatternRect.left();
-            slot.y = encodedPatternRect.top();
+            showSlot(slot, encodedPatternRect.left(), encodedPatternRect.top());
         }
     }
 
@@ -2072,7 +2090,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         Slot encodedPatternSlot = getEncodedPatternSlot();
         ItemStack encodedPattern = encodedPatternSlot != null ? encodedPatternSlot.getItem() : ItemStack.EMPTY;
         String uploadSearchText = PatternUploadMetadata.getProviderSearchText(encodedPattern);
-        boolean changed = !ItemStack.isSameItemSameComponents(lastEncodedPatternForUploadSync, encodedPattern)
+        boolean changed = !ItemStack.isSameItem(lastEncodedPatternForUploadSync, encodedPattern)
+                || !Objects.equals(lastEncodedPatternForUploadSync.getTag(), encodedPattern.getTag())
                 || !Objects.equals(lastEncodedPatternUploadSearchText, uploadSearchText);
         if (!changed) {
             return;
@@ -2129,8 +2148,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             var slot = slots.get(i);
             setPatternEncodingSlotActive(slot, visible);
             if (visible) {
-                slot.x = base.left() - 9 + (i % 3) * 18;
-                slot.y = base.top() + (i / 3) * 18;
+                showSlot(slot, base.left() - 9 + (i % 3) * 18, base.top() + (i / 3) * 18);
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2146,8 +2164,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             boolean show = visible && effectiveRow >= 0 && effectiveRow < 3;
             setPatternEncodingSlotActive(slot, show);
             if (show) {
-                slot.x = base.left() + (i % 3) * 18;
-                slot.y = base.top() + effectiveRow * 18;
+                showSlot(slot, base.left() + (i % 3) * 18, base.top() + effectiveRow * 18);
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2165,8 +2182,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 appEngSlot.setActive(slotVisible);
             }
             if (slotVisible) {
-                slot.x = base.left();
-                slot.y = base.top() + effectiveRow * 18;
+                showSlot(slot, base.left(), base.top() + effectiveRow * 18);
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2189,8 +2205,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             var slot = slots.get(i).get(0);
             setPatternEncodingSlotActive(slot, visible);
             if (visible) {
-                slot.x = base.left() + xOffsets[i];
-                slot.y = y;
+                showSlot(slot, base.left() + xOffsets[i], y);
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2207,8 +2222,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var slot = slots.get(0);
         setPatternEncodingSlotActive(slot, visible);
         if (visible) {
-            slot.x = base.left() - 9;
-            slot.y = base.top() + 18;
+            showSlot(slot, base.left() - 9, base.top() + 18);
         } else {
             hidePatternEncodingSlot(slot);
         }
@@ -2229,8 +2243,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     new ExtendedPanelLayout.Rect(192, imageHeight - 216, 18, 18), imageWidth, imageHeight);
             var outputBase = mainLayout.slot("PROCESSING_OUTPUTS",
                     new ExtendedPanelLayout.Rect(277, imageHeight - 216, 18, 18), imageWidth, imageHeight);
-            slot.x = outputBase.left() - (patternEncodingMode == EncodingMode.CRAFTING ? 4 : 0);
-            slot.y = inputBase.top() + 18;
+            showSlot(slot, outputBase.left() - (patternEncodingMode == EncodingMode.CRAFTING ? 4 : 0),
+                    inputBase.top() + 18);
         } else {
             hidePatternEncodingSlot(slot);
         }
@@ -2254,14 +2268,23 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void hideSlot(Slot slot) {
         setSlotActive(slot, false);
-        slot.x = HIDDEN_SLOT_POS.getX();
-        slot.y = HIDDEN_SLOT_POS.getY();
+        setSlotPosition(slot, HIDDEN_SLOT_POS.getX(), HIDDEN_SLOT_POS.getY());
     }
 
     private void showSlot(Slot slot, int x, int y) {
         setSlotActive(slot, true);
-        slot.x = x;
-        slot.y = y;
+        setSlotPosition(slot, x, y);
+    }
+
+    private static void setSlotPosition(Slot slot, int x, int y) {
+        try {
+            var xField = Slot.class.getField("x");
+            var yField = Slot.class.getField("y");
+            xField.setInt(slot, x);
+            yField.setInt(slot, y);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("Failed to position slot", e);
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -2286,8 +2309,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         for (var slot : menu.getSlots(semantic)) {
             setSlotActive(slot, !hidden);
             if (hidden) {
-                slot.x = HIDDEN_SLOT_POS.getX();
-                slot.y = HIDDEN_SLOT_POS.getY();
+                hideSlot(slot);
             }
         }
     }
@@ -3070,7 +3092,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private ItemStack getPatternDisplayStack(ItemStack patternStack) {
-        if (patternStack.getItem() instanceof appeng.crafting.pattern.EncodedPatternItem<?> encodedPattern) {
+        if (patternStack.getItem() instanceof appeng.crafting.pattern.EncodedPatternItem encodedPattern) {
             ItemStack output = encodedPattern.getOutput(patternStack);
             if (!output.isEmpty()) {
                 return output;
@@ -3383,7 +3405,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (cacheIndex >= 0) {
                 if (mouseButton == 0 && clickType == ClickType.PICKUP && slot != null && slot.hasItem()) {
                     selectedPatternCacheIndex = cacheIndex;
-                    PacketDistributor.sendToServer(new PatternSelectionPacket(cacheIndex));
+                    ModNetworking.sendToServer(new PatternSelectionPacket(cacheIndex));
                 }
                 return; // 高级编码 UI 打开时锁定缓存槽，禁止拿走/放入样板。
             }
@@ -3424,11 +3446,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                             this,
                             currentStack,
                             newStack -> {
-                                ServerboundPacket message = new InventoryActionPacket(
+                                InventoryActionPacket message = new InventoryActionPacket(
                                         InventoryAction.SET_FILTER,
                                         slot.index,
                                         GenericStack.wrapInItemStack(newStack));
-                                PacketDistributor.sendToServer(message);
+                                appeng.core.sync.network.NetworkHandler.instance().sendToServer(message);
                             });
                     switchToScreen(screen);
                     return true;
@@ -3522,7 +3544,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                         && relY >= slot.y && relY < slot.y + 16) {
                     if (menu.trySelectPatternForAdvancedCodingFromCacheSlot(i)) {
                         selectedPatternCacheIndex = i;
-                        PacketDistributor.sendToServer(new PatternSelectionPacket(i));
+                        ModNetworking.sendToServer(new PatternSelectionPacket(i));
                         return true;
                     }
                 }
@@ -3562,7 +3584,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
             widgets.addButton("save", Component.translatable("gui.ae2.Set"), btn -> confirm());
             var icon = getMenu().getHost().getMainMenuIcon();
-            widgets.add("back", new TabButton(Icon.BACK, icon.getHoverName(), btn -> returnToParent()));
+            widgets.add("back", new TabButton(Icon.ARROW_LEFT, icon.getHoverName(), btn -> returnToParent()));
 
             this.amount = widgets.addNumberEntryWidget("amountToStock", NumberEntryType.of(currentStack.what()));
             this.amount.setLongValue(currentStack.amount());
@@ -3638,7 +3660,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return false;
         }
 
-        PacketDistributor.sendToServer(new StonecuttingRecipeSelectionPacket(recipe.id()));
+        ModNetworking.sendToServer(new StonecuttingRecipeSelectionPacket(recipe.id()));
         menu.setStonecuttingRecipeId(recipe.id());
         Minecraft.getInstance().getSoundManager()
                 .play(SimpleSoundInstance.forUI(SoundEvents.UI_STONECUTTER_SELECT_RECIPE, 1.0F));
@@ -3716,13 +3738,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (inRect(relX, relY, batchItemReplacementButton)) {
             playPatternManagementClickSound();
             batchItemSubstitutions = !batchItemSubstitutions;
-            PacketDistributor.sendToServer(new PatternModePacket(0, batchItemSubstitutions));
+            ModNetworking.sendToServer(new PatternModePacket(0, batchItemSubstitutions));
             return true;
         }
         if (inRect(relX, relY, batchFluidReplacementButton)) {
             playPatternManagementClickSound();
             batchFluidSubstitutions = !batchFluidSubstitutions;
-            PacketDistributor.sendToServer(new PatternModePacket(1, batchFluidSubstitutions));
+            ModNetworking.sendToServer(new PatternModePacket(1, batchFluidSubstitutions));
             return true;
         }
 
@@ -3828,7 +3850,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void sendPatternManagementAction(PatternManagementActionPacket.Action action, long providerId, int cacheSlot) {
-        PacketDistributor.sendToServer(new PatternManagementActionPacket(
+        ModNetworking.sendToServer(new PatternManagementActionPacket(
                 action,
                 providerId,
                 cacheSlot,
@@ -3901,7 +3923,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         long now = System.currentTimeMillis();
         if (lastAeNetworkToolkitDoubleClickSlot != null && hit == lastAeNetworkToolkitDoubleClickSlot
                 && now - lastAeNetworkToolkitDoubleClickMs <= 550L) {
-            PacketDistributor.sendToServer(new ToolkitNetworkToolDepositPacket());
+            ModNetworking.sendToServer(new ToolkitNetworkToolDepositPacket());
             playPatternManagementClickSound();
             lastAeNetworkToolkitDoubleClickSlot = null;
             lastAeNetworkToolkitDoubleClickMs = 0L;
@@ -4154,7 +4176,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             int face = entry.face() != null ? entry.face().ordinal() : -1;
             Object packet = ctor.newInstance(entry.pos().asLong(), entry.dimension().location(), face);
             if (packet instanceof net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
-                PacketDistributor.sendToServer(payload);
+                ModNetworking.sendToServer(payload);
             }
         } catch (Throwable ignored) {
         }
@@ -4334,7 +4356,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollY) {
         if (advancedCodingPanel != null && advancedCodingPanel.isVisible()
                 && advancedCodingPanel.mouseScrolled(mouseX, mouseY, scrollY)) {
             return true;
@@ -4380,7 +4402,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                         new Point((int) Math.round(mouseX - leftPos), (int) Math.round(mouseY - topPos)), scrollY)) {
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+        return super.mouseScrolled(mouseX, mouseY, scrollY);
     }
 
     private boolean isMouseOverPatternEncoding(double mouseX, double mouseY) {

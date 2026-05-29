@@ -8,7 +8,6 @@ import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.event.RegisterMenuScreensEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -26,14 +25,10 @@ public class ModClientSetup {
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
 
     public static void init(IEventBus modBus) {
-        modBus.addListener(ModClientSetup::onRegisterMenuScreens);
         modBus.addListener(ModClientSetup::onRegisterKeyMappings);
-    }
-
-    private static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenus.WCWT_MENU.get(), WirelessComprehensiveWorkTerminalScreen::new);
-        InitScreens.register(event, ModMenus.WCWT_MAGNET_MENU.get(), WcwtMagnetScreen::new, "/screens/wtlib/magnet.json");
-        InitScreens.register(event, ModMenus.WCWT_TRASH_MENU.get(), WcwtTrashScreen::new, "/screens/wtlib/trash.json");
+        net.minecraft.client.gui.screens.MenuScreens.register(ModMenus.WCWT_MENU.get(), WirelessComprehensiveWorkTerminalScreen::new);
+        InitScreens.register(ModMenus.WCWT_MAGNET_MENU.get(), WcwtMagnetScreen::new, "/screens/wtlib/magnet.json");
+        InitScreens.register(ModMenus.WCWT_TRASH_MENU.get(), WcwtTrashScreen::new, "/screens/wtlib/trash.json");
     }
 
     private static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {

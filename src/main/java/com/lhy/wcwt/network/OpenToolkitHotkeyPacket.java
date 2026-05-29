@@ -1,10 +1,7 @@
 package com.lhy.wcwt.network;
 
-import appeng.menu.locator.MenuLocators;
-import appeng.integration.modules.curios.CuriosIntegration;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.api.IExtendedUIHost;
-import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -58,13 +55,12 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
             if (!(stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
                 continue;
             }
-            var locator = MenuLocators.forInventorySlot(slot);
             WirelessComprehensiveWorkTerminalMenuHost.setPendingExtendedUi(player, IExtendedUIHost.ExtendedUIType.TOOLKIT);
             if (DEBUG_TOOLKIT) {
                 WcwtMod.LOGGER.info("WCWT toolkit debug: trying inventory terminal slot={} for player={}",
                         slot, player.getScoreboardName());
             }
-            if (terminalItem.openFromInventory(player, locator)) {
+            if (terminalItem.openFromInventory(player, slot)) {
                 if (DEBUG_TOOLKIT) {
                     WcwtMod.LOGGER.info("WCWT toolkit debug: inventory terminal open succeeded, slot={}, menu={}",
                             slot, player.containerMenu == null ? "<null>" : player.containerMenu.getClass().getName());
@@ -80,37 +76,6 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
     }
 
     private static boolean openFromCurios(ServerPlayer player) {
-        if (!CuriosBridge.isLoaded()) {
-            return false;
-        }
-        var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
-        if (cap == null) {
-            return false;
-        }
-        for (int slot = 0; slot < cap.getSlots(); slot++) {
-            ItemStack stack = cap.getStackInSlot(slot);
-            if (!(stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
-                continue;
-            }
-            var locator = MenuLocators.forCurioSlot(slot);
-            WirelessComprehensiveWorkTerminalMenuHost.setPendingExtendedUi(player, IExtendedUIHost.ExtendedUIType.TOOLKIT);
-            if (DEBUG_TOOLKIT) {
-                WcwtMod.LOGGER.info("WCWT toolkit debug: trying curios terminal slot={} for player={}",
-                        slot, player.getScoreboardName());
-            }
-            if (terminalItem.openFromInventory(player, locator)) {
-                if (DEBUG_TOOLKIT) {
-                    WcwtMod.LOGGER.info("WCWT toolkit debug: curios terminal open succeeded, slot={}, menu={}",
-                            slot,
-                            player.containerMenu == null ? "<null>" : player.containerMenu.getClass().getName());
-                }
-                applyToolkitUiIfOpen(player);
-                return true;
-            }
-            if (DEBUG_TOOLKIT) {
-                WcwtMod.LOGGER.info("WCWT toolkit debug: curios terminal open failed, slot={}", slot);
-            }
-        }
         return false;
     }
 

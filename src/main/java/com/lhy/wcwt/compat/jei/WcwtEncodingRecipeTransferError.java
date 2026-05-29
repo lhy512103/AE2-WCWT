@@ -1,6 +1,6 @@
 package com.lhy.wcwt.compat.jei;
 
-import appeng.integration.modules.itemlists.TransferHelper;
+import appeng.integration.modules.jeirei.TransferHelper;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
@@ -43,6 +43,6 @@ public record WcwtEncodingRecipeTransferError(List<IRecipeSlotView> craftableSlo
 
     @Override
     public void getTooltip(ITooltipBuilder tooltip) {
-        tooltip.addAll(TransferHelper.createEncodingTooltip(!craftableSlots.isEmpty(), true));
+        tooltip.addAll(TransferHelper.createEncodingTooltip(!craftableSlots.isEmpty()));
     }
 }

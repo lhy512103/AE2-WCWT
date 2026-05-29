@@ -3,10 +3,8 @@ package com.lhy.wcwt.network;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record TopActionPacket(Action action) implements CustomPacketPayload {
@@ -14,12 +12,19 @@ public record TopActionPacket(Action action) implements CustomPacketPayload {
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "top_action"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, TopActionPacket> STREAM_CODEC =
-            StreamCodec.composite(ByteBufCodecs.VAR_INT.map(Action::fromId, Action::id), TopActionPacket::action,
-                    TopActionPacket::new);
+            StreamCodec.ofMember(TopActionPacket::write, TopActionPacket::read);
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;
+    }
+
+    private static TopActionPacket read(RegistryFriendlyByteBuf buf) {
+        return new TopActionPacket(Action.fromId(buf.readVarInt()));
+    }
+
+    private void write(RegistryFriendlyByteBuf buf) {
+        buf.writeVarInt(action.id());
     }
 
     public static void handle(TopActionPacket packet, IPayloadContext context) {

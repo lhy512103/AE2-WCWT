@@ -43,15 +43,34 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiConsumer;
 
+import appeng.blockentity.qnb.QuantumBridgeBlockEntity;
 import appeng.items.tools.powered.powersink.AEBasePoweredItem;
 import appeng.me.cluster.implementations.QuantumCluster;
 import appeng.me.storage.NullInventory;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.init.ModComponents;
+import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
+import de.mari_023.ae2wtlib.api.TextConstants;
 public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingTerminalMenuHost
         implements ISegmentedInventory, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost {
+    private static CompoundTag getOrCreateRootTag(ItemStack stack) {
+        CompoundTag stackTag = stack.getOrCreateTag();
+        CompoundTag root = stackTag.getCompound(ModComponents.ROOT_TAG);
+        stackTag.put(ModComponents.ROOT_TAG, root);
+        return root;
+    }
+
+    @Nullable
+    private static CompoundTag getRootTag(ItemStack stack) {
+        CompoundTag stackTag = stack.getTag();
+        if (stackTag == null || !stackTag.contains(ModComponents.ROOT_TAG, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+        return stackTag.getCompound(ModComponents.ROOT_TAG);
+    }
+
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
@@ -71,6 +90,81 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private static final String TOOLKIT_ITEMS_TAG = "items";
     private static final String TOOLKIT_SLOT_TAG = "slot";
     private static final String TOOLKIT_STACK_TAG = "stack";
+    private static final String SINGULARITY_TAG = "singularity";
+    private static final String PICKUP_CONFIG_TAG = "pickup_config";
+    private static final String INSERT_CONFIG_TAG = "insert_config";
+    private static final String PATTERN_ENCODING_LOGIC_TAG = "pattern_encoding_logic";
+
+    private record LinkStatus(boolean connected, @Nullable net.minecraft.network.chat.Component statusDescription) {
+        private static LinkStatus ofConnected() {
+            return new LinkStatus(true, null);
+        }
+
+        private static LinkStatus ofDisconnected() {
+            return new LinkStatus(false, null);
+        }
+
+        private static LinkStatus ofDisconnected(@Nullable net.minecraft.network.chat.Component description) {
+            return new LinkStatus(false, description);
+        }
+    }
+
+    private record ActionHostResult(@Nullable IActionHost host, Status status) {
+        private static ActionHostResult valid(IActionHost host) {
+            return new ActionHostResult(host, Status.Valid);
+        }
+
+        private static ActionHostResult invalid(Status status) {
+            return new ActionHostResult(null, status);
+        }
+
+        private boolean invalid() {
+            return status != Status.Valid;
+        }
+    }
+
+    private record LongResult(long result, Status status) {
+        private static LongResult valid(long result) {
+            return new LongResult(result, Status.Valid);
+        }
+
+        private static LongResult invalid(Status status) {
+            return new LongResult(0L, status);
+        }
+
+        private boolean valid() {
+            return status == Status.Valid;
+        }
+    }
+
+    private enum Status {
+        Valid(null),
+        GenericInvalid(null),
+        NotPowered(TextConstants.NETWORK_NOT_POWERED),
+        NoUpgrade(TextConstants.NO_QNB_UPGRADE),
+        BridgeNotFound(TextConstants.NO_QNB),
+        DifferentNetworks(TextConstants.DIFFERENT_NETWORKS),
+        NoSingularity(TextConstants.SINGULARITY_NOT_PRESENT);
+
+        @Nullable
+        private final net.minecraft.network.chat.Component error;
+
+        Status(@Nullable net.minecraft.network.chat.Component error) {
+            this.error = error;
+        }
+
+        private boolean isValid() {
+            return this == Valid;
+        }
+
+        private LinkStatus toLinkStatus() {
+            return isValid() ? LinkStatus.ofConnected() : LinkStatus.ofDisconnected(error);
+        }
+
+        private boolean is(LinkStatus status) {
+            return status != null && status.statusDescription() == error;
+        }
+    }
     
     // 定义各种存储库存的ResourceLocation标识符
     public static final ResourceLocation INV_AE2WTLIB_ARMOR = com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "ae2wtlib_armor");
@@ -88,15 +182,15 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     public static final ResourceLocation INV_SINGULARITY = com.lhy.wcwt.util.ResourceLocationCompat.id("ae2wtlib", "singularity");
 
     // 缠绕态奇点槽（1个槽位，用于量子桥接卡联网）
-    private final SupplierInternalInventory<InternalInventory> singularityInv;
+    private final SupplierInternalInventory singularityInv;
     private final MEStorage quantumAwareStorage;
     @Nullable
     private IActionHost quantumBridge;
-    private ILinkStatus quantumStatus = ILinkStatus.ofDisconnected();
-    private ILinkStatus effectiveLinkStatus = ILinkStatus.ofDisconnected();
+    private LinkStatus quantumStatus = LinkStatus.ofDisconnected();
+    private LinkStatus effectiveLinkStatus = LinkStatus.ofDisconnected();
     @Nullable
     private IGridNode cachedStableActionableNode;
-    private ILinkStatus cachedStableLinkStatus = ILinkStatus.ofDisconnected();
+    private LinkStatus cachedStableLinkStatus = LinkStatus.ofDisconnected();
     private long lastStableConnectionTick = Long.MIN_VALUE;
     private long lastConnectedAccessPointUpdateTick = Long.MIN_VALUE;
     private boolean forceConnectedAccessPointUpdate;
@@ -105,34 +199,30 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private long lastRepoDebugTick = Long.MIN_VALUE;
     private int suppressedRepoDebugLogs;
     // AE2WTLIB装备槽 (头盔, 胸甲, 护腿, 靴子, 副手) - 5个槽位
-    private final SupplierInternalInventory<InternalInventory> ae2wtlibArmorInv;
+    private final SupplierInternalInventory ae2wtlibArmorInv;
     // 装饰性装备槽 (头盔, 胸甲, 护腿, 靴子) - 4个槽位
-    private final SupplierInternalInventory<InternalInventory> decorativeArmorInv;
+    private final SupplierInternalInventory decorativeArmorInv;
     // Curios槽位 - 1个槽位
-    private final SupplierInternalInventory<InternalInventory> curiosInv;
+    private final SupplierInternalInventory curiosInv;
     // 高级样板编码槽 (复制样板, 替换输入, 替换输出) - 3个槽位
-    private final SupplierInternalInventory<InternalInventory> advancedPatternInv;
+    private final SupplierInternalInventory advancedPatternInv;
     // 样板缓存区 - 36个槽位（4行×9列，界面每次显示2行）
-    private final SupplierInternalInventory<InternalInventory> patternCacheInv;
+    private final SupplierInternalInventory patternCacheInv;
     // 工具包 - 默认64个槽位，实际数量由服务端配置控制
-    private final SupplierInternalInventory<InternalInventory> toolkitInv;
+    private final SupplierInternalInventory toolkitInv;
     // 元件工作台 - 存储元件槽（1个槽位）
-    private final SupplierInternalInventory<InternalInventory> storageCellInv;
+    private final SupplierInternalInventory storageCellInv;
     // 谐振样板缓存区 - 21个槽位（3行×7列）
-    private final SupplierInternalInventory<InternalInventory> resonatingPatternCacheInv;
+    private final SupplierInternalInventory resonatingPatternCacheInv;
     // 左上手动锻造台工作区 - 3个槽位
-    private final SupplierInternalInventory<InternalInventory> manualSmithingInv;
+    private final SupplierInternalInventory manualSmithingInv;
     // 左上手动铁砧工作区 - 2个槽位
-    private final SupplierInternalInventory<InternalInventory> manualAnvilInv;
+    private final SupplierInternalInventory manualAnvilInv;
     private final AppEngInternalInventory trashInv = new AppEngInternalInventory(27);
-    private final ConfigInventory magnetPickupConfig = ConfigInventory.configTypes(27)
-            .changeListener(this::updateMagnetPickupConfig)
-            .supportedTypes(AEKeyType.items())
-            .build();
-    private final ConfigInventory magnetInsertConfig = ConfigInventory.configTypes(27)
-            .changeListener(this::updateMagnetInsertConfig)
-            .supportedTypes(AEKeyType.items())
-            .build();
+    private final ConfigInventory magnetPickupConfig = ConfigInventory.configTypes(AEKeyType.items()::equals, 27,
+            this::updateMagnetPickupConfig);
+    private final ConfigInventory magnetInsertConfig = ConfigInventory.configTypes(AEKeyType.items()::equals, 27,
+            this::updateMagnetInsertConfig);
     // 元件工作台 - AE2 CellWorkbench 同款 63 格 config 镜像
     private final GenericStackInv cellConfigInv = new GenericStackInv(this::cellConfigChanged,
             GenericStackInv.Mode.CONFIG_TYPES, 63);
@@ -164,96 +254,67 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     /** 左上铁砧工作区当前命名文本。 */
     private String manualAnvilName;
     
-    public WirelessComprehensiveWorkTerminalMenuHost(WirelessComprehensiveWorkTerminalItem item, Player player,
-                                                      ItemMenuHostLocator locator,
+    public WirelessComprehensiveWorkTerminalMenuHost(Player player, @Nullable Integer inventorySlot,
+                                                      ItemStack itemStack,
                                                       BiConsumer<Player, ISubMenu> returnToMainMenu) {
-        super(item, player, locator, returnToMainMenu);
+        super(player, inventorySlot, itemStack, returnToMainMenu);
         // 样板管理区之外，主物品展示区依赖 AE2 的增量仓库同步。
         // 这里若按 ItemStack 引用缓存底层库存，在量子桥/WAP/链接状态切换时可能继续指向旧网格，
         // 导致仓库视图刷新滞后，直到重开菜单才恢复。
         this.quantumAwareStorage = new TimedStorage(new SupplierStorage(this::getDynamicQuantumAwareStorage));
 
         // 初始化缠绕态奇点槽（单槽，叠加上限 1）
-        this.singularityInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(this::getItemStack,
-                        stack -> createSingularityInv(player, stack)));
+        this.singularityInv = new SupplierInternalInventory(() -> createSingularityInv(player, getItemStack()));
 
         // 初始化AE2WTLIB装备槽位
-        this.ae2wtlibArmorInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "ae2wtlib_armor", 5)));
+        this.ae2wtlibArmorInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "ae2wtlib_armor", 5));
         
         // 初始化装饰性装备槽位
-        this.decorativeArmorInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "decorative_armor", 4)));
+        this.decorativeArmorInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "decorative_armor", 4));
         
         // 初始化Curios槽位
-        this.curiosInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "curios", 1)));
+        this.curiosInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "curios", 1));
         
         // 初始化高级样板编码槽位
-        this.advancedPatternInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "advanced_pattern", 3)));
+        this.advancedPatternInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "advanced_pattern", 3));
         
         // 初始化样板缓存区槽位 (36个槽位，4行×9列；界面显示2行并通过滑块滚动)
-        this.patternCacheInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "pattern_cache", 36)));
+        this.patternCacheInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "pattern_cache", 36));
 
-        this.toolkitInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createToolkitInventory(player, stack)));
+        this.toolkitInv = new SupplierInternalInventory(
+                () -> createToolkitInventory(player, getItemStack()));
 
         // 初始化元件工作台存储元件槽位 (1个槽位)
-        this.storageCellInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createStorageCellInventory(player, stack)));
+        this.storageCellInv = new SupplierInternalInventory(
+                () -> createStorageCellInventory(player, getItemStack()));
 
-        this.resonatingPatternCacheInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "resonating_pattern_cache", 21)));
+        this.resonatingPatternCacheInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "resonating_pattern_cache", 21));
 
-        this.manualSmithingInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "manual_smithing", 3)));
+        this.manualSmithingInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "manual_smithing", 3));
 
-        this.manualAnvilInv = new SupplierInternalInventory<>(
-                new StackDependentSupplier<>(
-                        this::getItemStack,
-                        stack -> createInventory(player, stack, "manual_anvil", 2)));
-        patternEncodingLogic.readFromNBT(getItemStack().getOrDefault(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new net.minecraft.nbt.CompoundTag()),
-                player.registryAccess());
-        magnetPickupConfig.readFromChildTag(getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag()),
-                "", player.registryAccess());
-        magnetInsertConfig.readFromChildTag(getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag()),
-                "", player.registryAccess());
-        this.craftingGridLocked = getItemStack().getOrDefault(ModComponents.CRAFTING_GRID_LOCKED.get(), false);
-        this.patternManagementUploadEnabled = getItemStack().getOrDefault(
-                ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED.get(), true);
-        this.patternManagementDisplayMode = getItemStack().getOrDefault(
-                ModComponents.PATTERN_MANAGEMENT_DISPLAY_MODE.get(), 1);
-        this.patternManagementShowSlots = getItemStack().getOrDefault(
-                ModComponents.PATTERN_MANAGEMENT_SHOW_SLOTS.get(), true);
-        this.patternManagementSearchMode = getItemStack().getOrDefault(
-                ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE.get(), 2);
-        this.manualWorkspaceMode = getItemStack().getOrDefault(ModComponents.MANUAL_WORKSPACE_MODE.get(), 0);
-        this.manualAnvilName = getItemStack().getOrDefault(ModComponents.MANUAL_ANVIL_NAME.get(), "");
+        this.manualAnvilInv = new SupplierInternalInventory(
+                () -> createInventory(player, getItemStack(), "manual_anvil", 2));
+        patternEncodingLogic.readFromNBT(getOrCreateDataTag(PATTERN_ENCODING_LOGIC_TAG));
+        magnetPickupConfig.readFromChildTag(getOrCreateDataTag(PICKUP_CONFIG_TAG), "");
+        magnetInsertConfig.readFromChildTag(getOrCreateDataTag(INSERT_CONFIG_TAG), "");
+        this.craftingGridLocked = getDataBoolean(ModComponents.CRAFTING_GRID_LOCKED, false);
+        this.patternManagementUploadEnabled = getDataBoolean(ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED, true);
+        this.patternManagementDisplayMode = getDataInt(ModComponents.PATTERN_MANAGEMENT_DISPLAY_MODE, 1);
+        this.patternManagementShowSlots = getDataBoolean(ModComponents.PATTERN_MANAGEMENT_SHOW_SLOTS, true);
+        this.patternManagementSearchMode = getDataInt(ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE, 2);
+        this.manualWorkspaceMode = getDataInt(ModComponents.MANUAL_WORKSPACE_MODE, 0);
+        this.manualAnvilName = getDataString(ModComponents.MANUAL_ANVIL_NAME, "");
         this.currentExtendedUI = consumePendingExtendedUi(player);
         if (DEBUG_TOOLKIT) {
             WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, consumedPendingUi={}, locator={}",
-                    player.getScoreboardName(), this.currentExtendedUI, locator);
+                    player.getScoreboardName(), this.currentExtendedUI, inventorySlot);
         }
 
         // 父类构造期间会通过动态分派调用到本类的 updateConnectedAccessPoint/updateLinkStatus，
@@ -269,7 +330,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     @Nullable
     private MEStorage getQuantumAwareStorageFromStack(ItemStack stack) {
-        updateConnectedAccessPoint();
+        updateConnectedAccessPointState();
         IGridNode node = getActionableNode();
         if (node == null || node.getGrid() == null) {
             return NullInventory.of();
@@ -441,19 +502,19 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         if (!getPlayer().level().isClientSide()) {
             var server = getPlayer().getServer();
             if (server == null || server.isSameThread()) {
-                updateConnectedAccessPoint();
+                updateConnectedAccessPointState();
             }
             if (quantumStatus != null && quantumStatus.connected() && quantumBridge != null) {
                 IGridNode quantumNode = quantumBridge.getActionableNode();
                 if (quantumNode != null && quantumNode.getGrid() != null) {
-                    rememberStableConnection(quantumNode, ILinkStatus.ofConnected());
+                    rememberStableConnection(quantumNode, LinkStatus.ofConnected());
                     return quantumNode;
                 }
             }
         }
         IGridNode superNode = super.getActionableNode();
         if (superNode != null && superNode.getGrid() != null) {
-            rememberStableConnection(superNode, ILinkStatus.ofConnected());
+            rememberStableConnection(superNode, LinkStatus.ofConnected());
             return superNode;
         }
         if (allowsTransientDisconnectGrace(getLinkStatus())
@@ -466,31 +527,27 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return null;
     }
 
-    @Override
-    protected void updateLinkStatus() {
+    private void updateLinkStatusState() {
         if (getPlayer().level().isClientSide()) {
-            super.updateLinkStatus();
-            // 客户端只应展示服务端/AE2 同步过来的链路状态。
-            // 若在本地再次套用 WCWT 的量子桥/稳定快照逻辑，容易把稍后才到达的 true 状态覆盖成 false。
             effectiveLinkStatus = null;
             debugRepoState("updateLinkStatus/client-pass-through");
             return;
         }
-        super.updateLinkStatus();
-        effectiveLinkStatus = super.getLinkStatus();
+        LinkStatus current = super.getActionableNode() != null ? LinkStatus.ofConnected() : LinkStatus.ofDisconnected();
+        effectiveLinkStatus = current;
         if (effectiveLinkStatus.connected()) {
             rememberStableConnection(resolveCurrentPreferredNode(), effectiveLinkStatus);
             debugRepoState("updateLinkStatus/super-connected");
             return;
         }
-        if (quantumStatus != null && !quantumStatus.equals(ILinkStatus.ofDisconnected())) {
+        if (quantumStatus != null && !quantumStatus.equals(LinkStatus.ofDisconnected())) {
             effectiveLinkStatus = quantumStatus;
         }
         if (!effectiveLinkStatus.connected()
                 && allowsTransientDisconnectGrace(effectiveLinkStatus)
                 && isWithinTransientDisconnectGrace()
                 && hasStableConnectionSnapshot()) {
-            effectiveLinkStatus = cachedStableLinkStatus.connected() ? cachedStableLinkStatus : ILinkStatus.ofConnected();
+            effectiveLinkStatus = cachedStableLinkStatus.connected() ? cachedStableLinkStatus : LinkStatus.ofConnected();
             debugRepoState("updateLinkStatus/grace");
             return;
         }
@@ -500,18 +557,18 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         debugRepoState("updateLinkStatus/fallback");
     }
 
-    @Override
-    public ILinkStatus getLinkStatus() {
-        if (getPlayer().level().isClientSide()) {
-            return super.getLinkStatus();
-        }
-        return effectiveLinkStatus != null ? effectiveLinkStatus : super.getLinkStatus();
+    public LinkStatus getLinkStatus() {
+        return effectiveLinkStatus != null ? effectiveLinkStatus : LinkStatus.ofDisconnected();
     }
 
-    @Override
-    protected void updateConnectedAccessPoint() {
+    @Nullable
+    public net.minecraft.network.chat.Component getCurrentLinkStatusDescription() {
+        LinkStatus status = getLinkStatus();
+        return status == null ? null : status.statusDescription();
+    }
+
+    private void updateConnectedAccessPointState() {
         if (getPlayer().level().isClientSide()) {
-            super.updateConnectedAccessPoint();
             debugRepoState("updateConnectedAccessPoint/client-pass-through");
             return;
         }
@@ -521,11 +578,11 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             return;
         }
         lastConnectedAccessPointUpdateTick = tick;
-        super.updateConnectedAccessPoint();
+        super.rangeCheck();
         quantumStatus = isQuantumLinked();
         IGridNode preferredNode = resolveCurrentPreferredNode();
         if (preferredNode != null && preferredNode.getGrid() != null) {
-            rememberStableConnection(preferredNode, ILinkStatus.ofConnected());
+            rememberStableConnection(preferredNode, LinkStatus.ofConnected());
         }
         debugRepoState("updateConnectedAccessPoint");
     }
@@ -542,7 +599,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
         forceConnectedAccessPointUpdate = true;
         try {
-            updateConnectedAccessPoint();
+            updateConnectedAccessPointState();
         } finally {
             forceConnectedAccessPointUpdate = false;
         }
@@ -550,7 +607,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             updateConnectedNs = System.nanoTime() - stageStartNs;
             stageStartNs = System.nanoTime();
         }
-        updateLinkStatus();
+        updateLinkStatusState();
         if (DEBUG_PERF) {
             updateLinkNs = System.nanoTime() - stageStartNs;
             long totalNs = System.nanoTime() - startNs;
@@ -597,7 +654,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return null;
     }
 
-    private void rememberStableConnection(@Nullable IGridNode node, ILinkStatus status) {
+    private void rememberStableConnection(@Nullable IGridNode node, LinkStatus status) {
         if (node == null || node.getGrid() == null || !status.connected()) {
             return;
         }
@@ -618,7 +675,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return tick - lastStableConnectionTick <= TRANSIENT_DISCONNECT_GRACE_TICKS;
     }
 
-    private static boolean allowsTransientDisconnectGrace(@Nullable ILinkStatus status) {
+    private static boolean allowsTransientDisconnectGrace(@Nullable LinkStatus status) {
         if (status == null || status.connected()) {
             return true;
         }
@@ -634,7 +691,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             return;
         }
         long tick = getPlayer().level().getGameTime();
-        String currentState = "superLink=" + super.getLinkStatus()
+        String currentState = "superLink=" + (super.getActionableNode() != null)
                 + ", quantumStatus=" + quantumStatus
                 + ", effectiveLink=" + effectiveLinkStatus
                 + ", quantumBridge=" + (quantumBridge != null)
@@ -668,15 +725,21 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     private LongResult getQEFrequency() {
-        ItemStack singularity = getItemStack().getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY);
+        CompoundTag root = getRootTag(getItemStack());
+        ItemStack singularity = root != null && root.contains(SINGULARITY_TAG, Tag.TAG_COMPOUND)
+                ? ItemStack.of(root.getCompound(SINGULARITY_TAG))
+                : ItemStack.EMPTY;
         if (singularity.isEmpty()) {
             return LongResult.invalid(Status.NoSingularity);
         }
-        Long frequency = singularity.get(AEComponents.ENTANGLED_SINGULARITY_ID);
-        return frequency == null ? LongResult.invalid(Status.GenericInvalid) : LongResult.valid(frequency);
+        CompoundTag tag = singularity.getTag();
+        if (tag == null || !tag.contains(QuantumBridgeBlockEntity.TAG_FREQUENCY, Tag.TAG_LONG)) {
+            return LongResult.invalid(Status.GenericInvalid);
+        }
+        return LongResult.valid(tag.getLong(QuantumBridgeBlockEntity.TAG_FREQUENCY));
     }
 
-    private ILinkStatus isQuantumLinked() {
+    private LinkStatus isQuantumLinked() {
         Status status = Status.Valid;
         if (!AE2wtlibAPI.hasQuantumBridgeCard(this::getUpgrades)) {
             status = Status.NoUpgrade;
@@ -687,14 +750,14 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             status = status.isValid() ? frequency.status() : Status.GenericInvalid;
         }
         if (!status.isValid()) {
-            return status.toILinkStatus();
+            return status.toLinkStatus();
         }
 
         long id = frequency.result();
         if (quantumBridge instanceof QuantumCluster cluster) {
             if (cluster.getCenter() == null) {
                 quantumBridge = null;
-                return Status.BridgeNotFound.toILinkStatus();
+                return Status.BridgeNotFound.toLinkStatus();
             }
             long otherId = cluster.getCenter().getQEFrequency();
             if (otherId != id && otherId != -id) {
@@ -705,43 +768,44 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             var result = findQuantumBridge(id);
             quantumBridge = result.host();
             if (result.invalid()) {
-                return result.status().toILinkStatus();
+                return result.status().toLinkStatus();
             }
         }
 
         if (quantumBridge == null || quantumBridge.getActionableNode() == null
                 || quantumBridge.getActionableNode().getGrid() == null) {
-            return Status.BridgeNotFound.toILinkStatus();
+            return Status.BridgeNotFound.toLinkStatus();
         }
 
-        var linkedGrid = getItem().getLinkedGrid(getItemStack(), getPlayer().level(), null);
+        var linkedGrid = getItemStack().getItem() instanceof WirelessComprehensiveWorkTerminalItem item
+                ? item.getLinkedGrid(getItemStack(), getPlayer().level(), null)
+                : null;
         var quantumGrid = quantumBridge.getActionableNode().getGrid();
         // 仅靠量子隧穿、没有范围内 WAP 时，linkedGrid 与量子侧网格偶尔会判成「两套网」而实际上应走量子。
         // 若玩家当前没有任何可用的无线接入点附着点，则不拦截，允许纯量子链路。
         if (linkedGrid != null
                 && quantumGrid != linkedGrid
                 && super.getActionableNode() != null) {
-            return Status.DifferentNetworks.toILinkStatus();
+            return Status.DifferentNetworks.toLinkStatus();
         }
         if (!quantumGrid.getEnergyService().isNetworkPowered()) {
-            return Status.NotPowered.toILinkStatus();
+            return Status.NotPowered.toLinkStatus();
         }
-        return ILinkStatus.ofConnected();
+        return LinkStatus.ofConnected();
     }
 
-    @Override
     protected double getPowerDrainPerTick() {
         if (quantumStatus != null && (quantumStatus.connected() || Status.NotPowered.is(quantumStatus))) {
             return 22.5;
         }
-        return super.getPowerDrainPerTick();
+        return 0.5;
     }
 
     public boolean consumeIdlePower(Actionable action) {
         if (action == Actionable.SIMULATE) {
             rechargeFromQuantumGrid();
         }
-        boolean success = super.consumeIdlePower(action);
+        boolean success = action == Actionable.SIMULATE || drainPower();
         if (action == Actionable.SIMULATE) {
             rechargeFromQuantumGrid();
         }
@@ -814,7 +878,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     @Override
     public void setCraftingGridLocked(boolean locked) {
         this.craftingGridLocked = locked;
-        getItemStack().set(ModComponents.CRAFTING_GRID_LOCKED.get(), locked);
+        setDataBoolean(ModComponents.CRAFTING_GRID_LOCKED, locked);
     }
 
     public boolean isPatternManagementUploadEnabled() {
@@ -823,7 +887,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     public void setPatternManagementUploadEnabled(boolean enabled) {
         this.patternManagementUploadEnabled = enabled;
-        getItemStack().set(ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED.get(), enabled);
+        setDataBoolean(ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED, enabled);
     }
 
     public int getPatternManagementDisplayMode() {
@@ -832,7 +896,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     public void setPatternManagementDisplayMode(int mode) {
         this.patternManagementDisplayMode = mode;
-        getItemStack().set(ModComponents.PATTERN_MANAGEMENT_DISPLAY_MODE.get(), mode);
+        setDataInt(ModComponents.PATTERN_MANAGEMENT_DISPLAY_MODE, mode);
     }
 
     public boolean isPatternManagementShowSlots() {
@@ -841,7 +905,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     public void setPatternManagementShowSlots(boolean showSlots) {
         this.patternManagementShowSlots = showSlots;
-        getItemStack().set(ModComponents.PATTERN_MANAGEMENT_SHOW_SLOTS.get(), showSlots);
+        setDataBoolean(ModComponents.PATTERN_MANAGEMENT_SHOW_SLOTS, showSlots);
     }
 
     public int getPatternManagementSearchMode() {
@@ -850,7 +914,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     public void setPatternManagementSearchMode(int mode) {
         this.patternManagementSearchMode = mode;
-        getItemStack().set(ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE.get(), mode);
+        setDataInt(ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE, mode);
     }
 
     public int getManualWorkspaceMode() {
@@ -859,7 +923,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     public void setManualWorkspaceMode(int mode) {
         this.manualWorkspaceMode = mode;
-        getItemStack().set(ModComponents.MANUAL_WORKSPACE_MODE.get(), mode);
+        setDataInt(ModComponents.MANUAL_WORKSPACE_MODE, mode);
     }
 
     public String getManualAnvilName() {
@@ -868,7 +932,62 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     public void setManualAnvilName(String name) {
         this.manualAnvilName = name == null ? "" : name;
-        getItemStack().set(ModComponents.MANUAL_ANVIL_NAME.get(), this.manualAnvilName);
+        setDataString(ModComponents.MANUAL_ANVIL_NAME, this.manualAnvilName);
+    }
+
+    private CompoundTag getOrCreateRootData() {
+        CompoundTag stackTag = getItemStack().getOrCreateTag();
+        CompoundTag root = stackTag.getCompound(ModComponents.ROOT_TAG);
+        stackTag.put(ModComponents.ROOT_TAG, root);
+        return root;
+    }
+
+    private CompoundTag getOrCreateDataTag(String key) {
+        CompoundTag root = getOrCreateRootData();
+        CompoundTag tag = root.getCompound(key);
+        root.put(key, tag);
+        return tag;
+    }
+
+    private CompoundTag getDataTag(String key) {
+        CompoundTag stackTag = getItemStack().getTag();
+        if (stackTag == null || !stackTag.contains(ModComponents.ROOT_TAG, Tag.TAG_COMPOUND)) {
+            return new CompoundTag();
+        }
+        CompoundTag root = stackTag.getCompound(ModComponents.ROOT_TAG);
+        return root.contains(key, Tag.TAG_COMPOUND) ? root.getCompound(key) : new CompoundTag();
+    }
+
+    private boolean getDataBoolean(String key, boolean fallback) {
+        CompoundTag root = getOrCreateRootData();
+        return root.contains(key, Tag.TAG_BYTE) ? root.getBoolean(key) : fallback;
+    }
+
+    private int getDataInt(String key, int fallback) {
+        CompoundTag root = getOrCreateRootData();
+        return root.contains(key, Tag.TAG_INT) ? root.getInt(key) : fallback;
+    }
+
+    private String getDataString(String key, String fallback) {
+        CompoundTag root = getOrCreateRootData();
+        return root.contains(key, Tag.TAG_STRING) ? root.getString(key) : fallback;
+    }
+
+    private void setDataBoolean(String key, boolean value) {
+        getOrCreateRootData().putBoolean(key, value);
+    }
+
+    private void setDataInt(String key, int value) {
+        getOrCreateRootData().putInt(key, value);
+    }
+
+    private void setDataString(String key, String value) {
+        if (value == null || value.isBlank()) {
+            CompoundTag root = getOrCreateRootData();
+            root.remove(key);
+        } else {
+            getOrCreateRootData().putString(key, value);
+        }
     }
     
     @Nullable
@@ -925,38 +1044,38 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     public IncludeExclude getMagnetPickupMode() {
-        return getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_MODE, IncludeExclude.BLACKLIST);
+        return getDataBoolean("pickup_mode_whitelist", false) ? IncludeExclude.WHITELIST : IncludeExclude.BLACKLIST;
     }
 
     public IncludeExclude getMagnetInsertMode() {
-        return getItemStack().getOrDefault(AE2wtlibComponents.INSERT_MODE, IncludeExclude.BLACKLIST);
+        return getDataBoolean("insert_mode_whitelist", false) ? IncludeExclude.WHITELIST : IncludeExclude.BLACKLIST;
     }
 
     public void toggleMagnetPickupMode() {
-        getItemStack().set(AE2wtlibComponents.PICKUP_MODE, toggle(getMagnetPickupMode()));
+        setDataBoolean("pickup_mode_whitelist", toggle(getMagnetPickupMode()) == IncludeExclude.WHITELIST);
     }
 
     public void toggleMagnetInsertMode() {
-        getItemStack().set(AE2wtlibComponents.INSERT_MODE, toggle(getMagnetInsertMode()));
+        setDataBoolean("insert_mode_whitelist", toggle(getMagnetInsertMode()) == IncludeExclude.WHITELIST);
     }
 
     public void copyMagnetPickupToInsert() {
-        CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag());
-        magnetInsertConfig.readFromChildTag(tag, "", getPlayer().registryAccess());
+        CompoundTag tag = getDataTag(PICKUP_CONFIG_TAG);
+        magnetInsertConfig.readFromChildTag(tag, "");
         updateMagnetInsertConfig();
     }
 
     public void copyMagnetInsertToPickup() {
-        CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag());
-        magnetPickupConfig.readFromChildTag(tag, "", getPlayer().registryAccess());
+        CompoundTag tag = getDataTag(INSERT_CONFIG_TAG);
+        magnetPickupConfig.readFromChildTag(tag, "");
         updateMagnetPickupConfig();
     }
 
     public void switchMagnetFilters() {
-        CompoundTag pickupTag = getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag());
-        CompoundTag insertTag = getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag());
-        magnetPickupConfig.readFromChildTag(insertTag, "", getPlayer().registryAccess());
-        magnetInsertConfig.readFromChildTag(pickupTag, "", getPlayer().registryAccess());
+        CompoundTag pickupTag = getDataTag(PICKUP_CONFIG_TAG);
+        CompoundTag insertTag = getDataTag(INSERT_CONFIG_TAG);
+        magnetPickupConfig.readFromChildTag(insertTag, "");
+        magnetInsertConfig.readFromChildTag(pickupTag, "");
         updateMagnetPickupConfig();
         updateMagnetInsertConfig();
     }
@@ -966,15 +1085,13 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     private void updateMagnetPickupConfig() {
-        CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag());
-        magnetPickupConfig.writeToChildTag(tag, "", getPlayer().registryAccess());
-        getItemStack().set(AE2wtlibComponents.PICKUP_CONFIG, tag);
+        CompoundTag tag = getOrCreateDataTag(PICKUP_CONFIG_TAG);
+        magnetPickupConfig.writeToChildTag(tag, "");
     }
 
     private void updateMagnetInsertConfig() {
-        CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag());
-        magnetInsertConfig.writeToChildTag(tag, "", getPlayer().registryAccess());
-        getItemStack().set(AE2wtlibComponents.INSERT_CONFIG, tag);
+        CompoundTag tag = getOrCreateDataTag(INSERT_CONFIG_TAG);
+        magnetInsertConfig.writeToChildTag(tag, "");
     }
 
     public void setCellCopyMode(CopyMode mode) {
@@ -1013,9 +1130,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     @Override
     public void markForSave() {
-        var tag = getItemStack().getOrDefault(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new net.minecraft.nbt.CompoundTag());
-        patternEncodingLogic.writeToNBT(tag, getPlayer().registryAccess());
-        getItemStack().set(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, tag);
+        var tag = getOrCreateDataTag(PATTERN_ENCODING_LOGIC_TAG);
+        patternEncodingLogic.writeToNBT(tag);
     }
 
     public void syncCellConfigMirrorFromActual() {
@@ -1108,9 +1224,6 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     public static void copy(GenericStackInv from, GenericStackInv to) {
         for (int i = 0; i < Math.min(from.size(), to.size()); i++) {
             var fromStack = from.getStack(i);
-            if (fromStack != null && !to.isAllowedIn(i, fromStack.what())) {
-                fromStack = null;
-            }
             to.setStack(i, fromStack);
         }
         for (int i = from.size(); i < to.size(); i++) {
@@ -1118,30 +1231,41 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         }
     }
     
-    /** 创建单槽缠绕态奇点库存，数据持久化到物品的 AE2wtlibComponents.SINGULARITY 组件。 */
+    /** 创建单槽缠绕态奇点库存，数据持久化到物品 NBT。 */
     private static InternalInventory createSingularityInv(Player player, ItemStack stack) {
+        final AppEngInternalInventory[] invRef = new AppEngInternalInventory[1];
         var inv = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
-            public void saveChangedInventory(AppEngInternalInventory inv) {
-                stack.set(AE2wtlibComponents.SINGULARITY, inv.getStackInSlot(0));
+            public void saveChanges() {
+                CompoundTag root = getOrCreateRootTag(stack);
+                CompoundTag singularityTag = new CompoundTag();
+                invRef[0].getStackInSlot(0).save(singularityTag);
+                root.put("singularity", singularityTag);
+            }
+            @Override
+            public void onChangeInventory(InternalInventory inv, int slot) {
             }
             @Override
             public boolean isClientSide() { return player.level().isClientSide(); }
         }, 1, 1);
-        inv.setItemDirect(0, stack.getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY));
+        invRef[0] = inv;
+        CompoundTag root = getRootTag(stack);
+        inv.setItemDirect(0, root != null && root.contains("singularity", Tag.TAG_COMPOUND)
+                ? ItemStack.of(root.getCompound("singularity"))
+                : ItemStack.EMPTY);
         return inv;
     }
 
     private InternalInventory createStorageCellInventory(Player player, ItemStack stack) {
-        var componentType = ModComponents.STORAGE_CELL_INV.get();
+        final AppEngInternalInventory[] invRef = new AppEngInternalInventory[1];
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
-            public void saveChangedInventory(AppEngInternalInventory inv) {
-                stack.set(componentType, inv.toItemContainerContents());
+            public void saveChanges() {
+                invRef[0].writeToNBT(getOrCreateRootTag(stack), ModComponents.STORAGE_CELL_INV);
             }
 
             @Override
-            public void onChangeInventory(AppEngInternalInventory inv, int slot) {
+            public void onChangeInventory(InternalInventory inv, int slot) {
                 storageCellChanged();
             }
 
@@ -1150,17 +1274,22 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 return player.level().isClientSide();
             }
         }, 1);
-        inventory.fromItemContainerContents(stack.getOrDefault(componentType, ItemContainerContents.EMPTY));
+        invRef[0] = inventory;
+        inventory.readFromNBT(getOrCreateRootTag(stack), ModComponents.STORAGE_CELL_INV);
         storageCellChanged();
         return inventory;
     }
 
     private InternalInventory createToolkitInventory(Player player, ItemStack stack) {
         int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
+        final AppEngInternalInventory[] invRef = new AppEngInternalInventory[1];
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
-            public void saveChangedInventory(AppEngInternalInventory inv) {
-                saveSharedToolkitInventory(player, stack, inv);
+            public void saveChanges() {
+                saveSharedToolkitInventory(player, stack, invRef[0]);
+            }
+            @Override
+            public void onChangeInventory(InternalInventory inv, int slot) {
             }
 
             @Override
@@ -1168,6 +1297,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 return player.level().isClientSide();
             }
         }, toolkitSlots);
+        invRef[0] = inventory;
         loadSharedToolkitInventory(player, stack, inventory);
         inventory.setFilter(new ToolkitItemFilter());
         return inventory;
@@ -1175,23 +1305,27 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     private static InternalInventory createInventory(Player player, ItemStack stack, String inventoryName, int size) {
         var componentType = switch (inventoryName) {
-            case "ae2wtlib_armor" -> ModComponents.AE2WTLIB_ARMOR_INV.get();
-            case "decorative_armor" -> ModComponents.DECORATIVE_ARMOR_INV.get();
-            case "curios" -> ModComponents.CURIOS_INV.get();
-            case "advanced_pattern" -> ModComponents.ADVANCED_PATTERN_INV.get();
-            case "pattern_cache" -> ModComponents.PATTERN_CACHE_INV.get();
-            case "toolkit" -> ModComponents.TOOLKIT_INV.get();
-            case "storage_cell"  -> ModComponents.STORAGE_CELL_INV.get();
-            case "resonating_pattern_cache" -> ModComponents.RESONATING_PATTERN_CACHE_INV.get();
-            case "manual_smithing" -> ModComponents.MANUAL_SMITHING_INV.get();
-            case "manual_anvil" -> ModComponents.MANUAL_ANVIL_INV.get();
+            case "ae2wtlib_armor" -> ModComponents.AE2WTLIB_ARMOR_INV;
+            case "decorative_armor" -> ModComponents.DECORATIVE_ARMOR_INV;
+            case "curios" -> ModComponents.CURIOS_INV;
+            case "advanced_pattern" -> ModComponents.ADVANCED_PATTERN_INV;
+            case "pattern_cache" -> ModComponents.PATTERN_CACHE_INV;
+            case "toolkit" -> ModComponents.TOOLKIT_INV;
+            case "storage_cell"  -> ModComponents.STORAGE_CELL_INV;
+            case "resonating_pattern_cache" -> ModComponents.RESONATING_PATTERN_CACHE_INV;
+            case "manual_smithing" -> ModComponents.MANUAL_SMITHING_INV;
+            case "manual_anvil" -> ModComponents.MANUAL_ANVIL_INV;
             default -> throw new IllegalArgumentException("Unknown inventory name: " + inventoryName);
         };
         
+        final AppEngInternalInventory[] invRef = new AppEngInternalInventory[1];
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
-            public void saveChangedInventory(AppEngInternalInventory inv) {
-                stack.set(componentType, inv.toItemContainerContents());
+            public void saveChanges() {
+                invRef[0].writeToNBT(getOrCreateRootTag(stack), componentType);
+            }
+            @Override
+            public void onChangeInventory(InternalInventory inv, int slot) {
             }
 
             @Override
@@ -1199,8 +1333,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 return player.level().isClientSide();
             }
         }, size);
+        invRef[0] = inventory;
         
-        inventory.fromItemContainerContents(stack.getOrDefault(componentType, ItemContainerContents.EMPTY));
+        inventory.readFromNBT(getOrCreateRootTag(stack), componentType);
         return inventory;
     }
 
@@ -1238,15 +1373,14 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     private static void migrateLegacyToolkitIntoPlayer(Player player, ItemStack terminalStack,
                                                        AppEngInternalInventory inventory, CompoundTag persisted) {
-        var legacyComponent = ModComponents.TOOLKIT_INV.get();
-        var legacyContents = terminalStack.getOrDefault(legacyComponent, ItemContainerContents.EMPTY);
         if (!persisted.contains(PLAYER_TOOLKIT_DATA_TAG)) {
             persisted.put(PLAYER_TOOLKIT_DATA_TAG, new CompoundTag());
         }
-        inventory.fromItemContainerContents(legacyContents);
+        inventory.readFromNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_INV);
         saveSharedToolkitInventory(player, terminalStack, inventory);
-        if (!legacyContents.equals(ItemContainerContents.EMPTY)) {
-            terminalStack.remove(legacyComponent);
+        CompoundTag root = getRootTag(terminalStack);
+        if (root != null && root.contains(ModComponents.TOOLKIT_INV, Tag.TAG_LIST)) {
+            root.remove(ModComponents.TOOLKIT_INV);
             if (DEBUG_TOOLKIT) {
                 WcwtMod.LOGGER.info("WCWT toolkit debug: migrated legacy item-bound toolkit into shared store for player={}, nonEmptySlots={}",
                         player.getScoreboardName(), countNonEmptySlots(inventory));
@@ -1266,7 +1400,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             }
             CompoundTag entry = new CompoundTag();
             entry.putInt(TOOLKIT_SLOT_TAG, slot);
-            entry.put(TOOLKIT_STACK_TAG, stack.saveOptional(player.registryAccess()));
+            CompoundTag stackTag = new CompoundTag();
+            stack.save(stackTag);
+            entry.put(TOOLKIT_STACK_TAG, stackTag);
             items.add(entry);
         }
         serialized.put(TOOLKIT_ITEMS_TAG, items);
@@ -1290,20 +1426,14 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             if (slot < 0 || slot >= inventory.size() || !entry.contains(TOOLKIT_STACK_TAG, Tag.TAG_COMPOUND)) {
                 continue;
             }
-            ItemStack stack = ItemStack.parseOptional(player.registryAccess(), entry.getCompound(TOOLKIT_STACK_TAG));
+            ItemStack stack = ItemStack.of(entry.getCompound(TOOLKIT_STACK_TAG));
             inventory.setItemDirect(slot, stack);
         }
     }
 
     private static void readLegacySharedToolkitContents(Player player, ItemStack terminalStack, CompoundTag sharedToolkitTag,
                                                         AppEngInternalInventory inventory) {
-        ItemContainerContents contents = ItemContainerContents.EMPTY;
-        try {
-            contents = ItemContainerContents.CODEC.parse(player.registryAccess().createSerializationContext(
-                    net.minecraft.nbt.NbtOps.INSTANCE), sharedToolkitTag).result().orElse(ItemContainerContents.EMPTY);
-        } catch (Exception ignored) {
-        }
-        inventory.fromItemContainerContents(contents);
+        inventory.readFromNBT(sharedToolkitTag, ModComponents.TOOLKIT_INV);
         saveSharedToolkitInventory(player, terminalStack, inventory);
         if (DEBUG_TOOLKIT) {
             WcwtMod.LOGGER.info("WCWT toolkit debug: upgraded legacy shared toolkit codec data for player={}, nonEmptySlots={}",
@@ -1312,12 +1442,11 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     private static void loadToolkitInventoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
-        var component = ModComponents.TOOLKIT_INV.get();
-        inventory.fromItemContainerContents(terminalStack.getOrDefault(component, ItemContainerContents.EMPTY));
+        inventory.readFromNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_INV);
     }
 
     private static void saveToolkitInventoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
-        terminalStack.set(ModComponents.TOOLKIT_INV.get(), inventory.toItemContainerContents());
+        inventory.writeToNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_INV);
     }
 
     private static int countNonEmptySlots(AppEngInternalInventory inventory) {

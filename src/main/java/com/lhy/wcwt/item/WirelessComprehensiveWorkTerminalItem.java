@@ -3,19 +3,18 @@ package com.lhy.wcwt.item;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.UpgradeInventories;
 import appeng.api.upgrades.Upgrades;
+import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.items.tools.powered.WirelessCraftingTerminalItem;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
-import appeng.menu.locator.ItemMenuHostLocator;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 
 public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTerminalItem {
@@ -57,13 +56,8 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
 
     @Nullable
     @Override
-    public WirelessComprehensiveWorkTerminalMenuHost getMenuHost(Player player, ItemMenuHostLocator locator,
-            @Nullable BlockHitResult hitResult) {
-        return new WirelessComprehensiveWorkTerminalMenuHost(this, player, locator,
-                (p, sm) -> openFromInventory(p, locator, true));
-    }
-
-    public boolean openFromInventory(Player player, ItemMenuHostLocator locator) {
-        return super.openFromInventory(player, locator);
+    public ItemMenuHost getMenuHost(Player player, int inventorySlot, ItemStack stack, @Nullable BlockPos pos) {
+        return new WirelessComprehensiveWorkTerminalMenuHost(player, inventorySlot, stack,
+                (p, sm) -> openFromInventory(p, inventorySlot, true));
     }
 }

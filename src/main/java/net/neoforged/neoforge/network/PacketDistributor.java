@@ -1,6 +1,6 @@
 package net.neoforged.neoforge.network;
 
-import com.lhy.ae2utility.network.ModNetworking;
+import com.lhy.wcwt.network.ModNetworking;
 
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;

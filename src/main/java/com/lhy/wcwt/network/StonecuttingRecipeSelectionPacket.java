@@ -14,7 +14,8 @@ public record StonecuttingRecipeSelectionPacket(ResourceLocation recipeId) imple
 
     public static final StreamCodec<RegistryFriendlyByteBuf, StonecuttingRecipeSelectionPacket> STREAM_CODEC =
             StreamCodec.composite(
-                    ResourceLocation.STREAM_CODEC,
+                    StreamCodec.of(RegistryFriendlyByteBuf::writeResourceLocation,
+                            RegistryFriendlyByteBuf::readResourceLocation),
                     StonecuttingRecipeSelectionPacket::recipeId,
                     StonecuttingRecipeSelectionPacket::new);
 

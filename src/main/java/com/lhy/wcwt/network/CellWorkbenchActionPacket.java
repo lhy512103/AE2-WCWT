@@ -26,10 +26,9 @@ public record CellWorkbenchActionPacket(Action action) implements CustomPacketPa
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "cell_workbench_action"));
 
     public static final StreamCodec<FriendlyByteBuf, CellWorkbenchActionPacket> STREAM_CODEC =
-            ByteBufCodecs.VAR_INT
-                    .map(i -> new CellWorkbenchActionPacket(Action.values()[i]),
-                            p -> p.action().ordinal())
-                    .cast();
+            StreamCodec.of(
+                    (buf, packet) -> buf.writeVarInt(packet.action().ordinal()),
+                    buf -> new CellWorkbenchActionPacket(Action.values()[buf.readVarInt()]));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {

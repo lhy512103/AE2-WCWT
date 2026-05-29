@@ -16,6 +16,8 @@ import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.jetbrains.annotations.Nullable;
@@ -50,7 +52,7 @@ public class WcwtJeiPlugin implements IModPlugin {
     public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
         registration.addRecipeTransferHandler(
                 new WcwtCraftingRecipeTransferHandler(registration.getTransferHelper()),
-                RecipeTypes.CRAFTING);
+                mezz.jei.api.recipe.RecipeType.create("minecraft", "crafting", CraftingRecipe.class));
         registration.addUniversalRecipeTransferHandler(new WcwtRecipeTransferHandler(
                 registration.getTransferHelper()));
     }

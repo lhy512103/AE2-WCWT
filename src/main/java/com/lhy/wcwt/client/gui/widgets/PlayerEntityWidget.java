@@ -23,12 +23,11 @@ public class PlayerEntityWidget extends AbstractWidget {
     public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         InventoryScreen.renderEntityInInventoryFollowsMouse(
                 guiGraphics,
-                getX(), getY(),
-                getX() + 46,
-                getY() + 70,
-                30, 0.0625F,
-                mouseX,
-                mouseY,
+                getX() + width / 2,
+                getY() + height,
+                30,
+                (float) (getX() + width / 2) - mouseX,
+                (float) (getY() + height / 2) - mouseY,
                 entity);
     }
 

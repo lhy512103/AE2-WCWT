@@ -13,7 +13,6 @@ public class WcwtTrashScreen extends AEBaseScreen<WcwtTrashMenu> {
         AESubScreen.addBackButton(menu, "back", widgets);
     }
 
-    @Override
     protected boolean shouldAddToolbar() {
         return false;
     }

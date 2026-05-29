@@ -93,7 +93,8 @@ public final class WcwtIngredientPriorities {
         sorted.sort(Comparator
                 .comparingInt((ItemStack stack) -> getPriority(context.ingredientPriorities(), stack)).reversed()
                 .thenComparing(Comparator.comparingInt(WcwtPullIngredientOrdering::componentSpecificityRank).reversed())
-                .thenComparingLong(ItemStack::hashItemAndComponents));
+                .thenComparing(ItemStack::getDescriptionId)
+                .thenComparing(stack -> String.valueOf(stack.getTag())));
         return sorted;
     }
 
@@ -108,7 +109,7 @@ public final class WcwtIngredientPriorities {
             return null;
         }
         if (candidates.size() == 1) {
-            return candidates.getFirst();
+            return candidates.get(0);
         }
 
         return candidates.stream()
@@ -171,7 +172,8 @@ public final class WcwtIngredientPriorities {
 
     private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
         for (var existing : stacks) {
-            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
+            if (ItemStack.isSameItem(existing, candidate)
+                    && java.util.Objects.equals(existing.getTag(), candidate.getTag())) {
                 return true;
             }
         }

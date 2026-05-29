@@ -2,15 +2,15 @@ package com.lhy.wcwt.compat.jei;
 
 import appeng.api.stacks.GenericStack;
 import appeng.menu.me.common.GridInventoryEntry;
-import appeng.integration.modules.itemlists.EncodingHelper;
+import appeng.integration.modules.jeirei.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
-import com.simibubi.create.content.processing.basin.BasinRecipe;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
+import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
@@ -29,9 +29,8 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.neoforge.fluids.FluidStack;
+import net.minecraftforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
@@ -113,7 +112,7 @@ public class WcwtRecipeTransferHandler
         if (doTransfer) {
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
             updateEaepProviderSearchKey(recipe, minecraftRecipe, mode);
-            PacketDistributor.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
+            ModNetworking.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         }
         return null;
     }
@@ -246,12 +245,12 @@ public class WcwtRecipeTransferHandler
                                                                         @Nullable Recipe<?> recipe,
                                                                         IRecipeSlotsView recipeSlots) {
         var priorityContext = createPriorityContext(menu);
-        if (recipe instanceof BasinRecipe basinRecipe) {
+        if (isCreateBasinRecipe(recipe)) {
             List<@Nullable GenericStack> resolved = new ArrayList<>();
-            for (Ingredient ingredient : basinRecipe.getIngredients()) {
+            for (Ingredient ingredient : recipe.getIngredients()) {
                 resolved.add(toBestGenericStack(priorityContext, ingredient, List.of(), -1));
             }
-            for (SizedFluidIngredient fluidIngredient : basinRecipe.getFluidIngredients()) {
+            for (SizedFluidIngredient fluidIngredient : getCreateFluidIngredients(recipe)) {
                 resolved.add(toGenericStack(fluidIngredient));
             }
             return resolved;
@@ -261,12 +260,12 @@ public class WcwtRecipeTransferHandler
 
     private static List<@Nullable GenericStack> collectProcessingOutputs(@Nullable Recipe<?> recipe,
                                                                          IRecipeSlotsView recipeSlots) {
-        if (recipe instanceof BasinRecipe basinRecipe) {
+        if (isCreateBasinRecipe(recipe)) {
             List<@Nullable GenericStack> resolved = new ArrayList<>();
-            for (var result : basinRecipe.getRollableResults()) {
-                resolved.add(GenericStack.fromItemStack(result.getStack().copyWithCount(1)));
+            for (ItemStack stack : getCreateRollableResultStacks(recipe)) {
+                resolved.add(GenericStack.fromItemStack(stack.copyWithCount(1)));
             }
-            for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
+            for (FluidStack fluidStack : getCreateFluidResults(recipe)) {
                 if (!fluidStack.isEmpty()) {
                     resolved.add(GenericStack.fromFluidStack(fluidStack.copy()));
                 }
@@ -326,7 +325,7 @@ public class WcwtRecipeTransferHandler
         }
 
         GenericStack best = WcwtIngredientPriorities.chooseBestGenericStack(priorityContext, fallbackCandidates);
-        return best != null ? best : fallbackCandidates.getFirst();
+        return best != null ? best : fallbackCandidates.get(0);
     }
 
     private static WcwtIngredientPriorities.PriorityContext createPriorityContext(WirelessComprehensiveWorkTerminalMenu menu) {
@@ -368,6 +367,49 @@ public class WcwtRecipeTransferHandler
             }
         }
         return null;
+    }
+
+    private static boolean isCreateBasinRecipe(@Nullable Recipe<?> recipe) {
+        return recipe != null && "com.simibubi.create.content.processing.basin.BasinRecipe".equals(recipe.getClass().getName());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<SizedFluidIngredient> getCreateFluidIngredients(Recipe<?> recipe) {
+        try {
+            Object result = recipe.getClass().getMethod("getFluidIngredients").invoke(recipe);
+            return result instanceof List<?> list ? (List<SizedFluidIngredient>) list : List.of();
+        } catch (ReflectiveOperationException ignored) {
+            return List.of();
+        }
+    }
+
+    private static List<ItemStack> getCreateRollableResultStacks(Recipe<?> recipe) {
+        try {
+            Object result = recipe.getClass().getMethod("getRollableResults").invoke(recipe);
+            if (!(result instanceof List<?> list)) {
+                return List.of();
+            }
+            List<ItemStack> stacks = new ArrayList<>();
+            for (Object entry : list) {
+                Object stack = entry.getClass().getMethod("getStack").invoke(entry);
+                if (stack instanceof ItemStack itemStack && !itemStack.isEmpty()) {
+                    stacks.add(itemStack);
+                }
+            }
+            return stacks;
+        } catch (ReflectiveOperationException ignored) {
+            return List.of();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<FluidStack> getCreateFluidResults(Recipe<?> recipe) {
+        try {
+            Object result = recipe.getClass().getMethod("getFluidResults").invoke(recipe);
+            return result instanceof List<?> list ? (List<FluidStack>) list : List.of();
+        } catch (ReflectiveOperationException ignored) {
+            return List.of();
+        }
     }
 
     @Nullable

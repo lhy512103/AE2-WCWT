@@ -1,11 +1,11 @@
 package com.lhy.wcwt.compat;
 
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.resources.ResourceLocation;
+import com.lhy.wcwt.network.ModNetworking;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.items.IItemHandlerModifiable;
-import net.neoforged.neoforge.network.PacketDistributor;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.player.Player;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -126,7 +126,7 @@ public final class CuriosBridge {
             Constructor<?> constructor = payloadClass.getConstructor(String.class, int.class);
             Object payload = constructor.newInstance(identifier, slotIndex);
             if (payload instanceof CustomPacketPayload customPayload) {
-                PacketDistributor.sendToServer(customPayload);
+                ModNetworking.sendToServer(customPayload);
             }
         } catch (ReflectiveOperationException | RuntimeException ignored) {
             // Optional integration: the slot remains usable even if Curios internals change.

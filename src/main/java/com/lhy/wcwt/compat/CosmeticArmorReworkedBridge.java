@@ -123,7 +123,7 @@ public final class CosmeticArmorReworkedBridge {
     }
 
     private static void sendSkinArmorPacket(int slot, boolean enabled) throws ReflectiveOperationException {
-        if (!FMLEnvironment.dist.isClient()) {
+        if (FMLEnvironment.dist != net.neoforged.api.distmarker.Dist.CLIENT) {
             return;
         }
         Class<?> payloadClass = Class.forName(PAYLOAD_SET_SKIN_ARMOR_CLASS);

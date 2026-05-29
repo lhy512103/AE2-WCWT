@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
+import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * 方向改变网络包
@@ -33,13 +34,16 @@ public record DirectionChangePacket(
             new StreamCodec<RegistryFriendlyByteBuf, AEKey>() {
                 @Override
                 public AEKey decode(RegistryFriendlyByteBuf buf) {
-                    var keyType = AEKeyType.STREAM_CODEC.decode(buf);
+                    var keyType = AEKeyType.fromRawId(buf.readByte());
+                    if (keyType == null) {
+                        return null;
+                    }
                     return keyType.readFromPacket(buf);
                 }
                 
                 @Override
                 public void encode(RegistryFriendlyByteBuf buf, AEKey key) {
-                    AEKeyType.STREAM_CODEC.encode(buf, key.getType());
+                    buf.writeByte(key.getType().getRawId());
                     key.writeToPacket(buf);
                 }
             },

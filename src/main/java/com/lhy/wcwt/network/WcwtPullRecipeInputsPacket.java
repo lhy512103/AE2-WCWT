@@ -82,7 +82,7 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
             int size = buffer.readVarInt();
             List<ItemStack> alternatives = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
-                alternatives.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer));
+                alternatives.add(buffer.readItem());
             }
             return new RequestedIngredient(alternatives, buffer.readVarInt());
         }
@@ -90,7 +90,7 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
         private void write(RegistryFriendlyByteBuf buffer) {
             buffer.writeVarInt(alternatives.size());
             for (ItemStack alternative : alternatives) {
-                ItemStack.OPTIONAL_STREAM_CODEC.encode(buffer, alternative);
+                buffer.writeItem(alternative);
             }
             buffer.writeVarInt(count);
         }

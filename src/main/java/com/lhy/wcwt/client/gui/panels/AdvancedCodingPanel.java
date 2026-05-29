@@ -373,7 +373,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 })
                 .useAE2ToolbarBackground()
                 .setOverlayOffsetY(-1)
-                .setOverlayIcon(() -> Icon.COG)
+                .setOverlayIcon(() -> Icon.WRENCH)
                 .setTooltipLines(List.of(
                         Component.translatable("gui.wcwt.advanced_coding.partitioned_storage"),
                         Component.translatable("gui.wcwt.advanced_coding.partitioned_storage.desc")
@@ -852,7 +852,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
 
     private static List<Component> tooltipForKey(AEKey key) {
         return key.wrapForDisplayOrFilter().getTooltipLines(
-                net.minecraft.world.item.Item.TooltipContext.EMPTY,
                 Minecraft.getInstance().player,
                 Minecraft.getInstance().options.advancedItemTooltips
                         ? net.minecraft.world.item.TooltipFlag.ADVANCED

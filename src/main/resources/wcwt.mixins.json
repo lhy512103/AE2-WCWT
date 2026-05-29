@@ -4,13 +4,10 @@
   "package": "com.lhy.wcwt.mixin",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
-    "WcwtNetworkToolItemMixin",
-    "WcwtMenuProtectionMixin",
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin"
   ],
   "client": [
-    "GuiMixin",
     "WcwtMinecraftPickBlockMixin"
   ],
   "injectors": {

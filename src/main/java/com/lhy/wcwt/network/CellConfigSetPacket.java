@@ -2,7 +2,6 @@ package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -32,8 +31,7 @@ public record CellConfigSetPacket(int slotIndex, @Nullable AEKey key) implements
             buf.writeBoolean(false);
         } else {
             buf.writeBoolean(true);
-            // 用 AEKey 自带 toTagGeneric 进行序列化
-            var tag = pkt.key.toTagGeneric(buf.registryAccess());
+            var tag = pkt.key.toTagGeneric();
             ByteBufCodecs.COMPOUND_TAG.encode(buf, tag);
         }
     }
@@ -44,7 +42,7 @@ public record CellConfigSetPacket(int slotIndex, @Nullable AEKey key) implements
             return new CellConfigSetPacket(slotIndex, null);
         }
         var tag = ByteBufCodecs.COMPOUND_TAG.decode(buf);
-        var key = AEKey.fromTagGeneric(buf.registryAccess(), tag);
+        var key = AEKey.fromTagGeneric(tag);
         return new CellConfigSetPacket(slotIndex, key);
     }
 

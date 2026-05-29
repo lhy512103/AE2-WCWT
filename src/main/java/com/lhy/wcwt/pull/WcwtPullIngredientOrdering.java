@@ -62,16 +62,22 @@ public final class WcwtPullIngredientOrdering {
             return 0;
         }
         ItemStack plain = new ItemStack(stack.getItem(), 1);
-        return ItemStack.isSameItemSameComponents(stack, plain) ? 0 : 1;
+        return sameItemAndTag(stack, plain) ? 0 : 1;
     }
 
     private static final Comparator<ItemStack> ITEM_STACK_COMPARATOR = Comparator
             .comparingInt(WcwtPullIngredientOrdering::componentSpecificityRank)
             .reversed()
-            .thenComparingLong(ItemStack::hashItemAndComponents);
+            .thenComparing(ItemStack::getDescriptionId)
+            .thenComparing(stack -> String.valueOf(stack.getTag()));
 
     private static final Comparator<AEItemKey> AE_ITEM_KEY_COMPARATOR = Comparator
             .comparingInt(WcwtPullIngredientOrdering::itemKeyComponentSpecificityRank)
             .reversed()
-            .thenComparingLong(k -> ItemStack.hashItemAndComponents(k.toStack()));
+            .thenComparing(k -> k.toStack().getDescriptionId())
+            .thenComparing(k -> String.valueOf(k.toStack().getTag()));
+
+    private static boolean sameItemAndTag(ItemStack first, ItemStack second) {
+        return ItemStack.isSameItem(first, second) && java.util.Objects.equals(first.getTag(), second.getTag());
+    }
 }

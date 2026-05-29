@@ -1,6 +1,6 @@
 package com.lhy.wcwt.compat.jei;
 
-import appeng.integration.modules.itemlists.TransferHelper;
+import appeng.integration.modules.jeirei.TransferHelper;
 import appeng.menu.me.items.CraftingTermMenu;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
@@ -33,7 +33,7 @@ public final class WcwtPartialRecipeTransferError implements IRecipeTransferErro
 
     @Override
     public void getTooltip(ITooltipBuilder tooltip) {
-        tooltip.addAll(TransferHelper.createCraftingTooltip(missing, Screen.hasControlDown(), true));
+        tooltip.addAll(TransferHelper.createCraftingTooltip(missing, Screen.hasControlDown()));
     }
 
     @Override

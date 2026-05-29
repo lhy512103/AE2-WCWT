@@ -382,7 +382,9 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
             selectedStack = cacheSlots.get(selectedIndex).getItem();
         }
 
-        if (selectedIndex != cachedSelectedIndex || !ItemStack.isSameItemSameComponents(selectedStack, cachedSelectedStack)) {
+        if (selectedIndex != cachedSelectedIndex
+                || !ItemStack.isSameItem(selectedStack, cachedSelectedStack)
+                || !java.util.Objects.equals(selectedStack.getTag(), cachedSelectedStack.getTag())) {
             cachedSelectedIndex = selectedIndex;
             cachedSelectedStack = selectedStack.copy();
             inputIdOnlySlots.clear();
@@ -426,8 +428,8 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         }
 
         var outputs = details.getOutputs();
-        for (int slot = 0; slot < outputs.size(); slot++) {
-            ItemStack first = toItemStack(outputs.get(slot));
+        for (int slot = 0; slot < outputs.length; slot++) {
+            ItemStack first = toItemStack(outputs[slot]);
             if (!first.isEmpty()) {
                 entries.add(new OverloadViewEntry(false, slot,
                         overloadModeReader != null && overloadModeReader.outputIdOnly(slot),
@@ -529,7 +531,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         if (minecraft.player == null) {
             return List.of(stack.getHoverName());
         }
-        return stack.getTooltipLines(Item.TooltipContext.EMPTY, minecraft.player,
+        return stack.getTooltipLines(minecraft.player,
                 minecraft.options.advancedItemTooltips ? TooltipFlag.ADVANCED : TooltipFlag.NORMAL);
     }
 

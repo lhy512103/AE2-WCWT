@@ -39,7 +39,7 @@ public record ReplacePatternPacket(@Nullable AEKey replaceWhat, @Nullable AEKey 
             buf.writeBoolean(false);
         } else {
             buf.writeBoolean(true);
-            ByteBufCodecs.COMPOUND_TAG.encode(buf, key.toTagGeneric(buf.registryAccess()));
+            ByteBufCodecs.COMPOUND_TAG.encode(buf, key.toTagGeneric());
         }
     }
 
@@ -48,7 +48,7 @@ public record ReplacePatternPacket(@Nullable AEKey replaceWhat, @Nullable AEKey 
         if (!buf.readBoolean()) {
             return null;
         }
-        return AEKey.fromTagGeneric(buf.registryAccess(), ByteBufCodecs.COMPOUND_TAG.decode(buf));
+        return AEKey.fromTagGeneric(ByteBufCodecs.COMPOUND_TAG.decode(buf));
     }
 
     @Override

@@ -105,7 +105,7 @@ public class IconButton extends Button implements ITooltip {
         // ── 底图 ──
         if (useAE2ToolbarBg) {
             // 使用 AE2 Toolbar 按钮底图（18×20），缩放到按钮实际尺寸
-            Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER : Icon.TOOLBAR_BUTTON_BACKGROUND;
+            Icon bgIcon = Icon.TOOLBAR_BUTTON_BACKGROUND;
             float scaleX = (float) width / 18f;
             float scaleY = (float) height / 20f;
             PoseStack pose = guiGraphics.pose();

@@ -53,7 +53,6 @@ public class WcwtMagnetScreen extends AEBaseScreen<WcwtMagnetMenu> {
         return includeExclude == IncludeExclude.WHITELIST ? Icon.YES : Icon.NO;
     }
 
-    @Override
     protected boolean shouldAddToolbar() {
         return false;
     }

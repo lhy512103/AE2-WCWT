@@ -69,7 +69,7 @@ public final class ToolkitItemRules {
     /** 是否为可放入专用网络工具格的 AE 网络工具物品。 */
     public static boolean isAeNetworkToolkitItem(ItemStack stack) {
         return !stack.isEmpty()
-                && (stack.getItem() instanceof NetworkToolItem || AEItems.NETWORK_TOOL.is(stack));
+                && (stack.getItem() instanceof NetworkToolItem || AEItems.NETWORK_TOOL.isSameAs(stack));
     }
 
     /**
@@ -141,9 +141,9 @@ public final class ToolkitItemRules {
             case 4 -> stack.getItem() instanceof HoeItem;
             case 5 -> isWrenchCategory(stack);
             case 6 -> stack.getItem() instanceof QuartzCuttingKnifeItem
-                    || AEItems.CERTUS_QUARTZ_KNIFE.is(stack);
+                    || AEItems.CERTUS_QUARTZ_KNIFE.isSameAs(stack);
             case 7 -> isAeNetworkToolkitItem(stack);
-            case 8 -> stack.getItem() instanceof MemoryCardItem || AEItems.MEMORY_CARD.is(stack);
+            case 8 -> stack.getItem() instanceof MemoryCardItem || AEItems.MEMORY_CARD.isSameAs(stack);
             case 9 -> isMekanismConfigurationCard(stack);
             case 10 -> isMekanismConfigurator(stack);
             default -> false;
