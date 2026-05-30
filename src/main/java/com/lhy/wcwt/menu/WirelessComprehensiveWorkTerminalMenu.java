@@ -2292,34 +2292,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private void clearManualWorkspaceToNetwork() {
-        if (menuHost == null) {
-            return;
-        }
-        var target = getCurrentManualWorkspaceInputInventory();
-        if (target == null) {
-            return;
-        }
-        var storage = menuHost.getInventory();
-        var energy = getEnergySource();
-        var source = getActionSource();
-        for (int i = 0; i < target.size(); i++) {
-            ItemStack stack = target.getStackInSlot(i);
-            if (stack.isEmpty()) {
-                continue;
-            }
-            var key = AEItemKey.of(stack);
-            if (key == null) {
-                continue;
-            }
-            long inserted = StorageHelper.poweredInsert(energy, storage, key, stack.getCount(), source);
-            if (inserted > 0) {
-                ItemStack remaining = stack.copy();
-                remaining.shrink((int) Math.min(inserted, Integer.MAX_VALUE));
-                target.setItemDirect(i, remaining);
-            }
-        }
-        updateManualWorkspaceResults();
-        broadcastChanges();
+        moveManualWorkspaceToNetwork(getManualWorkspaceMode());
     }
 
     private void clearManualWorkspaceToPlayerInventory() {
@@ -2387,14 +2360,56 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     @Nullable
     private InternalInventory getCurrentManualWorkspaceInputInventory() {
+        return getManualWorkspaceInputInventory(getManualWorkspaceMode());
+    }
+
+    @Nullable
+    private InternalInventory getManualWorkspaceInputInventory(ManualWorkspaceMode mode) {
         if (menuHost == null) {
             return null;
         }
-        return switch (getManualWorkspaceMode()) {
+        return switch (mode) {
             case CRAFTING -> getCraftingMatrix();
             case SMITHING -> menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
             case ANVIL -> menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
         };
+    }
+
+    public boolean moveManualWorkspaceToNetwork(ManualWorkspaceMode mode) {
+        if (menuHost == null || mode == null) {
+            return false;
+        }
+        var target = getManualWorkspaceInputInventory(mode);
+        if (target == null) {
+            return false;
+        }
+        boolean changed = false;
+        var storage = menuHost.getInventory();
+        var energy = getEnergySource();
+        var source = getActionSource();
+        for (int i = 0; i < target.size(); i++) {
+            ItemStack stack = target.getStackInSlot(i);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            var key = AEItemKey.of(stack);
+            if (key == null) {
+                continue;
+            }
+            long inserted = StorageHelper.poweredInsert(energy, storage, key, stack.getCount(), source);
+            if (inserted <= 0) {
+                continue;
+            }
+            ItemStack remaining = stack.copy();
+            remaining.shrink((int) Math.min(inserted, Integer.MAX_VALUE));
+            target.setItemDirect(i, remaining);
+            changed = true;
+        }
+        if (changed) {
+            updateManualWorkspaceResults();
+            broadcastChanges();
+        }
+        return changed;
     }
 
     private void openWcwtSubMenu(MenuType<?> menuType) {

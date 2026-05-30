@@ -3,9 +3,12 @@ package com.lhy.wcwt.client;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import appeng.init.client.InitScreens;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.api.distmarker.Dist;
@@ -41,11 +44,22 @@ public class ModClientSetup {
         event.register(WcwtKeybindings.OPEN_TOOL_SLOTS_BOX);
         event.register(WcwtKeybindings.OPEN_TOOLKIT);
         event.register(WcwtKeybindings.OPEN_RESONATING_LIGHTNING_PATTERN_CODING);
+        event.register(WcwtKeybindings.TOGGLE_CRAFTING_GRID_LOCK);
     }
 
     @SubscribeEvent
     public static void onScreenKeyPressedPre(ScreenEvent.KeyPressed.Pre event) {
-        if (!(Minecraft.getInstance().screen instanceof WirelessComprehensiveWorkTerminalScreen screen)) {
+        var minecraft = Minecraft.getInstance();
+        Screen activeScreen = minecraft.screen;
+        WirelessComprehensiveWorkTerminalScreen screen =
+                activeScreen instanceof WirelessComprehensiveWorkTerminalScreen wcwtScreen ? wcwtScreen : null;
+
+        if (handleCraftingGridLockHotkey(event.getKeyCode(), event.getScanCode(), minecraft, activeScreen)) {
+            event.setCanceled(true);
+            return;
+        }
+
+        if (screen == null) {
             return;
         }
         if (!screen.isTypingInPatternManagementField()
@@ -113,5 +127,64 @@ public class ModClientSetup {
             }
         }
         return keyCode == GLFW.GLFW_KEY_F;
+    }
+
+    private static boolean matchesCraftingGridLockHotkey(int keyCode, int scanCode) {
+        return WcwtKeybindings.TOGGLE_CRAFTING_GRID_LOCK.matches(keyCode, scanCode);
+    }
+
+    private static boolean handleCraftingGridLockHotkey(int keyCode, int scanCode, Minecraft minecraft,
+                                                        Screen activeScreen) {
+        return matchesCraftingGridLockHotkey(keyCode, scanCode)
+                && isCraftingGridLockHotkeyContext(minecraft, activeScreen)
+                && toggleCraftingGridLock(minecraft);
+    }
+
+    private static boolean isCraftingGridLockHotkeyContext(Minecraft minecraft, Screen activeScreen) {
+        if (!(minecraft.player != null
+                && minecraft.player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu)) {
+            return false;
+        }
+        if (activeScreen instanceof WirelessComprehensiveWorkTerminalScreen) {
+            return true;
+        }
+        if (activeScreen == null) {
+            return false;
+        }
+        String screenClassName = activeScreen.getClass().getName();
+        return screenClassName.startsWith("mezz.jei.")
+                || screenClassName.startsWith("mezz.jei.library.");
+    }
+
+    private static boolean toggleCraftingGridLock(Minecraft minecraft) {
+        if (!(minecraft.player != null
+                && minecraft.player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)) {
+            return false;
+        }
+        var host = menu.getMenuHost();
+        if (host == null) {
+            return false;
+        }
+        host.toggleCraftingGridLock();
+        refreshJeiRecipesGuiIfPresent(minecraft.screen);
+        net.neoforged.neoforge.network.PacketDistributor
+                .sendToServer(new CraftingLockPacket(host.isCraftingGridLocked()));
+        return true;
+    }
+
+    private static void refreshJeiRecipesGuiIfPresent(Screen activeScreen) {
+        if (activeScreen == null) {
+            return;
+        }
+        String screenClassName = activeScreen.getClass().getName();
+        if (!screenClassName.equals("mezz.jei.gui.recipes.RecipesGui")) {
+            return;
+        }
+        try {
+            Method updateLayout = activeScreen.getClass().getDeclaredMethod("updateLayout");
+            updateLayout.setAccessible(true);
+            updateLayout.invoke(activeScreen);
+        } catch (Throwable ignored) {
+        }
     }
 }

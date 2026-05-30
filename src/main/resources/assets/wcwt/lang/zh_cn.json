@@ -24,6 +24,7 @@
   "key.wcwt.open_tool_slots_box": "打开卡槽箱",
   "key.wcwt.open_toolkit": "打开工具包",
   "key.wcwt.open_resonating_lightning_pattern_coding": "打开谐振过载编码器",
+  "key.wcwt.toggle_crafting_grid_lock": "切换合成网格锁定",
   "gui.wcwt.toolkit.slot.sword": "剑类",
   "gui.wcwt.toolkit.slot.pickaxe": "镐类",
   "gui.wcwt.toolkit.slot.axe": "斧类",
