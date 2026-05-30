@@ -78,13 +78,13 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.TransientCraftingContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
-import net.minecraft.world.item.crafting.CraftingInput;
-import net.minecraft.world.item.crafting.RecipeHolder;
+import com.lhy.wcwt.compat.minecraft.world.item.enchantment.EnchantmentEffectComponents;
+import com.lhy.wcwt.compat.minecraft.world.item.crafting.CraftingInput;
+import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.items.SlotItemHandler;
-import net.minecraft.world.item.crafting.SingleRecipeInput;
-import net.minecraft.world.item.crafting.SmithingRecipeInput;
+import com.lhy.wcwt.compat.minecraft.world.item.crafting.SingleRecipeInput;
+import com.lhy.wcwt.compat.minecraft.world.item.crafting.SmithingRecipeInput;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
@@ -190,6 +190,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      * 防止合并写入触发 {@link #broadcastChanges()} 时递归合并。
      */
     private boolean wcwtMergeProcessingGuard;
+    /**
+     * 刷新样板预览槽时会写回 {@link #patternPreviewSlot}，该写入本身也会触发 slot change 回调。
+     * 用这个守卫避免 updatePatternPreview -> onSlotChange -> updatePatternPreview 的递归卡死。
+     */
+    private boolean patternPreviewUpdateGuard;
     /**
      * 样板管理区不是实时容器，而是服务端构建的供应器快照。
      * 打开界面期间定期推送一次，避免只能重开终端才能看到外部变化。
@@ -2483,18 +2488,22 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public void updatePatternPreview(EncodingMode mode) {
-        if (patternPreviewSlot == null || patternEncodingLogic == null) {
+        if (patternPreviewSlot == null || patternEncodingLogic == null || patternPreviewUpdateGuard) {
             return;
         }
-
-        ItemStack preview = switch (mode) {
-            case CRAFTING -> getCraftingPatternPreview();
-            case SMITHING_TABLE -> getSmithingPatternPreview();
-            case STONECUTTING -> getStonecuttingPatternPreview();
-            case PROCESSING -> ItemStack.EMPTY;
-        };
-        patternPreviewSlot.set(preview);
-        patternPreviewSlot.setActive(mode != EncodingMode.PROCESSING);
+        patternPreviewUpdateGuard = true;
+        try {
+            ItemStack preview = switch (mode) {
+                case CRAFTING -> getCraftingPatternPreview();
+                case SMITHING_TABLE -> getSmithingPatternPreview();
+                case STONECUTTING -> getStonecuttingPatternPreview();
+                case PROCESSING -> ItemStack.EMPTY;
+            };
+            patternPreviewSlot.set(preview);
+            patternPreviewSlot.setActive(mode != EncodingMode.PROCESSING);
+        } finally {
+            patternPreviewUpdateGuard = false;
+        }
     }
 
     private ItemStack getCraftingPatternPreview() {

@@ -1,4 +1,4 @@
-package net.minecraft.network.protocol.common.custom;
+package com.lhy.wcwt.compat.minecraft.network.protocol.common.custom;
 
 import net.minecraft.resources.ResourceLocation;
 

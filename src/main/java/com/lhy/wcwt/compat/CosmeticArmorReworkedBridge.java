@@ -1,6 +1,7 @@
 package com.lhy.wcwt.compat;
 
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.lhy.wcwt.network.ModNetworking;
+import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
@@ -93,7 +94,7 @@ public final class CosmeticArmorReworkedBridge {
             Constructor<?> constructor = payloadClass.getConstructor(UUID.class, int.class, boolean.class, ItemStack.class);
             Object payload = constructor.newInstance(player.getUUID(), slot, skinArmor, stack);
             if (payload instanceof CustomPacketPayload customPayload) {
-                PacketDistributor.sendToPlayer(serverPlayer, customPayload);
+                ModNetworking.sendToPlayer(serverPlayer, customPayload);
             }
         } catch (ReflectiveOperationException | RuntimeException ignored) {
             // Cosmetic Armor Reworked will still sync future changes through its own listeners.
@@ -130,7 +131,7 @@ public final class CosmeticArmorReworkedBridge {
         Constructor<?> constructor = payloadClass.getConstructor(int.class, boolean.class);
         Object payload = constructor.newInstance(slot, enabled);
         if (payload instanceof CustomPacketPayload customPayload) {
-            PacketDistributor.sendToServer(customPayload);
+            ModNetworking.sendToServer(customPayload);
         }
     }
 }

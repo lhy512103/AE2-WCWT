@@ -11,6 +11,7 @@ import appeng.hotkeys.HotkeyActions;
 import appeng.hotkeys.InventoryHotkeyAction;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.menu.locator.MenuLocators;
+import com.lhy.wcwt.client.ModClientSetup;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
@@ -60,12 +61,13 @@ public class WcwtMod {
         ModMenus.MENUS.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(WcwtPacketsBootstrap::register);
         modEventBus.addListener(this::addCreativeTabItems);
-        MinecraftForge.EVENT_BUS.register(WcwtPacketsBootstrap.class);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
             ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, WcwtClientConfig.SPEC);
+            ModClientSetup.init(modEventBus);
         });
     }
 

@@ -2,7 +2,7 @@ package net.neoforged.neoforge.network;
 
 import com.lhy.wcwt.network.ModNetworking;
 
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 
 public final class PacketDistributor {

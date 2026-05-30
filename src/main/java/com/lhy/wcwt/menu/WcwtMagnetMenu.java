@@ -8,7 +8,7 @@ import appeng.util.ConfigMenuInventory;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.network.TopActionPacket;
-import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
+import de.mari_023.ae2wtlib.AE2wtlibSlotSemantics;
 import net.minecraft.world.entity.player.Inventory;
 
 public class WcwtMagnetMenu extends AEBaseMenu implements ISubMenu {

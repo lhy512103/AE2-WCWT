@@ -4,8 +4,11 @@ import appeng.init.client.InitScreens;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.ScreenEvent;
@@ -15,6 +18,7 @@ import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Method;
@@ -26,9 +30,26 @@ public class ModClientSetup {
 
     public static void init(IEventBus modBus) {
         modBus.addListener(ModClientSetup::onRegisterKeyMappings);
-        net.minecraft.client.gui.screens.MenuScreens.register(ModMenus.WCWT_MENU.get(), WirelessComprehensiveWorkTerminalScreen::new);
-        InitScreens.register(ModMenus.WCWT_MAGNET_MENU.get(), WcwtMagnetScreen::new, "/screens/wtlib/magnet.json");
-        InitScreens.register(ModMenus.WCWT_TRASH_MENU.get(), WcwtTrashScreen::new, "/screens/wtlib/trash.json");
+        modBus.addListener(ModClientSetup::onClientSetup);
+    }
+
+    private static void onClientSetup(FMLClientSetupEvent event) {
+        event.enqueueWork(() -> {
+            WcwtMod.LOGGER.info("Registering WCWT client screens");
+            net.minecraft.client.gui.screens.MenuScreens.register(ModMenus.WCWT_MENU.get(), ModClientSetup::createMainScreen);
+            InitScreens.register(ModMenus.WCWT_MAGNET_MENU.get(), WcwtMagnetScreen::new, "/screens/wtlib/magnet.json");
+            InitScreens.register(ModMenus.WCWT_TRASH_MENU.get(), WcwtTrashScreen::new, "/screens/wtlib/trash.json");
+        });
+    }
+
+    private static WirelessComprehensiveWorkTerminalScreen createMainScreen(
+            com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu menu, Inventory inv, Component title) {
+        try {
+            return new WirelessComprehensiveWorkTerminalScreen(menu, inv, title);
+        } catch (Throwable t) {
+            WcwtMod.LOGGER.error("Failed to construct WCWT main screen", t);
+            return null;
+        }
     }
 
     private static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
@@ -91,7 +112,7 @@ public class ModClientSetup {
                 WcwtMod.LOGGER.info("WCWT toolkit debug: sending OpenToolkitHotkeyPacket, screen={}",
                         minecraft.screen == null ? "<null>" : minecraft.screen.getClass().getName());
             }
-            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new OpenToolkitHotkeyPacket());
+            ModNetworking.sendToServer(new OpenToolkitHotkeyPacket());
         }
     }
 

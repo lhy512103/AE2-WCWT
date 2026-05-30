@@ -1,7 +1,8 @@
-package net.minecraft.network;
+package com.lhy.wcwt.compat.minecraft.network;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * 1.21 引入的缓冲区类型在 1.20.1 中不存在，这里保留最小兼容外形，

@@ -1,7 +1,7 @@
 package com.lhy.wcwt.compat;
 
 import com.lhy.wcwt.network.ModNetworking;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.fml.ModList;

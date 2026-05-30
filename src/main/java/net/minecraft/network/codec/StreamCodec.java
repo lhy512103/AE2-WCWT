@@ -1,4 +1,4 @@
-package net.minecraft.network.codec;
+package com.lhy.wcwt.compat.minecraft.network.codec;
 
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;

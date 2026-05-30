@@ -80,7 +80,7 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
-import net.minecraft.world.item.crafting.RecipeHolder;
+import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.minecraft.world.phys.AABB;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -4175,7 +4175,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             var ctor = packetClass.getConstructor(long.class, ResourceLocation.class, int.class);
             int face = entry.face() != null ? entry.face().ordinal() : -1;
             Object packet = ctor.newInstance(entry.pos().asLong(), entry.dimension().location(), face);
-            if (packet instanceof net.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
+            if (packet instanceof com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
                 ModNetworking.sendToServer(payload);
             }
         } catch (Throwable ignored) {

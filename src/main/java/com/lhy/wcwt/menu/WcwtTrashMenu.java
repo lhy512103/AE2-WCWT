@@ -6,7 +6,7 @@ import appeng.menu.ISubMenu;
 import appeng.menu.slot.AppEngSlot;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
-import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
+import de.mari_023.ae2wtlib.AE2wtlibSlotSemantics;
 import net.minecraft.world.entity.player.Inventory;
 
 public class WcwtTrashMenu extends AEBaseMenu implements ISubMenu {

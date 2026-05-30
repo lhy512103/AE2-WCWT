@@ -1,5 +1,6 @@
-package net.minecraft.network.codec;
+package com.lhy.wcwt.compat.minecraft.network.codec;
 
+import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
@@ -7,7 +8,6 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 
 import java.util.ArrayList;

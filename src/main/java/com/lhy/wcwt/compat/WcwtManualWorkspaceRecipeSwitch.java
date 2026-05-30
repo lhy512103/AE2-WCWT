@@ -4,7 +4,7 @@ import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.ManualWorkspaceModePacket;
-import net.neoforged.neoforge.network.PacketDistributor;
+import com.lhy.wcwt.network.ModNetworking;
 import org.jetbrains.annotations.Nullable;
 
 public final class WcwtManualWorkspaceRecipeSwitch {
@@ -20,7 +20,7 @@ public final class WcwtManualWorkspaceRecipeSwitch {
             return;
         }
         menu.setManualWorkspaceMode(target);
-        PacketDistributor.sendToServer(new ManualWorkspaceModePacket(target.ordinal()));
+        ModNetworking.sendToServer(new ManualWorkspaceModePacket(target.ordinal()));
     }
 
     @Nullable

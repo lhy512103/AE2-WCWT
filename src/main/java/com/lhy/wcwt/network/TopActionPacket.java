@@ -2,9 +2,9 @@ package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
+import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
+import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record TopActionPacket(Action action) implements CustomPacketPayload {

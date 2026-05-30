@@ -54,7 +54,7 @@ public class WcwtSlotSemantics {
 
     private static SlotSemantic getAe2wtlibSemantic(String id) {
         try {
-            Class.forName("de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics");
+            Class.forName("de.mari_023.ae2wtlib.AE2wtlibSlotSemantics");
         } catch (ClassNotFoundException e) {
             throw new IllegalStateException("AE2WTLib slot semantics are unavailable", e);
         }

@@ -1,4 +1,4 @@
-package net.minecraft.world.item.crafting;
+package com.lhy.wcwt.compat.minecraft.world.item.crafting;
 
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;

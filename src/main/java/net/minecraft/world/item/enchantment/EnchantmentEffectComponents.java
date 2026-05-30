@@ -1,4 +1,4 @@
-package net.minecraft.world.item.enchantment;
+package com.lhy.wcwt.compat.minecraft.world.item.enchantment;
 
 public final class EnchantmentEffectComponents {
     private EnchantmentEffectComponents() {

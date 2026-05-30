@@ -1,8 +1,8 @@
 package com.lhy.wcwt.network;
 
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
+import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
@@ -35,24 +35,24 @@ public final class ModNetworking {
 
     public static <T extends CustomPacketPayload> void registerServerbound(int id, Class<T> payloadClass,
             CustomPacketPayload.Type<T> type,
-            net.minecraft.network.codec.StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
+            com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
             BiConsumer<T, net.neoforged.neoforge.network.handling.IPayloadContext> handler) {
         register(id, payloadClass, type.id(), codec, handler, NetworkDirection.PLAY_TO_SERVER);
     }
 
     public static <T extends CustomPacketPayload> void registerClientbound(int id, Class<T> payloadClass,
             CustomPacketPayload.Type<T> type,
-            net.minecraft.network.codec.StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
+            com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
             BiConsumer<T, net.neoforged.neoforge.network.handling.IPayloadContext> handler) {
         register(id, payloadClass, type.id(), codec, handler, NetworkDirection.PLAY_TO_CLIENT);
     }
 
     @SuppressWarnings("unchecked")
     private static <T extends CustomPacketPayload> void register(int id, Class<T> payloadClass, ResourceLocation ignoredId,
-            net.minecraft.network.codec.StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
+            com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec<? super RegistryFriendlyByteBuf, T> codec,
             BiConsumer<T, net.neoforged.neoforge.network.handling.IPayloadContext> handler,
             NetworkDirection direction) {
-        var castCodec = (net.minecraft.network.codec.StreamCodec<RegistryFriendlyByteBuf, T>) codec;
+        var castCodec = (com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec<RegistryFriendlyByteBuf, T>) codec;
         CHANNEL.registerMessage(id, payloadClass, (payload, buffer) -> {
             RegistryFriendlyByteBuf registryBuf = wrap(buffer);
             castCodec.encode(registryBuf, payload);
