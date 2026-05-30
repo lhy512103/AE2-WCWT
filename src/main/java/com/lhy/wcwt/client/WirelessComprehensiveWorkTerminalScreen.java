@@ -200,8 +200,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private long lastPatternProviderSubscriptionRequestMs;
     private final ExtendedPanelLayout mainLayout = ExtendedPanelLayout.load(
             ResourceLocation.fromNamespaceAndPath("ae2", "screens/wcwt/wireless_comprehensive_work_terminal.json"));
+    private final ExtendedPanelLayout managementToolkitLayout = ExtendedPanelLayout.load("wcwt_management_toolkit.json");
     private ExtendedPanelLayout.Rect patternManagementPage =
             new ExtendedPanelLayout.Rect(176, 210, 160, 71);
+    private ExtendedPanelLayout.Rect patternManagementScrollbarRect =
+            new ExtendedPanelLayout.Rect(343, 210, 12, 71);
+    private ExtendedPanelLayout.Rect managementToolkitBackgroundRect =
+            new ExtendedPanelLayout.Rect(176, 210, 162, 72);
+    private ExtendedPanelLayout.Rect managementToolkitSlotRect =
+            new ExtendedPanelLayout.Rect(177, 211, 16, 16);
+    private ExtendedPanelLayout.Rect managementToolkitScrollbarRect =
+            new ExtendedPanelLayout.Rect(343, 209, 12, 72);
     private ExtendedPanelLayout.Rect patternManagementAddButton =
             new ExtendedPanelLayout.Rect(291, 185, 30, 11);
     private ExtendedPanelLayout.Rect patternManagementReloadButton =
@@ -286,6 +295,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_extended_crafting.png");
     private static final ResourceLocation WCWT_MANAGEMENT_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_management.png");
+    private static final ResourceLocation WCWT_TOOLS_TEXTURE =
+            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_tools.png");
     private static final ResourceLocation WCWT_STATES_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
     private static final int SELECTED_PATTERN_BG_U = 32;
@@ -330,6 +341,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private @Nullable Method meStorageUpdateScrollbarMethod;
     private ItemStack lastEncodedPatternForUploadSync = ItemStack.EMPTY;
     private @Nullable String lastEncodedPatternUploadSearchText;
+    private boolean attemptedRestoreManagementToolkitOpenState;
     
     public WirelessComprehensiveWorkTerminalScreen(WirelessComprehensiveWorkTerminalMenu menu, 
                                                      Inventory playerInventory, 
@@ -390,6 +402,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         patternManageMappingField.setPlaceholder(Component.translatable("gui.wcwt.pattern_management.mapping_input"));
         patternManageMappingField.setMaxLength(64);
         patternManagementPage = mainLayout.widget("management_page", patternManagementPage, imageWidth, imageHeight);
+        patternManagementScrollbarRect = mainLayout.widget("manage_scrollbar", patternManagementScrollbarRect,
+                imageWidth, imageHeight);
+        managementToolkitBackgroundRect = managementToolkitLayout.widget("management_toolkit_background",
+                managementToolkitBackgroundRect, imageWidth, imageHeight);
+        managementToolkitSlotRect = managementToolkitLayout.slot("management_toolkit_slots", managementToolkitSlotRect,
+                imageWidth, imageHeight);
+        managementToolkitScrollbarRect = managementToolkitLayout.widget("management_toolkit_scrollbar",
+                managementToolkitScrollbarRect, imageWidth, imageHeight);
         patternManagementAddButton = mainLayout.widget("increase_mapping", patternManagementAddButton, imageWidth, imageHeight);
         patternManagementReloadButton = mainLayout.widget("heavy_load_mapping", patternManagementReloadButton, imageWidth, imageHeight);
         patternManagementDeleteButton = mainLayout.widget("delete_mapping", patternManagementDeleteButton, imageWidth, imageHeight);
@@ -657,6 +677,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 "autoSwitchManualWorkspaceOnRecipeTransfer",
                 Component.translatable("wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer"),
                 this::saveClientSettings);
+        private final AECheckbox expandToolkitInManagementArea = widgets.addCheckbox(
+                "expandToolkitInManagementArea",
+                Component.translatable("wcwt.config.expandToolkitInManagementArea"),
+                this::saveClientSettings);
 
         WcwtWirelessTerminalSettingsSubScreen(WirelessComprehensiveWorkTerminalScreen parent) {
             super(parent, "/screens/wcwt/wireless_terminal_settings.json");
@@ -675,6 +699,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     .setSelected(WcwtClientConfig.patternMultiplierApplyToEditorProcessing());
             autoSwitchManualWorkspaceOnRecipeTransfer
                     .setSelected(WcwtClientConfig.autoSwitchManualWorkspaceOnRecipeTransfer());
+            expandToolkitInManagementArea.setSelected(WcwtClientConfig.expandToolkitInManagementArea());
             refreshMagnetSettingsAvailability(stack);
         }
 
@@ -713,6 +738,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     .set(patternMultiplierApplyToEditorProcessing.isSelected());
             WcwtClientConfig.AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER
                     .set(autoSwitchManualWorkspaceOnRecipeTransfer.isSelected());
+            WcwtClientConfig.EXPAND_TOOLKIT_IN_MANAGEMENT_AREA
+                    .set(expandToolkitInManagementArea.isSelected());
             WcwtClientConfig.SPEC.save();
         }
 
@@ -1011,6 +1038,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         host.closeExtendedUI();
+        rememberManagementToolkitOpenState(false);
         PacketDistributor.sendToServer(new ExtendedUIPacket(IExtendedUIHost.ExtendedUIType.NONE));
         updateExtendedUIVisibility();
     }
@@ -1065,6 +1093,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             newType = type;
             host.setCurrentExtendedUI(type);
         }
+        rememberManagementToolkitOpenState(newType == IExtendedUIHost.ExtendedUIType.TOOLKIT);
         
         // 发送网络数据包同步状态
         PacketDistributor.sendToServer(new ExtendedUIPacket(newType));
@@ -1078,9 +1107,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         host.setCurrentExtendedUI(menu.getSyncedExtendedUIType());
         
         var currentUI = host.getCurrentExtendedUI();
+        boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
         boolean hideExtendedButtons = currentUI == IExtendedUIHost.ExtendedUIType.ADVANCED_CODING
                 || currentUI == IExtendedUIHost.ExtendedUIType.CURIOS
-                || currentUI == IExtendedUIHost.ExtendedUIType.TOOLKIT
+                || (currentUI == IExtendedUIHost.ExtendedUIType.TOOLKIT && !toolkitInManagementArea)
                 || currentUI == IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING;
 
         // 更新高级编码模式状态
@@ -1147,7 +1177,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 if (toolboxPanel != null) toolboxPanel.setVisible(true);
                 break;
             case TOOLKIT:
-                if (toolkitPanel != null) toolkitPanel.setVisible(true);
+                if (toolkitPanel != null) toolkitPanel.setVisible(!toolkitInManagementArea);
                 break;
             case RESONATING_LIGHTNING_PATTERN_CODING:
                 if (resonatingLightningPatternCodingPanel != null) {
@@ -1649,6 +1679,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     protected void updateBeforeRender() {
         super.updateBeforeRender();
         refreshRepoViewAfterTransientReconnect();
+        restoreManagementToolkitOpenStateIfNeeded();
         boolean syncedPatternManagementUploadEnabled = menu.isPatternManagementUploadEnabled();
         var syncedPatternManagementDisplayMode = patternManagementDisplayModeFromOrdinal(menu.getPatternManagementDisplayMode());
         boolean syncedPatternManagementShowSlots = menu.isPatternManagementShowSlots();
@@ -2372,17 +2403,35 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void updatePatternManagement() {
         refreshPatternManagementLayout();
+        boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
         keepPatternProviderSubscriptionAlive();
-        int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
-        int maxScroll = Math.max(0, patternManagementRows.size() - visibleRows);
+        int visibleRows = toolkitInManagementArea ? getManagementToolkitVisibleRows()
+                : Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
+        int maxScroll;
+        if (toolkitInManagementArea) {
+            int columns = getManagementToolkitColumns();
+            int totalRows = (getToolkitSlots().size() + columns - 1) / columns;
+            maxScroll = Math.max(0, totalRows - visibleRows);
+        } else {
+            maxScroll = Math.max(0, patternManagementRows.size() - visibleRows);
+        }
         if (patternManagementScrollbar != null) {
-            patternManagementScrollbar.setHeight(patternManagementPage.height());
+            patternManagementScrollbar.setHeight(toolkitInManagementArea
+                    ? managementToolkitScrollbarRect.height()
+                    : patternManagementPage.height());
             patternManagementScrollbar.setRange(0, maxScroll, 1);
             patternManagementScrollbar.setVisible(maxScroll > 0);
+            var activeScrollbarRect = toolkitInManagementArea ? managementToolkitScrollbarRect : patternManagementScrollbarRect;
+            patternManagementScrollbar.setPosition(new Point(
+                    activeScrollbarRect.left(),
+                    activeScrollbarRect.top()));
         }
     }
 
     private boolean isPatternManagementActive() {
+        if (isToolkitExpandedInManagementArea()) {
+            return true;
+        }
         return patternManagementUploadEnabled
                 || (patternManageSearchField != null && patternManageSearchField.isFocused())
                 || selectedPatternProviderId >= 0
@@ -2391,6 +2440,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void refreshPatternManagementLayout() {
         patternManagementPage = mainLayout.widget("management_page", patternManagementPage, imageWidth, imageHeight);
+        patternManagementScrollbarRect = mainLayout.widget("manage_scrollbar", patternManagementScrollbarRect,
+                imageWidth, imageHeight);
+        managementToolkitBackgroundRect = managementToolkitLayout.widget("management_toolkit_background",
+                managementToolkitBackgroundRect, imageWidth, imageHeight);
+        managementToolkitSlotRect = managementToolkitLayout.slot("management_toolkit_slots", managementToolkitSlotRect,
+                imageWidth, imageHeight);
+        managementToolkitScrollbarRect = managementToolkitLayout.widget("management_toolkit_scrollbar",
+                managementToolkitScrollbarRect, imageWidth, imageHeight);
         patternManagementAddButton = mainLayout.widget("increase_mapping", patternManagementAddButton, imageWidth, imageHeight);
         patternManagementReloadButton = mainLayout.widget("heavy_load_mapping", patternManagementReloadButton, imageWidth, imageHeight);
         patternManagementDeleteButton = mainLayout.widget("delete_mapping", patternManagementDeleteButton, imageWidth, imageHeight);
@@ -2436,7 +2493,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         boolean toolkitOpen = toolkitPanel != null && toolkitPanel.isVisible();
-        setSemanticSlotsHidden(WcwtSlotSemantics.WCWT_TOOLKIT, !toolkitOpen);
+        boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
+        setSemanticSlotsHidden(WcwtSlotSemantics.WCWT_TOOLKIT, !(toolkitOpen || toolkitInManagementArea));
         if (toolkitScrollbar != null) {
             toolkitScrollbar.setVisible(toolkitOpen);
         }
@@ -2563,18 +2621,38 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private void updateToolkitSlots() {
         var slots = getToolkitSlots();
         boolean toolkitOpen = toolkitPanel != null && toolkitPanel.isVisible();
-        if (!toolkitOpen || toolkitPanel == null) {
+        boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
+        if (!toolkitOpen && !toolkitInManagementArea) {
             for (var slot : slots) {
                 hideSlot(slot);
             }
             return;
         }
 
-        int columns = toolkitPanel.getColumns();
-        int visibleSlots = columns * ToolkitPanel.VISIBLE_ROWS;
+        int columns = toolkitInManagementArea ? getManagementToolkitColumns() : toolkitPanel.getColumns();
+        int visibleRows = toolkitInManagementArea ? getManagementToolkitVisibleRows() : ToolkitPanel.VISIBLE_ROWS;
+        int visibleSlots = columns * visibleRows;
         int totalRows = (slots.size() + columns - 1) / columns;
-        int maxScroll = Math.max(0, totalRows - ToolkitPanel.VISIBLE_ROWS);
-        if (toolkitScrollbar != null) {
+        int maxScroll = Math.max(0, totalRows - visibleRows);
+        Scrollbar activeScrollbar = toolkitInManagementArea ? patternManagementScrollbar : toolkitScrollbar;
+        if (activeScrollbar != null) {
+            int scrollbarHeight = toolkitInManagementArea ? managementToolkitScrollbarRect.height() : toolkitPanel.getScrollbarHeight();
+            activeScrollbar.setHeight(scrollbarHeight);
+            activeScrollbar.setRange(0, maxScroll, 1);
+            activeScrollbar.setVisible(true);
+            if (toolkitInManagementArea) {
+                activeScrollbar.setPosition(new Point(
+                        managementToolkitScrollbarRect.left(),
+                        managementToolkitScrollbarRect.top()));
+            }
+            if (!toolkitInManagementArea) {
+                var bounds = toolkitPanel.getBounds();
+                activeScrollbar.setPosition(new Point(
+                        bounds.getX() - leftPos + toolkitPanel.getScrollbarX(),
+                        bounds.getY() - topPos + toolkitPanel.getScrollbarY()));
+            }
+        }
+        if (!toolkitInManagementArea && toolkitScrollbar != null) {
             toolkitScrollbar.setHeight(toolkitPanel.getScrollbarHeight());
             toolkitScrollbar.setRange(0, maxScroll, 1);
             toolkitScrollbar.setVisible(true);
@@ -2584,20 +2662,27 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     bounds.getY() - topPos + toolkitPanel.getScrollbarY()));
         }
 
-        int firstSlot = (toolkitScrollbar != null ? toolkitScrollbar.getCurrentScroll() : 0) * columns;
-        toolkitPanel.setFirstVisibleSlot(firstSlot);
-        var bounds = toolkitPanel.getBounds();
+        int firstSlot = (activeScrollbar != null ? activeScrollbar.getCurrentScroll() : 0) * columns;
+        if (toolkitPanel != null) {
+            toolkitPanel.setFirstVisibleSlot(firstSlot);
+        }
+        int baseX;
+        int baseY;
+        if (toolkitInManagementArea) {
+            baseX = managementToolkitSlotRect.left();
+            baseY = managementToolkitSlotRect.top();
+        } else {
+            var bounds = toolkitPanel.getBounds();
+            baseX = bounds.getX() - leftPos + toolkitPanel.getSlotAnchorX();
+            baseY = bounds.getY() - topPos + toolkitPanel.getSlotAnchorY();
+        }
         for (int i = 0; i < slots.size(); i++) {
             var slot = slots.get(i);
             boolean visible = i >= firstSlot && i < firstSlot + visibleSlots;
             if (visible) {
                 int visibleIndex = i - firstSlot;
-                int x = bounds.getX() - leftPos
-                        + toolkitPanel.getSlotAnchorX()
-                        + (visibleIndex % columns) * ToolkitPanel.SLOT_SIZE;
-                int y = bounds.getY() - topPos
-                        + toolkitPanel.getSlotAnchorY()
-                        + (visibleIndex / columns) * ToolkitPanel.SLOT_SIZE;
+                int x = baseX + (visibleIndex % columns) * ToolkitPanel.SLOT_SIZE;
+                int y = baseY + (visibleIndex / columns) * ToolkitPanel.SLOT_SIZE;
                 showSlot(slot, x, y);
             } else {
                 hideSlot(slot);
@@ -2654,7 +2739,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         if (menu.getSlots(WcwtSlotSemantics.WCWT_TOOLKIT).contains(slot)
-                && (toolkitPanel == null || !toolkitPanel.isVisible())) {
+                && ((toolkitPanel == null || !toolkitPanel.isVisible()) && !isToolkitExpandedInManagementArea())) {
             return;
         }
         int cacheIndex = getPatternCacheSlotIndex(slot);
@@ -2778,6 +2863,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isMouseOverToolkitPanel(double mouseX, double mouseY) {
+        if (isToolkitExpandedInManagementArea()) {
+            return isMouseOverPatternManagement(mouseX, mouseY);
+        }
         if (toolkitPanel == null || !toolkitPanel.isVisible()) {
             return false;
         }
@@ -2793,6 +2881,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         super.drawBG(guiGraphics, offsetX, offsetY, mouseX, mouseY, partialTicks);
         renderManualWorkspaceBackground(guiGraphics, offsetX, offsetY);
         renderPatternEncodingBackground(guiGraphics, offsetX, offsetY);
+        if (isToolkitExpandedInManagementArea()) {
+            guiGraphics.blit(WCWT_TOOLS_TEXTURE,
+                    offsetX + managementToolkitBackgroundRect.left(), offsetY + managementToolkitBackgroundRect.top(),
+                    0, 0,
+                    managementToolkitBackgroundRect.width(), managementToolkitBackgroundRect.height(),
+                    256, 256);
+        }
     }
 
     private void renderManualWorkspaceBackground(GuiGraphics guiGraphics, int offsetX, int offsetY) {
@@ -2974,6 +3069,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderBatchPropertyButton(guiGraphics, batchItemReplacementButton, batchItemSubstitutions, mouseX, mouseY);
         renderBatchPropertyButton(guiGraphics, batchFluidReplacementButton, batchFluidSubstitutions, mouseX, mouseY);
 
+        if (isToolkitExpandedInManagementArea()) {
+            renderManagementToolkit(guiGraphics, mouseX, mouseY);
+            return;
+        }
+
         for (int i = 0; i < visibleRows; i++) {
             int rowIndex = scroll + i;
             if (rowIndex >= patternManagementRows.size()) {
@@ -2999,6 +3099,24 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         // 供应器名称行不再铺底图；样板槽底图在 {@link #renderPatternManagementSlots} 按格绘制。
+    }
+
+    private void renderManagementToolkit(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int columns = getManagementToolkitColumns();
+        int visibleRows = getManagementToolkitVisibleRows();
+        int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
+        int firstSlot = scroll * columns;
+        for (int visibleIndex = 0; visibleIndex < columns * visibleRows; visibleIndex++) {
+            int slotIndex = firstSlot + visibleIndex;
+            if (slotIndex >= getToolkitSlots().size()) {
+                break;
+            }
+            int x = managementToolkitSlotRect.left() + (visibleIndex % columns) * ToolkitPanel.SLOT_SIZE;
+            int y = managementToolkitSlotRect.top() + (visibleIndex / columns) * ToolkitPanel.SLOT_SIZE;
+            if (slotIndex < 11) {
+                guiGraphics.blit(WCWT_STATES_TEXTURE, x, y, 48 + slotIndex * 16, 16, 16, 16, 256, 256);
+            }
+        }
     }
 
     private void renderPatternManagementHeader(GuiGraphics guiGraphics, PatternProviderListPacket.Entry entry,
@@ -3488,8 +3606,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 return true;
             }
         }
-        if (toolkitPanel != null && toolkitPanel.isVisible()) {
-            if (toolkitPanel.mouseClicked(mouseX, mouseY, button)) {
+        if ((toolkitPanel != null && toolkitPanel.isVisible()) || isToolkitExpandedInManagementArea()) {
+            if (toolkitPanel != null && toolkitPanel.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
             if (button == 0 && tryAeNetworkToolkitSlotDoubleDeposit(mouseX, mouseY)) {
@@ -3847,6 +3965,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     /** 仅在命中样板管理列表中的「虚拟样板槽」时触发；需在 AE widgets 拦截之前调用。 */
     private boolean handlePatternManagementProviderSlotInteract(double mouseX, double mouseY) {
+        if (isToolkitExpandedInManagementArea()) {
+            return false;
+        }
         if (patternProviders.isEmpty()) {
             return false;
         }
@@ -4004,6 +4125,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private PatternManagementHeaderHit getPatternManagementHeaderAt(int relX, int relY) {
+        if (isToolkitExpandedInManagementArea()) {
+            return null;
+        }
         if (relX < patternManagementPage.left()
                 || relX >= patternManagementPage.left() + patternManagementPage.width()
                 || relY < patternManagementPage.top()
@@ -4022,6 +4146,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private PatternManagementHeaderButtonHit getPatternManagementHeaderButtonAt(int relX, int relY) {
+        if (isToolkitExpandedInManagementArea()) {
+            return null;
+        }
         int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
         int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
         for (int visibleRow = 0; visibleRow < visibleRows; visibleRow++) {
@@ -4051,11 +4178,34 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private PatternManagementSlotHit getPatternManagementSlotAt(int relX, int relY) {
-        if (relX < patternManagementPage.left()
-                || relX >= patternManagementPage.left() + patternManagementPage.width()
-                || relY < patternManagementPage.top()
-                || relY >= patternManagementPage.top() + patternManagementPage.height()) {
+        var activeRect = isToolkitExpandedInManagementArea() ? managementToolkitBackgroundRect : patternManagementPage;
+        if (relX < activeRect.left()
+                || relX >= activeRect.left() + activeRect.width()
+                || relY < activeRect.top()
+                || relY >= activeRect.top() + activeRect.height()) {
             return null;
+        }
+        if (isToolkitExpandedInManagementArea()) {
+            int columns = getManagementToolkitColumns();
+            int visibleRows = getManagementToolkitVisibleRows();
+            int visibleRow = (relY - managementToolkitSlotRect.top()) / ToolkitPanel.SLOT_SIZE;
+            int visibleCol = (relX - managementToolkitSlotRect.left()) / ToolkitPanel.SLOT_SIZE;
+            if (visibleRow < 0 || visibleRow >= visibleRows || visibleCol < 0 || visibleCol >= columns) {
+                return null;
+            }
+            int slotX = managementToolkitSlotRect.left() + visibleCol * ToolkitPanel.SLOT_SIZE;
+            int slotY = managementToolkitSlotRect.top() + visibleRow * ToolkitPanel.SLOT_SIZE;
+            int hitX = patternManagementSlotHitMinX(slotX);
+            int hitY = patternManagementSlotHitMinY(slotY);
+            if (relX < hitX || relX >= hitX + PATTERN_MANAGEMENT_SLOT_HIT_SIZE
+                    || relY < hitY || relY >= hitY + PATTERN_MANAGEMENT_SLOT_HIT_SIZE) {
+                return null;
+            }
+            int firstSlot = (patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0) * columns;
+            int slot = firstSlot + visibleRow * columns + visibleCol;
+            return slot >= 0 && slot < getToolkitSlots().size()
+                    ? new PatternManagementSlotHit(null, slot)
+                    : null;
         }
         int visibleRow = (relY - patternManagementPage.top()) / PATTERN_MANAGEMENT_ROW_H;
         int rowIndex = (patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0) + visibleRow;
@@ -4232,10 +4382,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (hit == null) {
             return ItemStack.EMPTY;
         }
+        if (isToolkitExpandedInManagementArea()) {
+            var toolkitSlots = getToolkitSlots();
+            return hit.slot() >= 0 && hit.slot() < toolkitSlots.size()
+                    ? toolkitSlots.get(hit.slot()).getItem()
+                    : ItemStack.EMPTY;
+        }
         return hit.entry().slots().getOrDefault(hit.slot(), ItemStack.EMPTY);
     }
 
     private Component getPatternManagementTooltip(int mouseX, int mouseY) {
+        if (isToolkitExpandedInManagementArea()) {
+            return null;
+        }
         int relX = mouseX - leftPos;
         int relY = mouseY - topPos;
         if (inRect(relX, relY, patternManagementAddButton)) {
@@ -4291,6 +4450,44 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return null;
         }
         return hit.entry().group().name();
+    }
+
+    private boolean isToolkitExpandedInManagementArea() {
+        return WcwtClientConfig.expandToolkitInManagementArea()
+                && menu.getMenuHost() != null
+                && menu.getMenuHost().getCurrentExtendedUI() == IExtendedUIHost.ExtendedUIType.TOOLKIT;
+    }
+
+    private void rememberManagementToolkitOpenState(boolean open) {
+        if (!WcwtClientConfig.expandToolkitInManagementArea()) {
+            return;
+        }
+        WcwtClientConfig.setLastManagementToolkitOpen(open);
+    }
+
+    private void restoreManagementToolkitOpenStateIfNeeded() {
+        if (attemptedRestoreManagementToolkitOpenState || !WcwtClientConfig.expandToolkitInManagementArea()) {
+            return;
+        }
+        attemptedRestoreManagementToolkitOpenState = true;
+        var host = menu.getMenuHost();
+        if (host == null || !WcwtClientConfig.lastManagementToolkitOpen()) {
+            return;
+        }
+        if (menu.getSyncedExtendedUIType() != IExtendedUIHost.ExtendedUIType.NONE) {
+            return;
+        }
+        host.setCurrentExtendedUI(IExtendedUIHost.ExtendedUIType.TOOLKIT);
+        PacketDistributor.sendToServer(new ExtendedUIPacket(IExtendedUIHost.ExtendedUIType.TOOLKIT));
+        updateExtendedUIVisibility();
+    }
+
+    private int getManagementToolkitColumns() {
+        return 9;
+    }
+
+    private int getManagementToolkitVisibleRows() {
+        return Math.max(1, managementToolkitBackgroundRect.height() / ToolkitPanel.SLOT_SIZE);
     }
 
     private static String getCurioSlotName(WirelessComprehensiveWorkTerminalMenu.WcwtCurioSlot slot) {
@@ -4397,10 +4594,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean isMouseOverPatternManagement(double mouseX, double mouseY) {
         int relX = (int) Math.round(mouseX - leftPos);
         int relY = (int) Math.round(mouseY - topPos);
-        return relX >= patternManagementPage.left()
-                && relX < patternManagementPage.left() + patternManagementPage.width() + 16
-                && relY >= patternManagementPage.top()
-                && relY < patternManagementPage.top() + patternManagementPage.height();
+        var activeRect = isToolkitExpandedInManagementArea() ? managementToolkitBackgroundRect : patternManagementPage;
+        int extraRight = isToolkitExpandedInManagementArea() ? 0 : 16;
+        return relX >= activeRect.left()
+                && relX < activeRect.left() + activeRect.width() + extraRight
+                && relY >= activeRect.top()
+                && relY < activeRect.top() + activeRect.height();
     }
     
     @Override

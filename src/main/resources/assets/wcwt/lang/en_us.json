@@ -168,6 +168,8 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "On: JEI/EMI transfers switch the manual workspace to crafting or smithing when the recipe type is known.",
   "wcwt.config.enableRecipePullTransfer": "Enable recipe pull/encode handling",
   "wcwt.config.enableRecipePullTransfer.tooltip": "On: enable WCWT JEI/EMI recipe pull, pattern encoding transfer, and preview highlights. Off: disable them.",
+  "wcwt.config.expandToolkitInManagementArea": "Expand toolkit in management area",
+  "wcwt.config.expandToolkitInManagementArea.tooltip": "On: opening the toolkit shows it in the pattern management area and hides provider rows. Off: keep the original right-side toolkit panel.",
 
   "message.wcwt.pull_no_link": "WCWT: the terminal is not connected to an available ME network.",
   "message.wcwt.pull_no_inputs": "WCWT: this JEI recipe has no item inputs to pull.",

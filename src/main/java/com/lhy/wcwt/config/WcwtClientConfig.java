@@ -16,6 +16,8 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
     public static final ModConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
     public static final ModConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
+    public static final ModConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
+    public static final ModConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
 
     static {
         PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR = BUILDER
@@ -42,6 +44,13 @@ public final class WcwtClientConfig {
                 .comment("If true: when JEI transfers ingredients into the WCWT pattern encoding area, matching items from the JEI bookmark list are preferred first, in bookmark order. If false: use the existing WCWT/AE2 selection logic only.")
                 .translation("wcwt.config.preferJeiBookmarksForPatternEncoding")
                 .define("preferJeiBookmarksForPatternEncoding", true);
+        EXPAND_TOOLKIT_IN_MANAGEMENT_AREA = BUILDER
+                .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel. Saving wcwt-client.toml usually reloads without restart.")
+                .translation("wcwt.config.expandToolkitInManagementArea")
+                .define("expandToolkitInManagementArea", false);
+        LAST_MANAGEMENT_TOOLKIT_OPEN = BUILDER
+                .comment("Remembers whether the management-area toolkit was open the last time this client closed the terminal.")
+                .define("lastManagementToolkitOpen", false);
         SPEC = BUILDER.build();
     }
 
@@ -70,5 +79,18 @@ public final class WcwtClientConfig {
 
     public static boolean preferJeiBookmarksForPatternEncoding() {
         return PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING.get();
+    }
+
+    public static boolean expandToolkitInManagementArea() {
+        return EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.get();
+    }
+
+    public static boolean lastManagementToolkitOpen() {
+        return LAST_MANAGEMENT_TOOLKIT_OPEN.get();
+    }
+
+    public static void setLastManagementToolkitOpen(boolean open) {
+        LAST_MANAGEMENT_TOOLKIT_OPEN.set(open);
+        SPEC.save();
     }
 }

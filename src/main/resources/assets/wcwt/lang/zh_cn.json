@@ -166,6 +166,8 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "开：JEI/EMI 拉取配方时，会按已识别的配方类型自动切到工作台或锻造台。",
   "wcwt.config.enableRecipePullTransfer": "启用配方拉取/编码处理",
   "wcwt.config.enableRecipePullTransfer.tooltip": "开：启用 WCWT 的 JEI/EMI 配方拉取、编码传输与预览高亮。关：关闭这些处理。",
+  "wcwt.config.expandToolkitInManagementArea": "工具包在管理区位置展开",
+  "wcwt.config.expandToolkitInManagementArea.tooltip": "开：打开工具包时，改在样板管理区位置展开显示，并隐藏供应器列表；关闭时保持原来的右侧工具包面板。",
 
   "message.wcwt.pull_no_link": "WCWT：终端未连接到可用的 ME 网络。",
   "message.wcwt.pull_no_inputs": "WCWT：该 JEI 配方没有可拉取的物品输入。",
