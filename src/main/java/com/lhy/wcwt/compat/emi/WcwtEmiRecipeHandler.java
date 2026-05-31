@@ -470,7 +470,21 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             sparseInputs.add(toGenericStack(priorityContext, ingredient));
         }
         if (mode == EncodingMode.PROCESSING) {
-            return sparseInputs.stream().filter(Objects::nonNull).toList();
+            if (containsAnyStack(sparseInputs)) {
+                return sparseInputs.stream().filter(Objects::nonNull).toList();
+            }
+            var backingRecipe = recipe.getBackingRecipe() != null ? recipe.getBackingRecipe().value() : null;
+            if (backingRecipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basinRecipe) {
+                List<@Nullable GenericStack> fallback = new ArrayList<>();
+                for (Ingredient ingredient : basinRecipe.getIngredients()) {
+                    fallback.add(WcwtRecipeTransferHandler.toBestGenericStack(priorityContext, ingredient, List.of(), -1));
+                }
+                for (var fluidIngredient : basinRecipe.getFluidIngredients()) {
+                    fallback.add(WcwtRecipeTransferHandler.toGenericStack(fluidIngredient));
+                }
+                return fallback.stream().filter(Objects::nonNull).toList();
+            }
+            return List.of();
         }
         return sparseInputs;
     }
@@ -485,10 +499,31 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (getTransferMode(recipe) != EncodingMode.PROCESSING) {
             return List.of();
         }
-        return recipe.getOutputs().stream()
+        List<@Nullable GenericStack> displayed = recipe.getOutputs().stream()
                 .map(stack -> toGenericStack(stack, 1))
                 .filter(Objects::nonNull)
                 .toList();
+        if (!displayed.isEmpty()) {
+            return displayed;
+        }
+        var backingRecipe = recipe.getBackingRecipe() != null ? recipe.getBackingRecipe().value() : null;
+        if (backingRecipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basinRecipe) {
+            List<@Nullable GenericStack> fallback = new ArrayList<>();
+            for (var result : basinRecipe.getRollableResults()) {
+                fallback.add(GenericStack.fromItemStack(result.getStack().copyWithCount(1)));
+            }
+            for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
+                if (!fluidStack.isEmpty()) {
+                    fallback.add(GenericStack.fromFluidStack(fluidStack.copy()));
+                }
+            }
+            return fallback.stream().filter(Objects::nonNull).toList();
+        }
+        return displayed;
+    }
+
+    private static boolean containsAnyStack(List<@Nullable GenericStack> stacks) {
+        return stacks.stream().anyMatch(Objects::nonNull);
     }
 
     private static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,

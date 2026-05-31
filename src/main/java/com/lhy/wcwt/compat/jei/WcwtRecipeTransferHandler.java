@@ -246,42 +246,57 @@ public class WcwtRecipeTransferHandler
                                                                         @Nullable Recipe<?> recipe,
                                                                         IRecipeSlotsView recipeSlots) {
         var priorityContext = createPriorityContext(menu);
+        List<@Nullable GenericStack> fromDisplayedSlots = collectStacksPreservingSlots(
+                priorityContext, recipeSlots, RecipeIngredientRole.INPUT, Integer.MAX_VALUE);
+        if (containsAnyStack(fromDisplayedSlots)) {
+            return fromDisplayedSlots;
+        }
+
         if (recipe instanceof BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> resolved = new ArrayList<>();
+            List<@Nullable GenericStack> fallback = new ArrayList<>();
             for (Ingredient ingredient : basinRecipe.getIngredients()) {
-                resolved.add(toBestGenericStack(priorityContext, ingredient, List.of(), -1));
+                fallback.add(toBestGenericStack(priorityContext, ingredient, List.of(), -1));
             }
             for (SizedFluidIngredient fluidIngredient : basinRecipe.getFluidIngredients()) {
-                resolved.add(toGenericStack(fluidIngredient));
+                fallback.add(toGenericStack(fluidIngredient));
             }
-            return resolved;
+            return fallback;
         }
-        return collectStacksPreservingSlots(priorityContext, recipeSlots, RecipeIngredientRole.INPUT, Integer.MAX_VALUE);
+        return fromDisplayedSlots;
     }
 
     private static List<@Nullable GenericStack> collectProcessingOutputs(@Nullable Recipe<?> recipe,
                                                                          IRecipeSlotsView recipeSlots) {
+        List<@Nullable GenericStack> fromDisplayedSlots = collectStacksPreservingSlots(
+                WcwtIngredientPriorities.PriorityContext.EMPTY, recipeSlots, RecipeIngredientRole.OUTPUT, Integer.MAX_VALUE);
+        if (containsAnyStack(fromDisplayedSlots)) {
+            return fromDisplayedSlots;
+        }
+
         if (recipe instanceof BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> resolved = new ArrayList<>();
+            List<@Nullable GenericStack> fallback = new ArrayList<>();
             for (var result : basinRecipe.getRollableResults()) {
-                resolved.add(GenericStack.fromItemStack(result.getStack().copyWithCount(1)));
+                fallback.add(GenericStack.fromItemStack(result.getStack().copyWithCount(1)));
             }
             for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
                 if (!fluidStack.isEmpty()) {
-                    resolved.add(GenericStack.fromFluidStack(fluidStack.copy()));
+                    fallback.add(GenericStack.fromFluidStack(fluidStack.copy()));
                 }
             }
-            return resolved;
+            return fallback;
         }
-        return collectStacksPreservingSlots(WcwtIngredientPriorities.PriorityContext.EMPTY,
-                recipeSlots, RecipeIngredientRole.OUTPUT, Integer.MAX_VALUE);
+        return fromDisplayedSlots;
+    }
+
+    private static boolean containsAnyStack(List<@Nullable GenericStack> stacks) {
+        return stacks.stream().anyMatch(Objects::nonNull);
     }
 
     @Nullable
-    private static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
-                                                   Ingredient ingredient,
-                                                   List<IRecipeSlotView> inputSlots,
-                                                   int slot) {
+    public static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+                                                  Ingredient ingredient,
+                                                  List<IRecipeSlotView> inputSlots,
+                                                  int slot) {
         if (ingredient.isEmpty()) {
             return null;
         }
@@ -364,7 +379,7 @@ public class WcwtRecipeTransferHandler
     }
 
     @Nullable
-    private static GenericStack toGenericStack(SizedFluidIngredient ingredient) {
+    public static GenericStack toGenericStack(SizedFluidIngredient ingredient) {
         for (FluidStack fluidStack : ingredient.getFluids()) {
             if (!fluidStack.isEmpty()) {
                 FluidStack copy = fluidStack.copy();

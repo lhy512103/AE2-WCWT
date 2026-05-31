@@ -3897,6 +3897,30 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         protected void init() {
             super.init();
             setSlotsHidden(SlotSemantics.TOOLBOX, true);
+            removeInjectedSortButtons();
+        }
+
+        @Override
+        protected void updateBeforeRender() {
+            super.updateBeforeRender();
+            removeInjectedSortButtons();
+        }
+
+        private void removeInjectedSortButtons() {
+            var toRemove = new java.util.ArrayList<net.minecraft.client.gui.components.events.GuiEventListener>();
+            for (var child : new java.util.ArrayList<>(children())) {
+                if (child instanceof net.minecraft.client.gui.components.Button button) {
+                    int x = button.getX() - leftPos;
+                    int y = button.getY() - topPos;
+                    boolean inDialog = x >= 0 && y >= 0 && x + button.getWidth() <= imageWidth && y + button.getHeight() <= imageHeight;
+                    boolean isAeOwnButton = child instanceof appeng.client.gui.widgets.TabButton
+                            || child instanceof appeng.client.gui.widgets.AE2Button;
+                    if (inDialog && !isAeOwnButton) {
+                        toRemove.add(child);
+                    }
+                }
+            }
+            toRemove.forEach(this::removeWidget);
         }
 
         private void confirm() {
