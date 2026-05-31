@@ -249,6 +249,43 @@ public final class WcwtWirelessFeatures {
         return nextMode != null && setMagnetMode(terminal, nextMode);
     }
 
+    public static boolean stowHeldItemToNetwork(Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return false;
+        }
+        TerminalTarget terminalTarget = findAnyHotkeyTerminalTarget(serverPlayer);
+        if (terminalTarget == null || terminalTarget.stack().isEmpty()) {
+            return false;
+        }
+
+        ItemStack held = serverPlayer.getMainHandItem();
+        if (held.isEmpty()) {
+            return false;
+        }
+        if (held.isNotReplaceableByPickAction(serverPlayer, serverPlayer.getInventory().selected)) {
+            return false;
+        }
+
+        IGrid grid = getGrid(serverPlayer, terminalTarget.stack());
+        if (grid == null || grid.getStorageService() == null) {
+            return false;
+        }
+
+        AEItemKey what = AEItemKey.of(held);
+        if (what == null) {
+            return false;
+        }
+
+        long inserted = grid.getStorageService().getInventory()
+                .insert(what, held.getCount(), Actionable.MODULATE, new PlayerSource(serverPlayer));
+        if (inserted <= 0) {
+            return false;
+        }
+
+        held.shrink((int) inserted);
+        return true;
+    }
+
     public static void pickBlock(ServerPlayer player, ItemStack requestedStack) {
         var terminalTarget = findTerminalTarget(player,
                 stack -> stack.getOrDefault(AE2wtlibComponents.PICK_BLOCK, false));
@@ -390,6 +427,18 @@ public final class WcwtWirelessFeatures {
             }
         }
         return null;
+    }
+
+    @Nullable
+    private static TerminalTarget findAnyHotkeyTerminalTarget(ServerPlayer player) {
+        if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu
+                && menu.getLocator() instanceof ItemMenuHostLocator locator) {
+            ItemStack current = locator.locateItem(player);
+            if (current.getItem() instanceof WirelessComprehensiveWorkTerminalItem) {
+                return new TerminalTarget(current, locator);
+            }
+        }
+        return findTerminalTarget(player, stack -> stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem);
     }
 
     private static ItemStack findTerminalStack(Player player, java.util.function.Predicate<ItemStack> predicate) {
