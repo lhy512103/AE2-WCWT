@@ -208,7 +208,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 return false;
             }
             boolean maxTransfer = context.getAmount() > 1;
-            boolean craftMissing = context.getDestination() != EmiCraftContext.Destination.NONE;
+            boolean craftMissing = Screen.hasControlDown()
+                    || context.getDestination() != EmiCraftContext.Destination.NONE;
             PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
                     requestedIngredients, menu.getManualWorkspaceMode().ordinal()));
             return true;
