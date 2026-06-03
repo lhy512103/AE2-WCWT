@@ -879,7 +879,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         @Override
         public void onTake(Player player, ItemStack stack) {
-            manualSmithingBridge.takeResult(player, stack);
+            manualSmithingBridge.takeResult(player, stack, true);
             syncManualWorkspaceChanges();
         }
 
@@ -953,7 +953,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return this.getSlot(3).mayPickup(player);
         }
 
-        private void takeResult(Player player, ItemStack stack) {
+        private void takeResult(Player player, ItemStack stack, boolean restockInputs) {
             ItemStack oneResult = stack.copyWithCount(1);
             var inv = menuHost == null ? null
                     : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
@@ -974,7 +974,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 for (int i = 0; i < 3; i++) {
                     inv.setItemDirect(i, this.inputSlots.getItem(i).copy());
                 }
-                restockManualSmithingInputs(inv, before);
+                if (restockInputs) {
+                    restockManualSmithingInputs(inv, before);
+                }
                 this.syncFrom(inv);
             }
         }
@@ -3087,7 +3089,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         ItemStack taken = original.copy();
         taken.setCount(original.getCount() - remaining.getCount());
-        sourceSlot.onTake(player, taken);
+        if (sourceSlot instanceof ManualSmithingResultSlot) {
+            manualSmithingBridge.takeResult(player, taken, false);
+        } else {
+            sourceSlot.onTake(player, taken);
+        }
         syncManualWorkspaceChanges();
         return original;
     }
