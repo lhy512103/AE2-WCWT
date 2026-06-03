@@ -216,6 +216,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         this.patternEncodingLogic = host.getLogic();
         this.manualSmithingBridge = new ManualSmithingMenuBridge();
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
+        WcwtMod.LOGGER.info("WCWT debug: menu ctor begin player={}, containerId={}, hostClass={}, stack={}",
+                ip.player.getScoreboardName(),
+                id,
+                host.getClass().getName(),
+                host.getItemStack().getItem());
         // 注意：不要在这里 new ToolboxMenu(this)！
         // 父类 MEStorageMenu 的构造器已经 new ToolboxMenu(this) 并添加了 9 个 TOOLBOX 槽，
         // 若在此重复创建则共有 18 个槽，界面会显示"两重"效果。
@@ -227,7 +232,14 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         addManualWorkspaceSlots();
 
         addPatternEncodingSlots();
+        WcwtMod.LOGGER.info("WCWT debug: menu ctor after addPatternEncodingSlots player={}, blankSlotReady={}, encodedSlots={}",
+                ip.player.getScoreboardName(),
+                blankPatternSlot != null,
+                getSlots(SlotSemantics.ENCODED_PATTERN).size());
         tryFillBlankPatternFromNetwork();
+        WcwtMod.LOGGER.info("WCWT debug: menu ctor after tryFillBlankPatternFromNetwork player={}, blankStack={}",
+                ip.player.getScoreboardName(),
+                blankPatternSlot == null ? "<null>" : summarizeItem(blankPatternSlot.getItem()));
         
         // 添加高级样板编码槽 (复制样板, 替换输入, 替换输出) - 3个槽位
         var advancedPatternInv = host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_ADVANCED_PATTERN);
@@ -770,18 +782,80 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
     }
 
-    private static final class ManualWorkspaceAppEngSlot extends AppEngSlot {
+    private final class ManualWorkspaceAppEngSlot extends AppEngSlot {
         private final java.util.function.Predicate<ItemStack> mayPlacePredicate;
+        private ItemStack clientDisplayStack = ItemStack.EMPTY;
 
         private ManualWorkspaceAppEngSlot(InternalInventory inventory, int invSlot,
                                           java.util.function.Predicate<ItemStack> mayPlacePredicate) {
             super(inventory, invSlot);
             this.mayPlacePredicate = mayPlacePredicate;
+            if (WirelessComprehensiveWorkTerminalMenu.this.isClientSide()) {
+                this.clientDisplayStack = super.getItem().copy();
+            }
+        }
+
+        @Override
+        public ItemStack getItem() {
+            if (WirelessComprehensiveWorkTerminalMenu.this.isClientSide()) {
+                return clientDisplayStack;
+            }
+            return super.getItem();
         }
 
         @Override
         public boolean mayPlace(ItemStack stack) {
             return super.mayPlace(stack) && mayPlacePredicate.test(stack);
+        }
+
+        @Override
+        public void set(ItemStack stack) {
+            if (WirelessComprehensiveWorkTerminalMenu.this.isClientSide()) {
+                clientDisplayStack = stack.copy();
+                return;
+            }
+            super.set(stack);
+            notifyManualWorkspaceChanged();
+        }
+
+        @Override
+        public void setByPlayer(ItemStack stack) {
+            super.setByPlayer(stack);
+            notifyManualWorkspaceChanged();
+        }
+
+        @Override
+        public void clearStack() {
+            if (WirelessComprehensiveWorkTerminalMenu.this.isClientSide()) {
+                clientDisplayStack = ItemStack.EMPTY;
+                return;
+            }
+            super.clearStack();
+            notifyManualWorkspaceChanged();
+        }
+
+        @Override
+        public ItemStack remove(int amount) {
+            if (WirelessComprehensiveWorkTerminalMenu.this.isClientSide()) {
+                ItemStack removed = clientDisplayStack.split(amount);
+                if (clientDisplayStack.isEmpty()) {
+                    clientDisplayStack = ItemStack.EMPTY;
+                }
+                return removed;
+            }
+            ItemStack removed = super.remove(amount);
+            if (!removed.isEmpty()) {
+                setChanged();
+                notifyManualWorkspaceChanged();
+            }
+            return removed;
+        }
+
+        private void notifyManualWorkspaceChanged() {
+            if (WirelessComprehensiveWorkTerminalMenu.this.isClientSide()) {
+                return;
+            }
+            WirelessComprehensiveWorkTerminalMenu.this.syncManualWorkspaceChanges();
         }
     }
 
@@ -806,7 +880,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         @Override
         public void onTake(Player player, ItemStack stack) {
             manualSmithingBridge.takeResult(player, stack);
-            updateManualWorkspaceResults();
+            syncManualWorkspaceChanges();
         }
 
         @Override
@@ -841,7 +915,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         @Override
         public void onTake(Player player, ItemStack stack) {
             manualAnvilBridge.takeResult(player, stack);
-            updateManualWorkspaceResults();
+            syncManualWorkspaceChanges();
         }
 
         @Override
@@ -880,6 +954,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         private void takeResult(Player player, ItemStack stack) {
+            ItemStack oneResult = stack.copyWithCount(1);
             var inv = menuHost == null ? null
                     : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING);
             ItemStack[] before = new ItemStack[3];
@@ -889,9 +964,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 }
             }
             var resultSlot = this.getSlot(3);
-            this.resultSlots.setItem(0, stack.copy());
-            resultSlot.remove(stack.getCount());
-            resultSlot.onTake(player, stack);
+            this.resultSlots.setItem(0, oneResult.copy());
+            resultSlot.remove(oneResult.getCount());
+            resultSlot.onTake(player, oneResult);
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.SMITHING_TABLE_USE, SoundSource.BLOCKS, 1.0F,
                     player.level().random.nextFloat() * 0.1F + 0.9F);
@@ -941,10 +1016,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         private void takeResult(Player player, ItemStack stack) {
+            ItemStack oneResult = stack.copyWithCount(1);
             var resultSlot = this.getSlot(2);
-            this.resultSlots.setItem(0, stack.copy());
-            resultSlot.remove(stack.getCount());
-            resultSlot.onTake(player, stack);
+            this.resultSlots.setItem(0, oneResult.copy());
+            resultSlot.remove(oneResult.getCount());
+            resultSlot.onTake(player, oneResult);
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 1.0F,
                     player.level().random.nextFloat() * 0.1F + 0.9F);
@@ -1025,8 +1101,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (menuHost != null) {
             menuHost.setManualWorkspaceMode(mode.ordinal());
         }
-        updateManualWorkspaceResults();
-        broadcastChanges();
+        syncManualWorkspaceChanges();
     }
 
     public String getManualAnvilName() {
@@ -1179,11 +1254,28 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public void slotsChanged(Container inventory) {
         super.slotsChanged(inventory);
         updateManualWorkspaceResults();
+        if (isManualWorkspaceInputInventory(inventory)) {
+            forceInventorySyncOnNextBroadcast();
+        }
+    }
+
+    private boolean isManualWorkspaceInputInventory(Container inventory) {
+        if (menuHost == null || inventory == null) {
+            return false;
+        }
+        return inventory == menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING)
+                || inventory == menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
     }
 
     private void updateManualWorkspaceResults() {
         updateManualSmithingResult();
         updateManualAnvilResult();
+    }
+
+    private void syncManualWorkspaceChanges() {
+        updateManualWorkspaceResults();
+        forceInventorySyncOnNextBroadcast();
+        broadcastChanges();
     }
 
     private boolean isManualResultSlot(Slot slot) {
@@ -1391,7 +1483,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return processingMaterialsMerge;
     }
 
-    @Override
     public void broadcastChanges() {
         long totalStartNs = 0L;
         long preSuperNs = 0L;
@@ -2213,11 +2304,19 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         try {
+            WcwtMod.LOGGER.info("WCWT debug: blank autofill begin player={}, currentBlank={}, linked={}",
+                    getPlayer().getScoreboardName(),
+                    summarizeItem(blankPatternSlot.getItem()),
+                    isLinked());
             InternalInventory blankInv = patternEncodingLogic.getBlankPatternInv();
             ItemStack current = blankInv.getStackInSlot(0);
             int space = Math.max(0, blankInv.getSlotLimit(0) - current.getCount());
             space = Math.min(space, AEItems.BLANK_PATTERN.stack().getMaxStackSize());
             if (space <= 0) {
+                WcwtMod.LOGGER.info("WCWT debug: blank autofill skip_full player={}, current={}, slotLimit={}",
+                        getPlayer().getScoreboardName(),
+                        summarizeItem(current),
+                        blankInv.getSlotLimit(0));
                 if (DEBUG_BLANK_PATTERN_SYNC) {
                     logBlankPatternSync("autofill.skip_full",
                             "current={}, slotLimit={}",
@@ -2230,6 +2329,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             AEItemKey blankKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
             long extracted = StorageHelper.poweredExtraction(getWcwtEnergySource(), storage, blankKey, space, getActionSource());
             if (extracted <= 0) {
+                WcwtMod.LOGGER.info("WCWT debug: blank autofill skip_no_extract player={}, space={}, current={}",
+                        getPlayer().getScoreboardName(),
+                        space,
+                        summarizeItem(current));
                 if (DEBUG_BLANK_PATTERN_SYNC) {
                     logBlankPatternSync("autofill.skip_no_extract",
                             "space={}, current={}, linkStatus={}",
@@ -2256,6 +2359,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (leftover > 0) {
                 StorageHelper.poweredInsert(getWcwtEnergySource(), storage, blankKey, leftover, getActionSource());
             }
+            WcwtMod.LOGGER.info("WCWT debug: blank autofill success player={}, extracted={}, inserted={}, leftover={}, after={}",
+                    getPlayer().getScoreboardName(),
+                    extracted,
+                    toInsert,
+                    leftover,
+                    summarizeItem(blankPatternSlot.getItem()));
             if (DEBUG_BLANK_PATTERN_SYNC) {
                 logBlankPatternSync("autofill.success",
                         "space={}, extracted={}, toInsert={}, leftover={}, before={}, after={}, linkStatus={}",
@@ -2383,8 +2492,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 target.setItemDirect(i, remaining);
             }
         }
-        updateManualWorkspaceResults();
-        broadcastChanges();
+        syncManualWorkspaceChanges();
     }
 
     private void clearManualWorkspaceToPlayerInventory() {
@@ -2412,8 +2520,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 }
             }
         }
-        updateManualWorkspaceResults();
-        broadcastChanges();
+        syncManualWorkspaceChanges();
     }
 
     private void restockManualSmithingInputs(InternalInventory inventory, ItemStack[] before) {
@@ -2878,6 +2985,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public ItemStack quickMoveStack(Player player, int slotIndex) {
         long startNs = DEBUG_PERF && isServerSide() ? System.nanoTime() : 0L;
         ItemStack result = wcwtQuickMoveStackUnchecked(player, slotIndex);
+        if (isServerSide() && getManualWorkspaceMode() != ManualWorkspaceMode.CRAFTING) {
+            syncManualWorkspaceChanges();
+        }
         if (DEBUG_PERF && isServerSide()) {
             long totalNs = System.nanoTime() - startNs;
             if (totalNs >= PERF_LOG_THRESHOLD_NS) {
@@ -2900,16 +3010,18 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (slotIndex >= 0 && slotIndex < slots.size()) {
             Slot sourceSlot = slots.get(slotIndex);
             if (isManualResultSlot(sourceSlot)) {
-                ItemStack result = super.quickMoveStack(player, slotIndex);
-                updateManualWorkspaceResults();
-                broadcastChanges();
-                return result;
+                return quickMoveManualResult(player, sourceSlot);
             }
             if (sourceSlot.hasItem() && !isPlayerArmorSlot(sourceSlot)) {
                 ItemStack sourceStack = sourceSlot.getItem();
                 ItemStack movedCurioToPlayer = tryMoveCurioToPlayerInventoryFirst(player, sourceSlot, sourceStack);
                 if (!movedCurioToPlayer.isEmpty()) {
                     return movedCurioToPlayer;
+                }
+
+                ItemStack movedMenuStackToPlayer = tryMoveMenuSlotToMainPlayerInventoryFirst(player, sourceSlot, sourceStack);
+                if (!movedMenuStackToPlayer.isEmpty()) {
+                    return movedMenuStackToPlayer;
                 }
 
                 EquipmentSlot equipmentSlot = player.getEquipmentSlotForItem(sourceStack);
@@ -2936,6 +3048,48 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
         return super.quickMoveStack(player, slotIndex);
+    }
+
+    private ItemStack tryMoveMenuSlotToMainPlayerInventoryFirst(Player player, Slot sourceSlot, ItemStack sourceStack) {
+        if (sourceStack.isEmpty()
+                || isPlayerHotbarOrStorageSemanticSlot(sourceSlot)
+                || isPlayerEquipmentOrOffhandSlot(sourceSlot)
+                || getSlotSemantic(sourceSlot) == SlotSemantics.CRAFTING_RESULT) {
+            return ItemStack.EMPTY;
+        }
+        int playerInventoryStart = getPlayerInventoryStartMenuIndex();
+        if (playerInventoryStart < 0) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack original = sourceStack.copy();
+        if (moveItemStackTo(sourceStack, playerInventoryStart, slots.size(), false)) {
+            finishPriorityQuickMove(player, sourceSlot, sourceStack);
+            return original;
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private ItemStack quickMoveManualResult(Player player, Slot sourceSlot) {
+        if (isClientSide() || sourceSlot == null || !sourceSlot.hasItem() || !sourceSlot.mayPickup(player)) {
+            return ItemStack.EMPTY;
+        }
+        int playerInventoryStart = getPlayerInventoryStartMenuIndex();
+        if (playerInventoryStart < 0) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack original = sourceSlot.getItem().copy();
+        ItemStack remaining = original.copy();
+        if (!moveItemStackTo(remaining, playerInventoryStart, slots.size(), false)
+                || remaining.getCount() == original.getCount()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack taken = original.copy();
+        taken.setCount(original.getCount() - remaining.getCount());
+        sourceSlot.onTake(player, taken);
+        syncManualWorkspaceChanges();
+        return original;
     }
 
     private ItemStack tryMoveStackToCurioSlot(Player player, Slot sourceSlot, ItemStack sourceStack) {
@@ -2991,6 +3145,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 || slot == getPlayerArmorSlot(EquipmentSlot.CHEST)
                 || slot == getPlayerArmorSlot(EquipmentSlot.LEGS)
                 || slot == getPlayerArmorSlot(EquipmentSlot.FEET);
+    }
+
+    private boolean isPlayerEquipmentOrOffhandSlot(Slot slot) {
+        return isPlayerArmorSlot(slot) || getSlots(WcwtSlotSemantics.AE2WTLIB_OFFHAND).contains(slot);
     }
 
     private boolean isCurioSlot(Slot slot) {
@@ -3224,14 +3382,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     @Override
     public void onSlotChange(Slot slot) {
         super.onSlotChange(slot);
-        if (slot == manualSmithingTemplateSlot
+        boolean manualWorkspaceSlotChanged = slot == manualSmithingTemplateSlot
                 || slot == manualSmithingBaseSlot
                 || slot == manualSmithingAdditionSlot
                 || slot == manualAnvilLeftSlot
-                || slot == manualAnvilRightSlot) {
-            updateManualWorkspaceResults();
-        }
+                || slot == manualAnvilRightSlot;
         updatePatternPreview(getPatternEncodingMode());
+        if (manualWorkspaceSlotChanged) {
+            syncManualWorkspaceChanges();
+        }
         if (menuHost != null && getSlots(WcwtSlotSemantics.WCWT_CELL_UPGRADE).contains(slot)) {
             menuHost.persistStorageCellItem();
             broadcastChanges();

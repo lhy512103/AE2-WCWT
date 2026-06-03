@@ -37,7 +37,7 @@
       "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
       "textureWidth": 512,
       "textureHeight": 512,
-      "srcRect": [0, 288, 355, 18]
+      "srcRect": [0, 17, 355, 18]
     },
     "lastRow": {
       "$comment": "终端列表最后一行背景切片。",
@@ -345,124 +345,124 @@
     },
     "clearCraftingGrid": {
       "$comment": "清空合成网格按钮。",
-      "left": 134,
-      "bottom": 214
+      "left": 129,
+      "bottom": 224
     },
     "clearToPlayerInv": {
       "$comment": "把合成网格物品清回玩家背包按钮。",
-      "left": 144,
-      "bottom": 214
+      "left": 139,
+      "bottom": 224
     },
     "manual_clearCraftingGrid_anvil": {
       "$comment": "铁砧模式下的清空合成网格按钮位置。",
-      "left": 78,
-      "bottom": 168
+      "left": 73,
+      "bottom": 179
     },
     "manual_clearToPlayerInv_anvil": {
       "$comment": "铁砧模式下把合成网格物品清回玩家背包按钮位置。",
-      "left": 88,
-      "bottom": 168
+      "left": 83,
+      "bottom": 179
     },
     "CRAFTING_Locking": {
       "$comment": "合成网格锁定按钮。",
-      "left": 132,
-      "bottom": 196,
+      "left": 128,
+      "bottom": 205,
       "width": 16,
       "height": 16
     },
     "manual_workspace_background": {
       "$comment": "左上手动工作区扩展背景（锻造台/铁砧）。",
-      "left": 78,
-      "bottom": 215,
+      "left": 73,
+      "bottom": 224,
       "width": 88,
       "height": 58
     },
     "manual_mode_button0": {
       "$comment": "铁砧模式下显示的模式按钮 0：工作台。",
-      "left": 98,
-      "bottom": 168,
+      "left": 93,
+      "bottom": 179,
       "width": 12,
       "height": 12
     },
     "manual_mode_button1": {
       "$comment": "左上手动工作区模式按钮 1：锻造台。",
-      "left": 154,
-      "bottom": 214,
+      "left": 149,
+      "bottom": 224,
       "width": 12,
       "height": 12
     },
     "manual_mode_button2": {
       "$comment": "左上手动工作区模式按钮 2：铁砧。",
-      "left": 154,
-      "bottom": 214,
+      "left": 149,
+      "bottom": 224,
       "width": 12,
       "height": 12
     },
     "manual_anvil_name": {
       "$comment": "左上铁砧工作区命名输入框。",
-      "left": 79,
-      "bottom": 213,
+      "left": 75,
+      "bottom": 222,
       "width": 88,
       "height": 12
     },
     "manual_anvil_cost": {
       "$comment": "左上铁砧工作区附魔/修复花费提示。",
-      "left": 79,
-      "bottom": 178
+      "left": 74,
+      "bottom": 187
     },
     "manual_smithing_template_slot": {
       "$comment": "左上手动锻造台模板槽定位节点，仅供 Java 读取，不参与样式系统默认槽位绘制。",
-      "left": 79,
-      "bottom": 196,
+      "left": 74,
+      "bottom": 205,
       "width": 18,
       "height": 18
     },
     "manual_smithing_base_slot": {
       "$comment": "左上手动锻造台基础物品槽定位节点，仅供 Java 读取。",
-      "left": 97,
-      "bottom": 196,
+      "left": 92,
+      "bottom": 205,
       "width": 18,
       "height": 18
     },
     "manual_smithing_addition_slot": {
       "$comment": "左上手动锻造台添加物槽定位节点，仅供 Java 读取。",
-      "left": 115,
-      "bottom": 196,
+      "left": 110,
+      "bottom": 205,
       "width": 18,
       "height": 18
     },
     "manual_smithing_result_slot": {
       "$comment": "左上手动锻造台结果槽定位节点，仅供 Java 读取。",
       "left": 149,
-      "bottom": 196,
+      "bottom": 205,
       "width": 18,
       "height": 18
     },
     "manual_anvil_left_slot": {
       "$comment": "左上手动铁砧左输入槽定位节点，仅供 Java 读取。",
-      "left": 79,
-      "bottom": 196,
+      "left": 74,
+      "bottom": 205,
       "width": 18,
       "height": 18
     },
     "manual_anvil_right_slot": {
       "$comment": "左上手动铁砧右输入槽定位节点，仅供 Java 读取。",
-      "left": 115,
-      "bottom": 196,
+      "left": 110,
+      "bottom": 205,
       "width": 18,
       "height": 18
     },
     "manual_anvil_result_slot": {
       "$comment": "左上手动铁砧结果槽定位节点，仅供 Java 读取。",
       "left": 149,
-      "bottom": 196,
+      "bottom": 205,
       "width": 18,
       "height": 18
     },
     "player": {
       "$comment": "玩家模型渲染位置；当前左右方向比默认缩小 5 像素。",
       "left": 25,
-      "bottom": 222
+      "bottom": 228
     },
     "modeTabButton0": {
       "$comment": "右侧终端风格/扩展面板切换按钮 0。",
@@ -841,14 +841,14 @@
   "slots": {
     "CRAFTING_GRID": {
       "$comment": "左上 3x3 合成输入槽起点。",
-      "left": 79,
-      "bottom": 214,
+      "left": 74,
+      "bottom": 223,
       "grid": "BREAK_AFTER_3COLS"
     },
     "CRAFTING_RESULT": {
       "$comment": "合成结果槽。",
       "left": 149,
-      "bottom": 196
+      "bottom": 205
     },
     "PROCESSING_INPUTS": {
       "$comment": "样板编码区处理样板输入槽。",
@@ -884,8 +884,8 @@
     },
     "AE2WTLIB_OFFHAND": {
       "$comment": "玩家副手槽显示位置。",
-      "left": 149,
-      "bottom": 174
+      "left": 74,
+      "bottom": 169
     },
     "BLANK_PATTERN": {
       "$comment": "空白样板槽。",

@@ -6,7 +6,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 
 import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,6 +35,13 @@ public final class ExtendedPanelLayout {
 
     public static ExtendedPanelLayout load(ResourceLocation id) {
         try {
+            var sourcePath = findDevelopmentSourcePath(id);
+            if (sourcePath != null) {
+                try (Reader reader = Files.newBufferedReader(sourcePath, StandardCharsets.UTF_8)) {
+                    return new ExtendedPanelLayout(JsonParser.parseReader(reader).getAsJsonObject());
+                }
+            }
+
             Optional<net.minecraft.server.packs.resources.Resource> resource =
                     Minecraft.getInstance().getResourceManager().getResource(id);
             if (resource.isEmpty()) {
@@ -43,6 +53,17 @@ public final class ExtendedPanelLayout {
         } catch (RuntimeException | java.io.IOException ignored) {
             return new ExtendedPanelLayout(new JsonObject());
         }
+    }
+
+    private static Path findDevelopmentSourcePath(ResourceLocation id) {
+        String relative = "src/main/resources/assets/" + id.getNamespace() + "/" + id.getPath();
+        for (Path current = Path.of("").toAbsolutePath(); current != null; current = current.getParent()) {
+            Path candidate = current.resolve(relative);
+            if (Files.isRegularFile(candidate)) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     public Rect widget(String id, Rect fallback) {

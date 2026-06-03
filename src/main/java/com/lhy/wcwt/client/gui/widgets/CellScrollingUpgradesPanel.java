@@ -224,13 +224,7 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
     }
 
     private static void setSlotPosition(Slot slot, int x, int y) {
-        try {
-            var xField = Slot.class.getField("x");
-            var yField = Slot.class.getField("y");
-            xField.setInt(slot, x);
-            yField.setInt(slot, y);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Failed to position slot", e);
-        }
+        slot.x = x;
+        slot.y = y;
     }
 }

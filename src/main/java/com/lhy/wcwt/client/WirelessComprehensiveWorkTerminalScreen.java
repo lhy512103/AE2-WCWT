@@ -108,10 +108,27 @@ import com.google.common.primitives.Longs;
  */
 public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<WirelessComprehensiveWorkTerminalMenu> {
     private static final String STYLE_PATH = "/screens/wcwt/wireless_comprehensive_work_terminal.json";
+    private static final ResourceLocation MAIN_LAYOUT_ID = com.lhy.wcwt.util.ResourceLocationCompat.id("ae2",
+            "screens/wcwt/wireless_comprehensive_work_terminal.json");
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final long PERF_LOG_THRESHOLD_NS = 1_000_000L;
     private static final long PATTERN_PROVIDER_REFRESH_DEBOUNCE_MS = 180L;
     private static final long PATTERN_PROVIDER_SUBSCRIPTION_KEEPALIVE_MS = 3_000L;
+    private boolean debugLoggedFirstUpdateBeforeRender;
+    private int wcwtStepLogFrames;
+
+    private void wcwtStep(String name, Runnable step) {
+        boolean verbose = wcwtStepLogFrames < 3;
+        if (verbose) {
+            WcwtMod.LOGGER.info("WCWT debug: step {} begin", name);
+        }
+        long t0 = System.nanoTime();
+        step.run();
+        long ms = (System.nanoTime() - t0) / 1_000_000L;
+        if (verbose || ms >= 20) {
+            WcwtMod.LOGGER.info("WCWT debug: step {} end took {} ms", name, ms);
+        }
+    }
     
     // 扩展UI按钮
     private ExtendedUIButton advancedCodingButton;
@@ -198,8 +215,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean requestedPatternProviders;
     private long lastPatternProviderRefreshRequestMs;
     private long lastPatternProviderSubscriptionRequestMs;
-    private final ExtendedPanelLayout mainLayout = ExtendedPanelLayout.load(
-            com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "screens/wcwt/wireless_comprehensive_work_terminal.json"));
+    private ExtendedPanelLayout mainLayout = ExtendedPanelLayout.load(MAIN_LAYOUT_ID);
     private ExtendedPanelLayout.Rect patternManagementPage =
             new ExtendedPanelLayout.Rect(176, 210, 160, 71);
     private ExtendedPanelLayout.Rect patternManagementAddButton =
@@ -342,6 +358,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                                                      Component title,
                                                      ScreenStyle style) {
         super(menu, playerInventory, title, style);
+        WcwtMod.LOGGER.info("WCWT debug: screen ctor begin player={}, hostPresent={}, title={}",
+                playerInventory.player.getScoreboardName(),
+                menu.getMenuHost() != null,
+                title.getString());
         hookRepoUpdateListener();
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
 
@@ -417,6 +437,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         toolkitScrollbar.setCaptureMouseWheel(false);
         syncPatternManagementSettingsFromMenu();
         rebuildCraftableIndicatorCache();
+        WcwtMod.LOGGER.info("WCWT debug: screen ctor end player={}, hostPresent={}, repoEntriesKnown={}",
+                playerInventory.player.getScoreboardName(),
+                host != null,
+                craftableIndicatorKeys.size());
 
         // 以下所有 widgets.add() 必须在构造函数中完成，确保 populateScreen() 在 init() 中运行时
         // compositeWidgets 已有内容，才能被正确定位显示。（AE2 的约定：composite widget 在构造函数注册）
@@ -736,10 +760,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void init() {
         super.init();
+        WcwtMod.LOGGER.info("WCWT debug: screen init begin player={}, hostPresent={}, image={}x{}",
+                menu.getPlayerInventory().player.getScoreboardName(),
+                menu.getMenuHost() != null,
+                imageWidth,
+                imageHeight);
         rebuildCraftableIndicatorCache();
         syncRepoRowSize();
         clearCraftingGridButton = resolveWidgetById("clearCraftingGrid");
         clearToPlayerInvButton = resolveWidgetById("clearToPlayerInv");
+        updatePlayerWidgetPosition();
         // 升级槽 maxRows 与终端风格联动（参考 WTLib WCT/WAT/WET 的标准做法）。
         // 切换"小/中/大终端"会让 ME 网格行数变化，从而影响升级槽行数。
         if (upgradesPanel != null) {
@@ -752,6 +782,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         initExtendedUIButtons();
         initializePanels();
         updateManualWorkspaceUi();
+        WcwtMod.LOGGER.info("WCWT debug: screen init end player={}, repoRows={}, craftableKeys={}, currentUi={}",
+                menu.getPlayerInventory().player.getScoreboardName(),
+                getRepoRowCount(),
+                craftableIndicatorKeys.size(),
+                menu.getSyncedExtendedUIType());
     }
 
     private void syncRepoRowSize() {
@@ -785,22 +820,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private int getRepoRowCount() {
-        int rowCount = 0;
-        int firstRepoRowY = Integer.MIN_VALUE;
+        // ME 网格可见行数 = RepoSlot 中不同 y 坐标的数量。
+        // 升级槽面板 maxRows 与之对齐（参考 WTLib 标准做法），超出的升级槽通过滑块滚动。
+        java.util.Set<Integer> rowYs = new java.util.HashSet<>();
         for (Slot slot : menu.slots) {
-            if (!(slot instanceof RepoSlot)) {
-                continue;
-            }
-            if (firstRepoRowY == Integer.MIN_VALUE) {
-                firstRepoRowY = slot.y;
-            }
-            if (slot.y == firstRepoRowY) {
-                rowCount++;
-            } else {
-                break;
+            if (slot instanceof RepoSlot) {
+                rowYs.add(slot.y);
             }
         }
-        return Math.max(2, rowCount > 0 ? rowCount : 2);
+        return Math.max(2, rowYs.isEmpty() ? 2 : rowYs.size());
     }
 
     private void hookRepoUpdateListener() {
@@ -1452,6 +1480,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
+    private void updatePlayerWidgetPosition() {
+        AbstractWidget playerWidget = resolveWidgetById("player");
+        if (playerWidget == null) {
+            return;
+        }
+        var rect = mainLayout.widget("player",
+                new ExtendedPanelLayout.Rect(25, imageHeight - 222, playerWidget.getWidth(), playerWidget.getHeight()),
+                imageWidth, imageHeight);
+        playerWidget.setX(leftPos + rect.left());
+        playerWidget.setY(topPos + rect.top());
+    }
+
     private void updateManualWorkspaceUi() {
         var mode = menu.getManualWorkspaceMode();
 
@@ -1542,7 +1582,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var base = mainLayout.slot("CRAFTING_GRID",
                 new ExtendedPanelLayout.Rect(79, imageHeight - 214, 18, 18), imageWidth, imageHeight);
         var result = mainLayout.slot("CRAFTING_RESULT",
-                new ExtendedPanelLayout.Rect(149, imageHeight - 196, 18, 18), imageWidth, imageHeight);
+                new ExtendedPanelLayout.Rect(140, imageHeight - 212, 18, 18), imageWidth, imageHeight);
 
         var craftingSlots = menu.getSlots(SlotSemantics.CRAFTING_GRID);
         for (int i = 0; i < craftingSlots.size(); i++) {
@@ -1570,7 +1610,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var addition = mainLayout.widget("manual_smithing_addition_slot",
                 new ExtendedPanelLayout.Rect(115, imageHeight - 194, 18, 18), imageWidth, imageHeight);
         var result = mainLayout.widget("manual_smithing_result_slot",
-                new ExtendedPanelLayout.Rect(149, imageHeight - 196, 18, 18), imageWidth, imageHeight);
+                new ExtendedPanelLayout.Rect(140, imageHeight - 212, 18, 18), imageWidth, imageHeight);
         updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_SMITHING_TEMPLATE, visible, template.left(),
                 template.top());
         updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_SMITHING_BASE, visible, base.left(), base.top());
@@ -1585,7 +1625,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var right = mainLayout.widget("manual_anvil_right_slot",
                 new ExtendedPanelLayout.Rect(115, imageHeight - 194, 18, 18), imageWidth, imageHeight);
         var result = mainLayout.widget("manual_anvil_result_slot",
-                new ExtendedPanelLayout.Rect(149, imageHeight - 196, 18, 18), imageWidth, imageHeight);
+                new ExtendedPanelLayout.Rect(140, imageHeight - 212, 18, 18), imageWidth, imageHeight);
         updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT, visible, left.left(), left.top());
         updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RIGHT, visible, right.left(), right.top());
         updateSingleSemanticSlot(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT, visible, result.left(), result.top());
@@ -1667,7 +1707,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
-        refreshRepoViewAfterTransientReconnect();
+        if (!debugLoggedFirstUpdateBeforeRender) {
+            debugLoggedFirstUpdateBeforeRender = true;
+            WcwtMod.LOGGER.info("WCWT debug: first updateBeforeRender player={}, hostPresent={}, repoPower={}, currentUi={}",
+                    menu.getPlayerInventory().player.getScoreboardName(),
+                    menu.getMenuHost() != null,
+                    repo.hasPower(),
+                    menu.getSyncedExtendedUIType());
+        }
+        wcwtStep("refreshRepoViewAfterTransientReconnect", this::refreshRepoViewAfterTransientReconnect);
         boolean syncedPatternManagementUploadEnabled = menu.isPatternManagementUploadEnabled();
         var syncedPatternManagementDisplayMode = patternManagementDisplayModeFromOrdinal(menu.getPatternManagementDisplayMode());
         boolean syncedPatternManagementShowSlots = menu.isPatternManagementShowSlots();
@@ -1718,18 +1766,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             magnetCardMenuButton.visible = hasMagnet;
             magnetCardMenuButton.active = hasMagnet;
         }
-        updateKeyTypeFilterButtons();
-        syncPatternEncodingModeFromMenu();
-        requestPatternProvidersIfNeeded();
-        updateExtendedUIVisibility();
-        updatePanelSlotActivity();
-        updateManualWorkspaceUi();
-        updatePatternEncodingModeButtons();
-        updatePatternEncodingSlots();
-        syncPatternManagementSearchFromEncodedPatternSlot();
-        updatePatternCacheSlots();
-        updatePatternManagement();
-        updateCurioSlots();
+        wcwtStep("updateKeyTypeFilterButtons", this::updateKeyTypeFilterButtons);
+        wcwtStep("syncPatternEncodingModeFromMenu", this::syncPatternEncodingModeFromMenu);
+        wcwtStep("updateExtendedUIVisibility", this::updateExtendedUIVisibility);
+        wcwtStep("updatePanelSlotActivity", this::updatePanelSlotActivity);
+        wcwtStep("updateManualWorkspaceUi", this::updateManualWorkspaceUi);
+        wcwtStep("updatePatternEncodingModeButtons", this::updatePatternEncodingModeButtons);
+        wcwtStep("updatePatternEncodingSlots", this::updatePatternEncodingSlots);
+        wcwtStep("syncPatternManagementSearchFromEncodedPatternSlot", this::syncPatternManagementSearchFromEncodedPatternSlot);
+        wcwtStep("updatePatternCacheSlots", this::updatePatternCacheSlots);
+        wcwtStep("updatePatternManagement", this::updatePatternManagement);
+        wcwtStep("updateCurioSlots", this::updateCurioSlots);
+        wcwtStepLogFrames++;
         if (DEBUG_REPO) {
             logRepoViewState("updateBeforeRender", -1);
         }
@@ -2277,14 +2325,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private static void setSlotPosition(Slot slot, int x, int y) {
-        try {
-            var xField = Slot.class.getField("x");
-            var yField = Slot.class.getField("y");
-            xField.setInt(slot, x);
-            yField.setInt(slot, y);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Failed to position slot", e);
-        }
+        slot.x = x;
+        slot.y = y;
     }
 
     @SuppressWarnings("unchecked")
@@ -2434,61 +2476,71 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
      */
     private void updatePanelSlotActivity() {
         boolean panelOpen = advancedCodingPanel != null && advancedCodingPanel.isVisible();
-        for (var semantic : PANEL_SLOT_SEMANTICS) {
-            setSemanticSlotsHidden(semantic, !panelOpen);
-        }
+        wcwtStep("panel.PANEL_SLOT_SEMANTICS", () -> {
+            for (var semantic : PANEL_SLOT_SEMANTICS) {
+                setSemanticSlotsHidden(semantic, !panelOpen);
+            }
+        });
         boolean rlpcOpen = resonatingLightningPatternCodingPanel != null
                 && resonatingLightningPatternCodingPanel.isVisible();
-        for (var semantic : RLPC_PANEL_SLOT_SEMANTICS) {
-            setSemanticSlotsHidden(semantic, !rlpcOpen);
-        }
+        wcwtStep("panel.RLPC_PANEL_SLOT_SEMANTICS", () -> {
+            for (var semantic : RLPC_PANEL_SLOT_SEMANTICS) {
+                setSemanticSlotsHidden(semantic, !rlpcOpen);
+            }
+        });
 
         boolean cosmeticOpen = cosmeticArmorPanel != null && cosmeticArmorPanel.isVisible();
-        for (var semantic : COSMETIC_ARMOR_SLOT_SEMANTICS) {
-            setSemanticSlotsHidden(semantic, !cosmeticOpen);
-        }
-        if (cosmeticOpen) {
-            positionCosmeticArmorSlots();
-        }
+        wcwtStep("panel.COSMETIC_ARMOR_SLOT_SEMANTICS", () -> {
+            for (var semantic : COSMETIC_ARMOR_SLOT_SEMANTICS) {
+                setSemanticSlotsHidden(semantic, !cosmeticOpen);
+            }
+            if (cosmeticOpen) {
+                positionCosmeticArmorSlots();
+            }
+        });
 
         boolean curiosOpen = curiosPanel != null && curiosPanel.isVisible();
-        setSemanticSlotsHidden(WcwtSlotSemantics.AE_CURIOS, !curiosOpen);
+        wcwtStep("panel.AE_CURIOS", () -> setSemanticSlotsHidden(WcwtSlotSemantics.AE_CURIOS, !curiosOpen));
         if (curiosScrollbar != null) {
             curiosScrollbar.setVisible(curiosOpen);
         }
 
         boolean toolkitOpen = toolkitPanel != null && toolkitPanel.isVisible();
-        setSemanticSlotsHidden(WcwtSlotSemantics.WCWT_TOOLKIT, !toolkitOpen);
+        wcwtStep("panel.WCWT_TOOLKIT", () -> setSemanticSlotsHidden(WcwtSlotSemantics.WCWT_TOOLKIT, !toolkitOpen));
         if (toolkitScrollbar != null) {
             toolkitScrollbar.setVisible(toolkitOpen);
         }
 
         boolean toolboxOpen = toolboxPanel != null && toolboxPanel.isVisible();
-        if (toolboxOpen) {
-            positionToolboxSlots();
-        } else {
-            hideToolboxSlots();
-        }
+        wcwtStep("panel.TOOLBOX", () -> {
+            if (toolboxOpen) {
+                positionToolboxSlots();
+            } else {
+                hideToolboxSlots();
+            }
+        });
 
-        updateToolkitSlots();
-        updateResonatingStorageSlots();
+        wcwtStep("panel.updateToolkitSlots", this::updateToolkitSlots);
+        wcwtStep("panel.updateResonatingStorageSlots", this::updateResonatingStorageSlots);
 
         // 元件升级卡槽：面板关闭→隐藏；面板打开→根据当前面板位置实时定位。
         // 元件没放入时 OptionalRestrictedInputSlot.isSlotEnabled() 自动返回 false，
         // vanilla 不渲染、不接点击，所以不需要再额外 hide。
-        if (cellUpgradesPanel != null) {
-            boolean showCellUpgrades = panelOpen && hasVisibleCellUpgradeSlot();
-            cellUpgradesPanel.setVisible(showCellUpgrades);
-            if (showCellUpgrades && upgradesPanel != null && advancedCodingPanel != null) {
-                int panelHeight = cellUpgradesPanel.getBounds().getHeight();
-                // 仍然使用右侧 WTLib 升级槽列的 X；Y 改成底部贴住高级编码面板顶部。
-                cellUpgradesPanel.setPosition(new Point(
-                        upgradesPanel.getBounds().getX(),
-                        advancedCodingPanel.getY() - topPos - panelHeight + 3));
+        wcwtStep("panel.cellUpgrades", () -> {
+            if (cellUpgradesPanel != null) {
+                boolean showCellUpgrades = panelOpen && hasVisibleCellUpgradeSlot();
+                cellUpgradesPanel.setVisible(showCellUpgrades);
+                if (showCellUpgrades && upgradesPanel != null && advancedCodingPanel != null) {
+                    int panelHeight = cellUpgradesPanel.getBounds().getHeight();
+                    // 仍然使用右侧 WTLib 升级槽列的 X；Y 改成底部贴住高级编码面板顶部。
+                    cellUpgradesPanel.setPosition(new Point(
+                            upgradesPanel.getBounds().getX(),
+                            advancedCodingPanel.getY() - topPos - panelHeight + 3));
+                }
+            } else if (!panelOpen) {
+                setSemanticSlotsHidden(com.lhy.wcwt.menu.WcwtSlotSemantics.WCWT_CELL_UPGRADE, true);
             }
-        } else if (!panelOpen) {
-            setSemanticSlotsHidden(com.lhy.wcwt.menu.WcwtSlotSemantics.WCWT_CELL_UPGRADE, true);
-        }
+        });
     }
 
     private void updateResonatingStorageSlots() {
@@ -3639,6 +3691,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_R
+                && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0
+                && (modifiers & GLFW.GLFW_MOD_SHIFT) != 0) {
+            reloadMainLayout();
+            return true;
+        }
+
         if (manualAnvilNameField != null && manualAnvilNameField.isVisible() && manualAnvilNameField.isFocused()
                 && (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
                 || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER
@@ -3650,6 +3709,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return true;
         }
         return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    private void reloadMainLayout() {
+        mainLayout = ExtendedPanelLayout.load(MAIN_LAYOUT_ID);
+        init();
+        if (minecraft != null && minecraft.player != null) {
+            minecraft.player.displayClientMessage(Component.literal("WCWT layout reloaded"), true);
+        }
+        WcwtMod.LOGGER.info("WCWT debug: reloaded main layout {}", MAIN_LAYOUT_ID);
     }
 
     private boolean handleStonecuttingRecipeClick(double mouseX, double mouseY) {

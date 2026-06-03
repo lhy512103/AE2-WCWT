@@ -38,6 +38,8 @@ minecraft {
             workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'debug'
+            property 'mixin.env.remapRefMap', 'true'
+            property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
 
             mods {
                 "${mod_id}" {
@@ -63,6 +65,9 @@ mixin {
 }
 
 repositories {
+    flatDir {
+        dirs 'libs'
+    }
     mavenCentral()
     maven {
         url = 'https://maven.blamejared.com/'
@@ -85,28 +90,31 @@ repositories {
         content {
             includeGroup 'appeng'
             includeGroup 'de.mari_023'
+            includeGroup 'org.appliedenergistics'
         }
     }
     maven { url = 'https://maven.terraformersmc.com/releases/' }
     maven { url = 'https://maven.shedaniel.me/' }
     maven { url = 'https://maven.theillusivec4.top/' }
+    maven { url = 'https://maven.architectury.dev/' }
 }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
     implementation "appeng:appliedenergistics2-forge:${ae2_version}"
+    runtimeOnly fg.deobf("org.appliedenergistics:guideme:${guideme_version}")
 
-    implementation files("libs/ae2wtlib-${ae2wtlib_version}.jar")
-    runtimeOnly files("libs/ae2wtlib-${ae2wtlib_version}.jar")
+    implementation fg.deobf("de.mari_023:ae2wtlib:${ae2wtlib_version}")
+    runtimeOnly fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_version}")
+    runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
+    runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
 
     compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-forge:${jei_version}"
-    runtimeOnly "mezz.jei:jei-${minecraft_version}-forge:${jei_version}"
 
     compileOnly "dev.emi:emi-forge:${emi_version}:api"
-    runtimeOnly "dev.emi:emi-forge:${emi_version}"
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 }
@@ -118,6 +126,7 @@ tasks.named('processResources', ProcessResources).configure {
             forge_version          : forge_version,
             forge_version_range    : forge_version_range,
             loader_version_range   : loader_version_range,
+            ae2wtlib_version       : ae2wtlib_version,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
