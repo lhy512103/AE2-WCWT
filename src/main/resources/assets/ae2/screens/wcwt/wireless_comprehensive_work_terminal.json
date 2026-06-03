@@ -534,6 +534,13 @@
       "width": 16,
       "height": 16
     },
+    "pattern_encoding_background": {
+      "$comment": "样板编码区模式背景图位置；各模式输入/输出槽位应与下面 slots 中的 pattern_* 键对齐。",
+      "left": 176,
+      "bottom": 223,
+      "width": 124,
+      "height": 66
+    },
     "wcwtPatternClearPattern": {
       "$comment": "WCWT 样板编码区清除配置按钮；运行时按当前编码模式重定位。",
       "left": -9999,
@@ -570,16 +577,92 @@
       "height": 16
     },
     "processingPatternModeScrollbar": {
-      "$comment": "AE2 处理样板编码区滑块；位置跟随 PROCESSING_INPUTS。",
-      "left": 183,
-      "bottom": 216,
+      "$comment": "样板编码区：处理模式输入/输出列表滑块坐标；Java 会在模式切换时重新读取 left/top/bottom/height。",
+      "left": 184,
+      "bottom": 215,
+      "width": 0,
       "height": 52
     },
     "stonecuttingPatternModeScrollbar": {
-      "$comment": "WCWT 切石机样板结果滑块；运行时跟随切石机结果列表重定位。",
-      "left": -9999,
-      "top": -9999,
+      "$comment": "WCWT 切石机样板结果滑块；切石机模式结果列表右侧。",
+      "left": 285,
+      "bottom": 212,
       "height": 44
+    },
+    "pattern_crafting_grid": {
+      "$comment": "样板编码区：合成模式 3x3 输入槽起点。",
+      "left": 185,
+      "bottom": 215,
+      "width": 18,
+      "height": 18,
+      "columns": 3
+    },
+    "pattern_crafting_preview": {
+      "$comment": "样板编码区：合成模式预览输出槽。",
+      "left": 277,
+      "bottom": 197,
+      "width": 18,
+      "height": 18
+    },
+    "pattern_processing_inputs": {
+      "$comment": "样板编码区：处理模式输入槽起点；visibleRows 控制当前页显示行数。",
+      "left": 193,
+      "bottom": 215,
+      "width": 18,
+      "height": 18,
+      "columns": 3,
+      "visibleRows": 3
+    },
+    "pattern_processing_outputs": {
+      "$comment": "样板编码区：处理模式输出槽起点；visibleRows 控制当前页显示行数。",
+      "left": 277,
+      "bottom": 215,
+      "width": 18,
+      "height": 18,
+      "visibleRows": 3
+    },
+    "pattern_smithing_template": {
+      "$comment": "样板编码区：锻造模板输入槽。",
+      "left": 188,
+      "bottom": 197,
+      "width": 18,
+      "height": 18
+    },
+    "pattern_smithing_base": {
+      "$comment": "样板编码区：锻造基底输入槽。",
+      "left": 206,
+      "bottom": 197,
+      "width": 18,
+      "height": 18
+    },
+    "pattern_smithing_addition": {
+      "$comment": "样板编码区：锻造追加材料输入槽。",
+      "left": 224,
+      "bottom": 197,
+      "width": 18,
+      "height": 18
+    },
+    "pattern_smithing_preview": {
+      "$comment": "样板编码区：锻造预览输出槽。",
+      "left": 278,
+      "bottom": 197,
+      "width": 18,
+      "height": 18
+    },
+    "pattern_stonecutting_input": {
+      "$comment": "样板编码区：切石机输入槽。",
+      "left": 188,
+      "bottom": 197,
+      "width": 18,
+      "height": 18
+    },
+    "pattern_stonecutting_results": {
+      "$comment": "样板编码区：切石机结果列表起点；宽高是单个结果按钮步进尺寸。",
+      "left": 202,
+      "bottom": 211,
+      "width": 16,
+      "height": 18,
+      "columns": 4
     },
     "caching_scrollbar": {
       "$comment": "样板缓存区滑块位置和高度。",

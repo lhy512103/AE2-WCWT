@@ -113,6 +113,11 @@ dependencies {
     compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-forge:${jei_version}"
+    // 临时开发硬编码：把 JEI 放进 runClient/runtime，方便调 JEI 覆盖区/配方转移。
+    // 如需恢复“纯软依赖”，删除下面这一行即可；上面 compileOnly API 保留给源码编译。
+    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
+    // 如果后续要临时把 JEI 完全并入主编译类路径，也可以把上面的 compileOnly forge 改成：
+    // implementation fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
 
     compileOnly "dev.emi:emi-forge:${emi_version}:api"
 

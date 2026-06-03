@@ -321,14 +321,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int AE2_RADIO_SIZE = 14;
     private static final int PATTERN_ENCODING_BG_WIDTH = 124;
     private static final int PATTERN_ENCODING_BG_HEIGHT = 66;
-    private static final int PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT = -16;
-    private static final int PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT = -7;
     private static final int STONECUTTING_RESULT_COLS = 4;
     private static final int STONECUTTING_RESULT_ROWS = 2;
-    private static final int STONECUTTING_RESULT_SLOT_W = 20;
-    private static final int STONECUTTING_RESULT_SLOT_H = 22;
-    private static final int STONECUTTING_RESULT_SRC_X = 124;
-    private static final int STONECUTTING_RESULT_SRC_Y = 140;
+    private static final int STONECUTTING_RESULT_SLOT_W = 16;
+    private static final int STONECUTTING_RESULT_SLOT_H = 18;
+    private static final int STONECUTTING_RESULT_SRC_X = 126;
+    private static final int STONECUTTING_RESULT_SRC_Y = 141;
     private static final int PATTERN_OPTION_BUTTON_SIZE = 16;
     
     // 样板选择状态（保留以备后续功能使用）
@@ -359,6 +357,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                                                      Component title,
                                                      ScreenStyle style) {
         super(menu, playerInventory, title, style);
+        ensureVerticalToolbarPosition();
         WcwtMod.LOGGER.info("WCWT debug: screen ctor begin player={}, hostPresent={}, title={}",
                 playerInventory.player.getScoreboardName(),
                 menu.getMenuHost() != null,
@@ -751,6 +750,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 return false;
             }
             return tag.getCompound(ModComponents.ROOT_TAG).getBoolean(key);
+        }
+    }
+
+    private void ensureVerticalToolbarPosition() {
+        try {
+            Field field = appeng.client.gui.AEBaseScreen.class.getDeclaredField("verticalToolbar");
+            field.setAccessible(true);
+            Object toolbar = field.get(this);
+            if (toolbar instanceof appeng.client.gui.widgets.VerticalButtonBar verticalToolbar) {
+                verticalToolbar.setPosition(new Point(3, 1));
+            }
+        } catch (RuntimeException | ReflectiveOperationException e) {
+            WcwtMod.LOGGER.warn("WCWT: failed to apply vertical toolbar fallback position", e);
         }
     }
 
@@ -2016,20 +2028,24 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         boolean processingVisible = patternEncodingMode == EncodingMode.PROCESSING;
         var processingInputSlots = menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_INPUTS);
         var processingOutputSlots = menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_OUTPUTS);
-        int maxScroll = Math.max(0, processingInputSlots.size() / 3 - 3);
+        int processingColumns = mainLayout.widgetInt("pattern_processing_inputs", "columns", 3);
+        int processingVisibleRows = mainLayout.widgetInt("pattern_processing_inputs", "visibleRows", 3);
+        int maxScroll = Math.max(0, processingInputSlots.size() / processingColumns - processingVisibleRows);
         if (patternEncodingScrollbar != null) {
-            patternEncodingScrollbar.setRange(0, maxScroll, 3);
+            var scrollbar = mainLayout.widget("processingPatternModeScrollbar",
+                    new ExtendedPanelLayout.Rect(183, imageHeight - 216, 0, 52), imageWidth, imageHeight);
+            patternEncodingScrollbar.setPosition(new Point(scrollbar.left(), scrollbar.top()));
+            patternEncodingScrollbar.setHeight(scrollbar.height());
+            patternEncodingScrollbar.setRange(0, maxScroll, processingVisibleRows);
             patternEncodingScrollbar.setVisible(processingVisible && maxScroll > 0);
         }
         if (stonecuttingPatternScrollbar != null) {
             int rows = (menu.getStonecuttingRecipes().size() + STONECUTTING_RESULT_COLS - 1) / STONECUTTING_RESULT_COLS;
             stonecuttingPatternScrollbar.setRange(0, Math.max(0, rows - STONECUTTING_RESULT_ROWS), STONECUTTING_RESULT_ROWS);
-            var inputBase = mainLayout.slot("PROCESSING_INPUTS",
-                    new ExtendedPanelLayout.Rect(185, imageHeight - 213, 18, 18), imageWidth, imageHeight);
-            stonecuttingPatternScrollbar.setPosition(new Point(
-                    inputBase.left() + PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT + 109,
-                    inputBase.top() + PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT + 11));
-            stonecuttingPatternScrollbar.setHeight(44);
+            var scrollbar = mainLayout.widget("stonecuttingPatternModeScrollbar",
+                    new ExtendedPanelLayout.Rect(294, imageHeight - 202, 0, 44), imageWidth, imageHeight);
+            stonecuttingPatternScrollbar.setPosition(new Point(scrollbar.left(), scrollbar.top()));
+            stonecuttingPatternScrollbar.setHeight(scrollbar.height());
             stonecuttingPatternScrollbar.setVisible(patternEncodingMode == EncodingMode.STONECUTTING
                     && rows > STONECUTTING_RESULT_ROWS);
         }
@@ -2071,7 +2087,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             clearPatternEncodingButton.setX(buttonX + switch (patternEncodingMode) {
                 case CRAFTING -> 62;
                 case PROCESSING -> 71;
-                case SMITHING_TABLE -> 6;
+                case SMITHING_TABLE -> 10;
                 case STONECUTTING -> 0;
             });
             clearPatternEncodingButton.setY(buttonY + switch (patternEncodingMode) {
@@ -2097,7 +2113,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (patternSubstitutionButton != null) {
             patternSubstitutionButton.visible = showItemSubstitutions;
             patternSubstitutionButton.setState(menu.isPatternSubstitute());
-            patternSubstitutionButton.setX(buttonX + (patternEncodingMode == EncodingMode.CRAFTING ? 72 : 16));
+            patternSubstitutionButton.setX(buttonX + (patternEncodingMode == EncodingMode.CRAFTING ? 72 : 20));
             patternSubstitutionButton.setY(buttonY + (patternEncodingMode == EncodingMode.CRAFTING ? 6 : 14));
         }
 
@@ -2111,13 +2127,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private ExtendedPanelLayout.Rect getPatternEncodingBackgroundOrigin() {
-        var inputBase = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(185, imageHeight - 213, 18, 18), imageWidth, imageHeight);
-        return new ExtendedPanelLayout.Rect(
-                inputBase.left() + PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT,
-                inputBase.top() + PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT,
-                PATTERN_ENCODING_BG_WIDTH,
-                PATTERN_ENCODING_BG_HEIGHT);
+        return mainLayout.widget("pattern_encoding_background",
+                new ExtendedPanelLayout.Rect(176, imageHeight - 223,
+                        PATTERN_ENCODING_BG_WIDTH, PATTERN_ENCODING_BG_HEIGHT),
+                imageWidth, imageHeight);
+    }
+
+    private ExtendedPanelLayout.Rect patternEncodingSlot(String id, int left, int top, int width, int height) {
+        return patternEncodingSlot(id, new ExtendedPanelLayout.Rect(left, top, width, height));
+    }
+
+    private ExtendedPanelLayout.Rect patternEncodingSlot(String id, ExtendedPanelLayout.Rect fallback) {
+        return mainLayout.widget(id, fallback, imageWidth, imageHeight);
     }
 
     private void updateEncodedPatternSlot() {
@@ -2187,13 +2208,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void updatePatternCraftingSlots(List<Slot> slots, boolean visible) {
-        var base = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(192, imageHeight - 216, 18, 18), imageWidth, imageHeight);
+        var base = patternEncodingSlot("pattern_crafting_grid",
+                183, imageHeight - 216, 18, 18);
+        int columns = mainLayout.widgetInt("pattern_crafting_grid", "columns", 3);
         for (int i = 0; i < slots.size(); i++) {
             var slot = slots.get(i);
             setPatternEncodingSlotActive(slot, visible);
             if (visible) {
-                showSlot(slot, base.left() - 9 + (i % 3) * 18, base.top() + (i / 3) * 18);
+                showSlot(slot, base.left() + (i % columns) * base.width(),
+                        base.top() + (i / columns) * base.height());
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2201,15 +2224,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void updatePatternProcessingInputSlots(List<Slot> slots, boolean visible, int scroll) {
-        var base = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(192, imageHeight - 216, 18, 18), imageWidth, imageHeight);
+        var base = patternEncodingSlot("pattern_processing_inputs",
+                192, imageHeight - 216, 18, 18);
+        int columns = mainLayout.widgetInt("pattern_processing_inputs", "columns", 3);
+        int visibleRows = mainLayout.widgetInt("pattern_processing_inputs", "visibleRows", 3);
         for (int i = 0; i < slots.size(); i++) {
             var slot = slots.get(i);
-            int effectiveRow = (i / 3) - scroll;
-            boolean show = visible && effectiveRow >= 0 && effectiveRow < 3;
+            int effectiveRow = (i / columns) - scroll;
+            boolean show = visible && effectiveRow >= 0 && effectiveRow < visibleRows;
             setPatternEncodingSlotActive(slot, show);
             if (show) {
-                showSlot(slot, base.left() + (i % 3) * 18, base.top() + effectiveRow * 18);
+                showSlot(slot, base.left() + (i % columns) * base.width(),
+                        base.top() + effectiveRow * base.height());
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2217,17 +2243,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void updatePatternEncodingOutputSlots(List<Slot> slots, boolean visible, int scroll) {
-        var base = mainLayout.slot("PROCESSING_OUTPUTS",
-                new ExtendedPanelLayout.Rect(270, imageHeight - 216, 18, 18), imageWidth, imageHeight);
+        var base = patternEncodingSlot("pattern_processing_outputs",
+                277, imageHeight - 216, 18, 18);
+        int visibleRows = mainLayout.widgetInt("pattern_processing_outputs", "visibleRows", 3);
         for (int i = 0; i < slots.size(); i++) {
             var slot = slots.get(i);
             int effectiveRow = i - scroll;
-            boolean slotVisible = visible && effectiveRow >= 0 && effectiveRow < 3;
+            boolean slotVisible = visible && effectiveRow >= 0 && effectiveRow < visibleRows;
             if (slot instanceof AppEngSlot appEngSlot) {
                 appEngSlot.setActive(slotVisible);
             }
             if (slotVisible) {
-                showSlot(slot, base.left(), base.top() + effectiveRow * 18);
+                showSlot(slot, base.left(), base.top() + effectiveRow * base.height());
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2239,10 +2266,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_SMITHING_TEMPLATE),
                 menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_SMITHING_BASE),
                 menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_SMITHING_ADDITION));
-        var base = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(192, imageHeight - 216, 18, 18), imageWidth, imageHeight);
-        int[] xOffsets = { -9, 9, 27 };
-        int y = base.top() + 18;
+        String[] slotIds = {
+                "pattern_smithing_template",
+                "pattern_smithing_base",
+                "pattern_smithing_addition"
+        };
+        ExtendedPanelLayout.Rect[] fallbacks = {
+                new ExtendedPanelLayout.Rect(183, imageHeight - 198, 18, 18),
+                new ExtendedPanelLayout.Rect(201, imageHeight - 198, 18, 18),
+                new ExtendedPanelLayout.Rect(219, imageHeight - 198, 18, 18)
+        };
         for (int i = 0; i < slots.size(); i++) {
             if (slots.get(i).isEmpty()) {
                 continue;
@@ -2250,7 +2283,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             var slot = slots.get(i).get(0);
             setPatternEncodingSlotActive(slot, visible);
             if (visible) {
-                showSlot(slot, base.left() + xOffsets[i], y);
+                var rect = patternEncodingSlot(slotIds[i], fallbacks[i]);
+                showSlot(slot, rect.left(), rect.top());
             } else {
                 hidePatternEncodingSlot(slot);
             }
@@ -2262,12 +2296,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (slots.isEmpty()) {
             return;
         }
-        var base = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(192, imageHeight - 216, 18, 18), imageWidth, imageHeight);
         var slot = slots.get(0);
         setPatternEncodingSlotActive(slot, visible);
         if (visible) {
-            showSlot(slot, base.left() - 9, base.top() + 18);
+            var rect = patternEncodingSlot("pattern_stonecutting_input",
+                    183, imageHeight - 198, 18, 18);
+            showSlot(slot, rect.left(), rect.top());
         } else {
             hidePatternEncodingSlot(slot);
         }
@@ -2284,12 +2318,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             appEngSlot.setActive(visible);
         }
         if (visible) {
-            var inputBase = mainLayout.slot("PROCESSING_INPUTS",
-                    new ExtendedPanelLayout.Rect(192, imageHeight - 216, 18, 18), imageWidth, imageHeight);
-            var outputBase = mainLayout.slot("PROCESSING_OUTPUTS",
-                    new ExtendedPanelLayout.Rect(277, imageHeight - 216, 18, 18), imageWidth, imageHeight);
-            showSlot(slot, outputBase.left() - (patternEncodingMode == EncodingMode.CRAFTING ? 4 : 0),
-                    inputBase.top() + 18);
+            String slotId = patternEncodingMode == EncodingMode.CRAFTING
+                    ? "pattern_crafting_preview"
+                    : "pattern_smithing_preview";
+            var rect = patternEncodingSlot(slotId, patternEncodingMode == EncodingMode.CRAFTING
+                    ? new ExtendedPanelLayout.Rect(273, imageHeight - 198, 18, 18)
+                    : new ExtendedPanelLayout.Rect(277, imageHeight - 198, 18, 18));
+            showSlot(slot, rect.left(), rect.top());
         } else {
             hidePatternEncodingSlot(slot);
         }
@@ -2882,8 +2917,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void renderPatternEncodingBackground(GuiGraphics guiGraphics, int offsetX, int offsetY) {
-        var inputBase = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(185, imageHeight - 213, 18, 18), imageWidth, imageHeight);
+        var bg = getPatternEncodingBackgroundOrigin();
         int srcX = patternEncodingMode == EncodingMode.SMITHING_TABLE ? 128 : 0;
         int srcY = switch (patternEncodingMode) {
             case CRAFTING -> 0;
@@ -2892,16 +2926,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             case STONECUTTING -> 140;
         };
         guiGraphics.blit(AE2_PATTERN_MODES_TEXTURE,
-                offsetX + inputBase.left() + PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT,
-                offsetY + inputBase.top() + PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT,
-                srcX, srcY, PATTERN_ENCODING_BG_WIDTH, PATTERN_ENCODING_BG_HEIGHT, 256, 256);
+                offsetX + bg.left(),
+                offsetY + bg.top(),
+                srcX, srcY, bg.width(), bg.height(), 256, 256);
         if (patternEncodingMode == EncodingMode.STONECUTTING) {
-            renderStonecuttingResults(guiGraphics, offsetX, offsetY, inputBase);
+            renderStonecuttingResults(guiGraphics, offsetX, offsetY);
         }
     }
 
-    private void renderStonecuttingResults(GuiGraphics guiGraphics, int offsetX, int offsetY,
-                                           ExtendedPanelLayout.Rect inputBase) {
+    private void renderStonecuttingResults(GuiGraphics guiGraphics, int offsetX, int offsetY) {
         var recipes = menu.getStonecuttingRecipes();
         int scroll = stonecuttingPatternScrollbar == null ? 0 : stonecuttingPatternScrollbar.getCurrentScroll();
         int startIndex = scroll * STONECUTTING_RESULT_COLS;
@@ -2915,35 +2948,35 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 - topPos;
 
         for (int i = startIndex; i < endIndex; i++) {
-            var bounds = getStonecuttingRecipeBounds(inputBase, i - startIndex);
+            var bounds = getStonecuttingRecipeBounds(i - startIndex);
             var recipe = recipes.get(i);
             boolean hover = inRect(relMouseX, relMouseY, bounds);
             boolean selected = selectedRecipe != null && selectedRecipe.equals(recipe.id());
             int srcY = STONECUTTING_RESULT_SRC_Y + (selected ? STONECUTTING_RESULT_SLOT_H
                     : hover ? STONECUTTING_RESULT_SLOT_H * 2 : 0);
             guiGraphics.blit(AE2_PATTERN_MODES_TEXTURE,
-                    offsetX + bounds.left(), offsetY + bounds.top(),
+                    offsetX + bounds.left(), offsetY + bounds.top() - 1,
                     STONECUTTING_RESULT_SRC_X, srcY, STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H,
                     256, 256);
 
             ItemStack result = recipe.value().getResultItem(Objects.requireNonNull(Minecraft.getInstance().level)
                     .registryAccess());
-            int itemY = offsetY + bounds.top() + (selected || hover ? 3 : 2);
-            guiGraphics.renderItem(result, offsetX + bounds.left() + 2, itemY);
-            guiGraphics.renderItemDecorations(font, result, offsetX + bounds.left() + 2, itemY);
+            guiGraphics.renderItem(result, offsetX + bounds.left(), offsetY + bounds.top());
+            guiGraphics.renderItemDecorations(font, result, offsetX + bounds.left(), offsetY + bounds.top());
         }
     }
 
-    private ExtendedPanelLayout.Rect getStonecuttingRecipeBounds(ExtendedPanelLayout.Rect inputBase, int index) {
-        int bgLeft = inputBase.left() + PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT;
-        int bgTop = inputBase.top() + PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT;
-        int col = index % STONECUTTING_RESULT_COLS;
-        int row = index / STONECUTTING_RESULT_COLS;
+    private ExtendedPanelLayout.Rect getStonecuttingRecipeBounds(int index) {
+        var origin = patternEncodingSlot("pattern_stonecutting_results",
+                202, imageHeight - 211, STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H);
+        int columns = mainLayout.widgetInt("pattern_stonecutting_results", "columns", STONECUTTING_RESULT_COLS);
+        int col = index % columns;
+        int row = index / columns;
         return new ExtendedPanelLayout.Rect(
-                bgLeft + 26 + col * STONECUTTING_RESULT_SLOT_W,
-                bgTop + 12 + row * STONECUTTING_RESULT_SLOT_H,
-                STONECUTTING_RESULT_SLOT_W,
-                STONECUTTING_RESULT_SLOT_H);
+                origin.left() + col * origin.width(),
+                origin.top() + row * origin.height(),
+                origin.width(),
+                origin.height());
     }
 
     @Nullable
@@ -2957,13 +2990,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return null;
         }
 
-        var inputBase = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(185, imageHeight - 213, 18, 18), imageWidth, imageHeight);
         int scroll = stonecuttingPatternScrollbar == null ? 0 : stonecuttingPatternScrollbar.getCurrentScroll();
         int startIndex = scroll * STONECUTTING_RESULT_COLS;
         int endIndex = Math.min(recipes.size(), startIndex + STONECUTTING_RESULT_COLS * STONECUTTING_RESULT_ROWS);
         for (int i = startIndex; i < endIndex; i++) {
-            if (inRect(relX, relY, getStonecuttingRecipeBounds(inputBase, i - startIndex))) {
+            if (inRect(relX, relY, getStonecuttingRecipeBounds(i - startIndex))) {
                 return recipes.get(i);
             }
         }
@@ -4471,14 +4502,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isMouseOverPatternEncoding(double mouseX, double mouseY) {
-        var inputBase = mainLayout.slot("PROCESSING_INPUTS",
-                new ExtendedPanelLayout.Rect(185, imageHeight - 213, 18, 18), imageWidth, imageHeight);
         int relX = (int) Math.round(mouseX - leftPos);
         int relY = (int) Math.round(mouseY - topPos);
-        int x = inputBase.left() + PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT;
-        int y = inputBase.top() + PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT;
-        return relX >= x && relX < x + PATTERN_ENCODING_BG_WIDTH
-                && relY >= y && relY < y + PATTERN_ENCODING_BG_HEIGHT;
+        var bg = getPatternEncodingBackgroundOrigin();
+        return relX >= bg.left() && relX < bg.left() + bg.width()
+                && relY >= bg.top() && relY < bg.top() + bg.height();
     }
 
     private boolean isMouseOverPatternManagement(double mouseX, double mouseY) {

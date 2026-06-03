@@ -8,6 +8,7 @@ import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.RecipeTypes;
+import mezz.jei.api.forge.ForgeTypes;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -18,8 +19,6 @@ import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.neoforge.fluids.FluidStack;
-import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -110,19 +109,13 @@ public class WcwtJeiPlugin implements IModPlugin {
 
     @Nullable
     private static AEKey toAEKey(ITypedIngredient<?> ingredient) {
-        Object raw = ingredient.getIngredient();
-        if (raw instanceof net.minecraft.world.item.ItemStack stack && !stack.isEmpty()) {
-            return AEItemKey.of(stack);
-        }
-        if (raw instanceof FluidStack fluid && !fluid.isEmpty()) {
-            return AEFluidKey.of(fluid);
-        }
-        if (raw instanceof SizedFluidIngredient sized) {
-            for (var fs : sized.getFluids()) {
-                if (!fs.isEmpty()) return AEFluidKey.of(fs);
-            }
-        }
-        return null;
+        return ingredient.getItemStack()
+                .filter(stack -> !stack.isEmpty())
+                .<AEKey>map(AEItemKey::of)
+                .or(() -> ingredient.getIngredient(ForgeTypes.FLUID_STACK)
+                        .filter(fluid -> !fluid.isEmpty())
+                        .map(AEFluidKey::of))
+                .orElse(null);
     }
 
     private record CellConfigTarget<I>(Rect2i area, java.util.function.Consumer<I> acceptor)
