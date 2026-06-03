@@ -79,6 +79,7 @@ import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Recipe;
 import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
@@ -506,7 +507,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     PatternEncodingOptionPacket.ACTION_CLEAR, false));
         });
         clearPatternEncodingButton.setHalfSize(true);
-        clearPatternEncodingButton.setDisableBackground(true);
         widgets.add("wcwtPatternClearPattern", clearPatternEncodingButton);
 
         processingMaterialsMergeButton = new WcwtProcessingMaterialsMergeButton(
@@ -528,7 +528,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                             PatternEncodingOptionPacket.ACTION_SUBSTITUTE, state));
                 });
         patternSubstitutionButton.setHalfSize(true);
-        patternSubstitutionButton.setDisableBackground(true);
         patternSubstitutionButton.setTooltipOn(List.of(
                 ButtonToolTips.SubstitutionsOn.text(),
                 ButtonToolTips.SubstitutionsDescEnabled.text()));
@@ -546,7 +545,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                             PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
                 });
         patternFluidSubstitutionButton.setHalfSize(true);
-        patternFluidSubstitutionButton.setDisableBackground(true);
         patternFluidSubstitutionButton.setTooltipOn(List.of(
                 ButtonToolTips.FluidSubstitutions.text(),
                 ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
@@ -561,12 +559,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     ModNetworking.sendToServer(new CycleProcessingOutputPacket());
                 });
         cycleProcessingOutputButton.setHalfSize(true);
-        cycleProcessingOutputButton.setDisableBackground(true);
         widgets.add("processingCycleOutput", cycleProcessingOutputButton);
 
         // 样板模式 tab 按钮（合成 / 处理 / 锻造台 / 切石机）
         tabCrafting = new TabButton(
-                appeng.client.gui.Icon.CRAFT_HAMMER,
+                Items.CRAFTING_TABLE.getDefaultInstance(),
                 Component.translatable("gui.ae2.CraftingPattern"),
                 btn -> setPatternEncodingMode(EncodingMode.CRAFTING));
         tabCrafting.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
@@ -575,21 +572,21 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         topModeTabButton = tabCrafting;
 
         tabProcessing = new TabButton(
-                appeng.client.gui.Icon.WHITE_ARROW_DOWN,
+                Items.FURNACE.getDefaultInstance(),
                 Component.translatable("gui.ae2.ProcessingPattern"),
                 btn -> setPatternEncodingMode(EncodingMode.PROCESSING));
         tabProcessing.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
         widgets.add("modeTabButton1", tabProcessing);
 
         tabSmithing = new TabButton(
-                appeng.client.gui.Icon.WRENCH,
+                Items.SMITHING_TABLE.getDefaultInstance(),
                 Component.translatable("gui.ae2.SmithingTablePattern"),
                 btn -> setPatternEncodingMode(EncodingMode.SMITHING_TABLE));
         tabSmithing.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
         widgets.add("modeTabButton2", tabSmithing);
 
         tabStonecutting = new TabButton(
-                appeng.client.gui.Icon.VALID,
+                Items.STONECUTTER.getDefaultInstance(),
                 Component.translatable("gui.ae2.StonecuttingPattern"),
                 btn -> setPatternEncodingMode(EncodingMode.STONECUTTING));
         tabStonecutting.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);

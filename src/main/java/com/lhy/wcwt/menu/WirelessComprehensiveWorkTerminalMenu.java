@@ -209,6 +209,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private String manualAnvilName = "";
     private int syncedManualWorkspaceMode = ManualWorkspaceMode.CRAFTING.ordinal();
     private int syncedManualAnvilCost;
+    private int manualQuickCraftSlotIndex = -1;
+    private int manualQuickCraftsRemaining;
 
     public WirelessComprehensiveWorkTerminalMenu(int id, Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) {
         super(com.lhy.wcwt.init.ModMenus.WCWT_MENU.get(), id, ip, host, false);
@@ -914,7 +916,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         @Override
         public void onTake(Player player, ItemStack stack) {
-            manualAnvilBridge.takeResult(player, stack);
+            manualAnvilBridge.takeResult(player, stack, true);
             syncManualWorkspaceChanges();
         }
 
@@ -946,6 +948,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             this.inputSlots.setItem(0, inventory.getStackInSlot(0).copy());
             this.inputSlots.setItem(1, inventory.getStackInSlot(1).copy());
             this.inputSlots.setItem(2, inventory.getStackInSlot(2).copy());
+            this.resultSlots.setItem(0, ItemStack.EMPTY);
             this.createResult();
         }
 
@@ -975,7 +978,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     inv.setItemDirect(i, this.inputSlots.getItem(i).copy());
                 }
                 if (restockInputs) {
-                    restockManualSmithingInputs(inv, before);
+                    restockManualInputs(inv, before);
                 }
                 this.syncFrom(inv);
             }
@@ -1006,6 +1009,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             this.inputSlots.setItem(0, left.copy());
             this.inputSlots.setItem(1, right.copy());
             this.setItemName(name);
+            this.resultSlots.setItem(0, ItemStack.EMPTY);
             this.createResult();
         }
 
@@ -1017,8 +1021,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return this.getSlot(2).mayPickup(player);
         }
 
-        private void takeResult(Player player, ItemStack stack) {
+        private void takeResult(Player player, ItemStack stack, boolean restockInputs) {
             ItemStack oneResult = stack.copyWithCount(1);
+            var inv = menuHost == null ? null
+                    : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
+            ItemStack[] before = new ItemStack[2];
+            if (inv != null) {
+                before[0] = inv.getStackInSlot(0).copy();
+                before[1] = inv.getStackInSlot(1).copy();
+            }
             var resultSlot = this.getSlot(2);
             this.resultSlots.setItem(0, oneResult.copy());
             resultSlot.remove(oneResult.getCount());
@@ -1026,11 +1037,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 1.0F,
                     player.level().random.nextFloat() * 0.1F + 0.9F);
-            var inv = menuHost == null ? null
-                    : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
             if (inv != null) {
                 inv.setItemDirect(0, this.inputSlots.getItem(0).copy());
                 inv.setItemDirect(1, this.inputSlots.getItem(1).copy());
+                if (restockInputs) {
+                    restockManualInputs(inv, before);
+                }
+                this.syncFrom(inv.getStackInSlot(0), inv.getStackInSlot(1), manualAnvilName);
             }
             manualAnvilCost = this.getCost();
         }
@@ -2525,12 +2538,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         syncManualWorkspaceChanges();
     }
 
-    private void restockManualSmithingInputs(InternalInventory inventory, ItemStack[] before) {
+    private void restockManualInputs(InternalInventory inventory, ItemStack[] before) {
         if (isClientSide() || menuHost == null || before == null) {
             return;
         }
         var filter = ViewCellItem.createItemFilter(getViewCells());
-        for (int slot = 0; slot < Math.min(3, before.length); slot++) {
+        for (int slot = 0; slot < Math.min(inventory.size(), before.length); slot++) {
             ItemStack previous = before[slot];
             if (previous == null || previous.isEmpty()) {
                 continue;
@@ -3075,25 +3088,38 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (isClientSide() || sourceSlot == null || !sourceSlot.hasItem() || !sourceSlot.mayPickup(player)) {
             return ItemStack.EMPTY;
         }
+        ItemStack currentResult = sourceSlot.getItem();
+        if (manualQuickCraftSlotIndex != sourceSlot.index) {
+            int perCraft = Math.max(1, currentResult.getCount());
+            manualQuickCraftSlotIndex = sourceSlot.index;
+            manualQuickCraftsRemaining = Math.max(1, currentResult.getMaxStackSize() / perCraft);
+        }
+        if (manualQuickCraftsRemaining <= 0) {
+            manualQuickCraftSlotIndex = -1;
+            return ItemStack.EMPTY;
+        }
+
         int playerInventoryStart = getPlayerInventoryStartMenuIndex();
         if (playerInventoryStart < 0) {
             return ItemStack.EMPTY;
         }
 
-        ItemStack original = sourceSlot.getItem().copy();
+        ItemStack original = currentResult.copy();
         ItemStack remaining = original.copy();
         if (!moveItemStackTo(remaining, playerInventoryStart, slots.size(), false)
                 || remaining.getCount() == original.getCount()) {
+            manualQuickCraftSlotIndex = -1;
             return ItemStack.EMPTY;
         }
 
         ItemStack taken = original.copy();
         taken.setCount(original.getCount() - remaining.getCount());
         if (sourceSlot instanceof ManualSmithingResultSlot) {
-            manualSmithingBridge.takeResult(player, taken, false);
+            manualSmithingBridge.takeResult(player, taken, true);
         } else {
             sourceSlot.onTake(player, taken);
         }
+        manualQuickCraftsRemaining--;
         syncManualWorkspaceChanges();
         return original;
     }
