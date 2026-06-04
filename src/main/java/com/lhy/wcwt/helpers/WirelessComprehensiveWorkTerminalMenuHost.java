@@ -5,6 +5,7 @@ import appeng.api.config.Actionable;
 import appeng.api.config.IncludeExclude;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.features.Locatables;
+import appeng.api.implementations.blockentities.IViewCellStorage;
 import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.IGridNode;
@@ -38,6 +39,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -52,8 +54,9 @@ import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.init.ModComponents;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.TextConstants;
+import appeng.core.localization.PlayerMessages;
 public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingTerminalMenuHost
-        implements ISegmentedInventory, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
+        implements ISegmentedInventory, IViewCellStorage, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost {
     private static CompoundTag getOrCreateRootTag(ItemStack stack) {
         CompoundTag stackTag = stack.getOrCreateTag();
@@ -210,6 +213,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private final SupplierInternalInventory patternCacheInv;
     // 工具包 - 默认64个槽位，实际数量由服务端配置控制
     private final SupplierInternalInventory toolkitInv;
+    // AE2 原版 VIEW_CELL 槽位 - 5个槽位
+    private final SupplierInternalInventory viewCellInv;
     // 元件工作台 - 存储元件槽（1个槽位）
     private final SupplierInternalInventory storageCellInv;
     // 谐振样板缓存区 - 21个槽位（3行×7列）
@@ -263,44 +268,53 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         // 导致仓库视图刷新滞后，直到重开菜单才恢复。
         this.quantumAwareStorage = new TimedStorage(new SupplierStorage(this::getDynamicQuantumAwareStorage));
 
+        // 说明：下列子库存都以终端物品 NBT 为后端，过去每次访问都用 createInventory(...) 从 NBT
+        // 现读一份全新的 AppEngInternalInventory。这会让客户端收到 slot 同步包时，set() 写入的那份
+        // 库存随即被丢弃、getItem() 又从 NBT 重建，导致量子桥卡升级槽下方各扩展 UI 面板的槽位
+        // 普遍出现"放入/取出后不刷新，要重开界面才更新"的问题。
+        // 由于 getItemStack() 在菜单生命周期内是稳定实例（AE2 ItemMenuHost 还会维持引用相等），
+        // 这里改为只构建一次并复用（memoize），让这份内存库存成为唯一数据源，既即时刷新又仍写回 NBT。
         // 初始化缠绕态奇点槽（单槽，叠加上限 1）
-        this.singularityInv = new SupplierInternalInventory(() -> createSingularityInv(player, getItemStack()));
+        this.singularityInv = new SupplierInternalInventory(memoize(() -> createSingularityInv(player, getItemStack())));
 
         // 初始化AE2WTLIB装备槽位
         this.ae2wtlibArmorInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "ae2wtlib_armor", 5));
+                memoize(() -> createInventory(player, getItemStack(), "ae2wtlib_armor", 5)));
         
         // 初始化装饰性装备槽位
         this.decorativeArmorInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "decorative_armor", 4));
+                memoize(() -> createInventory(player, getItemStack(), "decorative_armor", 4)));
         
         // 初始化Curios槽位
         this.curiosInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "curios", 1));
+                memoize(() -> createInventory(player, getItemStack(), "curios", 1)));
         
         // 初始化高级样板编码槽位
         this.advancedPatternInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "advanced_pattern", 3));
+                memoize(() -> createInventory(player, getItemStack(), "advanced_pattern", 3)));
         
         // 初始化样板缓存区槽位 (36个槽位，4行×9列；界面显示2行并通过滑块滚动)
         this.patternCacheInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "pattern_cache", 36));
+                memoize(() -> createInventory(player, getItemStack(), "pattern_cache", 36)));
 
         this.toolkitInv = new SupplierInternalInventory(
-                () -> createToolkitInventory(player, getItemStack()));
+                memoize(() -> createToolkitInventory(player, getItemStack())));
+
+        this.viewCellInv = new SupplierInternalInventory(
+                memoize(() -> createInventory(player, getItemStack(), "view_cell", 5)));
 
         // 初始化元件工作台存储元件槽位 (1个槽位)
         this.storageCellInv = new SupplierInternalInventory(
-                () -> createStorageCellInventory(player, getItemStack()));
+                memoize(() -> createStorageCellInventory(player, getItemStack())));
 
         this.resonatingPatternCacheInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "resonating_pattern_cache", 21));
+                memoize(() -> createInventory(player, getItemStack(), "resonating_pattern_cache", 21)));
 
         this.manualSmithingInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "manual_smithing", 3));
+                memoize(() -> createInventory(player, getItemStack(), "manual_smithing", 3)));
 
         this.manualAnvilInv = new SupplierInternalInventory(
-                () -> createInventory(player, getItemStack(), "manual_anvil", 2));
+                memoize(() -> createInventory(player, getItemStack(), "manual_anvil", 2)));
         patternEncodingLogic.readFromNBT(getOrCreateDataTag(PATTERN_ENCODING_LOGIC_TAG));
         magnetPickupConfig.readFromChildTag(getOrCreateDataTag(PICKUP_CONFIG_TAG), "");
         magnetInsertConfig.readFromChildTag(getOrCreateDataTag(INSERT_CONFIG_TAG), "");
@@ -326,6 +340,29 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     @Override
     public MEStorage getInventory() {
         return quantumAwareStorage;
+    }
+
+    @Override
+    public boolean onBroadcastChanges(AbstractContainerMenu menu) {
+        if (!isClientSide()) {
+            refreshMenuSyncState();
+        }
+
+        if (!canStayOpenOnCurrentLink()) {
+            if (!isClientSide()) {
+                var description = getCurrentLinkStatusDescription();
+                getPlayer().displayClientMessage(description != null ? description : PlayerMessages.OutOfRange.text(), true);
+            }
+            return false;
+        }
+
+        setPowerDrainPerTick(getPowerDrainPerTick());
+        return drainPower();
+    }
+
+    @Override
+    public InternalInventory getViewCellStorage() {
+        return viewCellInv;
     }
 
     @Nullable
@@ -561,9 +598,63 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return effectiveLinkStatus != null ? effectiveLinkStatus : LinkStatus.ofDisconnected();
     }
 
+    public boolean isCurrentLinkConnected() {
+        return getLinkStatus().connected();
+    }
+
+    public int getCurrentLinkStatusCode() {
+        LinkStatus status = getLinkStatus();
+        if (shouldPreferOutOfRangeMessage(status)) {
+            return 6;
+        }
+        if (status == null || status.connected()) {
+            return 0;
+        }
+        if (Status.NotPowered.is(status)) {
+            return 1;
+        }
+        if (Status.NoUpgrade.is(status)) {
+            return 2;
+        }
+        if (Status.BridgeNotFound.is(status)) {
+            return 3;
+        }
+        if (Status.DifferentNetworks.is(status)) {
+            return 4;
+        }
+        if (Status.NoSingularity.is(status)) {
+            return 5;
+        }
+        return -1;
+    }
+
+    /**
+     * 供物品打开前置判断使用：
+     * 服务端只要普通无线链路可用，或量子链路已连通/仅网络未供电，就允许打开菜单。
+     */
+    public boolean canOpenFromAnyLink() {
+        if (getPlayer().level().isClientSide()) {
+            return false;
+        }
+        forceConnectedAccessPointUpdate = true;
+        try {
+            updateConnectedAccessPointState();
+        } finally {
+            forceConnectedAccessPointUpdate = false;
+        }
+        IGridNode vanillaNode = super.getActionableNode();
+        if (vanillaNode != null && vanillaNode.getGrid() != null) {
+            return true;
+        }
+        return quantumStatus != null && (quantumStatus.connected() || Status.NotPowered.is(quantumStatus));
+    }
+
     @Nullable
     public net.minecraft.network.chat.Component getCurrentLinkStatusDescription() {
         LinkStatus status = getLinkStatus();
+        if (shouldPreferOutOfRangeMessage(status)) {
+            return PlayerMessages.OutOfRange.text();
+        }
         return status == null ? null : status.statusDescription();
     }
 
@@ -585,6 +676,27 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             rememberStableConnection(preferredNode, LinkStatus.ofConnected());
         }
         debugRepoState("updateConnectedAccessPoint");
+    }
+
+    private boolean canStayOpenOnCurrentLink() {
+        return quantumStatus != null && (quantumStatus.connected() || Status.NotPowered.is(quantumStatus))
+                || super.getActionableNode() != null;
+    }
+
+    private boolean shouldPreferOutOfRangeMessage(@Nullable LinkStatus status) {
+        if (status == null || status.connected() || Status.NotPowered.is(status)) {
+            return false;
+        }
+        if (!(Status.NoSingularity.is(status) || Status.NoUpgrade.is(status))) {
+            return false;
+        }
+        if (super.getActionableNode() != null) {
+            return false;
+        }
+        if (!(getItemStack().getItem() instanceof WirelessComprehensiveWorkTerminalItem item)) {
+            return false;
+        }
+        return item.getLinkedGrid(getItemStack(), getPlayer().level(), null) != null;
     }
 
     /**
@@ -1303,6 +1415,28 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return inventory;
     }
 
+    /**
+     * 把一个会重复构建库存的 supplier 包成只构建一次并复用的版本。
+     * 终端子库存以物品 NBT 为后端，菜单生命周期内 getItemStack() 是稳定实例，
+     * 复用同一份内存库存可避免客户端 slot 同步被"用完即弃"的库存丢弃。
+     */
+    private static java.util.function.Supplier<InternalInventory> memoize(
+            java.util.function.Supplier<InternalInventory> delegate) {
+        return new java.util.function.Supplier<>() {
+            private InternalInventory cached;
+
+            @Override
+            public InternalInventory get() {
+                InternalInventory current = cached;
+                if (current == null) {
+                    current = delegate.get();
+                    cached = current;
+                }
+                return current;
+            }
+        };
+    }
+
     private static InternalInventory createInventory(Player player, ItemStack stack, String inventoryName, int size) {
         var componentType = switch (inventoryName) {
             case "ae2wtlib_armor" -> ModComponents.AE2WTLIB_ARMOR_INV;
@@ -1311,6 +1445,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             case "advanced_pattern" -> ModComponents.ADVANCED_PATTERN_INV;
             case "pattern_cache" -> ModComponents.PATTERN_CACHE_INV;
             case "toolkit" -> ModComponents.TOOLKIT_INV;
+            case "view_cell" -> ModComponents.VIEW_CELL_INV;
             case "storage_cell"  -> ModComponents.STORAGE_CELL_INV;
             case "resonating_pattern_cache" -> ModComponents.RESONATING_PATTERN_CACHE_INV;
             case "manual_smithing" -> ModComponents.MANUAL_SMITHING_INV;

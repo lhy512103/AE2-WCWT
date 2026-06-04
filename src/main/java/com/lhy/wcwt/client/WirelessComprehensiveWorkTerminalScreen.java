@@ -18,12 +18,14 @@ import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.TabButton;
 import appeng.client.gui.widgets.ToggleButton;
+import appeng.client.gui.ICompositeWidget;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.StyleManager;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.NumberEntryWidget;
 import appeng.client.Point;
 import appeng.core.localization.ButtonToolTips;
+import appeng.core.localization.GuiText;
 import com.lhy.wcwt.init.ModComponents;
 import appeng.integration.abstraction.ItemListMod;
 import appeng.menu.SlotSemantics;
@@ -191,6 +193,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     // 1. 把这里改回 `private WcwtScrollingUpgradesPanel upgradesPanel;`
     // 2. 构造器里把 `new ScrollingUpgradesPanel(...)` 改回 `new WcwtScrollingUpgradesPanel(...)`
     private WcwtScrollingUpgradesPanel upgradesPanel;
+    /** AE2 原版 VIEW_CELL 面板：替换为 WCWT 自定义皮肤。 */
+    private WcwtViewCellsPanel viewCellsPanel;
     /** 元件工作台升级槽滚动面板：显示在右侧 WTLib 升级槽面板正下方，默认 2 行。 */
     private CellScrollingUpgradesPanel cellUpgradesPanel;
     /** 样板缓存区滑块：36槽库存，主界面只显示2行×9列。 */
@@ -322,7 +326,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_ENCODING_BG_WIDTH = 124;
     private static final int PATTERN_ENCODING_BG_HEIGHT = 66;
     private static final int STONECUTTING_RESULT_COLS = 4;
-    private static final int STONECUTTING_RESULT_ROWS = 2;
+    private static final int STONECUTTING_RESULT_ROWS = 3;
     private static final int STONECUTTING_RESULT_SLOT_W = 16;
     private static final int STONECUTTING_RESULT_SLOT_H = 18;
     private static final int STONECUTTING_RESULT_SRC_X = 126;
@@ -364,6 +368,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 title.getString());
         hookRepoUpdateListener();
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
+        var viewCellSlots = new ArrayList<>(menu.getSlots(SlotSemantics.VIEW_CELL));
+        if (!viewCellSlots.isEmpty()) {
+            viewCellsPanel = new WcwtViewCellsPanel(viewCellSlots, widgets,
+                    () -> List.of(GuiText.TerminalViewCellsTooltip.text()));
+            replaceCompositeWidget("viewCells", viewCellsPanel, style);
+        }
 
         var host = menu.getMenuHost();
 
@@ -783,6 +793,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         // 切换"小/中/大终端"会让 ME 网格行数变化，从而影响升级槽行数。
         if (upgradesPanel != null) {
             upgradesPanel.setMaxRows(Math.max(2, getRepoRowCount()));
+            refreshUpgradePanelLayout();
+            refreshUpgradeScrollbarLayout();
+        }
+        if (viewCellsPanel != null) {
+            viewCellsPanel.setMaxRows(Math.max(2, getRepoRowCount()));
+            refreshViewCellsPanelLayout();
+            refreshViewCellsScrollbarLayout();
         }
         if (cellUpgradesPanel != null) {
             cellUpgradesPanel.setMaxRows(2);
@@ -1075,6 +1092,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     public List<Rect2i> getExclusionZones() {
         var zones = super.getExclusionZones();
 
+        addExtendedButtonsBackgroundExclusion(zones);
         addExtendedButtonExclusion(zones, advancedCodingButton);
         addExtendedButtonExclusion(zones, cosmeticArmorButton);
         addExtendedButtonExclusion(zones, curiosButton);
@@ -1090,6 +1108,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         addExtendedPanelExclusion(zones, resonatingLightningPatternCodingPanel);
 
         return zones;
+    }
+
+    private void addExtendedButtonsBackgroundExclusion(List<Rect2i> zones) {
+        var bounds = getExtendedButtonsBackgroundBounds();
+        if (bounds != null) {
+            zones.add(bounds);
+        }
     }
 
     private static void addExtendedButtonExclusion(List<Rect2i> zones, ExtendedUIButton button) {
@@ -1716,6 +1741,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        refreshUpgradePanelLayout();
+        refreshUpgradeScrollbarLayout();
+        refreshViewCellsPanelLayout();
+        refreshViewCellsScrollbarLayout();
         if (!debugLoggedFirstUpdateBeforeRender) {
             debugLoggedFirstUpdateBeforeRender = true;
             WcwtMod.LOGGER.info("WCWT debug: first updateBeforeRender player={}, hostPresent={}, repoPower={}, currentUi={}",
@@ -1797,6 +1826,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (!observedLinkConnectionOnce) {
             observedLinkConnectionOnce = true;
             lastObservedLinkConnected = connected;
+            if (connected && !repo.hasPower()) {
+                repo.updateView();
+            }
             if (DEBUG_REPO) {
                 WcwtMod.LOGGER.info(
                         "WCWT repo debug: link init connected={} linkStatus={}",
@@ -2378,6 +2410,23 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    private void replaceCompositeWidget(String id, ICompositeWidget widget, ScreenStyle style) {
+        try {
+            Field field = appeng.client.gui.WidgetContainer.class.getDeclaredField("compositeWidgets");
+            field.setAccessible(true);
+            Object value = field.get(widgets);
+            if (value instanceof Map<?, ?> map && map.containsKey(id)) {
+                var compositeWidgets = (Map<String, ICompositeWidget>) map;
+                var widgetStyle = style.getWidget(id);
+                widget.setSize(widgetStyle.getWidth(), widgetStyle.getHeight());
+                compositeWidgets.put(id, widget);
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException("WCWT: failed to replace composite widget " + id, e);
+        }
+    }
+
     private void setSemanticSlotsHidden(appeng.menu.SlotSemantic semantic, boolean hidden) {
         setSlotsHidden(semantic, hidden);
         for (var slot : menu.getSlots(semantic)) {
@@ -2555,19 +2604,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         wcwtStep("panel.updateToolkitSlots", this::updateToolkitSlots);
         wcwtStep("panel.updateResonatingStorageSlots", this::updateResonatingStorageSlots);
 
-        // 元件升级卡槽：面板关闭→隐藏；面板打开→根据当前面板位置实时定位。
+        // 元件升级卡槽：面板关闭→隐藏；面板打开→根据主升级面板与 layout 配置实时定位。
         // 元件没放入时 OptionalRestrictedInputSlot.isSlotEnabled() 自动返回 false，
         // vanilla 不渲染、不接点击，所以不需要再额外 hide。
         wcwtStep("panel.cellUpgrades", () -> {
             if (cellUpgradesPanel != null) {
                 boolean showCellUpgrades = panelOpen && hasVisibleCellUpgradeSlot();
                 cellUpgradesPanel.setVisible(showCellUpgrades);
-                if (showCellUpgrades && upgradesPanel != null && advancedCodingPanel != null) {
-                    int panelHeight = cellUpgradesPanel.getBounds().getHeight();
-                    // 仍然使用右侧 WTLib 升级槽列的 X；Y 改成底部贴住高级编码面板顶部。
-                    cellUpgradesPanel.setPosition(new Point(
-                            upgradesPanel.getBounds().getX(),
-                            advancedCodingPanel.getY() - topPos - panelHeight + 3));
+                if (showCellUpgrades && upgradesPanel != null) {
+                    refreshCellUpgradePanelLayout();
+                    refreshCellUpgradeScrollbarLayout();
                 }
             } else if (!panelOpen) {
                 setSemanticSlotsHidden(com.lhy.wcwt.menu.WcwtSlotSemantics.WCWT_CELL_UPGRADE, true);
@@ -2897,8 +2943,72 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void drawBG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX, int mouseY, float partialTicks) {
         super.drawBG(guiGraphics, offsetX, offsetY, mouseX, mouseY, partialTicks);
+        renderExtendedButtonsBackground(guiGraphics);
         renderManualWorkspaceBackground(guiGraphics, offsetX, offsetY);
         renderPatternEncodingBackground(guiGraphics, offsetX, offsetY);
+    }
+
+    private void renderExtendedButtonsBackground(GuiGraphics guiGraphics) {
+        var bounds = getExtendedButtonsBackgroundBounds();
+        if (bounds == null) {
+            return;
+        }
+        WcwtExtendedButtonsBackground.draw(guiGraphics, bounds.getX(), bounds.getY(),
+                getVisibleExtendedButtons().size(), getExtendedButtonsBackgroundStyle());
+    }
+
+    @Nullable
+    private Rect2i getExtendedButtonsBackgroundBounds() {
+        var visibleButtons = getVisibleExtendedButtons();
+        if (visibleButtons.isEmpty()) {
+            return null;
+        }
+
+        var first = visibleButtons.get(0);
+        var style = getExtendedButtonsBackgroundStyle();
+        int x = first.getX() - (style.firstButtonX() + 1);
+        int y = first.getY() - style.firstButtonY();
+        return new Rect2i(x, y, style.width(),
+                WcwtExtendedButtonsBackground.height(visibleButtons.size(), style));
+    }
+
+    private List<ExtendedUIButton> getVisibleExtendedButtons() {
+        var visibleButtons = new ArrayList<ExtendedUIButton>(6);
+        addVisibleExtendedButton(visibleButtons, advancedCodingButton);
+        addVisibleExtendedButton(visibleButtons, cosmeticArmorButton);
+        addVisibleExtendedButton(visibleButtons, curiosButton);
+        addVisibleExtendedButton(visibleButtons, toolboxButton);
+        addVisibleExtendedButton(visibleButtons, toolkitButton);
+        addVisibleExtendedButton(visibleButtons, resonatingLightningPatternCodingButton);
+        return visibleButtons;
+    }
+
+    private static void addVisibleExtendedButton(List<ExtendedUIButton> visibleButtons, @Nullable ExtendedUIButton button) {
+        if (button != null && button.visible) {
+            visibleButtons.add(button);
+        }
+    }
+
+    private WcwtExtendedButtonsBackground.Style getExtendedButtonsBackgroundStyle() {
+        var defaults = WcwtExtendedButtonsBackground.DEFAULT_STYLE;
+        String widgetId = "extendedButtonsBackground";
+        return new WcwtExtendedButtonsBackground.Style(
+                mainLayout.widgetInt(widgetId, "width", defaults.width()),
+                mainLayout.widgetInt(widgetId, "topU", defaults.topU()),
+                mainLayout.widgetInt(widgetId, "topV", defaults.topV()),
+                mainLayout.widgetInt(widgetId, "topHeight", defaults.topHeight()),
+                mainLayout.widgetInt(widgetId, "middleU", defaults.middleU()),
+                mainLayout.widgetInt(widgetId, "middleV", defaults.middleV()),
+                mainLayout.widgetInt(widgetId, "middleHeight", defaults.middleHeight()),
+                mainLayout.widgetInt(widgetId, "bottomU", defaults.bottomU()),
+                mainLayout.widgetInt(widgetId, "bottomV", defaults.bottomV()),
+                mainLayout.widgetInt(widgetId, "bottomHeight", defaults.bottomHeight()),
+                mainLayout.widgetInt(widgetId, "firstButtonX", defaults.firstButtonX()),
+                mainLayout.widgetInt(widgetId, "firstButtonY", defaults.firstButtonY()),
+                mainLayout.widgetInt(widgetId, "middleButtonX", defaults.middleButtonX()),
+                mainLayout.widgetInt(widgetId, "middleButtonY", defaults.middleButtonY()),
+                mainLayout.widgetInt(widgetId, "lastButtonX", defaults.lastButtonX()),
+                mainLayout.widgetInt(widgetId, "lastButtonY", defaults.lastButtonY()));
     }
 
     private void renderManualWorkspaceBackground(GuiGraphics guiGraphics, int offsetX, int offsetY) {
@@ -3746,6 +3856,106 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             minecraft.player.displayClientMessage(Component.literal("WCWT layout reloaded"), true);
         }
         WcwtMod.LOGGER.info("WCWT debug: reloaded main layout {}", MAIN_LAYOUT_ID);
+    }
+
+    private void refreshUpgradePanelLayout() {
+        if (upgradesPanel == null) {
+            return;
+        }
+
+        var bounds = upgradesPanel.getBounds();
+        var fallback = new ExtendedPanelLayout.Rect(
+                bounds.getX(),
+                bounds.getY(),
+                Math.max(0, bounds.getWidth()),
+                Math.max(0, bounds.getHeight()));
+        var rect = mainLayout.widget("scrollingUpgrades", fallback, imageWidth, imageHeight);
+        upgradesPanel.setPosition(new Point(rect.left(), rect.top()));
+    }
+
+    private void refreshViewCellsPanelLayout() {
+        if (viewCellsPanel == null) {
+            return;
+        }
+
+        var viewBounds = viewCellsPanel.getBounds();
+        var rect = resolvePanelRelativeToUpgrades("viewCells", viewBounds, 2, 0);
+        viewCellsPanel.setPosition(new Point(rect.left(), rect.top()));
+    }
+
+    private void refreshViewCellsScrollbarLayout() {
+        if (viewCellsPanel == null) {
+            return;
+        }
+
+        var panelBounds = viewCellsPanel.getBounds();
+        viewCellsPanel.setScrollbarOffset(new Point(
+                mainLayout.widgetInt("viewCellsScrollbar", "left", WcwtUpgradeSlotBackground.SCROLLBAR_X),
+                mainLayout.widgetInt("viewCellsScrollbar", "top", WcwtUpgradeSlotBackground.SCROLLBAR_Y)));
+    }
+
+    private void refreshCellUpgradePanelLayout() {
+        if (cellUpgradesPanel == null || upgradesPanel == null) {
+            return;
+        }
+
+        var cellBounds = cellUpgradesPanel.getBounds();
+        var rect = resolvePanelRelativeToUpgrades("cellScrollingUpgrades", cellBounds, 2, 0);
+        cellUpgradesPanel.setPosition(new Point(rect.left(), rect.top()));
+    }
+
+    private ExtendedPanelLayout.Rect resolvePanelRelativeToUpgrades(String widgetId,
+            Rect2i panelBounds, int defaultOffsetX, int defaultOffsetY) {
+        if (upgradesPanel == null) {
+            return new ExtendedPanelLayout.Rect(
+                    panelBounds.getX(),
+                    panelBounds.getY(),
+                    Math.max(0, panelBounds.getWidth()),
+                    Math.max(0, panelBounds.getHeight()));
+        }
+
+        var parentBounds = upgradesPanel.getBounds();
+        int offsetX = mainLayout.widgetInt(widgetId, "left", defaultOffsetX);
+        int offsetY = mainLayout.widgetInt(widgetId, "top", defaultOffsetY);
+        return new ExtendedPanelLayout.Rect(
+                parentBounds.getX() + parentBounds.getWidth() + offsetX,
+                parentBounds.getY() + offsetY,
+                Math.max(0, panelBounds.getWidth()),
+                Math.max(0, panelBounds.getHeight()));
+    }
+
+    private void refreshUpgradeScrollbarLayout() {
+        if (upgradesPanel == null) {
+            return;
+        }
+
+        var panelBounds = upgradesPanel.getBounds();
+        var fallback = new ExtendedPanelLayout.Rect(
+                panelBounds.getX() + WcwtUpgradeSlotBackground.SCROLLBAR_X,
+                panelBounds.getY() + WcwtUpgradeSlotBackground.SCROLLBAR_Y,
+                0,
+                0);
+        var rect = mainLayout.widget("upgradeScrollbar", fallback, imageWidth, imageHeight);
+        upgradesPanel.setScrollbarOffset(new Point(
+                rect.left() - panelBounds.getX(),
+                rect.top() - panelBounds.getY()));
+    }
+
+    private void refreshCellUpgradeScrollbarLayout() {
+        if (cellUpgradesPanel == null) {
+            return;
+        }
+
+        var panelBounds = cellUpgradesPanel.getBounds();
+        var fallback = new ExtendedPanelLayout.Rect(
+                panelBounds.getX() + WcwtUpgradeSlotBackground.SCROLLBAR_X,
+                panelBounds.getY() + WcwtUpgradeSlotBackground.SCROLLBAR_Y,
+                0,
+                0);
+        var rect = mainLayout.widget("cellUpgradeScrollbar", fallback, imageWidth, imageHeight);
+        cellUpgradesPanel.setScrollbarOffset(new Point(
+                rect.left() - panelBounds.getX(),
+                rect.top() - panelBounds.getY()));
     }
 
     private boolean handleStonecuttingRecipeClick(double mouseX, double mouseY) {

@@ -14,7 +14,6 @@ import java.util.List;
  * 扩展UI按钮，用于切换不同的扩展UI面板（高级编码、装饰盔甲、饰品、卡槽箱、工具包）。
  *
  * 精灵图 wcwt_states.png 坐标说明（均为 x:y 格式，图像尺寸 256x256）：
- *   底图（28×27）    : (0, 128)
  *   按钮面（默认 20×17）: (128, 128)
  *   按钮面（悬停 20×17）: (160, 128)
  *   按钮面（激活 20×17）: (192, 128)  — 当前扩展UI正在展示时高亮
@@ -34,9 +33,6 @@ public class ExtendedUIButton extends Button implements ITooltip {
 
     private static final ResourceLocation TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wcwt_states.png");
-
-    // ---- 底图 ----
-    private static final int BG_U = 0, BG_V = 128, BG_W = 28, BG_H = 27;
 
     // ---- 按钮面（三种状态）----
     private static final int BTN_V = 128;
@@ -63,18 +59,14 @@ public class ExtendedUIButton extends Button implements ITooltip {
     public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
 
-        // 1. 渲染底图（按钮左上角向外扩展 4px，因为底图比按钮面大）
-        // 底图取自 wcwt_states.png (0,128) 28×27；如该位置精灵图还是占位色，可临时注释掉此行
-        guiGraphics.blit(TEXTURE, getX() - 4, getY() - 4, BG_U, BG_V, BG_W, BG_H, 256, 256);
-
-        // 2. 渲染按钮面（精灵图实际只有两种状态：普通 / 高亮）。
+        // 1. 渲染按钮面（精灵图实际只有两种状态：普通 / 高亮）。
         //    点击后 isActive()==true 一直保持高亮，直到对应面板关闭；
         //    鼠标悬停也使用同一张高亮纹理。
         boolean highlighted = isActive() || isHovered();
         int btnU = highlighted ? BTN_U_HOVERED : BTN_U_NORMAL;
         guiGraphics.blit(TEXTURE, getX()-1, getY(), btnU, BTN_V, BTN_W, BTN_H, 256, 256);
 
-        // 3. 渲染各类型图标（居中叠加在按钮面上）。
+        // 2. 渲染各类型图标（居中叠加在按钮面上）。
         //    高亮时部分按钮（如装饰盔甲）使用彩色图标，UV 在 getIconU(true) 中给出。
         int iconU = getIconU(highlighted);
         int iconV = getIconV(highlighted);

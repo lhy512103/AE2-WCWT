@@ -12,6 +12,7 @@ public final class ModComponents {
     public static final String ADVANCED_PATTERN_INV = "advanced_pattern_inv";
     public static final String PATTERN_CACHE_INV = "pattern_cache_inv";
     public static final String TOOLKIT_INV = "toolkit_inv";
+    public static final String VIEW_CELL_INV = "view_cell_inv";
     public static final String STORAGE_CELL_INV = "storage_cell_inv";
     public static final String RESONATING_PATTERN_CACHE_INV = "resonating_pattern_cache_inv";
     public static final String MANUAL_SMITHING_INV = "manual_smithing_inv";

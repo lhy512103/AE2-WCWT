@@ -7,47 +7,41 @@ import appeng.client.gui.Rects;
 import appeng.client.gui.Tooltip;
 import appeng.client.gui.WidgetContainer;
 import appeng.client.gui.widgets.Scrollbar;
-import appeng.core.localization.GuiText;
-import appeng.api.upgrades.Upgrades;
-import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.menu.slot.AppEngSlot;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * 元件工作台升级槽滚动面板。
+ * AE2 原版 VIEW_CELL 面板的 WCWT 皮肤版。
  *
- * <p>布局沿用滚动升级槽列，背景使用 WCWT 自己的 wcwt_components.png 切片。
- * 不复用原类的原因是原类默认把第一个槽当作量子桥奇点槽，并且 tooltip 固定读取终端本体升级；
- * 元件升级槽需要完全按 {@code ICellWorkbenchItem#getUpgrades(stack)} 返回的 inventory 来决定可用槽数。
+ * <p>显示元件槽位按终端可见行数滚动，背景与 WTLib 升级面板一样，
+ * 根据是否需要滑块自动切换两套 wcwt_components 样式。
  */
-public class CellScrollingUpgradesPanel implements ICompositeWidget {
+public class WcwtViewCellsPanel implements ICompositeWidget {
     private static final Point HIDDEN_SLOT_POS = new Point(-9999, -9999);
 
     private final List<Slot> slots;
+    private final Supplier<List<Component>> tooltipSupplier;
     private final Scrollbar scrollbar;
-    private final Supplier<ItemStack> cellStackSupplier;
 
     private Point screenOrigin = Point.ZERO;
     private Point scrollbarOffset = new Point(WcwtUpgradeSlotBackground.SCROLLBAR_X, WcwtUpgradeSlotBackground.SCROLLBAR_Y);
     private int x;
     private int y;
     private int maxRows = 2;
-    private boolean visible = false;
 
-    public CellScrollingUpgradesPanel(List<Slot> slots, WidgetContainer widgets, Supplier<ItemStack> cellStackSupplier) {
+    public WcwtViewCellsPanel(List<Slot> slots, WidgetContainer widgets, Supplier<List<Component>> tooltipSupplier) {
         this.slots = slots;
-        this.cellStackSupplier = cellStackSupplier;
-        this.scrollbar = widgets.addScrollBar("cellUpgradeScrollbar", Scrollbar.SMALL);
+        this.tooltipSupplier = tooltipSupplier;
+        this.scrollbar = widgets.addScrollBar("viewCellsScrollbar", Scrollbar.SMALL);
         this.scrollbar.setCaptureMouseWheel(false);
         setScrollbarRange();
     }
@@ -58,22 +52,9 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
         scrollbar.setHeight(Math.max(0, getVisibleSlotCount() * WcwtUpgradeSlotBackground.SLOT_SIZE - 2));
     }
 
-    public void setVisible(boolean visible) {
-        this.visible = visible;
-        scrollbar.setVisible(visible && scrolling());
-        if (!visible) {
-            hideAllSlots();
-        }
-    }
-
     public void setScrollbarOffset(Point scrollbarOffset) {
         this.scrollbarOffset = scrollbarOffset;
         updateScrollbarPosition();
-    }
-
-    @Override
-    public boolean isVisible() {
-        return visible;
     }
 
     @Override
@@ -90,7 +71,7 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
     @Override
     public Rect2i getBounds() {
         int slotCount = getVisibleSlotCount();
-        if (!visible || slotCount <= 0) {
+        if (slotCount <= 0) {
             return new Rect2i(x, y, 0, 0);
         }
         return new Rect2i(x, y, WcwtUpgradeSlotBackground.width(scrolling()),
@@ -105,11 +86,6 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
 
     @Override
     public void updateBeforeRender() {
-        if (!visible) {
-            hideAllSlots();
-            return;
-        }
-
         setScrollbarRange();
         updateScrollbarPosition();
 
@@ -144,7 +120,7 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
     @Override
     public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
         int slotCount = getVisibleSlotCount();
-        if (!visible || slotCount <= 0) {
+        if (slotCount <= 0) {
             return;
         }
 
@@ -160,23 +136,25 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
         }
     }
 
+    @Nullable
     @Override
     public Tooltip getTooltip(int mouseX, int mouseY) {
-        if (!visible || getEnabledSlotCount() <= 0) {
+        if (getEnabledSlotCount() <= 0) {
             return null;
         }
-        var lines = new ArrayList<Component>();
-        lines.add(GuiText.CompatibleUpgrades.text());
-        var stack = cellStackSupplier.get();
-        if (!stack.isEmpty() && stack.getItem() instanceof ICellWorkbenchItem cellItem) {
-            lines.addAll(Upgrades.getTooltipLinesForMachine(cellItem));
-        }
-        return new Tooltip(lines);
+
+        var tooltip = tooltipSupplier.get();
+        return tooltip.isEmpty() ? null : new Tooltip(tooltip);
     }
 
     @Override
     public boolean onMouseWheel(Point mousePos, double delta) {
-        return visible && scrolling() && scrollbar.onMouseWheel(mousePos, delta);
+        return scrolling() && scrollbar.onMouseWheel(mousePos, delta);
+    }
+
+    @Override
+    public boolean isVisible() {
+        return getEnabledSlotCount() > 0;
     }
 
     private void updateScrollbarPosition() {
@@ -203,16 +181,7 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
 
     private void setScrollbarRange() {
         scrollbar.setRange(0, Math.max(0, getEnabledSlotCount() - getVisibleSlotCount()), 1);
-        scrollbar.setVisible(visible && scrolling());
-    }
-
-    private void hideAllSlots() {
-        for (Slot rawSlot : slots) {
-            if (rawSlot instanceof AppEngSlot slot) {
-                slot.setActive(false);
-            }
-            setSlotPosition(rawSlot, HIDDEN_SLOT_POS.getX(), HIDDEN_SLOT_POS.getY());
-        }
+        scrollbar.setVisible(scrolling());
     }
 
     private static void setSlotPosition(Slot slot, int x, int y) {

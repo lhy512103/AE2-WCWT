@@ -57,23 +57,41 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
     }
 
     /**
-     * 与 AE2 原版无线终端 {@link appeng.items.tools.powered.WirelessTerminalItem#checkPreconditions} 对齐：
-     * 终端已绑定网络但内置电量耗尽时，发送动作栏提示“设备供能不足”({@link PlayerMessages#DeviceNotPowered})并拒绝打开。
-     * 这里显式重写以保证该提示在 WCWT 各打开路径(右键/快捷键/工具包快捷键)下都能正常弹出。
+     * 这里不能像 AE2 原版无线终端那样预先要求 {@code getLinkedGrid()} 非空，
+     * 否则纯量子桥链路（无范围内 WAP、跨维度/超距离）会在打开前就被直接拦掉。
+     *
+     * <p>与 WTLib 的 {@code ItemWT#checkPreconditions} 对齐，只校验物品本身；
+     * 实际链路状态交给 {@link WirelessComprehensiveWorkTerminalMenuHost} 在菜单宿主里判断。
      */
     @Override
     protected boolean checkPreconditions(ItemStack item, Player player) {
-        if (item.isEmpty() || item.getItem() != this) {
+        if (player.level().isClientSide()) {
             return false;
         }
-        if (getLinkedGrid(item, player.level(), player) == null) {
+        if (item.isEmpty() || item.getItem() != this) {
             return false;
         }
         if (!hasPower(player, 0.5, item)) {
             player.displayClientMessage(PlayerMessages.DeviceNotPowered.text(), true);
             return false;
         }
-        return true;
+
+        if (getLinkedGrid(item, player.level(), null) != null) {
+            return true;
+        }
+
+        var host = new WirelessComprehensiveWorkTerminalMenuHost(player, null, item, (p, sm) -> {
+        });
+        boolean canOpen = host.canOpenFromAnyLink();
+        if (!canOpen) {
+            var description = host.getCurrentLinkStatusDescription();
+            if (description != null) {
+                player.displayClientMessage(description, true);
+            } else {
+                getLinkedGrid(item, player.level(), player);
+            }
+        }
+        return canOpen;
     }
 
     @Nullable

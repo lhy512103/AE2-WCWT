@@ -13,6 +13,7 @@ import appeng.api.storage.StorageHelper;
 import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.core.sync.packets.FillCraftingGridFromRecipePacket;
 import appeng.core.definitions.AEItems;
+import appeng.core.localization.PlayerMessages;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.items.storage.ViewCellItem;
 import appeng.menu.MenuOpener;
@@ -50,6 +51,7 @@ import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import com.mojang.datafixers.util.Pair;
 import de.mari_023.ae2wtlib.AE2wtlibSlotSemantics;
+import de.mari_023.ae2wtlib.api.TextConstants;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.chat.Component;
@@ -181,6 +183,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private RestrictedInputSlot blankPatternSlot;
     private RestrictedInputSlot encodedPatternSlot;
     private int syncedPatternEncodingMode = EncodingMode.PROCESSING.ordinal();
+    private boolean syncedLinkConnected;
+    private int syncedLinkStatusCode = -1;
     private final List<RecipeHolder<StonecutterRecipe>> stonecuttingRecipes = new ArrayList<>();
 
     /** 处理样板：合并相同输入材料（JEI 编码与手动编辑时行为对齐 AE2 EncodingHelper）。 */
@@ -279,7 +283,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var patternCacheInv = host.getPatternCacheInventory();
         if (patternCacheInv != null) {
             for (int i = 0; i < patternCacheInv.size(); i++) {
-                var slot = new RestrictedInputSlot(RestrictedInputSlot.PlacableItemType.ENCODED_PATTERN,
+                var slot = new PatternCacheSlot(RestrictedInputSlot.PlacableItemType.ENCODED_PATTERN,
                         patternCacheInv, i);
                 addSlot(slot, WcwtSlotSemantics.WCWT_PATTERN_CACHE);
             }
@@ -324,6 +328,28 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             @Override public void set(int v) {
                 cellCopyMode = (v >= 0 && v < CopyMode.values().length)
                         ? CopyMode.values()[v] : CopyMode.CLEAR_ON_REMOVE;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return menuHost != null && menuHost.isCurrentLinkConnected() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int v) {
+                syncedLinkConnected = v != 0;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return menuHost != null ? menuHost.getCurrentLinkStatusCode() : -1;
+            }
+
+            @Override
+            public void set(int v) {
+                syncedLinkStatusCode = v;
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -1076,9 +1102,25 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public ClientLinkStatus getLinkStatus() {
+        if (isClientSide()) {
+            return new ClientLinkStatus(syncedLinkConnected, decodeSyncedLinkStatusDescription(syncedLinkStatusCode));
+        }
         return new ClientLinkStatus(
-                isLinked(),
+                menuHost != null && menuHost.isCurrentLinkConnected(),
                 menuHost != null ? menuHost.getCurrentLinkStatusDescription() : null);
+    }
+
+    @Nullable
+    private static Component decodeSyncedLinkStatusDescription(int code) {
+        return switch (code) {
+            case 1 -> TextConstants.NETWORK_NOT_POWERED;
+            case 2 -> TextConstants.NO_QNB_UPGRADE;
+            case 3 -> TextConstants.NO_QNB;
+            case 4 -> TextConstants.DIFFERENT_NETWORKS;
+            case 5 -> TextConstants.SINGULARITY_NOT_PRESENT;
+            case 6 -> PlayerMessages.OutOfRange.text();
+            default -> null;
+        };
     }
 
     public ClientKeyTypeSelection getClientKeyTypeSelection() {
@@ -1269,17 +1311,18 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public void slotsChanged(Container inventory) {
         super.slotsChanged(inventory);
         updateManualWorkspaceResults();
-        if (isManualWorkspaceInputInventory(inventory)) {
+        if (requiresImmediateInventorySync(inventory)) {
             forceInventorySyncOnNextBroadcast();
         }
     }
 
-    private boolean isManualWorkspaceInputInventory(Container inventory) {
+    private boolean requiresImmediateInventorySync(Container inventory) {
         if (menuHost == null || inventory == null) {
             return false;
         }
         return inventory == menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_SMITHING)
-                || inventory == menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL);
+                || inventory == menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_MANUAL_ANVIL)
+                || inventory == menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_PATTERN_CACHE);
     }
 
     private void updateManualWorkspaceResults() {
@@ -2413,6 +2456,80 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     summarizeItem(encodedPatternSlot != null ? encodedPatternSlot.getItem() : ItemStack.EMPTY));
         }
         lastInventorySyncTick = Long.MIN_VALUE;
+    }
+
+    /**
+     * 样板缓存区的底层库存是 {@link appeng.util.inv.SupplierInternalInventory}，每次访问都会用
+     * {@code createInventory(...)} 从终端物品 NBT 现读一份全新的 {@link AppEngInternalInventory}。
+     * 服务端因为会把改动写回 NBT，所以重开界面能看到；但客户端收到 slot 同步包时
+     * {@code set()} 只是写进一份临时库存，紧接着 {@code getItem()} 又从 NBT 重建，导致实时显示丢失。
+     *
+     * 这里参考手动工作区 {@link ManualWorkspaceAppEngSlot} 的做法：客户端单独维护
+     * {@code clientDisplayStack}，让 {@code getItem()/set()} 走它，从而即时刷新显示。
+     */
+    private class PatternCacheSlot extends RestrictedInputSlot {
+        private ItemStack clientDisplayStack = ItemStack.EMPTY;
+
+        PatternCacheSlot(PlacableItemType which, InternalInventory inv, int invSlot) {
+            super(which, inv, invSlot);
+            if (isClientSide()) {
+                this.clientDisplayStack = super.getItem().copy();
+            }
+        }
+
+        @Override
+        public ItemStack getItem() {
+            if (isClientSide()) {
+                return clientDisplayStack;
+            }
+            return super.getItem();
+        }
+
+        @Override
+        public void set(ItemStack stack) {
+            if (isClientSide()) {
+                clientDisplayStack = stack.copy();
+                return;
+            }
+            super.set(stack);
+            forceCachePatternSync();
+        }
+
+        @Override
+        public void clearStack() {
+            if (isClientSide()) {
+                clientDisplayStack = ItemStack.EMPTY;
+                return;
+            }
+            super.clearStack();
+            forceCachePatternSync();
+        }
+
+        @Override
+        public ItemStack remove(int amount) {
+            if (isClientSide()) {
+                ItemStack removed = clientDisplayStack.split(amount);
+                if (clientDisplayStack.isEmpty()) {
+                    clientDisplayStack = ItemStack.EMPTY;
+                }
+                return removed;
+            }
+            // AE2 AppEngSlot.remove() 不会触发 setChanged/onSlotChange，
+            // 而 shift 双击（PICKUP_ALL）的批量取出全部走 remove()，
+            // 不强制同步就会被节流的 broadcastChanges 拖到重开界面才刷新。
+            ItemStack removed = super.remove(amount);
+            if (!removed.isEmpty()) {
+                forceCachePatternSync();
+            }
+            return removed;
+        }
+    }
+
+    /** 样板缓存槽内容在服务端变化后，强制下一次完整同步，避免客户端要重开界面才刷新。 */
+    private void forceCachePatternSync() {
+        if (isServerSide()) {
+            forceInventorySyncOnNextBroadcast();
+        }
     }
 
     private void logBlankPatternSync(String stage, String message, Object... args) {

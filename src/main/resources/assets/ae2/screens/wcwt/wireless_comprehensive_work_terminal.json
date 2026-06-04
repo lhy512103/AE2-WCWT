@@ -37,7 +37,7 @@
       "texture": "guis/wcwt/wireless_comprehensive_work_terminal_gui.png",
       "textureWidth": 512,
       "textureHeight": 512,
-      "srcRect": [0, 17, 355, 18]
+      "srcRect": [0, 288, 355, 18]
     },
     "lastRow": {
       "$comment": "终端列表最后一行背景切片。",
@@ -237,14 +237,14 @@
       "top": 0
     },
     "cellScrollingUpgrades": {
-      "$comment": "元件工作台升级槽面板默认位置，运行时会贴到高级编码面板顶部。",
-      "right": 2,
-      "top": 46
+      "$comment": "元件工作台升级槽面板位置；相对 scrollingUpgrades 右上角偏移。",
+      "left": 2,
+      "top": 0
     },
     "upgradeScrollbar": {
       "$comment": "WTLib 升级面板滑块位置，相对主界面右上角。",
-      "right": -17,
-      "top": 6
+      "right": -24,
+      "top": 8
     },
     "cellUpgradeScrollbar": {
       "$comment": "元件升级槽面板滑块位置，相对主界面右上角。",
@@ -252,9 +252,14 @@
       "top": 52
     },
     "viewCells": {
-      "$comment": "AE2 默认查看元件按钮；当前移到界面外。",
-      "right": 800,
+      "$comment": "AE2 VIEW_CELL 面板位置；相对 scrollingUpgrades 右上角偏移。",
+      "left": 2,
       "top": 0
+    },
+    "viewCellsScrollbar": {
+      "$comment": "AE2 VIEW_CELL 面板滑块位置；相对 viewCells 面板左上角偏移。",
+      "left": 26,
+      "top": 8
     },
     "scrollbar": {
       "$comment": "AE2 终端物品列表主滑块。",
@@ -585,9 +590,9 @@
     },
     "stonecuttingPatternModeScrollbar": {
       "$comment": "WCWT 切石机样板结果滑块；切石机模式结果列表右侧。",
-      "left": 285,
-      "bottom": 212,
-      "height": 44
+      "left": 286,
+      "bottom": 214,
+      "height": 54
     },
     "pattern_crafting_grid": {
       "$comment": "样板编码区：合成模式 3x3 输入槽起点。",
@@ -658,15 +663,15 @@
     },
     "pattern_stonecutting_results": {
       "$comment": "样板编码区：切石机结果列表起点；宽高是单个结果按钮步进尺寸。",
-      "left": 202,
-      "bottom": 211,
+      "left": 220,
+      "bottom": 214,
       "width": 16,
       "height": 18,
       "columns": 4
     },
     "caching_scrollbar": {
       "$comment": "样板缓存区滑块位置和高度。",
-      "left": 342,
+      "left": 341,
       "bottom": 143,
       "height": 34
     },
@@ -880,45 +885,64 @@
     },
     "extended_functions_0": {
       "$comment": "右侧扩展功能折叠列槽位 0（首颗可见按钮）；left/相对间距由 JSON 指定。顶边会被 Java 抬升到「滚动升级槽底 + 间距」之上，避免与大终端多行升级槽重叠。",
-      "left": 358,
-      "top": 48,
+      "left": 362,
+      "top": 52,
       "width": 20,
       "height": 17
     },
     "extended_functions_1": {
       "$comment": "扩展功能槽位 1；相邻槽 JSON top 差建议保持 21（与 Java 内 extBtnSpacing 一致）。",
-      "left": 358,
-      "top": 69,
+      "left": 362,
+      "top": 73,
       "width": 20,
       "height": 17
     },
     "extended_functions_2": {
       "$comment": "扩展功能槽位 2。",
-      "left": 358,
-      "top": 90,
+      "left": 362,
+      "top": 94,
       "width": 20,
       "height": 17
     },
     "extended_functions_3": {
       "$comment": "扩展功能槽位 3。",
-      "left": 358,
-      "top": 111,
+      "left": 362,
+      "top": 115,
       "width": 20,
       "height": 17
     },
     "extended_functions_4": {
       "$comment": "扩展功能槽位 4：新增工具包按钮位置。与上方槽位保持同样 21px 间距，可继续软编码调整。",
-      "left": 358,
-      "top": 132,
+      "left": 362,
+      "top": 136,
       "width": 20,
       "height": 17
     },
     "extended_functions_5": {
       "$comment": "扩展功能槽位 5：谐振过载编码器按钮位置。默认继续排在工具包下方。",
-      "left": 358,
-      "top": 153,
+      "left": 362,
+      "top": 157,
       "width": 20,
       "height": 17
+    },
+    "extendedButtonsBackground": {
+      "$comment": "右侧扩展按钮列背景切图参数。按钮面仍由 ExtendedUIButton 自己绘制；这里控制 wcwt_components.png 上的背景拼接与按钮在背景内的参考偏移。",
+      "width": 34,
+      "topU": 69,
+      "topV": 0,
+      "topHeight": 28,
+      "middleU": 104,
+      "middleV": 28,
+      "middleHeight": 21,
+      "bottomU": 69,
+      "bottomV": 49,
+      "bottomHeight": 24,
+      "firstButtonX": 7,
+      "firstButtonY": 7,
+      "middleButtonX": 7,
+      "middleButtonY": 7,
+      "lastButtonX": 7,
+      "lastButtonY": 7
     }
   },
   "slots": {
