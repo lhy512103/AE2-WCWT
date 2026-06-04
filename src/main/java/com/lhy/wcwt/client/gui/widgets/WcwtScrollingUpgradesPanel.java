@@ -103,12 +103,14 @@ public class WcwtScrollingUpgradesPanel implements ICompositeWidget {
 
             if (rawSlot == firstSlot() && singularitySlotHidden()) {
                 slot.setSlotEnabled(false);
+                slot.setActive(false);
                 setSlotPosition(rawSlot, HIDDEN_SLOT_POS.getX(), HIDDEN_SLOT_POS.getY());
                 continue;
             }
 
             boolean slotVisible = enabledIndex >= currentFirstSlot && enabledIndex < currentFirstSlot + maxRows;
-            slot.setSlotEnabled(slotVisible);
+            slot.setSlotEnabled(true);
+            slot.setActive(slotVisible);
             if (slotVisible && slot.isActive()) {
                 setSlotPosition(slot, x + WcwtUpgradeSlotBackground.SLOT_X, slotOriginY);
                 slotOriginY += WcwtUpgradeSlotBackground.SLOT_SIZE;

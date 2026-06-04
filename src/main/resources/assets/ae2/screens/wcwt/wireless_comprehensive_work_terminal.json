@@ -233,7 +233,7 @@
     },
     "scrollingUpgrades": {
       "$comment": "右侧 WTLib 滚动升级面板位置。",
-      "right": 2,
+      "right": 1,
       "top": 0
     },
     "cellScrollingUpgrades": {
@@ -243,7 +243,7 @@
     },
     "upgradeScrollbar": {
       "$comment": "WTLib 升级面板滑块位置，相对主界面右上角。",
-      "right": -24,
+      "right": -25,
       "top": 8
     },
     "cellUpgradeScrollbar": {
@@ -260,6 +260,10 @@
       "$comment": "AE2 VIEW_CELL 面板滑块位置；相对 viewCells 面板左上角偏移。",
       "left": 26,
       "top": 8
+    },
+    "extendedButtonsLayout": {
+      "$comment": "右侧扩展按钮列的附加布局约束。minTopGap 表示首个扩展按钮距离 WTLib 升级面板底部的最小安全间距；设为 0 则不额外留空。",
+      "minTopGap": 6
     },
     "scrollbar": {
       "$comment": "AE2 终端物品列表主滑块。",
@@ -866,17 +870,17 @@
     },
     "manage_open_ui": {
       "$comment": "样板管理区每个供应器行内的打开机器 UI 按钮；top 是相对该行顶部的偏移。",
-      "left": 306,
+      "left": 303,
       "top": 2,
       "width": 14,
       "height": 15
     },
     "manage_highlight_provider": {
-      "$comment": "样板管理区每个供应器第一行样板右侧的世界高亮按钮；top 是相对第一行样板顶部的偏移。",
-      "left": 337,
-      "top": 3,
-      "width": 6,
-      "height": 11
+      "$comment": "样板管理区供应器定位按钮；位于打开机器 UI 按钮右侧 4px，top 是相对该行顶部的偏移。",
+      "left": 321,
+      "top": 2,
+      "width": 14,
+      "height": 15
     },
     "extended_functions": {
       "$comment": "扩展功能占位按钮；当前隐藏。",
@@ -884,9 +888,9 @@
       "top": -9999
     },
     "extended_functions_0": {
-      "$comment": "右侧扩展功能折叠列槽位 0（首颗可见按钮）；left/相对间距由 JSON 指定。顶边会被 Java 抬升到「滚动升级槽底 + 间距」之上，避免与大终端多行升级槽重叠。",
+      "$comment": "右侧扩展功能折叠列槽位 0（首颗可见按钮）；left/相对间距由 JSON 指定。若 top 小于「升级面板底部 + extendedButtonsLayout.minTopGap」，则会被抬升到该最小值。",
       "left": 362,
-      "top": 52,
+      "top": 48,
       "width": 20,
       "height": 17
     },

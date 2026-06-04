@@ -282,7 +282,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SLOT_STEP = 18;
     private static final int PATTERN_MANAGEMENT_HEADER_Y_OFFSET = -1;
     private static final int PATTERN_MANAGEMENT_SLOT_Y_OFFSET = 0;
-    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET = 4;
     private static final int BUTTON_PRESS_OFFSET_Y = 1;
     private static final int ANVIL_TOO_EXPENSIVE_COST = 40;
     private static final long FOCUSED_PATTERN_FLASH_PERIOD_MS = 480L;
@@ -301,8 +300,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             com.lhy.wcwt.util.ResourceLocationCompat.id("advanced_ae", "textures/guis/states.png");
     private static final ResourceLocation WCWT_GUI_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wireless_comprehensive_work_terminal_gui.png");
-    private static final ResourceLocation WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/background1.png");
     private static final ResourceLocation WCWT_EXTENDED_CRAFTING_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wcwt_extended_crafting.png");
     private static final ResourceLocation WCWT_MANAGEMENT_TEXTURE =
@@ -894,9 +891,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var host = menu.getMenuHost();
         if (host == null) return;
 
+        hideExistingExtendedButtons();
+
         // 扩展 UI 按钮位置优先读取 JSON 的 extended_functions_0..3。
         // 按钮不可用时会折叠，后面的按钮自动补位到前一个 JSON 槽位。
-        final int EXT_BTN_GAP_TOP = 1;
         final int EXT_BTN_GAP_LEFT = 1;
         int fallbackX;
         if (topModeTabButton != null && topModeTabButton.getWidth() > 0) {
@@ -905,8 +903,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         } else {
             fallbackX = leftPos + 331 + 22 + EXT_BTN_GAP_LEFT + 4;
         }
-        int panelHeight = (upgradesPanel != null) ? upgradesPanel.getBounds().getHeight() : 46;
-        int fallbackY = topPos + panelHeight + EXT_BTN_GAP_TOP + 2; // setY = 外框顶 + 4
         int extBtnSpacing = 21;
 
         advancedCodingButton = new ExtendedUIButton(
@@ -930,18 +926,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         int visibleIndex = 0;
         visibleIndex = placeExtendedButton(advancedCodingButton, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+                visibleIndex, fallbackX, extBtnSpacing);
         visibleIndex = placeExtendedButton(cosmeticArmorButton, IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+                visibleIndex, fallbackX, extBtnSpacing);
         visibleIndex = placeExtendedButton(curiosButton, IExtendedUIHost.ExtendedUIType.CURIOS,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+                visibleIndex, fallbackX, extBtnSpacing);
         visibleIndex = placeExtendedButton(toolboxButton, IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+                visibleIndex, fallbackX, extBtnSpacing);
         visibleIndex = placeExtendedButton(toolkitButton, IExtendedUIHost.ExtendedUIType.TOOLKIT,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+                visibleIndex, fallbackX, extBtnSpacing);
         placeExtendedButton(resonatingLightningPatternCodingButton,
                 IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+                visibleIndex, fallbackX, extBtnSpacing);
 
         // 调整渲染图层：将它们在 renderables 列表中移到最前面，
         // 从而被后渲染的四个样板按钮遮挡（图层放在下面）。
@@ -960,8 +956,27 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderables.add(0, advancedCodingButton);
     }
 
+    private void hideExistingExtendedButtons() {
+        hideExtendedButtonInstance(advancedCodingButton);
+        hideExtendedButtonInstance(cosmeticArmorButton);
+        hideExtendedButtonInstance(curiosButton);
+        hideExtendedButtonInstance(toolboxButton);
+        hideExtendedButtonInstance(toolkitButton);
+        hideExtendedButtonInstance(resonatingLightningPatternCodingButton);
+    }
+
+    private static void hideExtendedButtonInstance(@Nullable ExtendedUIButton button) {
+        if (button == null) {
+            return;
+        }
+        button.visible = false;
+        button.active = false;
+        button.setX(-10000);
+        button.setY(-10000);
+    }
+
     private int placeExtendedButton(ExtendedUIButton button, IExtendedUIHost.ExtendedUIType type, int visibleIndex,
-                                    int fallbackX, int fallbackY, int spacing) {
+                                    int fallbackX, int spacing) {
         boolean available = isExtendedUIAvailable(type);
         button.visible = available;
         button.active = available;
@@ -972,21 +987,34 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return visibleIndex;
         }
 
+        int minTopGui = getExtendedButtonsMinTop(visibleIndex, spacing);
         var fallback = new ExtendedPanelLayout.Rect(fallbackX - leftPos,
-                fallbackY - topPos + visibleIndex * spacing, button.getWidth(), button.getHeight());
+                minTopGui, button.getWidth(), button.getHeight());
         var rect = mainLayout.widget("extended_functions_" + visibleIndex, fallback, imageWidth, imageHeight);
         if (rect.left() < -1000 || rect.top() < -1000) {
             rect = fallback;
         }
-        // JSON 可软编码 left/间距意图；顶边不得低于 fallback（随滚动升级槽高度与终端行数变化），
-        // 否则行数多时会与右侧升级卡槽重叠。
-        int minTopGui = fallback.top();
+        // JSON 可软编码按钮位置；顶边最低值仍受升级面板底部安全间距约束，
+        // 但这段安全间距本身已经改为 JSON 可配置。
         rect = new ExtendedPanelLayout.Rect(rect.left(), Math.max(rect.top(), minTopGui), rect.width(),
                 rect.height());
         button.setX(leftPos + rect.left());
         button.setY(topPos + rect.top());
         addRenderableWidget(button);
         return visibleIndex + 1;
+    }
+
+    private int getExtendedButtonsMinTop(int visibleIndex, int spacing) {
+        int defaultGap = 3;
+        int minTopGap = mainLayout.widgetInt("extendedButtonsLayout", "minTopGap", defaultGap);
+        int firstButtonTop;
+        if (upgradesPanel != null) {
+            var bounds = upgradesPanel.getBounds();
+            firstButtonTop = bounds.getY() + bounds.getHeight() + minTopGap;
+        } else {
+            firstButtonTop = 46 + minTopGap;
+        }
+        return firstButtonTop + visibleIndex * spacing;
     }
 
     private boolean isExtendedUIAvailable(IExtendedUIHost.ExtendedUIType type) {
@@ -1160,6 +1188,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         
         var currentUI = host.getCurrentExtendedUI();
         boolean hideExtendedButtons = currentUI == IExtendedUIHost.ExtendedUIType.ADVANCED_CODING
+                || currentUI == IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR
                 || currentUI == IExtendedUIHost.ExtendedUIType.CURIOS
                 || currentUI == IExtendedUIHost.ExtendedUIType.TOOLKIT
                 || currentUI == IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING;
@@ -2170,7 +2199,27 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private ExtendedPanelLayout.Rect patternEncodingSlot(String id, ExtendedPanelLayout.Rect fallback) {
+        if (fallback == null) {
+            fallback = defaultPatternEncodingSlotFallback(id);
+        }
         return mainLayout.widget(id, fallback, imageWidth, imageHeight);
+    }
+
+    private ExtendedPanelLayout.Rect defaultPatternEncodingSlotFallback(String id) {
+        return switch (id) {
+            case "pattern_crafting_grid" -> new ExtendedPanelLayout.Rect(183, imageHeight - 216, 18, 18);
+            case "pattern_processing_inputs" -> new ExtendedPanelLayout.Rect(192, imageHeight - 216, 18, 18);
+            case "pattern_processing_outputs" -> new ExtendedPanelLayout.Rect(277, imageHeight - 216, 18, 18);
+            case "pattern_smithing_template" -> new ExtendedPanelLayout.Rect(183, imageHeight - 198, 18, 18);
+            case "pattern_smithing_base" -> new ExtendedPanelLayout.Rect(201, imageHeight - 198, 18, 18);
+            case "pattern_smithing_addition" -> new ExtendedPanelLayout.Rect(219, imageHeight - 198, 18, 18);
+            case "pattern_smithing_preview" -> new ExtendedPanelLayout.Rect(277, imageHeight - 198, 18, 18);
+            case "pattern_crafting_preview" -> new ExtendedPanelLayout.Rect(273, imageHeight - 198, 18, 18);
+            case "pattern_stonecutting_input" -> new ExtendedPanelLayout.Rect(183, imageHeight - 198, 18, 18);
+            case "pattern_stonecutting_results" -> new ExtendedPanelLayout.Rect(202, imageHeight - 211,
+                    STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H);
+            default -> new ExtendedPanelLayout.Rect(0, 0, 18, 18);
+        };
     }
 
     private void updateEncodedPatternSlot() {
@@ -3156,8 +3205,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
         int textColor = 0x404040;
 
-        renderPatternManagementBackground(guiGraphics);
-
         renderPatternManagementTextButton(guiGraphics, patternManagementAddButton, mouseX, mouseY);
         renderPatternManagementTextButton(guiGraphics, patternManagementReloadButton, mouseX, mouseY);
         renderPatternManagementTextButton(guiGraphics, patternManagementDeleteButton, mouseX, mouseY);
@@ -3171,7 +3218,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagementUploadToggleButton(guiGraphics, mouseX, mouseY);
         renderPatternManagementToggleButton(guiGraphics, patternManagementSearchModeButton,
                 patternManagementSearchMode.iconU(), patternManagementSearchMode.iconV(),
-                EAE_ICONS_TEXTURE, 64, 64, mouseX, mouseY, false);
+                WCWT_STATES_TEXTURE, 256, 256, mouseX, mouseY, false);
 
         renderPatternManagementButtonText(guiGraphics, patternManagementAddButton,
                 Component.translatable("gui.wcwt.pattern_management.add_mapping"), 0xFFFFFF, mouseX, mouseY);
@@ -3201,18 +3248,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
-    private void renderPatternManagementBackground(GuiGraphics guiGraphics) {
-        if (!patternManagementShowSlots) {
-            guiGraphics.blit(WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE,
-                    patternManagementPage.left(), patternManagementPage.top(),
-                    0, 0,
-                    patternManagementPage.width(), patternManagementPage.height(),
-                    patternManagementPage.width(), patternManagementPage.height());
-            return;
-        }
-        // 供应器名称行不再铺底图；样板槽底图在 {@link #renderPatternManagementSlots} 按格绘制。
-    }
-
     private void renderPatternManagementHeader(GuiGraphics guiGraphics, PatternProviderListPacket.Entry entry,
                                                int rowY, int textColor, int mouseX, int mouseY) {
         if (patternManagementShowSlots && entry.providerId() == selectedPatternProviderId) {
@@ -3232,16 +3267,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         renderPatternManagementButton(guiGraphics, rowButton(patternManagementUploadButton, rowY),
                 161, 0, 177, 0,
-                AE2_STATES_TEXTURE, 0, 144, 256, 256, mouseX, mouseY);
+                WCWT_STATES_TEXTURE, 80, 32, 256, 256, mouseX, mouseY);
         renderPatternManagementButtonIcon(guiGraphics, rowButton(patternManagementUiButton, rowY),
                 161, 0, 177, 0,
                 WCWT_STATES_TEXTURE, 52, 5, 8, 7, 256, 256, mouseX, mouseY);
-        if (!patternManagementShowSlots) {
-            renderPatternManagementButton(guiGraphics, rowButton(patternManagementHighlightButton, rowY),
-                    192, 160, 224, 160,
-                    EAE_ICONS_TEXTURE, 48, 32, 64, 64, mouseX, mouseY,
-                    PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET, 0);
-        }
+        renderPatternManagementButton(guiGraphics, rowButton(patternManagementHighlightButton, rowY),
+                161, 0, 177, 0,
+                WCWT_STATES_TEXTURE, 64, 32, 256, 256, mouseX, mouseY);
     }
 
     private void renderPatternManagementSlots(GuiGraphics guiGraphics, PatternManagementSlotsRow row, int rowY,
@@ -3259,9 +3291,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             guiGraphics.blit(WCWT_MANAGEMENT_TEXTURE, x, y, 0, 0,
                     drawW, PATTERN_MANAGEMENT_SLOT_BG_SIZE,
                     256, 256);
-            if (isMouseOverPatternManagementSlot(mouseX, mouseY, x, y)) {
-                renderPatternManagementSlotHighlight(guiGraphics, x, y);
-            }
             if (shouldHighlightFocusedPatternSlot(row.entry().providerId(), slot)) {
                 renderFocusedPatternManagementSlotHighlight(guiGraphics, x, y);
             }
@@ -3272,12 +3301,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 guiGraphics.renderItem(displayStack, ix, iy);
                 guiGraphics.renderItemDecorations(font, displayStack, ix, iy);
             }
-        }
-        if (row.offset() == 0) {
-            renderPatternManagementButton(guiGraphics, slotRowButton(patternManagementHighlightButton, rowY),
-                    192, 160, 224, 160,
-                    EAE_ICONS_TEXTURE, 48, 32, 64, 64, mouseX, mouseY,
-                    PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET, 0);
         }
     }
 
@@ -3297,30 +3320,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private static int patternManagementSlotHitMinY(int bgY) {
         return bgY + PATTERN_MANAGEMENT_SLOT_HIT_INSET;
-    }
-
-    private boolean isMouseOverPatternManagementSlot(int mouseX, int mouseY, int bgX, int bgY) {
-        int relX = mouseX - leftPos;
-        int relY = mouseY - topPos;
-        int hx = patternManagementSlotHitMinX(bgX);
-        int hy = patternManagementSlotHitMinY(bgY);
-        return relX >= hx
-                && relX < hx + PATTERN_MANAGEMENT_SLOT_HIT_SIZE
-                && relY >= hy
-                && relY < hy + PATTERN_MANAGEMENT_SLOT_HIT_SIZE;
-    }
-
-    private void renderPatternManagementSlotHighlight(GuiGraphics guiGraphics, int bgX, int bgY) {
-        int x = patternManagementSlotHitMinX(bgX);
-        int y = patternManagementSlotHitMinY(bgY);
-        int s = PATTERN_MANAGEMENT_SLOT_HIT_SIZE;
-        guiGraphics.hLine(x, x + s, y - 1, 0xFFDAFFFF);
-        guiGraphics.hLine(x - 1, x + s, y + s, 0xFFDAFFFF);
-        guiGraphics.vLine(x - 1, y - 2, y + s, 0xFFDAFFFF);
-        guiGraphics.vLine(x + s, y - 2, y + s, 0xFFDAFFFF);
-        guiGraphics.fillGradient(net.minecraft.client.renderer.RenderType.guiOverlay(),
-                x, y, x + s, y + s,
-                0x669CD3FF, 0x669CD3FF, 0);
     }
 
     private void renderFocusedPatternManagementSlotHighlight(GuiGraphics guiGraphics, int bgX, int bgY) {
@@ -4366,13 +4365,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 if (inRect(relX, relY, rowButton(patternManagementUiButton, rowY))) {
                     return new PatternManagementHeaderButtonHit(header.entry(), PatternManagementHeaderButton.UI);
                 }
-                if (!patternManagementShowSlots
-                        && inRect(relX, relY, rowButton(patternManagementHighlightButton, rowY))) {
+                if (inRect(relX, relY, rowButton(patternManagementHighlightButton, rowY))) {
                     return new PatternManagementHeaderButtonHit(header.entry(), PatternManagementHeaderButton.HIGHLIGHT);
                 }
-            } else if (row instanceof PatternManagementSlotsRow slotsRow && slotsRow.offset() == 0
-                    && inRect(relX, relY, slotRowButton(patternManagementHighlightButton, rowY))) {
-                return new PatternManagementHeaderButtonHit(slotsRow.entry(), PatternManagementHeaderButton.HIGHLIGHT);
             }
         }
         return null;
@@ -4793,9 +4788,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private enum PatternManagementSearchMode {
-        OUT(16, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.01"),
-        IN(0, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.02"),
-        IN_OUT(32, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.03");
+        OUT(112, 32, "gui.extendedae.ex_pattern_access_terminal.search_mode.01"),
+        IN(96, 32, "gui.extendedae.ex_pattern_access_terminal.search_mode.02"),
+        IN_OUT(128, 32, "gui.extendedae.ex_pattern_access_terminal.search_mode.03");
 
         private final int iconU;
         private final int iconV;
