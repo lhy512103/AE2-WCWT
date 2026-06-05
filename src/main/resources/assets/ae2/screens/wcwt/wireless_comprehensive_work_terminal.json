@@ -850,8 +850,8 @@
     },
     "manage_scrollbar": {
       "$comment": "样板管理区供应器/样板列表滑块。",
-      "left": 343,
-      "bottom": 81,
+      "left": 341,
+      "bottom": 82,
       "height": 71
     },
     "management_page": {

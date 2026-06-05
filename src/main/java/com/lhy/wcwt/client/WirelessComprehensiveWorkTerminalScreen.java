@@ -3278,6 +3278,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void renderPatternManagementSlots(GuiGraphics guiGraphics, PatternManagementSlotsRow row, int rowY,
                                               int mouseX, int mouseY) {
+        int relMouseX = mouseX - leftPos;
+        int relMouseY = mouseY - topPos;
         for (int col = 0; col < row.slots(); col++) {
             int slot = row.offset() + col;
             ItemStack stack = row.entry().slots().getOrDefault(slot, ItemStack.EMPTY);
@@ -3301,6 +3303,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 guiGraphics.renderItem(displayStack, ix, iy);
                 guiGraphics.renderItemDecorations(font, displayStack, ix, iy);
             }
+            if (isMouseOverPatternManagementSlot(relMouseX, relMouseY, x, y)) {
+                renderSlotHighlight(guiGraphics, patternManagementSlotHitMinX(x), patternManagementSlotHitMinY(y), 0);
+            }
         }
     }
 
@@ -3320,6 +3325,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private static int patternManagementSlotHitMinY(int bgY) {
         return bgY + PATTERN_MANAGEMENT_SLOT_HIT_INSET;
+    }
+
+    private static boolean isMouseOverPatternManagementSlot(int relMouseX, int relMouseY, int bgX, int bgY) {
+        return inRect(relMouseX, relMouseY,
+                patternManagementSlotHitMinX(bgX),
+                patternManagementSlotHitMinY(bgY),
+                PATTERN_MANAGEMENT_SLOT_HIT_SIZE,
+                PATTERN_MANAGEMENT_SLOT_HIT_SIZE);
     }
 
     private void renderFocusedPatternManagementSlotHighlight(GuiGraphics guiGraphics, int bgX, int bgY) {
@@ -3663,7 +3676,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         // 样板管理列表里的样板槽是纯客户端绘制命中区，须在 AE2 widgets.onMouseDown 之前拦截，
         // 否则可能被滚动条区等控件或下层 Repo 槽位吞掉。
-        if (button == 0 && handlePatternManagementProviderSlotInteract(mouseX, mouseY)) {
+        if ((button == 0 || button == 1) && handlePatternManagementProviderSlotInteract(mouseX, mouseY)) {
             return true;
         }
         if (button == 0 && handleManualAnvilNameFieldClick(mouseX, mouseY)) {
@@ -4183,19 +4196,106 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (slotHit == null) {
             return false;
         }
+        ItemStack carried = menu.getCarried();
+        ItemStack slotStack = slotHit.entry().slots().getOrDefault(slotHit.slot(), ItemStack.EMPTY);
+        if (patternManagementShortcutActive()) {
+            if (slotStack.isEmpty()) {
+                return false;
+            }
+        } else if (!canPredictPatternManagementProviderExchange(carried, slotStack)) {
+            return false;
+        }
         selectedPatternProviderId = slotHit.entry().providerId();
         selectedPatternProviderSlot = slotHit.slot();
+        boolean predicted = patternManagementShortcutActive()
+                ? predictQuickExtractPatternManagementProviderSlot(slotHit, slotStack)
+                : predictExchangePatternManagementProviderSlot(slotHit, carried, slotStack);
         refreshPatternProviders();
         sendPatternManagementAction(patternManagementShortcutActive()
                         ? PatternManagementActionPacket.Action.QUICK_EXTRACT_PROVIDER_SLOT
                         : PatternManagementActionPacket.Action.EXCHANGE_PROVIDER_SLOT,
                 slotHit.entry().providerId(), slotHit.slot());
-        if (patternManagementShortcutActive()) {
+        if (predicted) {
+            playPatternManagementItemTransferSound(patternManagementShortcutActive()
+                    ? false
+                    : shouldPlayPatternManagementInsertSound(carried, slotStack));
+        } else if (patternManagementShortcutActive()) {
             playPatternManagementItemTransferSound(false);
         } else {
             playPatternManagementClickSound();
         }
         return true;
+    }
+
+    private boolean canPredictPatternManagementProviderExchange(ItemStack carried, ItemStack slotStack) {
+        if (carried.isEmpty()) {
+            return !slotStack.isEmpty();
+        }
+        if (!appeng.api.crafting.PatternDetailsHelper.isEncodedPattern(carried)) {
+            return false;
+        }
+        return slotStack.isEmpty() || carried.getCount() == 1;
+    }
+
+    private boolean shouldPlayPatternManagementInsertSound(ItemStack carried, ItemStack slotStack) {
+        return !carried.isEmpty() && (slotStack.isEmpty() || carried.getCount() == 1);
+    }
+
+    private boolean predictQuickExtractPatternManagementProviderSlot(PatternManagementSlotHit slotHit, ItemStack slotStack) {
+        if (slotStack.isEmpty()) {
+            return false;
+        }
+        mutatePatternManagementProviderSlot(slotHit.entry(), slotHit.slot(), ItemStack.EMPTY);
+        var player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.getInventory().placeItemBackInInventory(slotStack.copy(), false);
+        }
+        rebuildPatternManagementRows();
+        return true;
+    }
+
+    private boolean predictExchangePatternManagementProviderSlot(PatternManagementSlotHit slotHit,
+                                                                 ItemStack carried,
+                                                                 ItemStack slotStack) {
+        if (carried.isEmpty()) {
+            if (slotStack.isEmpty()) {
+                return false;
+            }
+            mutatePatternManagementProviderSlot(slotHit.entry(), slotHit.slot(), ItemStack.EMPTY);
+            menu.setCarried(slotStack.copy());
+            rebuildPatternManagementRows();
+            return true;
+        }
+        if (!appeng.api.crafting.PatternDetailsHelper.isEncodedPattern(carried)) {
+            return false;
+        }
+
+        ItemStack toPlace = carried.copy();
+        toPlace.setCount(1);
+        if (slotStack.isEmpty()) {
+            mutatePatternManagementProviderSlot(slotHit.entry(), slotHit.slot(), toPlace);
+            ItemStack updatedCarried = carried.copy();
+            updatedCarried.shrink(1);
+            menu.setCarried(updatedCarried.isEmpty() ? ItemStack.EMPTY : updatedCarried);
+            rebuildPatternManagementRows();
+            return true;
+        }
+        if (carried.getCount() != 1) {
+            return false;
+        }
+
+        mutatePatternManagementProviderSlot(slotHit.entry(), slotHit.slot(), carried.copy());
+        menu.setCarried(slotStack.copy());
+        rebuildPatternManagementRows();
+        return true;
+    }
+
+    private void mutatePatternManagementProviderSlot(PatternProviderListPacket.Entry entry, int slot, ItemStack stack) {
+        if (stack.isEmpty()) {
+            entry.slots().remove(slot);
+        } else {
+            entry.slots().put(slot, stack.copy());
+        }
     }
 
     private boolean tryAeNetworkToolkitSlotDoubleDeposit(double mouseX, double mouseY) {
