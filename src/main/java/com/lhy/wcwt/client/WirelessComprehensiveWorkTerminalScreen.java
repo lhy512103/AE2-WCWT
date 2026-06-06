@@ -3247,7 +3247,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         super.drawFG(guiGraphics, offsetX, offsetY, mouseX, mouseY);
         renderManualAnvilCost(guiGraphics);
         renderPatternManagement(guiGraphics, mouseX, mouseY);
-        renderCosmeticArmorToggleOverlays(guiGraphics);
         renderCurioToggleOverlays(guiGraphics);
     }
 
@@ -4724,6 +4723,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     protected void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        renderCosmeticArmorToggleOverlays(guiGraphics);
+
         ItemStack stonecuttingStack = getStonecuttingResultUnderMouse(mouseX, mouseY);
         if (!stonecuttingStack.isEmpty()) {
             guiGraphics.renderTooltip(font, stonecuttingStack, mouseX, mouseY);

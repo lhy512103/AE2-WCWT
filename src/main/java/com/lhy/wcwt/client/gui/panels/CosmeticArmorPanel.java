@@ -22,7 +22,6 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
     private static final int TOGGLE_V = 0;
     private static final int TOGGLE_SIZE = 16;
     private static final int TOGGLE_HIT_SIZE = 5;
-    private static final int TOGGLE_BACKING_COLOR = 0xFFC6C6C6;
     private static final String[] SLOT_IDS = {
             "DECORATIVE_HELMET",
             "DECORATIVE_ARMOR",
@@ -69,7 +68,6 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
             return;
         }
         int texX = isSkinArmor(index) ? TOGGLE_ENABLED_U : TOGGLE_DISABLED_U;
-        guiGraphics.fill(slotX, slotY, slotX + TOGGLE_SIZE, slotY + TOGGLE_SIZE, TOGGLE_BACKING_COLOR);
         guiGraphics.blit(STATES_TEXTURE, slotX, slotY, texX, TOGGLE_V,
                 TOGGLE_SIZE, TOGGLE_SIZE, 256, 256);
     }
