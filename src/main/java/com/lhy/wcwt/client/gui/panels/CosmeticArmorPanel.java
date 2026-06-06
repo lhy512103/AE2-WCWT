@@ -17,9 +17,11 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
     private static final ResourceLocation STATES_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wcwt_states.png");
     private static final int[] COSMETIC_SLOTS = {3, 2, 1, 0};
-    private static final int TOGGLE_X = 3;
-    private static final int TOGGLE_Y = 15;
-    private static final int SLOT_SPACING = 18;
+    private static final int TOGGLE_DISABLED_U = 192;
+    private static final int TOGGLE_ENABLED_U = 208;
+    private static final int TOGGLE_V = 0;
+    private static final int TOGGLE_SIZE = 16;
+    private static final int TOGGLE_HIT_SIZE = 5;
     private static final String[] SLOT_IDS = {
             "DECORATIVE_HELMET",
             "DECORATIVE_ARMOR",
@@ -58,15 +60,13 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
     
     @Override
     protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 渲染显示开关图标
-        // 暗图标位置: (192, 0) 大小5x5
-        // 亮图标位置: (208, 0) 大小5x5
         for (int i = 0; i < 4; i++) {
-            int iconX = x + TOGGLE_X + i * SLOT_SPACING;
-            int iconY = y + TOGGLE_Y;
-            int texX = isSkinArmor(i) ? 208 : 192;
+            int iconX = x + slots[i].left();
+            int iconY = y + slots[i].top();
+            int texX = isSkinArmor(i) ? TOGGLE_ENABLED_U : TOGGLE_DISABLED_U;
 
-            guiGraphics.blit(STATES_TEXTURE, iconX, iconY, texX, 0, 5, 5, 256, 256);
+            guiGraphics.blit(STATES_TEXTURE, iconX, iconY, texX, TOGGLE_V,
+                    TOGGLE_SIZE, TOGGLE_SIZE, 256, 256);
         }
     }
 
@@ -120,8 +120,10 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
         int relX = (int) Math.floor(mouseX - x);
         int relY = (int) Math.floor(mouseY - y);
         for (int i = 0; i < 4; i++) {
-            int iconX = TOGGLE_X + i * SLOT_SPACING;
-            if (relX >= iconX && relX < iconX + 5 && relY >= TOGGLE_Y && relY < TOGGLE_Y + 5) {
+            int iconX = slots[i].left();
+            int iconY = slots[i].top();
+            if (relX >= iconX && relX < iconX + TOGGLE_HIT_SIZE
+                    && relY >= iconY && relY < iconY + TOGGLE_HIT_SIZE) {
                 return i;
             }
         }
