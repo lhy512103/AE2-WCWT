@@ -60,14 +60,16 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
     
     @Override
     protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        for (int i = 0; i < 4; i++) {
-            int iconX = x + slots[i].left();
-            int iconY = y + slots[i].top();
-            int texX = isSkinArmor(i) ? TOGGLE_ENABLED_U : TOGGLE_DISABLED_U;
+        // Toggle icons are rendered after the real armor slots, otherwise slot rendering covers most of the 16x16 icon.
+    }
 
-            guiGraphics.blit(STATES_TEXTURE, iconX, iconY, texX, TOGGLE_V,
-                    TOGGLE_SIZE, TOGGLE_SIZE, 256, 256);
+    public void renderToggleOverlay(GuiGraphics guiGraphics, int index, int slotX, int slotY) {
+        if (!visible || index < 0 || index >= slots.length) {
+            return;
         }
+        int texX = isSkinArmor(index) ? TOGGLE_ENABLED_U : TOGGLE_DISABLED_U;
+        guiGraphics.blit(STATES_TEXTURE, slotX, slotY, texX, TOGGLE_V,
+                TOGGLE_SIZE, TOGGLE_SIZE, 256, 256);
     }
 
     @Override

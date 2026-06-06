@@ -2926,7 +2926,20 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     256, 256);
         }
         super.renderSlot(guiGraphics, slot);
+        renderCosmeticArmorToggleOverlay(guiGraphics, slot);
         renderCraftablePatternIndicator(guiGraphics, slot);
+    }
+
+    private void renderCosmeticArmorToggleOverlay(GuiGraphics guiGraphics, Slot slot) {
+        if (cosmeticArmorPanel == null || !cosmeticArmorPanel.isVisible()) {
+            return;
+        }
+        for (int i = 0; i < COSMETIC_ARMOR_SLOT_SEMANTICS.length; i++) {
+            if (menu.getSlots(COSMETIC_ARMOR_SLOT_SEMANTICS[i]).contains(slot)) {
+                cosmeticArmorPanel.renderToggleOverlay(guiGraphics, i, slot.x, slot.y);
+                return;
+            }
+        }
     }
 
     @Override
