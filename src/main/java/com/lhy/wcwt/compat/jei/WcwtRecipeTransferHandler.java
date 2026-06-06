@@ -12,6 +12,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.ingredients.IIngredientType;
@@ -29,6 +30,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.jetbrains.annotations.Nullable;
@@ -145,31 +147,20 @@ public class WcwtRecipeTransferHandler
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
-        try {
-            Class<?> utilClass = Class.forName("com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil");
-            if (mode != EncodingMode.PROCESSING) {
-                utilClass.getMethod("presetCraftingProviderSearchKey").invoke(null);
-                return;
-            }
+        if (!ModList.get().isLoaded("extendedae_plus")) {
+            return;
+        }
+        if (mode != EncodingMode.PROCESSING) {
+            RecipeTypeNameConfig.presetCraftingProviderSearchKey();
+            return;
+        }
 
-            String name = null;
-            if (recipe != null) {
-                Object value = utilClass.getMethod("mapRecipeTypeToSearchKey", Recipe.class).invoke(null, recipe);
-                if (value instanceof String text) {
-                    name = text;
-                }
-            }
-            if ((name == null || name.isBlank()) && recipeBase != null) {
-                Object value = utilClass.getMethod("deriveSearchKeyFromUnknownRecipe", Object.class).invoke(null,
-                        recipeBase);
-                if (value instanceof String text) {
-                    name = text;
-                }
-            }
-            if (name != null && !name.isBlank()) {
-                utilClass.getMethod("setLastProcessingName", String.class).invoke(null, name);
-            }
-        } catch (Throwable ignored) {
+        String name = recipe != null ? RecipeTypeNameConfig.mapRecipeTypeToSearchKey(recipe) : null;
+        if ((name == null || name.isBlank()) && recipeBase != null) {
+            name = RecipeTypeNameConfig.deriveSearchKeyFromUnknownRecipe(recipeBase);
+        }
+        if (name != null && !name.isBlank()) {
+            RecipeTypeNameConfig.setLastProcessingName(name);
         }
     }
 

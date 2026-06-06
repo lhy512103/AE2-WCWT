@@ -14,26 +14,39 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record EncodePatternPacket(EncodingMode mode,
                                   boolean uploadEnabled,
                                   String providerSearchText,
-                                  boolean fallbackToEditSlot)
+                                  boolean fallbackToEditSlot,
+                                  long preferredProviderId,
+                                  String preferredProviderName)
         implements CustomPacketPayload {
     private static final boolean DEBUG_ENCODE = Boolean.getBoolean("wcwt.debug.encode");
     public static final CustomPacketPayload.Type<EncodePatternPacket> TYPE =
             new CustomPacketPayload.Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "encode_pattern"));
     private static final StreamCodec<ByteBuf, EncodingMode> MODE_STREAM_CODEC =
             ByteBufCodecs.idMapper(id -> EncodingMode.values()[id], EncodingMode::ordinal);
-    public static final StreamCodec<RegistryFriendlyByteBuf, EncodePatternPacket> STREAM_CODEC = StreamCodec.composite(
-            MODE_STREAM_CODEC,
-            EncodePatternPacket::mode,
-            ByteBufCodecs.BOOL,
-            EncodePatternPacket::uploadEnabled,
-            ByteBufCodecs.STRING_UTF8,
-            EncodePatternPacket::providerSearchText,
-            ByteBufCodecs.BOOL,
-            EncodePatternPacket::fallbackToEditSlot,
-            EncodePatternPacket::new);
+    public static final StreamCodec<RegistryFriendlyByteBuf, EncodePatternPacket> STREAM_CODEC = StreamCodec.of(
+            (buf, packet) -> {
+                MODE_STREAM_CODEC.encode(buf, packet.mode());
+                ByteBufCodecs.BOOL.encode(buf, packet.uploadEnabled());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.providerSearchText());
+                ByteBufCodecs.BOOL.encode(buf, packet.fallbackToEditSlot());
+                ByteBufCodecs.VAR_LONG.encode(buf, packet.preferredProviderId());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.preferredProviderName());
+            },
+            buf -> new EncodePatternPacket(
+                    MODE_STREAM_CODEC.decode(buf),
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.VAR_LONG.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf)));
 
     public EncodePatternPacket(EncodingMode mode) {
-        this(mode, false, "", false);
+        this(mode, false, "", false, -1L, "");
+    }
+
+    public EncodePatternPacket(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
+                               boolean fallbackToEditSlot) {
+        this(mode, uploadEnabled, providerSearchText, fallbackToEditSlot, -1L, "");
     }
 
     @Override
@@ -49,7 +62,7 @@ public record EncodePatternPacket(EncodingMode mode,
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 menu.encodePattern(packet.mode(), packet.uploadEnabled(), packet.providerSearchText(),
-                        packet.fallbackToEditSlot());
+                        packet.fallbackToEditSlot(), packet.preferredProviderId(), packet.preferredProviderName());
             } else if (DEBUG_ENCODE) {
                 WcwtMod.LOGGER.info("WCWT encode debug: packet ignored, current menu={}",
                         context.player().containerMenu == null ? "null" : context.player().containerMenu.getClass().getName());

@@ -14,7 +14,9 @@ import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.client.ModClientSetup;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.config.WcwtServerConfig;
+import com.lhy.wcwt.hotkeys.WcwtCurioHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
+import com.lhy.wcwt.hotkeys.WcwtRestockHotkeyAction;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
@@ -85,6 +87,8 @@ public class WcwtMod {
                             ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                             ((WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get())::openFromInventory),
                     HotkeyAction.WIRELESS_TERMINAL);
+            HotkeyActions.register(new WcwtCurioHotkeyAction(), HotkeyAction.WIRELESS_TERMINAL);
+            HotkeyActions.register(new WcwtRestockHotkeyAction(), "ae2wtlib_restock");
             HotkeyActions.register(new WcwtMagnetHotkeyAction(), "ae2wtlib_magnet");
             registerInventorySorterCompat();
 

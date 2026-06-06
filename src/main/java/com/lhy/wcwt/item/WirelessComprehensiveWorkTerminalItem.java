@@ -6,8 +6,9 @@ import appeng.api.upgrades.Upgrades;
 import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.core.localization.PlayerMessages;
 import appeng.items.tools.powered.WirelessCraftingTerminalItem;
+import appeng.menu.MenuOpener;
+import appeng.menu.locator.MenuLocator;
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
 import net.minecraft.core.BlockPos;
@@ -101,5 +102,20 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
                 player.getScoreboardName(), inventorySlot, stack.getItem(), pos);
         return new WirelessComprehensiveWorkTerminalMenuHost(player, inventorySlot, stack,
                 (p, sm) -> openFromInventory(p, inventorySlot, true));
+    }
+
+    @Nullable
+    public ItemMenuHost getMenuHost(Player player, MenuLocator locator, ItemStack stack) {
+        WcwtMod.LOGGER.info("WCWT debug: getMenuHost player={}, locator={}, stack={}",
+                player.getScoreboardName(), locator, stack.getItem());
+        return new WirelessComprehensiveWorkTerminalMenuHost(player, null, stack,
+                (p, sm) -> openFromCurio(p, locator, stack, true));
+    }
+
+    public boolean openFromCurio(Player player, MenuLocator locator, ItemStack stack, boolean returningFromSubmenu) {
+        if (checkPreconditions(stack, player)) {
+            return MenuOpener.open(getMenuType(), player, locator, returningFromSubmenu);
+        }
+        return false;
     }
 }

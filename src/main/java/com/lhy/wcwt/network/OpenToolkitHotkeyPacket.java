@@ -2,12 +2,14 @@ package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.api.IExtendedUIHost;
+import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import io.netty.buffer.ByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
 import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import de.mari_023.ae2wtlib.curio.CurioLocator;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
@@ -76,6 +78,30 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
     }
 
     private static boolean openFromCurios(ServerPlayer player) {
+        var curios = CuriosBridge.getVisibleSlots(player);
+        for (int slot = 0; slot < curios.size(); slot++) {
+            ItemStack stack = curios.get(slot).handler().getStackInSlot(curios.get(slot).slotIndex());
+            if (!(stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
+                continue;
+            }
+            WirelessComprehensiveWorkTerminalMenuHost.setPendingExtendedUi(player, IExtendedUIHost.ExtendedUIType.TOOLKIT);
+            if (DEBUG_TOOLKIT) {
+                WcwtMod.LOGGER.info("WCWT toolkit debug: trying curio terminal visibleSlot={} for player={}",
+                        slot, player.getScoreboardName());
+            }
+            if (terminalItem.openFromCurio(player,
+                    new CurioLocator(curios.get(slot).identifier(), curios.get(slot).slotIndex()), stack, false)) {
+                if (DEBUG_TOOLKIT) {
+                    WcwtMod.LOGGER.info("WCWT toolkit debug: curio terminal open succeeded, visibleSlot={}, menu={}",
+                            slot, player.containerMenu == null ? "<null>" : player.containerMenu.getClass().getName());
+                }
+                applyToolkitUiIfOpen(player);
+                return true;
+            }
+            if (DEBUG_TOOLKIT) {
+                WcwtMod.LOGGER.info("WCWT toolkit debug: curio terminal open failed, visibleSlot={}", slot);
+            }
+        }
         return false;
     }
 

@@ -55,7 +55,7 @@ ordering="AFTER"
 side="BOTH"
 
 [[dependencies.${mod_id}]]
-modId="extendedae"
+modId="expatternprovider"
 mandatory=false
 versionRange="[0,)"
 ordering="AFTER"

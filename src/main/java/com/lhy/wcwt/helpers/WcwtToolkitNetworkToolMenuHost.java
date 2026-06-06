@@ -24,16 +24,17 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost {
     private static final int FLUSH_INTERVAL_TICKS = Math.max(1,
             Integer.getInteger("wcwt.toolkitNetworkToolFlushTicks", 10));
 
-    private final WirelessComprehensiveWorkTerminalMenuHost terminalHost;
+    private final InternalInventory toolkit;
     private final int toolkitSlot;
     private final AppEngInternalInventory toolkitInventory;
     private boolean toolkitInventoryDirty;
     private int ticksUntilFlush = FLUSH_INTERVAL_TICKS;
 
-    public WcwtToolkitNetworkToolMenuHost(Player player, @Nullable Integer inventorySlot, ItemStack toolStack,
-            @Nullable IInWorldGridNodeHost host, WirelessComprehensiveWorkTerminalMenuHost terminalHost, int toolkitSlot) {
-        super(player, inventorySlot, toolStack, host);
-        this.terminalHost = terminalHost;
+    public WcwtToolkitNetworkToolMenuHost(Player player, @Nullable Integer terminalInventorySlot,
+            ItemStack terminalStack, ItemStack toolStack, @Nullable IInWorldGridNodeHost host,
+            InternalInventory toolkit, int toolkitSlot) {
+        super(player, terminalInventorySlot, terminalStack, host);
+        this.toolkit = toolkit;
         this.toolkitSlot = toolkitSlot;
         this.toolkitInventory = createToolkitAwareNetworkToolInventory(player, toolStack);
     }
@@ -50,6 +51,11 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost {
 
     @Override
     public InternalInventory getInventory() {
+        return toolkitInventory;
+    }
+
+    @Override
+    public InternalInventory getInternalInventory() {
         return toolkitInventory;
     }
 
@@ -103,7 +109,6 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost {
             return;
         }
 
-        var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
         if (toolkit == null || toolkitSlot < 0 || toolkitSlot >= toolkit.size()) {
             return;
         }

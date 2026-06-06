@@ -65,6 +65,7 @@ import com.lhy.wcwt.network.WirelessSettingsPacket;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu.WcwtActivatableSlot;
+import com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.GuiGraphics;
@@ -87,6 +88,7 @@ import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.minecraft.world.phys.AABB;
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraftforge.fml.ModList;
 import appeng.parts.encoding.EncodingMode;
 import org.jetbrains.annotations.Nullable;
@@ -98,6 +100,7 @@ import java.util.Map;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -289,7 +292,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PLAYER_INVENTORY_SLOT_HIT_SIZE = 18;
     private static final Point HIDDEN_SLOT_POS = new Point(-9999, -9999);
     private static final ResourceLocation CURIOS_INVENTORY_TEXTURE =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("curios", "textures/gui/curios/inventory.png");
+            com.lhy.wcwt.util.ResourceLocationCompat.id("curios", "textures/gui/inventory.png");
     private static final ResourceLocation EAE_ICONS_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("extendedae", "textures/guis/nicons.png");
     private static final ResourceLocation AE2_STATES_TEXTURE =
@@ -1353,31 +1356,86 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             encodePatternButton.setFocused(false);
         }
         setFocused(null);
+        PreferredUploadProvider preferredProvider = resolvePreferredUploadProvider(searchKey);
         ModNetworking.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
                 searchKey == null ? "" : searchKey,
-                WcwtClientConfig.patternUploadFailFallbackToEditor()));
+                WcwtClientConfig.patternUploadFailFallbackToEditor(),
+                preferredProvider.providerId(),
+                preferredProvider.providerName()));
+    }
+
+    private PreferredUploadProvider resolvePreferredUploadProvider(@Nullable String searchKey) {
+        if (!patternManagementUploadEnabled
+                || searchKey == null
+                || searchKey.isBlank()
+                || !isEaepAutoUploadUniqueMatchEnabled()) {
+            return PreferredUploadProvider.NONE;
+        }
+
+        String query = searchKey.trim();
+        Map<String, PreferredUploadProviderGroup> groups = new LinkedHashMap<>();
+        for (var entry : patternProviders) {
+            String name = entry.group().name().getString();
+            if (name == null || name.isBlank()) {
+                continue;
+            }
+            int emptySlots = Math.max(0, entry.inventorySize() - entry.slots().size());
+            if (emptySlots <= 0) {
+                continue;
+            }
+            groups.compute(name, (ignored, group) -> {
+                if (group == null) {
+                    return new PreferredUploadProviderGroup(entry.providerId(), name, emptySlots);
+                }
+                group.merge(entry.providerId(), emptySlots);
+                return group;
+            });
+        }
+
+        List<PreferredUploadProviderGroup> matchingGroups = groups.values().stream()
+                .filter(group -> JecSearchCompat.contains(group.name(), query))
+                .toList();
+        if (matchingGroups.size() != 1) {
+            return PreferredUploadProvider.NONE;
+        }
+        var group = matchingGroups.get(0);
+        return new PreferredUploadProvider(group.bestProviderId(), group.name());
+    }
+
+    private static boolean isEaepAutoUploadUniqueMatchEnabled() {
+        if (!ModList.get().isLoaded("extendedae_plus")) {
+            return true;
+        }
+        try {
+            var cfgPath = net.minecraftforge.fml.loading.FMLPaths.CONFIGDIR.get()
+                    .resolve("extendedae_plus/pinned_providers.json");
+            if (!java.nio.file.Files.exists(cfgPath)) {
+                return true;
+            }
+            com.google.gson.JsonObject obj = new com.google.gson.Gson()
+                    .fromJson(java.nio.file.Files.readString(cfgPath), com.google.gson.JsonObject.class);
+            if (obj == null) {
+                return true;
+            }
+            com.google.gson.JsonElement element = obj.get("auto_upload_unique_match");
+            return element == null || !element.isJsonPrimitive() || element.getAsBoolean();
+        } catch (Exception ignored) {
+            return true;
+        }
     }
 
     @Nullable
     private String consumeEaepProviderSearchKey() {
-        try {
-            var utilClass = Class.forName("com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil");
-            Object value = utilClass.getMethod("consumeLastProviderSearchKey").invoke(null);
-            return value instanceof String text ? text : null;
-        } catch (Throwable ignored) {
-            return null;
-        }
+        return ModList.get().isLoaded("extendedae_plus")
+                ? RecipeTypeNameConfig.consumeLastProviderSearchKey()
+                : null;
     }
 
     @Nullable
     private String resolveEaepProviderSearchKey(String rawKey) {
-        try {
-            var utilClass = Class.forName("com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil");
-            Object value = utilClass.getMethod("resolveSearchKeyAlias", String.class).invoke(null, rawKey);
-            return value instanceof String text ? text : rawKey;
-        } catch (Throwable ignored) {
-            return rawKey;
-        }
+        return ModList.get().isLoaded("extendedae_plus")
+                ? RecipeTypeNameConfig.resolveSearchKeyAlias(rawKey)
+                : rawKey;
     }
 
     private void setPatternEncodingMode(EncodingMode mode) {
@@ -1464,8 +1522,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Nullable
     private String searchNameFromRecipeBookmark(Object recipeBookmark) {
+        if (!ModList.get().isLoaded("extendedae_plus")) {
+            return recipeBookmarkFallbackHoverName(recipeBookmark);
+        }
         try {
-            Class<?> utilClass = Class.forName("com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil");
             Object holderOpt = recipeBookmark.getClass().getMethod("getRecipe").invoke(recipeBookmark);
             Object recipeBase = null;
             if (holderOpt instanceof Optional<?> ho && ho.isPresent()) {
@@ -1480,17 +1540,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 }
             }
             if (recipeBase instanceof Recipe<?> recipe) {
-                Object mapped = utilClass.getMethod("mapRecipeTypeToSearchKey", Recipe.class).invoke(null, recipe);
-                if (mapped instanceof String s && !s.isBlank()) {
-                    return s;
+                String mapped = RecipeTypeNameConfig.mapRecipeTypeToSearchKey(recipe);
+                if (mapped != null && !mapped.isBlank()) {
+                    return mapped;
                 }
             }
-            Object derived = utilClass.getMethod("deriveSearchKeyFromUnknownRecipe", Object.class)
-                    .invoke(null, recipeBookmark);
-            if (derived instanceof String d && !d.isBlank()) {
-                return d;
+            String derived = RecipeTypeNameConfig.deriveSearchKeyFromUnknownRecipe(recipeBookmark);
+            if (derived != null && !derived.isBlank()) {
+                return derived;
             }
-        } catch (ClassNotFoundException | NoClassDefFoundError e) {
+        } catch (NoClassDefFoundError e) {
             return recipeBookmarkFallbackHoverName(recipeBookmark);
         } catch (Throwable ignored) {
         }
@@ -2868,7 +2927,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         super.renderSlot(guiGraphics, slot);
         renderCraftablePatternIndicator(guiGraphics, slot);
-        renderCurioToggle(guiGraphics, slot);
     }
 
     @Override
@@ -2929,7 +2987,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         int texX = curioSlot.getRenderStatus() ? 75 : 83;
-        guiGraphics.blit(CURIOS_INVENTORY_TEXTURE, slot.x + 12, slot.y - 1, texX, 0, 8, 8, 256, 256);
+        RenderSystem.disableDepthTest();
+        guiGraphics.blit(CURIOS_INVENTORY_TEXTURE, slot.x + 11, slot.y - 3, texX, 0, 8, 8, 256, 256);
+        RenderSystem.enableDepthTest();
+    }
+
+    private void renderCurioToggleOverlays(GuiGraphics guiGraphics) {
+        if (curiosPanel == null || !curiosPanel.isVisible()) {
+            return;
+        }
+        for (var slot : getCurioSlots()) {
+            renderCurioToggle(guiGraphics, slot);
+        }
     }
 
     private boolean isPanelSlot(net.minecraft.world.inventory.Slot slot) {
@@ -3165,6 +3234,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         super.drawFG(guiGraphics, offsetX, offsetY, mouseX, mouseY);
         renderManualAnvilCost(guiGraphics);
         renderPatternManagement(guiGraphics, mouseX, mouseY);
+        renderCurioToggleOverlays(guiGraphics);
     }
 
     private void renderManualAnvilCost(GuiGraphics guiGraphics) {
@@ -3270,7 +3340,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 WCWT_STATES_TEXTURE, 80, 32, 256, 256, mouseX, mouseY);
         renderPatternManagementButtonIcon(guiGraphics, rowButton(patternManagementUiButton, rowY),
                 161, 0, 177, 0,
-                WCWT_STATES_TEXTURE, 52, 5, 8, 7, 256, 256, mouseX, mouseY);
+                WCWT_STATES_TEXTURE, 48, 0, 16, 16, 256, 256, mouseX, mouseY);
         renderPatternManagementButton(guiGraphics, rowButton(patternManagementHighlightButton, rowY),
                 161, 0, 177, 0,
                 WCWT_STATES_TEXTURE, 64, 32, 256, 256, mouseX, mouseY);
@@ -3602,8 +3672,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     protected void slotClicked(Slot slot, int slotIdx, int mouseButton, ClickType clickType) {
+        int cacheIndex = getPatternCacheSlotIndex(slot);
         if (patternSelectionLockedMode) {
-            int cacheIndex = getPatternCacheSlotIndex(slot);
             if (cacheIndex >= 0) {
                 if (mouseButton == 0 && clickType == ClickType.PICKUP && slot != null && slot.hasItem()) {
                     selectedPatternCacheIndex = cacheIndex;
@@ -3612,7 +3682,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 return; // 高级编码 UI 打开时锁定缓存槽，禁止拿走/放入样板。
             }
         }
+        boolean predictCacheQuickMove = cacheIndex >= 0
+                && clickType == ClickType.QUICK_MOVE
+                && slot != null
+                && slot.hasItem();
         super.slotClicked(slot, slotIdx, mouseButton, clickType);
+        if (predictCacheQuickMove) {
+            slot.set(ItemStack.EMPTY);
+            if (selectedPatternCacheIndex == cacheIndex) {
+                selectedPatternCacheIndex = -1;
+            }
+        }
     }
     
     private void renderExtendedUI(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -4095,8 +4175,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     hit.entry().providerId(), -1);
             case UI -> {
                 clearPatternManagementMappingField();
-                sendPatternManagementAction(PatternManagementActionPacket.Action.OPEN_PROVIDER_UI,
-                        hit.entry().providerId(), -1);
+                sendPatternManagementOpenUi(hit.entry());
             }
             case HIGHLIGHT -> highlightPatternProvider(hit.entry());
         }
@@ -4174,7 +4253,26 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 cacheSlot,
                 patternManageSearchField != null ? patternManageSearchField.getValue() : "",
                 patternManageMappingField != null ? patternManageMappingField.getValue() : "",
-                WcwtClientConfig.patternManagementShiftQuickEnabled()));
+                WcwtClientConfig.patternManagementShiftQuickEnabled(),
+                false,
+                0L,
+                "",
+                -1));
+    }
+
+    private void sendPatternManagementOpenUi(PatternProviderListPacket.Entry entry) {
+        boolean hasLocation = entry.pos() != null && entry.dimension() != null;
+        ModNetworking.sendToServer(new PatternManagementActionPacket(
+                PatternManagementActionPacket.Action.OPEN_PROVIDER_UI,
+                entry.providerId(),
+                -1,
+                patternManageSearchField != null ? patternManageSearchField.getValue() : "",
+                patternManageMappingField != null ? patternManageMappingField.getValue() : "",
+                WcwtClientConfig.patternManagementShiftQuickEnabled(),
+                hasLocation,
+                hasLocation ? entry.pos().asLong() : 0L,
+                hasLocation ? entry.dimension().location().toString() : "",
+                entry.face() != null ? entry.face().ordinal() : -1));
     }
 
     private boolean patternManagementShortcutActive() {
@@ -4592,14 +4690,22 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     && curioSlot.canToggleRendering()
                     && slot.x != HIDDEN_SLOT_POS.getX()
                     && slot.y != HIDDEN_SLOT_POS.getY()) {
-                int toggleX = leftPos + slot.x + 12;
-                int toggleY = topPos + slot.y - 1;
+                int toggleX = leftPos + slot.x + 11;
+                int toggleY = topPos + slot.y - 3;
                 if (mouseX >= toggleX && mouseX < toggleX + 8 && mouseY >= toggleY && mouseY < toggleY + 8) {
                     return curioSlot;
                 }
             }
         }
         return null;
+    }
+
+    @Override
+    protected boolean isHovering(int x, int y, int width, int height, double mouseX, double mouseY) {
+        if (getCurioToggleSlotAt(mouseX, mouseY) != null) {
+            return false;
+        }
+        return super.isHovering(x, y, width, height, mouseX, mouseY);
     }
 
     @Override
@@ -4852,6 +4958,37 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private record PatternManagementSlotHit(PatternProviderListPacket.Entry entry, int slot) {
+    }
+
+    private record PreferredUploadProvider(long providerId, String providerName) {
+        private static final PreferredUploadProvider NONE = new PreferredUploadProvider(-1L, "");
+    }
+
+    private static final class PreferredUploadProviderGroup {
+        private long bestProviderId;
+        private final String name;
+        private int bestEmptySlots;
+
+        private PreferredUploadProviderGroup(long bestProviderId, String name, int bestEmptySlots) {
+            this.bestProviderId = bestProviderId;
+            this.name = name;
+            this.bestEmptySlots = bestEmptySlots;
+        }
+
+        private long bestProviderId() {
+            return bestProviderId;
+        }
+
+        private String name() {
+            return name;
+        }
+
+        private void merge(long providerId, int emptySlots) {
+            if (emptySlots > bestEmptySlots) {
+                bestProviderId = providerId;
+                bestEmptySlots = emptySlots;
+            }
+        }
     }
 
     private enum PatternManagementDisplayMode {

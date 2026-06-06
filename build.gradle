@@ -108,10 +108,15 @@ dependencies {
     implementation fg.deobf("de.mari_023:ae2wtlib:${ae2wtlib_version}")
     runtimeOnly fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_version}")
     runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
+    compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
     runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
+    // 软依赖的编译期 API：CurseMaven 的 8141730 当前只解析到 POM，先使用本地 EAEP 1.20.1 dev jar。
+    // 如需切回 CurseMaven，可在其 jar 可解析后改为：
+    // implementation fg.deobf("curse.maven:extendedae-plus-1337639:8141730")
+    compileOnly files("libs/extendedae_plus-1.20.1-1.5.4-dev.jar")
 
-    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
-    compileOnly "mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"
+//    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
+//    compileOnly "mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-forge:${jei_version}"
     // 临时开发硬编码：把 JEI 放进 runClient/runtime，方便调 JEI 覆盖区/配方转移。
     // 如需恢复“纯软依赖”，删除下面这一行即可；上面 compileOnly API 保留给源码编译。

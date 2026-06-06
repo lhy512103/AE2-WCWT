@@ -21,6 +21,8 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.WcwtPickBlockPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
+import com.lhy.wcwt.network.WcwtUpdateRestockPacket;
+import de.mari_023.ae2wtlib.curio.CurioLocator;
 import de.mari_023.ae2wtlib.api.AE2wtlibTags;
 import de.mari_023.ae2wtlib.api.TextConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -57,7 +59,8 @@ public final class WcwtWirelessFeatures {
     }
 
     public static void tickPlayerMagnet(ServerPlayer player) {
-        ItemStack terminal = findTerminalStack(player, WcwtWirelessFeatures::hasMagnetCard);
+        ItemStack terminal = findTerminalStack(player,
+                stack -> hasMagnetCard(stack) || getBoolean(stack, "restock"));
         if (!terminal.isEmpty()) {
             tickMagnet(player, terminal);
         }
@@ -152,7 +155,7 @@ public final class WcwtWirelessFeatures {
         }
 
         int count = now.getCount();
-        int toAdd = item.getMaxStackSize() - count;
+        int toAdd = Math.max(item.getMaxStackSize() / 2, 1) - count;
         if (toAdd == 0 || (!now.isEmpty() && !sameItemAndTag(item, now))) {
             return;
         }
@@ -171,6 +174,12 @@ public final class WcwtWirelessFeatures {
 
         item.setCount(count + (int) changed);
         setStack.accept(item);
+        ModNetworking.sendToPlayer(player, new WcwtUpdateRestockPacket(
+                player.getInventory().findSlotMatchingUnusedItem(item), item.getCount()));
+        player.inventoryMenu.broadcastChanges();
+        if (player.containerMenu != player.inventoryMenu) {
+            player.containerMenu.broadcastChanges();
+        }
     }
 
     public static boolean insertPickupIntoME(ItemEntity entity, Player player) {
@@ -220,7 +229,7 @@ public final class WcwtWirelessFeatures {
     }
 
     public static boolean toggleMagnetHotkey(Player player) {
-        TerminalTarget terminalTarget = findHotkeyTerminalTarget(player);
+        TerminalTarget terminalTarget = findHotkeyTerminalTarget(player, WcwtWirelessFeatures::hasMagnetCard);
         if (terminalTarget == null || terminalTarget.stack().isEmpty()) {
             return false;
         }
@@ -247,6 +256,19 @@ public final class WcwtWirelessFeatures {
         };
 
         return nextMode != null && setMagnetMode(terminal, nextMode);
+    }
+
+    public static boolean toggleRestockHotkey(Player player) {
+        TerminalTarget terminalTarget = findHotkeyTerminalTarget(player, stack -> true);
+        if (terminalTarget == null || terminalTarget.stack().isEmpty()) {
+            return false;
+        }
+
+        ItemStack terminal = terminalTarget.stack();
+        boolean enabled = !getBoolean(terminal, "restock");
+        getRootTag(terminal).putBoolean("restock", enabled);
+        player.displayClientMessage(enabled ? TextConstants.RESTOCK_ON : TextConstants.RESTOCK_OFF, true);
+        return true;
     }
 
     public static void pickBlock(ServerPlayer player, ItemStack requestedStack) {
@@ -357,31 +379,32 @@ public final class WcwtWirelessFeatures {
     }
 
     @Nullable
-    private static TerminalTarget findHotkeyTerminalTarget(Player player) {
+    private static TerminalTarget findHotkeyTerminalTarget(Player player,
+                                                          java.util.function.Predicate<ItemStack> predicate) {
         if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu
                 && menu.getLocator() != null) {
             MenuLocator locator = menu.getLocator();
             ItemStack current = locator.locate(player, ItemStack.class);
-            if (current.getItem() instanceof WirelessComprehensiveWorkTerminalItem && hasMagnetCard(current)) {
+            if (current.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(current)) {
                 return new TerminalTarget(current, locator);
             }
         }
 
         if (player instanceof ServerPlayer serverPlayer) {
-            return findTerminalTarget(serverPlayer, WcwtWirelessFeatures::hasMagnetCard);
+            return findTerminalTarget(serverPlayer, predicate);
         }
 
         for (var curio : CuriosBridge.getVisibleSlots(player)) {
             ItemStack stack = curio.handler().getStackInSlot(curio.slotIndex());
-            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && hasMagnetCard(stack)) {
-                return null;
+            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
+                return new TerminalTarget(stack, new CurioLocator(curio.identifier(), curio.slotIndex()));
             }
         }
 
         Inventory inventory = player.getInventory();
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
-            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && hasMagnetCard(stack)) {
+            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
                 var locator = MenuLocators.forInventorySlot(i);
                 ItemStack located = locator.locate(player, ItemStack.class);
                 return new TerminalTarget(located != null ? located : ItemStack.EMPTY, locator);
@@ -420,7 +443,7 @@ public final class WcwtWirelessFeatures {
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
                 debugMagnet(player, "terminal target found in curios: slot={}, stack={}",
                         curio.slotIndex(), describeStack(stack));
-                break;
+                return new TerminalTarget(stack, new CurioLocator(curio.identifier(), curio.slotIndex()));
             }
         }
 
@@ -594,4 +617,3 @@ public final class WcwtWirelessFeatures {
         }
     }
 }
-

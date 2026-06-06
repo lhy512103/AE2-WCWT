@@ -357,7 +357,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         }
 
         setPowerDrainPerTick(getPowerDrainPerTick());
-        return drainPower();
+        return drainPowerWithQuantumRecharge();
     }
 
     @Override
@@ -913,11 +913,20 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return 0.5;
     }
 
+    private boolean drainPowerWithQuantumRecharge() {
+        rechargeFromQuantumGrid();
+        if (!drainPower()) {
+            return false;
+        }
+        rechargeFromQuantumGrid();
+        return true;
+    }
+
     public boolean consumeIdlePower(Actionable action) {
         if (action == Actionable.SIMULATE) {
             rechargeFromQuantumGrid();
         }
-        boolean success = action == Actionable.SIMULATE || drainPower();
+        boolean success = action == Actionable.SIMULATE || drainPowerWithQuantumRecharge();
         if (action == Actionable.SIMULATE) {
             rechargeFromQuantumGrid();
         }
@@ -1392,7 +1401,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return inventory;
     }
 
-    private InternalInventory createToolkitInventory(Player player, ItemStack stack) {
+    public static InternalInventory createToolkitInventory(Player player, ItemStack stack) {
         int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
         final AppEngInternalInventory[] invRef = new AppEngInternalInventory[1];
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {

@@ -41,6 +41,8 @@ public class WcwtPackets {
                 WcwtPickBlockPacket.STREAM_CODEC, WcwtPickBlockPacket::handle);
         ModNetworking.registerClientbound(id++, WcwtRestockAmountsPacket.class, WcwtRestockAmountsPacket.TYPE,
                 WcwtRestockAmountsPacket.STREAM_CODEC, WcwtRestockAmountsPacket::handle);
+        ModNetworking.registerClientbound(id++, WcwtUpdateRestockPacket.class, WcwtUpdateRestockPacket.TYPE,
+                WcwtUpdateRestockPacket.STREAM_CODEC, WcwtUpdateRestockPacket::handle);
         ModNetworking.registerServerbound(id++, JeiCraftingTransferPacket.class, JeiCraftingTransferPacket.TYPE,
                 JeiCraftingTransferPacket.STREAM_CODEC, JeiCraftingTransferPacket::handle);
         ModNetworking.registerServerbound(id++, WcwtPullRecipeInputsPacket.class, WcwtPullRecipeInputsPacket.TYPE,

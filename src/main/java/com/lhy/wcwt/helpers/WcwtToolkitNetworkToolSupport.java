@@ -6,6 +6,7 @@ import appeng.items.contents.NetworkToolMenuHost;
 import appeng.items.tools.NetworkToolItem;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
+import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -19,10 +20,6 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     public static NetworkToolMenuHost findToolkitNetworkToolHost(Player player) {
-        var fromCurios = findInCurios(player);
-        if (fromCurios != null) {
-            return fromCurios;
-        }
         return findInInventory(player);
     }
 
@@ -31,7 +28,8 @@ public final class WcwtToolkitNetworkToolSupport {
         Inventory inventory = player.getInventory();
         for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
             ItemStack terminalStack = inventory.getItem(slot);
-            var host = createHostFromTerminal(player, terminalStack, slot);
+            var host = createHostFromTerminal(player, terminalStack,
+                    new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.INVENTORY, slot, 0));
             if (host != null) {
                 return host;
             }
@@ -41,9 +39,12 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     private static NetworkToolMenuHost findInCurios(Player player) {
-        for (var curio : CuriosBridge.getVisibleSlots(player)) {
+        var curios = CuriosBridge.getVisibleSlots(player);
+        for (int curioIndex = 0; curioIndex < curios.size(); curioIndex++) {
+            var curio = curios.get(curioIndex);
             ItemStack terminalStack = curio.handler().getStackInSlot(curio.slotIndex());
-            var host = createHostFromTerminal(player, terminalStack, null);
+            var host = createHostFromTerminal(player, terminalStack,
+                    new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, curioIndex, 0));
             if (host != null) {
                 return host;
             }
@@ -53,17 +54,15 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     private static NetworkToolMenuHost createHostFromTerminal(Player player, ItemStack terminalStack,
-            @Nullable Integer inventorySlot) {
-        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
+            WcwtToolkitNetworkToolLocator baseLocator) {
+        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
             return null;
         }
 
-        var terminalHost = terminalItem.getMenuHost(player, inventorySlot != null ? inventorySlot : -1, terminalStack, null);
-        if (!(terminalHost instanceof WirelessComprehensiveWorkTerminalMenuHost wcwtHost)) {
-            return null;
-        }
-
-        var toolkit = wcwtHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
+        @Nullable Integer inventorySlot = baseLocator.sourceKind() == WcwtToolkitNetworkToolLocator.SourceKind.INVENTORY
+                ? baseLocator.sourceSlot()
+                : null;
+        var toolkit = WirelessComprehensiveWorkTerminalMenuHost.createToolkitInventory(player, terminalStack);
         if (toolkit == null) {
             return null;
         }
@@ -73,12 +72,14 @@ public final class WcwtToolkitNetworkToolSupport {
             if (!(stack.getItem() instanceof NetworkToolItem networkToolItem)) {
                 continue;
             }
+            var locator = new WcwtToolkitNetworkToolLocator(baseLocator.sourceKind(), baseLocator.sourceSlot(), toolkitSlot);
             return new WcwtToolkitNetworkToolMenuHost(
                     player,
-                    inventorySlot,
+                    locator.getPlayerInventorySlot(),
+                    terminalStack,
                     stack,
                     null,
-                    wcwtHost,
+                    toolkit,
                     toolkitSlot);
         }
         return null;

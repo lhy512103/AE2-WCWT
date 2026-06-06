@@ -1,13 +1,13 @@
 package com.lhy.wcwt.menu.locator;
 
-import java.util.Optional;
-
 import org.jetbrains.annotations.Nullable;
 
+import appeng.items.tools.NetworkToolItem;
 import appeng.menu.locator.MenuLocator;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
+import com.lhy.wcwt.helpers.WcwtToolkitNetworkToolMenuHost;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -27,24 +27,29 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
     @Override
     public <T> T locate(Player player, Class<T> hostInterface) {
         ItemStack terminalStack = locateTerminalStack(player);
-        if (terminalStack.isEmpty() || !(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
+        if (terminalStack.isEmpty() || !(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
             return null;
         }
 
-        if (sourceKind == SourceKind.CURIOS) {
-            return null;
-        }
-        var terminalHost = terminalItem.getMenuHost(player, sourceSlot, terminalStack, null);
-        if (!(terminalHost instanceof WirelessComprehensiveWorkTerminalMenuHost wcwtHost)) {
-            return null;
-        }
-
-        var toolkit = wcwtHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
+        @Nullable Integer inventorySlot = getPlayerInventorySlot();
+        var toolkit = WirelessComprehensiveWorkTerminalMenuHost.createToolkitInventory(player, terminalStack);
         if (toolkit == null || toolkitSlot < 0 || toolkitSlot >= toolkit.size()) {
             return null;
         }
         ItemStack stack = toolkit.getStackInSlot(toolkitSlot);
-        return hostInterface.isInstance(stack) ? hostInterface.cast(stack) : null;
+        if (!(stack.getItem() instanceof NetworkToolItem)) {
+            return null;
+        }
+
+        var toolHost = new WcwtToolkitNetworkToolMenuHost(
+                player,
+                inventorySlot,
+                terminalStack,
+                stack,
+                null,
+                toolkit,
+                toolkitSlot);
+        return hostInterface.isInstance(toolHost) ? hostInterface.cast(toolHost) : null;
     }
 
     public @Nullable Integer getPlayerInventorySlot() {
@@ -75,14 +80,13 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
         };
     }
 
-    private static ItemStack locateCurioStack(Player player, int curioSlot) {
+    private static ItemStack locateCurioStack(Player player, int visibleCurioSlot) {
         var curios = CuriosBridge.getVisibleSlots(player);
-        for (var curio : curios) {
-            if (curio.slotIndex() == curioSlot) {
-                return curio.handler().getStackInSlot(curio.slotIndex());
-            }
+        if (visibleCurioSlot < 0 || visibleCurioSlot >= curios.size()) {
+            return ItemStack.EMPTY;
         }
-        return ItemStack.EMPTY;
+        var curio = curios.get(visibleCurioSlot);
+        return curio.handler().getStackInSlot(curio.slotIndex());
     }
 
     @Override

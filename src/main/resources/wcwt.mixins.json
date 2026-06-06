@@ -5,12 +5,11 @@
   "refmap": "wcwt.refmap.json",
   "compatibilityLevel": "JAVA_17",
   "mixins": [
+    "WcwtNetworkToolItemMixin",
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin"
   ],
-  "client": [
-    "WcwtMinecraftPickBlockMixin"
-  ],
+  "client": [],
   "injectors": {
     "defaultRequire": 1
   }

@@ -2,13 +2,14 @@ package com.lhy.wcwt.network;
 
 import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
-import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderSorts;
+import com.extendedae_plus.util.PatternProviderDataUtil;
+import com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.chat.Component;
 import com.lhy.wcwt.compat.minecraft.network.codec.ByteBufCodecs;
@@ -16,12 +17,21 @@ import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
 import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.network.NetworkHooks;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
@@ -33,7 +43,11 @@ public record PatternManagementActionPacket(Action action,
                                             int cacheSlot,
                                             String searchText,
                                             String mappingText,
-                                            boolean shiftQuickEnabled) implements CustomPacketPayload {
+                                            boolean shiftQuickEnabled,
+                                            boolean hasProviderLocation,
+                                            long providerPosLong,
+                                            String providerDimensionId,
+                                            int providerFaceOrdinal) implements CustomPacketPayload {
     public static final Type<PatternManagementActionPacket> TYPE =
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pattern_management_action"));
 
@@ -45,6 +59,10 @@ public record PatternManagementActionPacket(Action action,
                 ByteBufCodecs.STRING_UTF8.encode(buf, packet.searchText());
                 ByteBufCodecs.STRING_UTF8.encode(buf, packet.mappingText());
                 ByteBufCodecs.BOOL.encode(buf, packet.shiftQuickEnabled());
+                ByteBufCodecs.BOOL.encode(buf, packet.hasProviderLocation());
+                ByteBufCodecs.VAR_LONG.encode(buf, packet.providerPosLong());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.providerDimensionId());
+                ByteBufCodecs.VAR_INT.encode(buf, packet.providerFaceOrdinal());
             },
             buf -> new PatternManagementActionPacket(
                     ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal).decode(buf),
@@ -52,7 +70,11 @@ public record PatternManagementActionPacket(Action action,
                     ByteBufCodecs.VAR_INT.decode(buf),
                     ByteBufCodecs.STRING_UTF8.decode(buf),
                     ByteBufCodecs.STRING_UTF8.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf)));
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.VAR_LONG.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.VAR_INT.decode(buf)));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -66,7 +88,10 @@ public record PatternManagementActionPacket(Action action,
                 menu.requestPatternProviderSyncSubscription();
                 switch (packet.action) {
                     case UPLOAD_CACHE_SLOT -> uploadCachePatterns(player, menu, packet.providerId);
-                    case OPEN_PROVIDER_UI -> openProviderUi(player, packet.providerId);
+                    case OPEN_PROVIDER_UI -> {
+                        openProviderUi(player, packet);
+                        return;
+                    }
                     case EXCHANGE_PROVIDER_SLOT -> exchangeProviderSlot(player, packet.providerId, packet.cacheSlot);
                     case QUICK_EXTRACT_PROVIDER_SLOT -> {
                         if (packet.shiftQuickEnabled()) {
@@ -196,10 +221,8 @@ public record PatternManagementActionPacket(Action action,
             return;
         }
 
-        var filtered = new FilteredInternalInventory(inv, new EncodedPatternFilter());
         ItemStack toInsert = PatternUploadMetadata.copyWithoutUploadData(sourceStack);
-        ItemStack remain = filtered.addItems(toInsert);
-        int inserted = toInsert.getCount() - remain.getCount();
+        int inserted = insertEncodedPatternsOnePerSlot(inv, toInsert);
         if (inserted <= 0) {
             player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.upload_failed"), true);
             return;
@@ -248,16 +271,14 @@ public record PatternManagementActionPacket(Action action,
             if (inv == null) {
                 continue;
             }
-            var filtered = new FilteredInternalInventory(inv, new EncodedPatternFilter());
             ItemStack toInsert = PatternUploadMetadata.copyWithoutUploadData(pattern);
-            ItemStack remain = filtered.addItems(toInsert);
-            int inserted = toInsert.getCount() - remain.getCount();
+            int inserted = insertEncodedPatternsOnePerSlot(inv, toInsert);
             if (inserted > 0) {
                 pattern.shrink(inserted);
                 patternCache.setItemDirect(cacheSlot, pattern.isEmpty() ? ItemStack.EMPTY : pattern);
                 insertedTotal += inserted;
             }
-            if (!remain.isEmpty()) {
+            if (inserted < toInsert.getCount()) {
                 break;
             }
         }
@@ -271,61 +292,162 @@ public record PatternManagementActionPacket(Action action,
         }
     }
 
-    private static void openProviderUi(ServerPlayer player, long providerId) {
-        var provider = getProviderByOrdinal(player, providerId);
-        if (provider == null) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"), true);
-            return;
-        }
-
-        Location location = getLocation(provider);
+    private static void openProviderUi(ServerPlayer player, PatternManagementActionPacket packet) {
+        Location location = resolveProviderLocation(player, packet);
+        WcwtMod.LOGGER.info(
+                "WCWT provider ui debug: player={}, providerId={}, hasPacketLocation={}, resolvedLevel={}, resolvedPos={}, resolvedFace={}",
+                player.getScoreboardName(),
+                packet.providerId(),
+                packet.hasProviderLocation(),
+                location.level != null ? location.level.dimension().location() : "null",
+                location.pos,
+                location.face);
         if (location.pos == null || location.level == null) {
             player.displayClientMessage(Component.translatable("extendedae_plus.message.provider.location_missing"), true);
             return;
         }
 
-        if (tryOpenNeighbor(player, location.level, location.pos, location.face)) {
-            return;
-        }
-        if (provider instanceof MenuProvider menuProvider) {
-            player.openMenu(menuProvider);
-            return;
-        }
-        var selfProvider = location.level.getBlockState(location.pos).getMenuProvider(location.level, location.pos);
-        if (selfProvider != null) {
-            player.openMenu(selfProvider);
+        if (tryOpenProviderTargetUi(player, location.level, location.pos, location.face)) {
             return;
         }
         player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.open_ui_failed"), true);
     }
 
-    private static boolean tryOpenNeighbor(ServerPlayer player, ServerLevel level, BlockPos pos, Direction face) {
-        if (face != null && tryOpenAt(player, level, pos.relative(face))) {
-            return true;
+    private static Location resolveProviderLocation(ServerPlayer player, PatternManagementActionPacket packet) {
+        if (packet.hasProviderLocation()) {
+            ResourceLocation dimId = ResourceLocation.tryParse(packet.providerDimensionId());
+            if (dimId != null) {
+                ResourceKey<Level> levelKey = ResourceKey.create(Registries.DIMENSION, dimId);
+                ServerLevel level = player.server.getLevel(levelKey);
+                if (level != null) {
+                    Direction face = packet.providerFaceOrdinal() >= 0
+                            && packet.providerFaceOrdinal() < Direction.values().length
+                                    ? Direction.values()[packet.providerFaceOrdinal()]
+                                    : null;
+                    return new Location(level, BlockPos.of(packet.providerPosLong()), face);
+                }
+                WcwtMod.LOGGER.info(
+                        "WCWT provider ui debug: packet dimension not loaded player={}, providerId={}, dim={}",
+                        player.getScoreboardName(),
+                        packet.providerId(),
+                        dimId);
+            }
+            WcwtMod.LOGGER.info(
+                    "WCWT provider ui debug: packet location parse result player={}, providerId={}, dimId={}, posLong={}, faceOrdinal={}",
+                    player.getScoreboardName(),
+                    packet.providerId(),
+                    packet.providerDimensionId(),
+                    packet.providerPosLong(),
+                    packet.providerFaceOrdinal());
+        }
+
+        var provider = getProviderByOrdinal(player, packet.providerId);
+        if (provider == null) {
+            WcwtMod.LOGGER.info("WCWT provider ui debug: provider missing player={}, providerId={}",
+                    player.getScoreboardName(), packet.providerId());
+            return new Location(null, null, null);
+        }
+        WcwtMod.LOGGER.info("WCWT provider ui debug: fallback provider class={} for player={}, providerId={}",
+                provider.getClass().getName(), player.getScoreboardName(), packet.providerId());
+        return getLocation(provider);
+    }
+
+    private static boolean tryOpenProviderTargetUi(ServerPlayer player, ServerLevel level, BlockPos pos, Direction face) {
+        if (!level.isLoaded(pos)) {
+            WcwtMod.LOGGER.info("WCWT provider ui debug: provider pos not loaded player={}, level={}, pos={}",
+                    player.getScoreboardName(), level.dimension().location(), pos);
+            return false;
+        }
+        if (face != null) {
+            BlockPos targetPos = pos.relative(face);
+            return tryOpenAt(player, level, targetPos) || tryUseTargetBlock(player, level, targetPos, face);
         }
         for (Direction direction : Direction.values()) {
-            if (direction != face && tryOpenAt(player, level, pos.relative(direction))) {
+            if (tryOpenAt(player, level, pos.relative(direction))) {
+                return true;
+            }
+        }
+        for (Direction direction : Direction.values()) {
+            if (level.getBlockEntity(pos.relative(direction)) != null
+                    && tryUseTargetBlock(player, level, pos.relative(direction), direction)) {
+                return true;
+            }
+        }
+        for (Direction direction : Direction.values()) {
+            if (level.getBlockEntity(pos.relative(direction)) == null
+                    && !level.getBlockState(pos.relative(direction)).isAir()
+                    && tryUseTargetBlock(player, level, pos.relative(direction), direction)) {
                 return true;
             }
         }
         return false;
     }
 
-    private static boolean tryOpenAt(ServerPlayer player, ServerLevel level, BlockPos pos) {
-        if (!level.isLoaded(pos)) {
+    private static boolean tryOpenAt(ServerPlayer player, ServerLevel level, BlockPos targetPos) {
+        if (!level.isLoaded(targetPos)) {
+            WcwtMod.LOGGER.info("WCWT provider ui debug: target pos not loaded player={}, level={}, pos={}",
+                    player.getScoreboardName(), level.dimension().location(), targetPos);
             return false;
         }
-        BlockEntity be = level.getBlockEntity(pos);
+        BlockEntity be = level.getBlockEntity(targetPos);
+        var state = level.getBlockState(targetPos);
+        WcwtMod.LOGGER.info(
+                "WCWT provider ui debug: try target player={}, level={}, pos={}, block={}, blockEntity={}, beIsMenuProvider={}",
+                player.getScoreboardName(),
+                level.dimension().location(),
+                targetPos,
+                state.getBlock().getDescriptionId(),
+                be != null ? be.getClass().getName() : "null",
+                be instanceof MenuProvider);
         if (be instanceof MenuProvider menuProvider) {
-            player.openMenu(menuProvider);
+            NetworkHooks.openScreen(player, menuProvider, targetPos);
+            WcwtMod.LOGGER.info("WCWT provider ui debug: opened via block entity menu provider at {}", targetPos);
             return true;
         }
-        var provider = level.getBlockState(pos).getMenuProvider(level, pos);
+        var provider = state.getMenuProvider(level, targetPos);
         if (provider != null) {
-            player.openMenu(provider);
+            NetworkHooks.openScreen(player, provider, targetPos);
+            WcwtMod.LOGGER.info("WCWT provider ui debug: opened via block state menu provider at {}", targetPos);
             return true;
         }
+        WcwtMod.LOGGER.info("WCWT provider ui debug: no menu provider at {}", targetPos);
         return false;
+    }
+
+    private static boolean tryUseTargetBlock(ServerPlayer player, ServerLevel level, BlockPos targetPos, Direction providerToTarget) {
+        if (!level.isLoaded(targetPos)) {
+            WcwtMod.LOGGER.info("WCWT provider ui debug: use target pos not loaded player={}, level={}, pos={}",
+                    player.getScoreboardName(), level.dimension().location(), targetPos);
+            return false;
+        }
+        InteractionHand hand = player.getMainHandItem().isEmpty()
+                ? InteractionHand.MAIN_HAND
+                : player.getOffhandItem().isEmpty() ? InteractionHand.OFF_HAND : null;
+        if (hand == null) {
+            WcwtMod.LOGGER.info("WCWT provider ui debug: skip block use because both hands are occupied player={}, pos={}",
+                    player.getScoreboardName(), targetPos);
+            return false;
+        }
+        var state = level.getBlockState(targetPos);
+        var hit = new BlockHitResult(Vec3.atCenterOf(targetPos), providerToTarget.getOpposite(), targetPos, false);
+        if (state.getBlock() instanceof appeng.block.AEBaseEntityBlock<?> aeBlock) {
+            InteractionResult result = aeBlock.onActivated(level, targetPos, player, hand, ItemStack.EMPTY, hit);
+            WcwtMod.LOGGER.info("WCWT provider ui debug: activated AE target block player={}, pos={}, block={}, hand={}, result={}",
+                    player.getScoreboardName(),
+                    targetPos,
+                    state.getBlock().getDescriptionId(),
+                    hand,
+                    result);
+            return result.consumesAction();
+        }
+        InteractionResult result = state.use(level, player, hand, hit);
+        WcwtMod.LOGGER.info("WCWT provider ui debug: used target block player={}, pos={}, block={}, hand={}, result={}",
+                player.getScoreboardName(),
+                targetPos,
+                state.getBlock().getDescriptionId(),
+                hand,
+                result);
+        return result.consumesAction();
     }
 
     private static PatternContainer getProviderByOrdinal(ServerPlayer player, long providerId) {
@@ -406,7 +528,35 @@ public record PatternManagementActionPacket(Action action,
         return provider.getTerminalGroup().name().getString();
     }
 
+    private static int insertEncodedPatternsOnePerSlot(InternalInventory inv, ItemStack stack) {
+        if (stack.isEmpty() || !appeng.api.crafting.PatternDetailsHelper.isEncodedPattern(stack)) {
+            return 0;
+        }
+        int inserted = 0;
+        for (int slot = 0; slot < inv.size() && inserted < stack.getCount(); slot++) {
+            if (!inv.getStackInSlot(slot).isEmpty()) {
+                continue;
+            }
+            ItemStack single = stack.copy();
+            single.setCount(1);
+            if (!new EncodedPatternFilter().allowInsert(inv, slot, single)) {
+                continue;
+            }
+            ItemStack remainder = inv.insertItem(slot, single, false);
+            if (remainder.isEmpty()) {
+                inserted++;
+            }
+        }
+        return inserted;
+    }
+
     private static Location getLocation(PatternContainer provider) {
+        if (provider instanceof appeng.helpers.patternprovider.PatternProviderLogicHost host) {
+            BlockEntity be = host.getBlockEntity();
+            if (be != null && be.getLevel() instanceof ServerLevel level) {
+                return new Location(level, be.getBlockPos(), getSingleTarget(host));
+            }
+        }
         if (provider instanceof BlockEntity be && be.getLevel() instanceof ServerLevel level) {
             return new Location(level, be.getBlockPos(), null);
         }
@@ -414,6 +564,11 @@ public record PatternManagementActionPacket(Action action,
             return new Location(level, part.getBlockEntity().getBlockPos(), part.getSide());
         }
         return new Location(null, null, null);
+    }
+
+    private static Direction getSingleTarget(appeng.helpers.patternprovider.PatternProviderLogicHost host) {
+        var targets = host.getTargets();
+        return targets != null && targets.size() == 1 ? targets.iterator().next() : null;
     }
 
     private record Location(ServerLevel level, BlockPos pos, Direction face) {
@@ -443,43 +598,31 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static final class ExtendedAePlusBridge {
-        private static final String UTIL_CLASS = "com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil";
-
         static boolean addOrUpdateAliasMapping(String aliasKey, String cnValue) {
-            try {
-                var method = Class.forName(UTIL_CLASS).getMethod("addOrUpdateAliasMapping", String.class, String.class);
-                Object result = method.invoke(null, aliasKey, cnValue);
-                return result instanceof Boolean ok && ok;
-            } catch (Throwable ignored) {
-                return false;
-            }
+            return ModList.get().isLoaded("extendedae_plus")
+                    && RecipeTypeNameConfig.addOrUpdateAliasMapping(aliasKey, cnValue);
         }
 
         static void loadRecipeTypeNames() {
+            if (!ModList.get().isLoaded("extendedae_plus")) {
+                return;
+            }
             try {
-                Class.forName(UTIL_CLASS).getMethod("loadRecipeTypeNames").invoke(null);
-            } catch (Throwable ignored) {
+                RecipeTypeNameConfig.loadRecipeTypeNames();
+            } catch (Exception ignored) {
             }
         }
 
         static int removeMappingsByCnValue(String cnValue) {
-            try {
-                var method = Class.forName(UTIL_CLASS).getMethod("removeMappingsByCnValue", String.class);
-                Object result = method.invoke(null, cnValue);
-                return result instanceof Integer count ? count : 0;
-            } catch (Throwable ignored) {
-                return 0;
-            }
+            return ModList.get().isLoaded("extendedae_plus")
+                    ? RecipeTypeNameConfig.removeMappingsByCnValue(cnValue)
+                    : 0;
         }
 
         static String getProviderDisplayName(PatternContainer provider) {
-            try {
-                var method = Class.forName(UTIL_CLASS).getMethod("getProviderDisplayName", PatternContainer.class);
-                Object result = method.invoke(null, provider);
-                return result instanceof String text ? text : null;
-            } catch (Throwable ignored) {
-                return null;
-            }
+            return ModList.get().isLoaded("extendedae_plus")
+                    ? PatternProviderDataUtil.getProviderDisplayName(provider)
+                    : null;
         }
     }
 }

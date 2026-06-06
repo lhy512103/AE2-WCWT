@@ -22,7 +22,7 @@
   "slots": {
     "TOOLBOX": {
       "comment": "卡槽箱槽位 - 由 AE2 的 ToolboxMenu 管理，用于放升级卡。",
-      "left": 1,
+      "left": 0,
       "top": 6,
       "grid": "BREAK_AFTER_3COLS"
     }
