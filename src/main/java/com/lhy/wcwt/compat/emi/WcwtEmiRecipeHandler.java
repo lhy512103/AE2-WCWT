@@ -459,6 +459,19 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                                                                       EmiRecipe recipe,
                                                                       List<Widget> widgets) {
         EncodingMode mode = getTransferMode(recipe);
+        var backingRecipe = recipe.getBackingRecipe();
+        if (backingRecipe != null && mode != EncodingMode.PROCESSING) {
+            List<Ingredient> ingredients = mode == EncodingMode.CRAFTING
+                    ? appeng.util.CraftingRecipeUtil.ensure3by3CraftingMatrix(backingRecipe)
+                    : appeng.util.CraftingRecipeUtil.getIngredients(backingRecipe);
+            List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
+            for (Ingredient ingredient : ingredients) {
+                resolved.add(WcwtRecipeTransferHandler.toBestGenericStack(priorityContext,
+                        ingredient, List.of(), -1));
+            }
+            return resolved;
+        }
+
         List<@Nullable GenericStack> sparseInputs = new ArrayList<>();
         Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
         int limit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
@@ -557,18 +570,6 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             GenericStack candidate = toGenericStack(emiStack, ingredient.getAmount());
             if (candidate != null) {
                 candidates.add(candidate);
-            }
-        }
-        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
-            var priorities = priorityContext.bookmarkPriorities();
-            if (!priorities.isEmpty()) {
-                GenericStack bookmarked = candidates.stream()
-                        .filter(candidate -> candidate.what() != null && priorities.containsKey(candidate.what()))
-                        .min(java.util.Comparator.comparingInt(candidate -> priorities.get(candidate.what())))
-                        .orElse(null);
-                if (bookmarked != null) {
-                    return bookmarked;
-                }
             }
         }
         GenericStack best = WcwtIngredientPriorities.chooseBestGenericStack(priorityContext, candidates);

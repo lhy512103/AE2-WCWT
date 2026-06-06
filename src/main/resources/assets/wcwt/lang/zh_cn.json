@@ -24,6 +24,14 @@
   "key.wcwt.open_tool_slots_box": "打开卡槽箱",
   "key.wcwt.open_toolkit": "打开工具包",
   "key.wcwt.open_resonating_lightning_pattern_coding": "打开谐振过载编码器",
+  "key.wcwt.toggle_favorite_item": "切换收藏网络物品",
+  "gui.wcwt.favorite_items_first.enabled": "收藏物品优先显示：开",
+  "gui.wcwt.favorite_items_first.disabled": "收藏物品优先显示：关",
+  "gui.wcwt.favorite_items_first.hint.prefix": "对着主仓库物品按 ",
+  "gui.wcwt.favorite_items_first.hint.suffix": " 可收藏/取消收藏",
+  "gui.wcwt.favorite.marked": "已收藏",
+  "gui.wcwt.view_cells.visible": "显示元件",
+  "gui.wcwt.view_cells.hidden": "隐藏元件",
   "gui.wcwt.toolkit.slot.sword": "剑类",
   "gui.wcwt.toolkit.slot.pickaxe": "镐类",
   "gui.wcwt.toolkit.slot.axe": "斧类",
@@ -171,6 +179,9 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
   
   "item.wcwt.wireless_comprehensive_work_terminal": "ME综合工作终端",
+  "itemGroup.wcwt": "WCWT",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.title": "我嘞个雷霆大终端！",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.description": "获得 ME 综合工作终端。",
   
   "gui.wcwt.filter.item.enabled": "物品过滤：开",
   "gui.wcwt.filter.item.enabled.desc": "只显示物品",
@@ -211,6 +222,8 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "开：JEI/EMI 拉取配方时，会按已识别的配方类型自动切到工作台或锻造台。",
   "wcwt.config.enableRecipePullTransfer": "启用配方拉取/编码处理",
   "wcwt.config.enableRecipePullTransfer.tooltip": "开：启用 WCWT 的 JEI/EMI 配方拉取、编码传输与预览高亮。关：关闭这些处理。",
+  "wcwt.config.expandToolkitInManagementArea": "工具包在管理区位置展开",
+  "wcwt.config.expandToolkitInManagementArea.tooltip": "开：打开工具包时，改在样板管理区位置展开显示，并隐藏供应器列表；关闭时保持原来的右侧工具包面板。",
 
   "message.wcwt.pull_no_link": "WCWT：终端未连接到可用的 ME 网络。",
   "message.wcwt.pull_no_inputs": "WCWT：该 JEI 配方没有可拉取的物品输入。",

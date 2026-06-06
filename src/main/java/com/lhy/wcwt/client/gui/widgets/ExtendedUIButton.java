@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 /**
  * 扩展UI按钮，用于切换不同的扩展UI面板（高级编码、装饰盔甲、饰品、卡槽箱、工具包）。
@@ -48,11 +49,18 @@ public class ExtendedUIButton extends Button implements ITooltip {
 
     private final IExtendedUIHost host;
     private final IExtendedUIHost.ExtendedUIType uiType;
+    private final BooleanSupplier activeOverride;
 
     public ExtendedUIButton(IExtendedUIHost host, IExtendedUIHost.ExtendedUIType uiType, OnPress onPress) {
+        this(host, uiType, onPress, null);
+    }
+
+    public ExtendedUIButton(IExtendedUIHost host, IExtendedUIHost.ExtendedUIType uiType, OnPress onPress,
+                            BooleanSupplier activeOverride) {
         super(0, 0, BTN_W, BTN_H, Component.empty(), onPress, Button.DEFAULT_NARRATION);
         this.host = host;
         this.uiType = uiType;
+        this.activeOverride = activeOverride;
     }
 
     @Override
@@ -64,6 +72,12 @@ public class ExtendedUIButton extends Button implements ITooltip {
         //    鼠标悬停也使用同一张高亮纹理。
         boolean highlighted = isActive() || isHovered();
         int btnU = highlighted ? BTN_U_HOVERED : BTN_U_NORMAL;
+        if (isFocused()) {
+            guiGraphics.fill(getX() - 2, getY() - 1, getX() + BTN_W, getY(), -1);
+            guiGraphics.fill(getX() - 2, getY(), getX() - 1, getY() + BTN_H, -1);
+            guiGraphics.fill(getX() + BTN_W - 1, getY(), getX() + BTN_W, getY() + BTN_H, -1);
+            guiGraphics.fill(getX() - 2, getY() + BTN_H, getX() + BTN_W, getY() + BTN_H + 1, -1);
+        }
         guiGraphics.blit(TEXTURE, getX()-1, getY(), btnU, BTN_V, BTN_W, BTN_H, 256, 256);
 
         // 2. 渲染各类型图标（居中叠加在按钮面上）。
@@ -74,8 +88,7 @@ public class ExtendedUIButton extends Button implements ITooltip {
         int iconH = getIconHeight();
         int iconOffsetX = (BTN_W - iconW) / 2 + getIconRenderOffsetX();
         int iconOffsetY = (BTN_H - iconH) / 2 + getIconRenderOffsetY();
-        int pressOffsetY = highlighted ? 1 : 0;
-        guiGraphics.blit(TEXTURE, getX() - 1 + iconOffsetX, getY() + iconOffsetY + pressOffsetY,
+        guiGraphics.blit(TEXTURE, getX() - 1 + iconOffsetX, getY() + iconOffsetY,
                 iconU, iconV, iconW, iconH, 256, 256);
     }
 
@@ -147,6 +160,9 @@ public class ExtendedUIButton extends Button implements ITooltip {
 
     /** 返回当前按钮对应的扩展UI是否正在展示。 */
     public boolean isActive() {
+        if (activeOverride != null) {
+            return activeOverride.getAsBoolean();
+        }
         return host.getCurrentExtendedUI() == uiType;
     }
 }

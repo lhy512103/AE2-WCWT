@@ -184,7 +184,7 @@ public class WcwtRecipeTransferHandler
                                                                   IRecipeSlotsView recipeSlots,
                                                                   EncodingMode mode) {
         var priorityContext = createPriorityContext(menu);
-        if (recipe != null && recipeHolder != null) {
+        if (recipe != null) {
             List<IRecipeSlotView> inputSlots = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream()
                     .limit(mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE)
                     .toList();
@@ -268,46 +268,22 @@ public class WcwtRecipeTransferHandler
     }
 
     @Nullable
-    private static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
-                                                   Ingredient ingredient,
-                                                   List<IRecipeSlotView> inputSlots,
-                                                   int slot) {
+    public static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+                                                  Ingredient ingredient,
+                                                  List<IRecipeSlotView> inputSlots,
+                                                  int slot) {
         if (ingredient.isEmpty()) {
             return null;
         }
 
-        List<ItemStack> visibleAlternatives = slot < inputSlots.size()
-                ? inputSlots.get(slot).getItemStacks().filter(stack -> !stack.isEmpty()).map(ItemStack::copy).toList()
-                : List.of();
-        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
-            ItemStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedItem(
-                    ingredient, visibleAlternatives, priorityContext.bookmarkPriorities());
-            if (!bookmarked.isEmpty()) {
-                return GenericStack.fromItemStack(bookmarked.copyWithCount(1));
-            }
-        }
-        ItemStack best = WcwtIngredientPriorities.chooseBestItem(priorityContext, ingredient, visibleAlternatives);
+        ItemStack best = WcwtIngredientPriorities.chooseBestItemForEncoding(priorityContext, ingredient);
         return best.isEmpty() ? null : GenericStack.fromItemStack(best.copyWithCount(1));
     }
 
     @Nullable
     private static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                         IRecipeSlotView slotView) {
-        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
-            GenericStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedStack(
-                    slotView, priorityContext.bookmarkPriorities());
-            if (bookmarked != null) {
-                return bookmarked;
-            }
-        }
-
-        GenericStack displayed = toGenericStack(getDisplayedStack(slotView));
-        if (displayed != null) {
-            return displayed;
-        }
-
         List<GenericStack> fallbackCandidates = slotView.getAllIngredients()
-                .limit(8)
                 .map(WcwtRecipeTransferHandler::toGenericStack)
                 .filter(Objects::nonNull)
                 .toList();
@@ -324,12 +300,6 @@ public class WcwtRecipeTransferHandler
                 ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
                 : Map.of();
         return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities);
-    }
-
-    private static ITypedIngredient<?> getDisplayedStack(IRecipeSlotView slotView) {
-        return slotView.getDisplayedIngredient()
-                .or(() -> slotView.getAllIngredients().findFirst())
-                .orElse(null);
     }
 
     private static boolean shouldSkipTransferAnalysis(Object recipe) {

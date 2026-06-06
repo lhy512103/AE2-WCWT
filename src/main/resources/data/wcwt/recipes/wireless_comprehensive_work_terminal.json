@@ -6,17 +6,17 @@
       "item": "ae2wtlib:wireless_pattern_encoding_terminal"
     },
     {
+      "item": "ae2:wireless_crafting_terminal"
+    },
+    {
       "item": "ae2wtlib:wireless_pattern_access_terminal"
     },
     {
       "item": "ae2:wireless_terminal"
-    },
-    {
-      "item": "ae2:wireless_crafting_terminal"
     }
   ],
   "result": {
-    "count": 1,
-    "id": "wcwt:wireless_comprehensive_work_terminal"
+    "item": "wcwt:wireless_comprehensive_work_terminal",
+    "count": 1
   }
 }

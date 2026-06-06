@@ -37,6 +37,7 @@ import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
@@ -1682,7 +1683,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
         long gameTime = serverPlayer.serverLevel().getGameTime();
-        if (!subscribe) {
+        if (!subscribe || !WcwtServerConfig.patternProviderActiveRefresh()) {
             lastPatternProviderRequestTick = gameTime;
             return;
         }
@@ -3306,6 +3307,17 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             if (sourceSlot.hasItem() && !isPlayerArmorSlot(sourceSlot)) {
                 ItemStack sourceStack = sourceSlot.getItem();
+                ItemStack movedToCellUpgrade = tryMoveStackToSemanticSlots(player, sourceSlot, sourceStack,
+                        WcwtSlotSemantics.WCWT_CELL_UPGRADE);
+                if (!movedToCellUpgrade.isEmpty()) {
+                    return movedToCellUpgrade;
+                }
+
+                ItemStack movedToOpenExtendedUi = tryMoveStackToOpenExtendedUiSlots(player, sourceSlot, sourceStack);
+                if (!movedToOpenExtendedUi.isEmpty()) {
+                    return movedToOpenExtendedUi;
+                }
+
                 ItemStack movedCurioToPlayer = tryMoveCurioToPlayerInventoryFirst(player, sourceSlot, sourceStack);
                 if (!movedCurioToPlayer.isEmpty()) {
                     return movedCurioToPlayer;
@@ -3422,6 +3434,66 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         return ItemStack.EMPTY;
+    }
+
+    private ItemStack tryMoveStackToOpenExtendedUiSlots(Player player, Slot sourceSlot, ItemStack sourceStack) {
+        if (sourceStack.isEmpty() || menuHost == null || !canPriorityMoveIntoExtendedSlot(sourceSlot)) {
+            return ItemStack.EMPTY;
+        }
+
+        return switch (menuHost.getCurrentExtendedUI()) {
+            case ADVANCED_CODING -> tryMoveStackToSemanticSlots(player, sourceSlot, sourceStack,
+                    WcwtSlotSemantics.COPY_PATTERN,
+                    WcwtSlotSemantics.WCWT_STORAGE_CELL);
+            case COSMETIC_ARMOR -> tryMoveStackToSemanticSlots(player, sourceSlot, sourceStack,
+                    WcwtSlotSemantics.DECORATIVE_HELMET,
+                    WcwtSlotSemantics.DECORATIVE_ARMOR,
+                    WcwtSlotSemantics.DECORATIVE_SHIN_GUARDS,
+                    WcwtSlotSemantics.DECORATIVE_BOOTS);
+            case CURIOS -> tryMoveStackToSemanticSlots(player, sourceSlot, sourceStack,
+                    WcwtSlotSemantics.AE_CURIOS);
+            case TOOLKIT -> tryToolkitQuickMoveShortcuts(player, sourceSlot, sourceStack);
+            case RESONATING_LIGHTNING_PATTERN_CODING -> tryMoveStackToSemanticSlots(player, sourceSlot, sourceStack,
+                    WcwtSlotSemantics.WCWT_RESONATING_STORAGE);
+            default -> ItemStack.EMPTY;
+        };
+    }
+
+    private ItemStack tryMoveStackToSemanticSlots(Player player, Slot sourceSlot, ItemStack sourceStack,
+            appeng.menu.SlotSemantic... targetSemantics) {
+        if (sourceStack.isEmpty()
+                || !canPriorityMoveIntoExtendedSlot(sourceSlot)
+                || targetSemantics == null
+                || targetSemantics.length == 0) {
+            return ItemStack.EMPTY;
+        }
+        for (var semantic : targetSemantics) {
+            for (var targetSlot : getSlots(semantic)) {
+                if (targetSlot == sourceSlot
+                        || targetSlot.hasItem()
+                        || !targetSlot.isActive()
+                        || !targetSlot.mayPlace(sourceStack)) {
+                    continue;
+                }
+                int targetMenuIndex = slots.indexOf(targetSlot);
+                if (targetMenuIndex < 0) {
+                    continue;
+                }
+                ItemStack original = sourceStack.copy();
+                if (moveItemStackTo(sourceStack, targetMenuIndex, targetMenuIndex + 1, false)) {
+                    finishPriorityQuickMove(player, sourceSlot, sourceStack);
+                    return original;
+                }
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private boolean canPriorityMoveIntoExtendedSlot(Slot sourceSlot) {
+        var semantic = getSlotSemantic(sourceSlot);
+        return semantic == SlotSemantics.PLAYER_HOTBAR
+                || semantic == SlotSemantics.PLAYER_INVENTORY
+                || semantic == SlotSemantics.STORAGE;
     }
 
     private void finishPriorityQuickMove(Player player, Slot sourceSlot, ItemStack remainingStack) {

@@ -17,6 +17,7 @@ import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.hotkeys.WcwtCurioHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtRestockHotkeyAction;
+import com.lhy.wcwt.init.ModCreativeTabs;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
@@ -60,6 +61,7 @@ public class WcwtMod {
 
         WcwtSlotSemantics.init();
         ModItems.ITEMS.register(modEventBus);
+        ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);
@@ -124,13 +126,20 @@ public class WcwtMod {
 
     private void addCreativeTabItems(BuildCreativeModeTabContentsEvent event) {
         if (AECreativeTabIds.MAIN.equals(event.getTabKey()) || AE2WTLIB_TAB.equals(event.getTabKey())) {
-            var terminal = (WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
-            event.accept(new ItemStack(terminal));
-
-            var charged = new ItemStack(terminal);
-            terminal.injectAEPower(charged, terminal.getAEMaxPower(charged), Actionable.MODULATE);
-            event.accept(charged);
+            acceptTerminalVariants(event);
         }
+    }
+
+    public static ItemStack chargedTerminalStack() {
+        var terminal = (WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
+        var charged = new ItemStack(terminal);
+        terminal.injectAEPower(charged, terminal.getAEMaxPower(charged), Actionable.MODULATE);
+        return charged;
+    }
+
+    public static void acceptTerminalVariants(CreativeModeTab.Output output) {
+        output.accept(new ItemStack(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()));
+        output.accept(chargedTerminalStack());
     }
 
     public static final class WcwtPacketsBootstrap {

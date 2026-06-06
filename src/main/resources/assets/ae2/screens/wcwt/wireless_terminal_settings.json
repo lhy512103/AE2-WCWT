@@ -95,6 +95,12 @@
       "left": 10,
       "top": 164,
       "width": 180
+    },
+    "expandToolkitInManagementArea": {
+      "$comment": "工具包在管理区位置展开开关。",
+      "left": 10,
+      "top": 184,
+      "width": 180
     }
   }
 }

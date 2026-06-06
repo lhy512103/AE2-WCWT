@@ -1,0 +1,74 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_pattern_encoding_terminal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "ae2wtlib:wireless_pattern_encoding_terminal"
+            ]
+          }
+        ]
+      }
+    },
+    "has_crafting_terminal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "ae2:wireless_crafting_terminal"
+            ]
+          }
+        ]
+      }
+    },
+    "has_pattern_access_terminal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "ae2wtlib:wireless_pattern_access_terminal"
+            ]
+          }
+        ]
+      }
+    },
+    "has_wireless_terminal": {
+      "trigger": "minecraft:inventory_changed",
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "ae2:wireless_terminal"
+            ]
+          }
+        ]
+      }
+    },
+    "has_the_recipe": {
+      "trigger": "minecraft:recipe_unlocked",
+      "conditions": {
+        "recipe": "wcwt:wireless_comprehensive_work_terminal"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_pattern_encoding_terminal",
+      "has_crafting_terminal",
+      "has_pattern_access_terminal",
+      "has_wireless_terminal",
+      "has_the_recipe"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "wcwt:wireless_comprehensive_work_terminal"
+    ]
+  },
+  "sends_telemetry_event": false
+}

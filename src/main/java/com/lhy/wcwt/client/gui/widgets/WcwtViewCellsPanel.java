@@ -37,6 +37,7 @@ public class WcwtViewCellsPanel implements ICompositeWidget {
     private int x;
     private int y;
     private int maxRows = 2;
+    private boolean visible = true;
 
     public WcwtViewCellsPanel(List<Slot> slots, WidgetContainer widgets, Supplier<List<Component>> tooltipSupplier) {
         this.slots = slots;
@@ -50,6 +51,21 @@ public class WcwtViewCellsPanel implements ICompositeWidget {
         this.maxRows = Math.max(1, maxRows);
         setScrollbarRange();
         scrollbar.setHeight(Math.max(0, getVisibleSlotCount() * WcwtUpgradeSlotBackground.SLOT_SIZE - 2));
+    }
+
+    public void setPanelVisible(boolean visible) {
+        this.visible = visible;
+        if (!visible) {
+            scrollbar.setVisible(false);
+            for (Slot slot : slots) {
+                if (slot instanceof AppEngSlot appEngSlot) {
+                    appEngSlot.setActive(false);
+                }
+                setSlotPosition(slot, HIDDEN_SLOT_POS.getX(), HIDDEN_SLOT_POS.getY());
+            }
+        } else {
+            setScrollbarRange();
+        }
     }
 
     public void setScrollbarOffset(Point scrollbarOffset) {
@@ -86,6 +102,10 @@ public class WcwtViewCellsPanel implements ICompositeWidget {
 
     @Override
     public void updateBeforeRender() {
+        if (!visible) {
+            setPanelVisible(false);
+            return;
+        }
         setScrollbarRange();
         updateScrollbarPosition();
 
@@ -119,6 +139,9 @@ public class WcwtViewCellsPanel implements ICompositeWidget {
 
     @Override
     public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+        if (!visible) {
+            return;
+        }
         int slotCount = getVisibleSlotCount();
         if (slotCount <= 0) {
             return;
@@ -130,6 +153,9 @@ public class WcwtViewCellsPanel implements ICompositeWidget {
 
     @Override
     public void addExclusionZones(List<Rect2i> exclusionZones, Rect2i screenBounds) {
+        if (!visible) {
+            return;
+        }
         var bounds = getBounds();
         if (bounds.getWidth() > 0 && bounds.getHeight() > 0) {
             exclusionZones.add(Rects.expand(Rects.move(bounds, screenBounds.getX(), screenBounds.getY()), 2));
@@ -139,6 +165,9 @@ public class WcwtViewCellsPanel implements ICompositeWidget {
     @Nullable
     @Override
     public Tooltip getTooltip(int mouseX, int mouseY) {
+        if (!visible) {
+            return null;
+        }
         if (getEnabledSlotCount() <= 0) {
             return null;
         }
@@ -149,12 +178,12 @@ public class WcwtViewCellsPanel implements ICompositeWidget {
 
     @Override
     public boolean onMouseWheel(Point mousePos, double delta) {
-        return scrolling() && scrollbar.onMouseWheel(mousePos, delta);
+        return visible && scrolling() && scrollbar.onMouseWheel(mousePos, delta);
     }
 
     @Override
     public boolean isVisible() {
-        return getEnabledSlotCount() > 0;
+        return visible && getEnabledSlotCount() > 0;
     }
 
     private void updateScrollbarPosition() {

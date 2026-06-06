@@ -1,0 +1,30 @@
+{
+  "$schema": "../../../schema.json",
+  "$comment": "样板管理区内嵌工具包布局。仅负责嵌入模式下的内容区域和滑块坐标，便于单独维护。",
+  "widgets": {
+    "management_toolkit_background": {
+      "$comment": "管理区内嵌工具包背景区域。wcwt_tools.png 有效尺寸为 162x72。",
+      "left": 175,
+      "bottom": 83,
+      "width": 162,
+      "height": 72
+    },
+    "management_toolkit_scrollbar": {
+      "$comment": "管理区内嵌工具包的滑块位置与高度。",
+      "left": 341,
+      "bottom": 82,
+      "width": 12,
+      "height": 72
+    }
+  },
+  "slots": {
+    "management_toolkit_slots": {
+      "$comment": "管理区内嵌工具包槽位锚点。第一个槽位位于背景图内 left=1, top=1；槽位 16x16，步距 18。",
+      "left": 176,
+      "bottom": 81,
+      "width": 16,
+      "height": 16,
+      "grid": "BREAK_AFTER_9COLS"
+    }
+  }
+}

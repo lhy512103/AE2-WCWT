@@ -112,6 +112,11 @@ public final class WcwtIngredientPriorities {
             return candidates.get(0);
         }
 
+        GenericStack bookmarked = chooseBookmarkedGenericStack(context, candidates);
+        if (bookmarked != null) {
+            return bookmarked;
+        }
+
         return candidates.stream()
                 .max(Comparator
                         .comparingInt((GenericStack stack) -> getPriority(context.ingredientPriorities(), stack.what()))
@@ -128,6 +133,90 @@ public final class WcwtIngredientPriorities {
     public static ItemStack chooseBestItem(PriorityContext context,
                                            Ingredient ingredient,
                                            List<ItemStack> visibleAlternatives) {
+        return chooseBestItemForPull(context, ingredient, visibleAlternatives);
+    }
+
+    public static ItemStack chooseBestItemForEncoding(PriorityContext context,
+                                                      Ingredient ingredient) {
+        if (ingredient == null || ingredient.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack bookmarked = chooseBookmarkedItem(context, ingredient);
+        if (!bookmarked.isEmpty()) {
+            return bookmarked;
+        }
+        ItemStack bestNetworkIngredient = findBestNetworkIngredient(context, ingredient);
+        if (!bestNetworkIngredient.isEmpty()) {
+            return bestNetworkIngredient;
+        }
+
+        ItemStack[] items = ingredient.getItems();
+        ItemStack bestAny = chooseMostSpecificItem(items, stack -> true);
+        if (!bestAny.isEmpty()) {
+            return bestAny;
+        }
+        return items.length > 0 ? items[0].copy() : ItemStack.EMPTY;
+    }
+
+    private static GenericStack chooseBookmarkedGenericStack(PriorityContext context, List<GenericStack> candidates) {
+        if (!context.hasBookmarkPriorities()) {
+            return null;
+        }
+        GenericStack best = null;
+        int bestPriority = Integer.MAX_VALUE;
+        for (GenericStack candidate : candidates) {
+            if (candidate == null || candidate.what() == null) {
+                continue;
+            }
+            Integer priority = context.bookmarkPriorities().get(candidate.what());
+            if (priority != null && priority < bestPriority) {
+                best = candidate;
+                bestPriority = priority;
+            }
+        }
+        return best;
+    }
+
+    private static ItemStack chooseBookmarkedItem(PriorityContext context, Ingredient ingredient) {
+        if (!context.hasBookmarkPriorities()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack best = ItemStack.EMPTY;
+        int bestPriority = Integer.MAX_VALUE;
+        for (ItemStack stack : ingredient.getItems()) {
+            if (stack == null || stack.isEmpty() || !ingredient.test(stack)) {
+                continue;
+            }
+            var key = AEItemKey.of(stack);
+            Integer priority = key != null ? context.bookmarkPriorities().get(key) : null;
+            if (priority != null && priority < bestPriority) {
+                best = stack.copy();
+                bestPriority = priority;
+            }
+        }
+        return best;
+    }
+
+    private static ItemStack chooseMostSpecificItem(ItemStack[] items,
+                                                    java.util.function.Predicate<ItemStack> visiblePredicate) {
+        ItemStack best = ItemStack.EMPTY;
+        int bestSpecificity = Integer.MIN_VALUE;
+        for (ItemStack stack : items) {
+            if (stack == null || stack.isEmpty() || !visiblePredicate.test(stack)) {
+                continue;
+            }
+            int specificity = WcwtPullIngredientOrdering.componentSpecificityRank(stack);
+            if (best.isEmpty() || specificity > bestSpecificity) {
+                best = stack.copy();
+                bestSpecificity = specificity;
+            }
+        }
+        return best;
+    }
+
+    public static ItemStack chooseBestItemForPull(PriorityContext context,
+                                                  Ingredient ingredient,
+                                                  List<ItemStack> visibleAlternatives) {
         ItemStack bestNetworkIngredient = findBestNetworkIngredient(context, ingredient);
         if (!bestNetworkIngredient.isEmpty()) {
             return bestNetworkIngredient;

@@ -48,6 +48,12 @@ public class TopActionButton extends Button implements ITooltip {
         boolean focus = !active || isHoveredOrFocused();
         int bgU = focus ? RADIO_FOCUS_U : RADIO_UNCHECKED_U;
         int bgV = focus ? RADIO_FOCUS_V : RADIO_UNCHECKED_V;
+        if (isFocused()) {
+            guiGraphics.fill(getX() - 1, getY() - 1, getX() + width + 1, getY(), -1);
+            guiGraphics.fill(getX() - 1, getY(), getX(), getY() + height, -1);
+            guiGraphics.fill(getX() + width, getY(), getX() + width + 1, getY() + height, -1);
+            guiGraphics.fill(getX() - 1, getY() + height, getX() + width + 1, getY() + height + 1, -1);
+        }
         guiGraphics.blit(AE2_CHECKBOX, getX(), getY(), width, height, bgU, bgV,
                 RADIO_SIZE, RADIO_SIZE, 64, 64);
 
@@ -55,9 +61,8 @@ public class TopActionButton extends Button implements ITooltip {
         float scale = Math.min((float) iconSize / iconW, (float) iconSize / iconH);
         int drawW = Math.round(iconW * scale);
         int drawH = Math.round(iconH * scale);
-        int pressOffsetY = isHoveredOrFocused() ? 1 : 0;
         int iconX = getX() + (width - drawW) / 2;
-        int iconY = getY() + (height - drawH) / 2 + pressOffsetY;
+        int iconY = getY() + (height - drawH) / 2;
 
         PoseStack pose = guiGraphics.pose();
         pose.pushPose();

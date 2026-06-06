@@ -39,7 +39,7 @@ public class IconButton extends Button implements ITooltip {
     private Supplier<Icon> overlayIcon;
     private int overlayOffsetY = 0;
     private boolean scaleTextureToButton = true;
-    private boolean pressOffsetOnHover = true;
+    private boolean pressOffsetOnHover = false;
 
     public IconButton(int x, int y, int w, int h,
                       int normalU, int normalV,
@@ -100,7 +100,13 @@ public class IconButton extends Button implements ITooltip {
     @Override
     public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
-        int pressOffsetY = pressOffsetOnHover && isHoveredOrFocused() ? 1 : 0;
+        int pressOffsetY = 0;
+        if (isFocused()) {
+            guiGraphics.fill(getX() - 1, getY() - 1, getX() + width + 1, getY(), -1);
+            guiGraphics.fill(getX() - 1, getY(), getX(), getY() + height, -1);
+            guiGraphics.fill(getX() + width, getY(), getX() + width + 1, getY() + height, -1);
+            guiGraphics.fill(getX() - 1, getY() + height, getX() + width + 1, getY() + height + 1, -1);
+        }
 
         // ── 底图 ──
         if (useAE2ToolbarBg) {
