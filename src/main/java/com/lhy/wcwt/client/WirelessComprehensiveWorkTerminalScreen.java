@@ -2770,7 +2770,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var slots = menu.getSlots(SlotSemantics.TOOLBOX);
         for (int i = 0; i < slots.size(); i++) {
             var slot = slots.get(i);
-            int x = bounds.getX() - leftPos + toolboxPanel.getSlotRelativeX() + (i % 3) * 18;
+            int x = bounds.getX() - leftPos + toolboxPanel.getSlotRelativeX() + (i % 3) * 17;
             int y = bounds.getY() - topPos + toolboxPanel.getSlotRelativeY() + (i / 3) * 18;
             showSlot(slot, x, y);
         }
@@ -2926,20 +2926,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     256, 256);
         }
         super.renderSlot(guiGraphics, slot);
-        renderCosmeticArmorToggleOverlay(guiGraphics, slot);
         renderCraftablePatternIndicator(guiGraphics, slot);
-    }
-
-    private void renderCosmeticArmorToggleOverlay(GuiGraphics guiGraphics, Slot slot) {
-        if (cosmeticArmorPanel == null || !cosmeticArmorPanel.isVisible()) {
-            return;
-        }
-        for (int i = 0; i < COSMETIC_ARMOR_SLOT_SEMANTICS.length; i++) {
-            if (menu.getSlots(COSMETIC_ARMOR_SLOT_SEMANTICS[i]).contains(slot)) {
-                cosmeticArmorPanel.renderToggleOverlay(guiGraphics, i, slot.x, slot.y);
-                return;
-            }
-        }
     }
 
     @Override
@@ -3011,6 +2998,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         for (var slot : getCurioSlots()) {
             renderCurioToggle(guiGraphics, slot);
+        }
+    }
+
+    private void renderCosmeticArmorToggleOverlays(GuiGraphics guiGraphics) {
+        if (cosmeticArmorPanel == null || !cosmeticArmorPanel.isVisible()) {
+            return;
+        }
+        for (int i = 0; i < COSMETIC_ARMOR_SLOT_SEMANTICS.length; i++) {
+            for (var slot : menu.getSlots(COSMETIC_ARMOR_SLOT_SEMANTICS[i])) {
+                if (slot.x != HIDDEN_SLOT_POS.getX() && slot.y != HIDDEN_SLOT_POS.getY()) {
+                    cosmeticArmorPanel.renderToggleOverlay(guiGraphics, i, slot.x, slot.y);
+                }
+            }
         }
     }
 
@@ -3247,6 +3247,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         super.drawFG(guiGraphics, offsetX, offsetY, mouseX, mouseY);
         renderManualAnvilCost(guiGraphics);
         renderPatternManagement(guiGraphics, mouseX, mouseY);
+        renderCosmeticArmorToggleOverlays(guiGraphics);
         renderCurioToggleOverlays(guiGraphics);
     }
 
