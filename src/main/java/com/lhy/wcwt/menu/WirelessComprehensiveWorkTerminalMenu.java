@@ -208,6 +208,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      * 用这个守卫避免 updatePatternPreview -> onSlotChange -> updatePatternPreview 的递归卡死。
      */
     private boolean patternPreviewUpdateGuard;
+    private static final Object EMPTY_PATTERN_PREVIEW_KEY = new Object();
+    private EncodingMode cachedPatternPreviewMode;
+    private List<Object> cachedPatternPreviewSignature = List.of();
     /**
      * 样板管理区不是实时容器，而是服务端构建的供应器快照。
      * 打开界面期间定期推送一次，避免只能重开终端才能看到外部变化。
@@ -231,11 +234,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         this.patternEncodingLogic = host.getLogic();
         this.manualSmithingBridge = new ManualSmithingMenuBridge();
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
-        WcwtMod.LOGGER.info("WCWT debug: menu ctor begin player={}, containerId={}, hostClass={}, stack={}",
-                ip.player.getScoreboardName(),
-                id,
-                host.getClass().getName(),
-                host.getItemStack().getItem());
         // 注意：不要在这里 new ToolboxMenu(this)！
         // 父类 MEStorageMenu 的构造器已经 new ToolboxMenu(this) 并添加了 9 个 TOOLBOX 槽，
         // 若在此重复创建则共有 18 个槽，界面会显示"两重"效果。
@@ -247,14 +245,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         addManualWorkspaceSlots();
 
         addPatternEncodingSlots();
-        WcwtMod.LOGGER.info("WCWT debug: menu ctor after addPatternEncodingSlots player={}, blankSlotReady={}, encodedSlots={}",
-                ip.player.getScoreboardName(),
-                blankPatternSlot != null,
-                getSlots(SlotSemantics.ENCODED_PATTERN).size());
         tryFillBlankPatternFromNetwork();
-        WcwtMod.LOGGER.info("WCWT debug: menu ctor after tryFillBlankPatternFromNetwork player={}, blankStack={}",
-                ip.player.getScoreboardName(),
-                blankPatternSlot == null ? "<null>" : summarizeItem(blankPatternSlot.getItem()));
         
         // 添加高级样板编码槽 (复制样板, 替换输入, 替换输出) - 3个槽位
         var advancedPatternInv = host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_ADVANCED_PATTERN);
@@ -2517,19 +2508,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         try {
-            WcwtMod.LOGGER.info("WCWT debug: blank autofill begin player={}, currentBlank={}, linked={}",
-                    getPlayer().getScoreboardName(),
-                    summarizeItem(blankPatternSlot.getItem()),
-                    isLinked());
             InternalInventory blankInv = patternEncodingLogic.getBlankPatternInv();
             ItemStack current = blankInv.getStackInSlot(0);
             int space = Math.max(0, blankInv.getSlotLimit(0) - current.getCount());
             space = Math.min(space, AEItems.BLANK_PATTERN.stack().getMaxStackSize());
             if (space <= 0) {
-                WcwtMod.LOGGER.info("WCWT debug: blank autofill skip_full player={}, current={}, slotLimit={}",
-                        getPlayer().getScoreboardName(),
-                        summarizeItem(current),
-                        blankInv.getSlotLimit(0));
                 if (DEBUG_BLANK_PATTERN_SYNC) {
                     logBlankPatternSync("autofill.skip_full",
                             "current={}, slotLimit={}",
@@ -2542,10 +2525,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             AEItemKey blankKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
             long extracted = StorageHelper.poweredExtraction(getWcwtEnergySource(), storage, blankKey, space, getActionSource());
             if (extracted <= 0) {
-                WcwtMod.LOGGER.info("WCWT debug: blank autofill skip_no_extract player={}, space={}, current={}",
-                        getPlayer().getScoreboardName(),
-                        space,
-                        summarizeItem(current));
                 if (DEBUG_BLANK_PATTERN_SYNC) {
                     logBlankPatternSync("autofill.skip_no_extract",
                             "space={}, current={}, linkStatus={}",
@@ -2572,12 +2551,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (leftover > 0) {
                 StorageHelper.poweredInsert(getWcwtEnergySource(), storage, blankKey, leftover, getActionSource());
             }
-            WcwtMod.LOGGER.info("WCWT debug: blank autofill success player={}, extracted={}, inserted={}, leftover={}, after={}",
-                    getPlayer().getScoreboardName(),
-                    extracted,
-                    toInsert,
-                    leftover,
-                    summarizeItem(blankPatternSlot.getItem()));
             if (DEBUG_BLANK_PATTERN_SYNC) {
                 logBlankPatternSync("autofill.success",
                         "space={}, extracted={}, toInsert={}, leftover={}, before={}, after={}, linkStatus={}",
@@ -2734,10 +2707,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     @Override
     public void clearCraftingGrid() {
-        if (getManualWorkspaceMode() == ManualWorkspaceMode.CRAFTING) {
-            super.clearCraftingGrid();
-            return;
-        }
         if (isClientSide()) {
             ModNetworking.sendToServer(new TopActionPacket(TopActionPacket.Action.CLEAR_MANUAL_WORKSPACE));
             return;
@@ -2893,17 +2862,63 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         patternPreviewUpdateGuard = true;
         try {
-            ItemStack preview = switch (mode) {
-                case CRAFTING -> getCraftingPatternPreview();
-                case SMITHING_TABLE -> getSmithingPatternPreview();
-                case STONECUTTING -> getStonecuttingPatternPreview();
-                case PROCESSING -> ItemStack.EMPTY;
-            };
-            patternPreviewSlot.set(preview);
+            List<Object> signature = getPatternPreviewSignature(mode);
+            ItemStack preview;
+            if (mode == cachedPatternPreviewMode && signature.equals(cachedPatternPreviewSignature)) {
+                patternPreviewSlot.setActive(mode != EncodingMode.PROCESSING);
+                return;
+            } else {
+                preview = switch (mode) {
+                    case CRAFTING -> getCraftingPatternPreview();
+                    case SMITHING_TABLE -> getSmithingPatternPreview();
+                    case STONECUTTING -> getStonecuttingPatternPreview();
+                    case PROCESSING -> ItemStack.EMPTY;
+                };
+                cachedPatternPreviewMode = mode;
+                cachedPatternPreviewSignature = signature;
+            }
+            if (!ItemStack.matches(patternPreviewSlot.getItem(), preview)) {
+                patternPreviewSlot.set(preview);
+            }
             patternPreviewSlot.setActive(mode != EncodingMode.PROCESSING);
         } finally {
             patternPreviewUpdateGuard = false;
         }
+    }
+
+    private List<Object> getPatternPreviewSignature(EncodingMode mode) {
+        if (patternEncodingLogic == null) {
+            return List.of();
+        }
+
+        var inputs = patternEncodingLogic.getEncodedInputInv();
+        return switch (mode) {
+            case CRAFTING -> {
+                List<Object> signature = new ArrayList<>(9);
+                for (int slot = 0; slot < 9; slot++) {
+                    signature.add(getPatternPreviewSignatureKey(inputs.getStack(slot)));
+                }
+                yield signature;
+            }
+            case SMITHING_TABLE -> {
+                List<Object> signature = new ArrayList<>(3);
+                for (int slot = 0; slot < 3; slot++) {
+                    signature.add(getPatternPreviewSignatureKey(inputs.getStack(slot)));
+                }
+                yield signature;
+            }
+            case STONECUTTING -> {
+                List<Object> signature = new ArrayList<>(2);
+                signature.add(getPatternPreviewSignatureKey(inputs.getStack(0)));
+                signature.add(patternEncodingLogic.getStonecuttingRecipeId());
+                yield signature;
+            }
+            case PROCESSING -> List.of();
+        };
+    }
+
+    private static Object getPatternPreviewSignatureKey(@Nullable GenericStack stack) {
+        return stack == null ? EMPTY_PATTERN_PREVIEW_KEY : stack.what();
     }
 
     private ItemStack getCraftingPatternPreview() {

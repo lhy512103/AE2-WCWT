@@ -4,12 +4,15 @@ import appeng.init.client.InitScreens;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.TickEvent;
@@ -17,6 +20,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModList;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import org.lwjgl.glfw.GLFW;
@@ -29,6 +33,8 @@ public class ModClientSetup {
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
 
     public static void init(IEventBus modBus) {
+        ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
+                () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> new WcwtConfigScreen(parent)));
         modBus.addListener(ModClientSetup::onRegisterKeyMappings);
         modBus.addListener(ModClientSetup::onClientSetup);
     }
@@ -60,10 +66,16 @@ public class ModClientSetup {
         event.register(WcwtKeybindings.OPEN_TOOLKIT);
         event.register(WcwtKeybindings.OPEN_RESONATING_LIGHTNING_PATTERN_CODING);
         event.register(WcwtKeybindings.TOGGLE_FAVORITE_ITEM);
+        event.register(WcwtKeybindings.TOGGLE_CRAFTING_LOCK);
     }
 
     @SubscribeEvent
     public static void onScreenKeyPressedPre(ScreenEvent.KeyPressed.Pre event) {
+        if (WcwtKeybindings.TOGGLE_CRAFTING_LOCK.matches(event.getKeyCode(), event.getScanCode())
+                && toggleCurrentWcwtCraftingLock()) {
+            event.setCanceled(true);
+            return;
+        }
         if (!(Minecraft.getInstance().screen instanceof WirelessComprehensiveWorkTerminalScreen screen)) {
             return;
         }
@@ -83,6 +95,23 @@ public class ModClientSetup {
         if (screen.fillProviderSearchFromJeiIngredient()) {
             event.setCanceled(true);
         }
+    }
+
+    private static boolean toggleCurrentWcwtCraftingLock() {
+        var minecraft = Minecraft.getInstance();
+        if (minecraft.player == null
+                || !(minecraft.player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)) {
+            return false;
+        }
+        var host = menu.getMenuHost();
+        if (host == null) {
+            return false;
+        }
+
+        boolean locked = !host.isCraftingGridLocked();
+        host.setCraftingGridLocked(locked);
+        ModNetworking.sendToServer(new CraftingLockPacket(locked));
+        return true;
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)

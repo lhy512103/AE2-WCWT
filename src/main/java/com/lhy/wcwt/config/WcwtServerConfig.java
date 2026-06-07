@@ -3,8 +3,8 @@ package com.lhy.wcwt.config;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
- * {@code config/wcwt-server.toml} 服务端配置。
- * 保存文件后 NeoForge 会重载，这里的 getter 会读取最新值。
+ * {@code saves/<world>/serverconfig/wcwt-server.toml} 服务端配置。
+ * 保存文件后 Forge 会重载，这里的 getter 会读取最新值。
  */
 public final class WcwtServerConfig {
     private static final int MIN_TOOLKIT_SLOTS = 11;

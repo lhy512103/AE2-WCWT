@@ -284,8 +284,8 @@
     },
     "craftingStatus": {
       "$comment": "合成状态按钮/图标区域。",
-      "left": 332,
-      "top": -5,
+      "left": 330,
+      "top": -4,
       "hideEdge": false,
       "width": 20,
       "height": 20

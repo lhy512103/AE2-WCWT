@@ -10,6 +10,7 @@ import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
+import com.lhy.wcwt.network.ManualWorkspaceModePacket;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
@@ -96,36 +97,21 @@ public class WcwtCraftingRecipeTransferHandler
             return null;
         }
 
-        boolean craftMissing = Screen.hasControlDown();
-        var slotToIngredientMap = createCraftingSlotMap(recipe);
-        CraftingTermMenu.MissingIngredientSlots missingSlots = menu.findMissingIngredients(slotToIngredientMap);
-
-        if (missingSlots.missingSlots().size() == slotToIngredientMap.size()) {
-            var inputSlots = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT);
-            var missingSlotViews = missingSlots.missingSlots().stream()
-                    .map(idx -> idx < inputSlots.size() ? inputSlots.get(idx) : null)
-                    .filter(Objects::nonNull)
-                    .toList();
-            return transferHelper.createUserErrorForMissingSlots(ItemModText.NO_ITEMS.text(), missingSlotViews);
-        }
-
-        // Match ae2jeiintegration UseCraftingRecipeTransfer: preview red / blue slot overlays before click.
-        if (!doTransfer && missingSlots.totalSize() != 0) {
-            List<IRecipeSlotView> gridSlots =
-                    recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream().limit(9).toList();
-            return new WcwtPartialRecipeTransferError(missingSlots, gridSlots);
-        }
-
         if (doTransfer) {
-            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
-            if (menu.getManualWorkspaceMode() != WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
-                return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, true,
-                        transferHelper);
-            }
-            CraftingHelper.performTransfer(menu, recipe, craftMissing);
+            forceManualCraftingWorkspace(menu);
         }
 
-        return null;
+        return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, doTransfer,
+                transferHelper);
+    }
+
+    private static void forceManualCraftingWorkspace(WirelessComprehensiveWorkTerminalMenu menu) {
+        if (menu.getManualWorkspaceMode() == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
+            return;
+        }
+        menu.setManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING);
+        ModNetworking.sendToServer(new ManualWorkspaceModePacket(
+                WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING.ordinal()));
     }
 
     private static Map<Integer, net.minecraft.world.item.crafting.Ingredient> createCraftingSlotMap(CraftingRecipe recipe) {

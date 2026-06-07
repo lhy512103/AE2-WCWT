@@ -18,6 +18,7 @@ public final class WcwtClientConfig {
     public static final ForgeConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
     public static final ForgeConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
     public static final ForgeConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
+    public static final ForgeConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
     public static final ForgeConfigSpec.BooleanValue FAVORITED_ITEMS_FIRST;
     public static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> FAVORITED_KEYS;
 
@@ -53,6 +54,9 @@ public final class WcwtClientConfig {
         LAST_MANAGEMENT_TOOLKIT_OPEN = BUILDER
                 .comment("Remembers whether the management-area toolkit was open the last time this client closed the terminal.")
                 .define("lastManagementToolkitOpen", false);
+        LAST_VIEW_CELLS_PANEL_VISIBLE = BUILDER
+                .comment("Remembers whether the WCWT view-cell panel was visible the last time this client toggled it.")
+                .define("lastViewCellsPanelVisible", true);
         FAVORITED_ITEMS_FIRST = BUILDER
                 .comment("If true: favorited ME terminal entries are displayed before non-favorited entries in WCWT.")
                 .translation("wcwt.config.favoritedItemsFirst")
@@ -100,6 +104,15 @@ public final class WcwtClientConfig {
 
     public static void setLastManagementToolkitOpen(boolean open) {
         LAST_MANAGEMENT_TOOLKIT_OPEN.set(open);
+        SPEC.save();
+    }
+
+    public static boolean lastViewCellsPanelVisible() {
+        return LAST_VIEW_CELLS_PANEL_VISIBLE.get();
+    }
+
+    public static void setLastViewCellsPanelVisible(boolean visible) {
+        LAST_VIEW_CELLS_PANEL_VISIBLE.set(visible);
         SPEC.save();
     }
 

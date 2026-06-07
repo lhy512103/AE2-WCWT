@@ -123,19 +123,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final long PERF_LOG_THRESHOLD_NS = 1_000_000L;
     private static final long PATTERN_PROVIDER_REFRESH_DEBOUNCE_MS = 180L;
     private static final long PATTERN_PROVIDER_SUBSCRIPTION_KEEPALIVE_MS = 3_000L;
-    private boolean debugLoggedFirstUpdateBeforeRender;
-    private int wcwtStepLogFrames;
 
     private void wcwtStep(String name, Runnable step) {
-        boolean verbose = wcwtStepLogFrames < 3;
-        if (verbose) {
-            WcwtMod.LOGGER.info("WCWT debug: step {} begin", name);
+        if (!DEBUG_PERF) {
+            step.run();
+            return;
         }
+
         long t0 = System.nanoTime();
         step.run();
         long ms = (System.nanoTime() - t0) / 1_000_000L;
-        if (verbose || ms >= 20) {
-            WcwtMod.LOGGER.info("WCWT debug: step {} end took {} ms", name, ms);
+        if (ms >= 20) {
+            WcwtMod.LOGGER.info("WCWT perf: step {} took {} ms", name, ms);
         }
     }
     
@@ -373,7 +372,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean attemptedRestoreManagementToolkitOpenState;
     private boolean managementToolkitOpen;
     private boolean rebuildingFavoriteRepoView;
-    private boolean viewCellsPanelVisible = true;
+    private boolean viewCellsPanelVisible = WcwtClientConfig.lastViewCellsPanelVisible();
     
     public WirelessComprehensiveWorkTerminalScreen(WirelessComprehensiveWorkTerminalMenu menu, 
                                                      Inventory playerInventory, 
@@ -387,10 +386,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                                                      ScreenStyle style) {
         super(menu, playerInventory, title, style);
         ensureVerticalToolbarPosition();
-        WcwtMod.LOGGER.info("WCWT debug: screen ctor begin player={}, hostPresent={}, title={}",
-                playerInventory.player.getScoreboardName(),
-                menu.getMenuHost() != null,
-                title.getString());
         WcwtFavorites.ensureLoaded();
         hookRepoUpdateListener();
         favoriteItemsButton = addToLeftToolbar(new FavoriteItemsButton(WcwtFavorites::isEnabled,
@@ -485,10 +480,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         toolkitScrollbar.setCaptureMouseWheel(false);
         syncPatternManagementSettingsFromMenu();
         rebuildCraftableIndicatorCache();
-        WcwtMod.LOGGER.info("WCWT debug: screen ctor end player={}, hostPresent={}, repoEntriesKnown={}",
-                playerInventory.player.getScoreboardName(),
-                host != null,
-                craftableIndicatorKeys.size());
 
         // 以下所有 widgets.add() 必须在构造函数中完成，确保 populateScreen() 在 init() 中运行时
         // compositeWidgets 已有内容，才能被正确定位显示。（AE2 的约定：composite widget 在构造函数注册）
@@ -824,11 +815,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void init() {
         super.init();
-        WcwtMod.LOGGER.info("WCWT debug: screen init begin player={}, hostPresent={}, image={}x{}",
-                menu.getPlayerInventory().player.getScoreboardName(),
-                menu.getMenuHost() != null,
-                imageWidth,
-                imageHeight);
         rebuildCraftableIndicatorCache();
         syncRepoRowSize();
         clearCraftingGridButton = resolveWidgetById("clearCraftingGrid");
@@ -854,11 +840,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         initExtendedUIButtons();
         initializePanels();
         updateManualWorkspaceUi();
-        WcwtMod.LOGGER.info("WCWT debug: screen init end player={}, repoRows={}, craftableKeys={}, currentUi={}",
-                menu.getPlayerInventory().player.getScoreboardName(),
-                getRepoRowCount(),
-                craftableIndicatorKeys.size(),
-                menu.getSyncedExtendedUIType());
     }
 
     private void syncRepoRowSize() {
@@ -1971,14 +1952,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         refreshUpgradeScrollbarLayout();
         refreshViewCellsPanelLayout();
         refreshViewCellsScrollbarLayout();
-        if (!debugLoggedFirstUpdateBeforeRender) {
-            debugLoggedFirstUpdateBeforeRender = true;
-            WcwtMod.LOGGER.info("WCWT debug: first updateBeforeRender player={}, hostPresent={}, repoPower={}, currentUi={}",
-                    menu.getPlayerInventory().player.getScoreboardName(),
-                    menu.getMenuHost() != null,
-                    repo.hasPower(),
-                    menu.getSyncedExtendedUIType());
-        }
         wcwtStep("refreshRepoViewAfterTransientReconnect", this::refreshRepoViewAfterTransientReconnect);
         wcwtStep("restoreManagementToolkitOpenStateIfNeeded", this::restoreManagementToolkitOpenStateIfNeeded);
         wcwtStep("ensureFavoritesLoaded", WcwtFavorites::ensureLoaded);
@@ -2046,7 +2019,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         wcwtStep("updatePatternCacheSlots", this::updatePatternCacheSlots);
         wcwtStep("updatePatternManagement", this::updatePatternManagement);
         wcwtStep("updateCurioSlots", this::updateCurioSlots);
-        wcwtStepLogFrames++;
         if (DEBUG_REPO) {
             logRepoViewState("updateBeforeRender", -1);
         }
@@ -3511,7 +3483,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagement(guiGraphics, mouseX, mouseY);
         renderCurioToggleOverlays(guiGraphics);
         renderCosmeticArmorToggleOverlays(guiGraphics);
-        renderFavoritedIndicators(guiGraphics);
     }
 
     private void renderWcwtPinnedRowDecorations(GuiGraphics guiGraphics) {
@@ -3564,6 +3535,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void toggleViewCellsPanel() {
         viewCellsPanelVisible = !viewCellsPanelVisible;
+        WcwtClientConfig.setLastViewCellsPanelVisible(viewCellsPanelVisible);
         applyViewCellsPanelVisibility();
         if (viewCellsToggleButton != null) {
             viewCellsToggleButton.refreshMessage();
@@ -3590,7 +3562,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         Component text = tooExpensive
                 ? Component.translatable("container.repair.expensive")
                 : Component.translatable("container.repair.cost", cost);
-        int color = tooExpensive || !mayPickupManualAnvilResult() ? 0xFF6060 : 0x80FF20;
+        int color = tooExpensive || !hasEnoughManualAnvilExperience(cost) ? 0xFF6060 : 0x80FF20;
         var rect = mainLayout.widget("manual_anvil_cost",
                 new ExtendedPanelLayout.Rect(79, imageHeight - 194, 0, 0), imageWidth, imageHeight);
         guiGraphics.drawString(font, text, rect.left(), rect.top(), color);
@@ -3601,12 +3573,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 .anyMatch(slot -> !slot.getItem().isEmpty());
     }
 
-    private boolean mayPickupManualAnvilResult() {
+    private boolean hasEnoughManualAnvilExperience(int cost) {
         if (minecraft == null || minecraft.player == null) {
             return false;
         }
-        return menu.getSlots(WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT).stream()
-                .anyMatch(slot -> slot.mayPickup(minecraft.player));
+        return minecraft.player.getAbilities().instabuild || minecraft.player.experienceLevel >= cost;
     }
 
     private void renderPatternManagement(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -4305,7 +4276,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (minecraft != null && minecraft.player != null) {
             minecraft.player.displayClientMessage(Component.literal("WCWT layout reloaded"), true);
         }
-        WcwtMod.LOGGER.info("WCWT debug: reloaded main layout {}", MAIN_LAYOUT_ID);
+        if (DEBUG_REPO) {
+            WcwtMod.LOGGER.info("WCWT repo debug: reloaded main layout {}", MAIN_LAYOUT_ID);
+        }
     }
 
     private void refreshUpgradePanelLayout() {
@@ -5096,6 +5069,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     protected void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        // Draw favorite markers in the final UI pass so they appear above item icons and slot hover
+        // highlights, while still staying below whichever tooltip this method renders afterwards.
+        var poseStack = guiGraphics.pose();
+        poseStack.pushPose();
+        poseStack.translate(leftPos, topPos, 300);
+        RenderSystem.disableDepthTest();
+        try {
+            renderFavoritedIndicators(guiGraphics);
+        } finally {
+            RenderSystem.enableDepthTest();
+            poseStack.popPose();
+        }
+
         ItemStack stonecuttingStack = getStonecuttingResultUnderMouse(mouseX, mouseY);
         if (!stonecuttingStack.isEmpty()) {
             guiGraphics.renderTooltip(font, stonecuttingStack, mouseX, mouseY);
@@ -5500,4 +5486,3 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 }
-

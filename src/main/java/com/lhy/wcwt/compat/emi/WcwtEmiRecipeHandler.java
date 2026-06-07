@@ -12,6 +12,7 @@ import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
+import com.lhy.wcwt.network.ManualWorkspaceModePacket;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
@@ -202,12 +203,16 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
         if (isCraftingGridLocked(menu)) {
             EncodingMode mode = getTransferMode(recipe);
-            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
+            if (mode == EncodingMode.CRAFTING) {
+                forceManualCraftingWorkspace(menu);
+            } else {
+                WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
+            }
             List<RequestedIngredient> requestedIngredients = collectRequestedIngredients(menu, recipe);
             if (requestedIngredients.isEmpty()) {
                 return false;
             }
-            boolean maxTransfer = context.getAmount() > 1;
+            boolean maxTransfer = context.getAmount() > 1 || Screen.hasShiftDown();
             boolean craftMissing = context.getDestination() != EmiCraftContext.Destination.NONE;
             ModNetworking.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
                     requestedIngredients, menu.getManualWorkspaceMode().ordinal()));
@@ -229,6 +234,15 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return true;
     }
 
+    private static void forceManualCraftingWorkspace(WirelessComprehensiveWorkTerminalMenu menu) {
+        if (menu.getManualWorkspaceMode() == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
+            return;
+        }
+        menu.setManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING);
+        ModNetworking.sendToServer(new ManualWorkspaceModePacket(
+                WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING.ordinal()));
+    }
+
     private static boolean isCraftingGridLocked(WirelessComprehensiveWorkTerminalMenu menu) {
         return menu.getMenuHost() != null && menu.getMenuHost().isCraftingGridLocked();
     }
@@ -244,10 +258,11 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         int inputCount = 0;
         for (int index = 0; index < recipe.getInputs().size(); index++) {
             EmiIngredient emiIngredient = recipe.getInputs().get(index);
-            Ingredient ingredient = toIngredient(emiIngredient);
-            if (ingredient.isEmpty()) {
+            List<ItemStack> alternatives = getAlternativeStacks(emiIngredient);
+            if (alternatives.isEmpty()) {
                 continue;
             }
+            Ingredient ingredient = Ingredient.of(alternatives.stream().map(ItemStack::copy));
             inputCount++;
 
             int requiredCount = Math.max(1, (int) Math.min(Integer.MAX_VALUE, emiIngredient.getAmount()));
@@ -262,7 +277,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                     }
 
                     var stack = playerItems.get(slot);
-                    if (stack.getCount() - reservedPlayerItems[slot] > 0 && ingredient.test(stack)) {
+                    if (stack.getCount() - reservedPlayerItems[slot] > 0
+                            && matchesAnyAlternative(stack, alternatives, ingredient)) {
                         reservedPlayerItems[slot]++;
                         found = true;
                         anyResolved = true;
@@ -270,13 +286,12 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                     }
                 }
 
-                if (!found && menu.hasIngredient(ingredient, reservedTerminalAmounts)) {
-                    reservedTerminalAmounts.mergeInt(ingredient, 1, Integer::sum);
+                if (!found && hasStoredAlternative(menu, alternatives, ingredient, reservedTerminalAmounts)) {
                     found = true;
                     anyResolved = true;
                 }
 
-                if (!found && hasCraftableAlternative(menu, ingredient)) {
+                if (!found && hasCraftableAlternative(menu, alternatives, ingredient)) {
                     craftable = true;
                     found = true;
                     anyResolved = true;
@@ -351,14 +366,42 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
         Set<AEKey> availableKeys = new HashSet<>();
         for (var entry : repo.getAllEntries()) {
-            if (entry.getWhat() != null && entry.isCraftable()) {
+            if (entry.getWhat() != null && (entry.getStoredAmount() > 0 || entry.isCraftable())) {
                 availableKeys.add(entry.getWhat());
             }
         }
         return availableKeys;
     }
 
-    private static boolean hasCraftableAlternative(WirelessComprehensiveWorkTerminalMenu menu, Ingredient ingredient) {
+    private static boolean hasStoredAlternative(WirelessComprehensiveWorkTerminalMenu menu, List<ItemStack> alternatives,
+                                                Ingredient ingredient,
+                                                Object2IntOpenHashMap<Object> reservedAmounts) {
+        var clientRepo = menu.getClientRepo();
+        if (clientRepo == null) {
+            return false;
+        }
+
+        for (var entry : clientRepo.getAllEntries()) {
+            if (entry.getStoredAmount() <= 0 || !(entry.getWhat() instanceof AEItemKey itemKey)) {
+                continue;
+            }
+            if (!matchesAnyAlternative(itemKey, alternatives, ingredient)) {
+                continue;
+            }
+
+            int reservedAmount = reservedAmounts.getOrDefault(entry, 0);
+            if (entry.getStoredAmount() - reservedAmount >= 1) {
+                reservedAmounts.mergeInt(entry, 1, Integer::sum);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean hasCraftableAlternative(WirelessComprehensiveWorkTerminalMenu menu,
+                                                   List<ItemStack> alternatives,
+                                                   Ingredient ingredient) {
         var clientRepo = menu.getClientRepo();
         if (clientRepo == null) {
             return false;
@@ -369,13 +412,38 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 continue;
             }
 
-            for (ItemStack alternative : ingredient.getItems()) {
-                if (itemKey.matches(alternative)) {
-                    return true;
-                }
+            if (matchesAnyAlternative(itemKey, alternatives, ingredient)) {
+                return true;
             }
         }
 
+        return false;
+    }
+
+    private static boolean matchesAnyAlternative(AEItemKey itemKey, List<ItemStack> alternatives,
+                                                 Ingredient ingredient) {
+        return matchesAnyAlternative(itemKey.toStack(), alternatives, ingredient);
+    }
+
+    private static boolean matchesAnyAlternative(ItemStack stack, List<ItemStack> alternatives,
+                                                 Ingredient ingredient) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (ItemStack.isSameItem(stack, alternative)
+                    && java.util.Objects.equals(stack.getTag(), alternative.getTag())) {
+                return true;
+            }
+        }
+        if (ingredient != null && ingredient.test(stack)) {
+            return true;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (!alternative.isEmpty() && ItemStack.isSameItem(stack, alternative)) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -391,6 +459,22 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 .map(EmiStack::getItemStack)
                 .filter(stack -> !stack.isEmpty())
                 .map(ItemStack::copy));
+    }
+
+    private static List<ItemStack> getAlternativeStacks(EmiIngredient ingredient) {
+        List<ItemStack> alternatives = new ArrayList<>();
+        for (var emiStack : ingredient.getEmiStacks()) {
+            ItemStack stack = emiStack.getItemStack();
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            ItemStack copy = stack.copy();
+            if (!containsEquivalentStack(alternatives, copy)) {
+                alternatives.add(copy);
+            }
+        }
+        return alternatives;
     }
 
     private static Map<Integer, SlotWidget> getRecipeInputSlots(EmiRecipe recipe, List<Widget> widgets) {
@@ -506,16 +590,24 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     private static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,
                                                                          EmiRecipe recipe) {
         var priorityContext = createPriorityContext(menu);
-        return recipe.getInputs().stream()
-                .filter(ingredient -> !ingredient.isEmpty())
-                .map(ingredient -> toRequestedIngredient(priorityContext, ingredient))
-                .filter(Objects::nonNull)
-                .toList();
+        List<RequestedIngredient> result = new ArrayList<>();
+        for (int slotIndex = 0; slotIndex < recipe.getInputs().size(); slotIndex++) {
+            EmiIngredient ingredient = recipe.getInputs().get(slotIndex);
+            if (ingredient.isEmpty()) {
+                continue;
+            }
+            RequestedIngredient requested = toRequestedIngredient(priorityContext, ingredient, slotIndex);
+            if (requested != null) {
+                result.add(requested);
+            }
+        }
+        return result;
     }
 
     @Nullable
     private static RequestedIngredient toRequestedIngredient(WcwtIngredientPriorities.PriorityContext priorityContext,
-                                                             EmiIngredient ingredient) {
+                                                             EmiIngredient ingredient,
+                                                             int targetSlot) {
         List<ItemStack> visibleAlternatives = new ArrayList<>();
         ItemStack displayed = ingredient.getEmiStacks().stream()
                 .map(EmiStack::getItemStack)
@@ -547,7 +639,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                     wideIngredient, visibleAlternatives, priorityContext.bookmarkPriorities());
             if (!bookmarked.isEmpty()) {
                 int count = Math.max(1, (int) Math.min(Integer.MAX_VALUE, ingredient.getAmount()));
-                return new RequestedIngredient(List.of(bookmarked), count);
+                return new RequestedIngredient(List.of(bookmarked), count, targetSlot);
             }
         }
         ItemStack best = WcwtIngredientPriorities.chooseBestItem(priorityContext, wideIngredient, visibleAlternatives);
@@ -555,7 +647,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return null;
         }
         int count = Math.max(1, (int) Math.min(Integer.MAX_VALUE, ingredient.getAmount()));
-        return new RequestedIngredient(List.of(best), count);
+        return new RequestedIngredient(List.of(best), count, targetSlot);
     }
 
     @Nullable

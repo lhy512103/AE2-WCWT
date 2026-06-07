@@ -48,6 +48,8 @@ public record PatternManagementActionPacket(Action action,
                                             long providerPosLong,
                                             String providerDimensionId,
                                             int providerFaceOrdinal) implements CustomPacketPayload {
+    private static final boolean DEBUG_PROVIDER_UI = Boolean.getBoolean("wcwt.debug.providerUi");
+
     public static final Type<PatternManagementActionPacket> TYPE =
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pattern_management_action"));
 
@@ -294,7 +296,7 @@ public record PatternManagementActionPacket(Action action,
 
     private static void openProviderUi(ServerPlayer player, PatternManagementActionPacket packet) {
         Location location = resolveProviderLocation(player, packet);
-        WcwtMod.LOGGER.info(
+        logProviderUi(
                 "WCWT provider ui debug: player={}, providerId={}, hasPacketLocation={}, resolvedLevel={}, resolvedPos={}, resolvedFace={}",
                 player.getScoreboardName(),
                 packet.providerId(),
@@ -326,13 +328,13 @@ public record PatternManagementActionPacket(Action action,
                                     : null;
                     return new Location(level, BlockPos.of(packet.providerPosLong()), face);
                 }
-                WcwtMod.LOGGER.info(
+                logProviderUi(
                         "WCWT provider ui debug: packet dimension not loaded player={}, providerId={}, dim={}",
                         player.getScoreboardName(),
                         packet.providerId(),
                         dimId);
             }
-            WcwtMod.LOGGER.info(
+            logProviderUi(
                     "WCWT provider ui debug: packet location parse result player={}, providerId={}, dimId={}, posLong={}, faceOrdinal={}",
                     player.getScoreboardName(),
                     packet.providerId(),
@@ -343,18 +345,18 @@ public record PatternManagementActionPacket(Action action,
 
         var provider = getProviderByOrdinal(player, packet.providerId);
         if (provider == null) {
-            WcwtMod.LOGGER.info("WCWT provider ui debug: provider missing player={}, providerId={}",
+            logProviderUi("WCWT provider ui debug: provider missing player={}, providerId={}",
                     player.getScoreboardName(), packet.providerId());
             return new Location(null, null, null);
         }
-        WcwtMod.LOGGER.info("WCWT provider ui debug: fallback provider class={} for player={}, providerId={}",
+        logProviderUi("WCWT provider ui debug: fallback provider class={} for player={}, providerId={}",
                 provider.getClass().getName(), player.getScoreboardName(), packet.providerId());
         return getLocation(provider);
     }
 
     private static boolean tryOpenProviderTargetUi(ServerPlayer player, ServerLevel level, BlockPos pos, Direction face) {
         if (!level.isLoaded(pos)) {
-            WcwtMod.LOGGER.info("WCWT provider ui debug: provider pos not loaded player={}, level={}, pos={}",
+            logProviderUi("WCWT provider ui debug: provider pos not loaded player={}, level={}, pos={}",
                     player.getScoreboardName(), level.dimension().location(), pos);
             return false;
         }
@@ -385,13 +387,13 @@ public record PatternManagementActionPacket(Action action,
 
     private static boolean tryOpenAt(ServerPlayer player, ServerLevel level, BlockPos targetPos) {
         if (!level.isLoaded(targetPos)) {
-            WcwtMod.LOGGER.info("WCWT provider ui debug: target pos not loaded player={}, level={}, pos={}",
+            logProviderUi("WCWT provider ui debug: target pos not loaded player={}, level={}, pos={}",
                     player.getScoreboardName(), level.dimension().location(), targetPos);
             return false;
         }
         BlockEntity be = level.getBlockEntity(targetPos);
         var state = level.getBlockState(targetPos);
-        WcwtMod.LOGGER.info(
+        logProviderUi(
                 "WCWT provider ui debug: try target player={}, level={}, pos={}, block={}, blockEntity={}, beIsMenuProvider={}",
                 player.getScoreboardName(),
                 level.dimension().location(),
@@ -401,22 +403,22 @@ public record PatternManagementActionPacket(Action action,
                 be instanceof MenuProvider);
         if (be instanceof MenuProvider menuProvider) {
             NetworkHooks.openScreen(player, menuProvider, targetPos);
-            WcwtMod.LOGGER.info("WCWT provider ui debug: opened via block entity menu provider at {}", targetPos);
+            logProviderUi("WCWT provider ui debug: opened via block entity menu provider at {}", targetPos);
             return true;
         }
         var provider = state.getMenuProvider(level, targetPos);
         if (provider != null) {
             NetworkHooks.openScreen(player, provider, targetPos);
-            WcwtMod.LOGGER.info("WCWT provider ui debug: opened via block state menu provider at {}", targetPos);
+            logProviderUi("WCWT provider ui debug: opened via block state menu provider at {}", targetPos);
             return true;
         }
-        WcwtMod.LOGGER.info("WCWT provider ui debug: no menu provider at {}", targetPos);
+        logProviderUi("WCWT provider ui debug: no menu provider at {}", targetPos);
         return false;
     }
 
     private static boolean tryUseTargetBlock(ServerPlayer player, ServerLevel level, BlockPos targetPos, Direction providerToTarget) {
         if (!level.isLoaded(targetPos)) {
-            WcwtMod.LOGGER.info("WCWT provider ui debug: use target pos not loaded player={}, level={}, pos={}",
+            logProviderUi("WCWT provider ui debug: use target pos not loaded player={}, level={}, pos={}",
                     player.getScoreboardName(), level.dimension().location(), targetPos);
             return false;
         }
@@ -424,7 +426,7 @@ public record PatternManagementActionPacket(Action action,
                 ? InteractionHand.MAIN_HAND
                 : player.getOffhandItem().isEmpty() ? InteractionHand.OFF_HAND : null;
         if (hand == null) {
-            WcwtMod.LOGGER.info("WCWT provider ui debug: skip block use because both hands are occupied player={}, pos={}",
+            logProviderUi("WCWT provider ui debug: skip block use because both hands are occupied player={}, pos={}",
                     player.getScoreboardName(), targetPos);
             return false;
         }
@@ -432,7 +434,7 @@ public record PatternManagementActionPacket(Action action,
         var hit = new BlockHitResult(Vec3.atCenterOf(targetPos), providerToTarget.getOpposite(), targetPos, false);
         if (state.getBlock() instanceof appeng.block.AEBaseEntityBlock<?> aeBlock) {
             InteractionResult result = aeBlock.onActivated(level, targetPos, player, hand, ItemStack.EMPTY, hit);
-            WcwtMod.LOGGER.info("WCWT provider ui debug: activated AE target block player={}, pos={}, block={}, hand={}, result={}",
+            logProviderUi("WCWT provider ui debug: activated AE target block player={}, pos={}, block={}, hand={}, result={}",
                     player.getScoreboardName(),
                     targetPos,
                     state.getBlock().getDescriptionId(),
@@ -441,13 +443,19 @@ public record PatternManagementActionPacket(Action action,
             return result.consumesAction();
         }
         InteractionResult result = state.use(level, player, hand, hit);
-        WcwtMod.LOGGER.info("WCWT provider ui debug: used target block player={}, pos={}, block={}, hand={}, result={}",
+        logProviderUi("WCWT provider ui debug: used target block player={}, pos={}, block={}, hand={}, result={}",
                 player.getScoreboardName(),
                 targetPos,
                 state.getBlock().getDescriptionId(),
                 hand,
                 result);
         return result.consumesAction();
+    }
+
+    private static void logProviderUi(String message, Object... args) {
+        if (DEBUG_PROVIDER_UI) {
+            WcwtMod.LOGGER.info(message, args);
+        }
     }
 
     private static PatternContainer getProviderByOrdinal(ServerPlayer player, long providerId) {

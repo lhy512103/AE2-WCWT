@@ -72,10 +72,15 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
         ctx.enqueueWork(() -> WcwtTerminalPullService.handle(ctx.player(), payload));
     }
 
-    public record RequestedIngredient(List<ItemStack> alternatives, int count) {
+    public record RequestedIngredient(List<ItemStack> alternatives, int count, int targetSlot) {
         public RequestedIngredient(List<ItemStack> alternatives, int count) {
+            this(alternatives, count, -1);
+        }
+
+        public RequestedIngredient(List<ItemStack> alternatives, int count, int targetSlot) {
             this.alternatives = alternatives.stream().map(ItemStack::copy).toList();
             this.count = count;
+            this.targetSlot = targetSlot;
         }
 
         private static RequestedIngredient decode(RegistryFriendlyByteBuf buffer) {
@@ -84,7 +89,9 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
             for (int i = 0; i < size; i++) {
                 alternatives.add(buffer.readItem());
             }
-            return new RequestedIngredient(alternatives, buffer.readVarInt());
+            int count = buffer.readVarInt();
+            int targetSlot = buffer.readVarInt();
+            return new RequestedIngredient(alternatives, count, targetSlot);
         }
 
         private void write(RegistryFriendlyByteBuf buffer) {
@@ -93,10 +100,11 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
                 buffer.writeItem(alternative);
             }
             buffer.writeVarInt(count);
+            buffer.writeVarInt(targetSlot);
         }
 
         public RequestedIngredient copy() {
-            return new RequestedIngredient(alternatives, count);
+            return new RequestedIngredient(alternatives, count, targetSlot);
         }
     }
 }

@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
 import appeng.api.inventories.InternalInventory;
+import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.networking.energy.IEnergySource;
 import appeng.api.networking.security.IActionHost;
@@ -69,7 +70,7 @@ public final class WcwtTerminalPullService {
         var storage = host.getInventory();
         var energy = resolveEnergySource(host);
         var actionSource = resolveActionSource(serverPlayer, host);
-        var gridNode = menu.getNetworkNode();
+        var gridNode = resolveCraftingGridNode(menu);
         ICraftingService craftingService = payload.craftMissing() && gridNode != null && menu.getLinkStatus().connected()
                 ? gridNode.getGrid().getCraftingService()
                 : null;
@@ -78,17 +79,20 @@ public final class WcwtTerminalPullService {
         var targetMode = WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode
                 .fromOrdinal(payload.manualWorkspaceMode());
         InternalInventory craftingGrid = getPullTargetInventory(menu, targetMode);
+        CraftingGridPreparation gridPreparation = craftingGrid == null
+                ? CraftingGridPreparation.empty()
+                : prepareCraftingGridForPull(playerInventory, menu, craftingGrid, requestedIngredients, storage, energy,
+                        actionSource);
 
         var playerInventorySnapshot = snapshotInventory(playerInventory.items);
         var reservedPlayerItems = new int[playerInventorySnapshot.size()];
         var craftingGridSnapshot = craftingGrid != null ? snapshotInventory(craftingGrid) : List.<ItemStack>of();
         var reservedCraftingGridItems = craftingGrid != null ? new int[craftingGridSnapshot.size()] : null;
-        int transferSets = payload.maxTransfer()
-                ? Math.max(1, computeMaxTransferSets(menu, storage, filter, craftingService, payload.craftMissing(),
-                        requestedIngredients, playerInventorySnapshot, craftingGridSnapshot, targetMode))
-                : 1;
-        List<RequestedIngredient> scaledIngredients = scaleRequestedIngredients(requestedIngredients, transferSets);
-        boolean craftingGridChanged = false;
+        List<RequestedIngredient> scaledIngredients = payload.maxTransfer()
+                ? scaleRequestedIngredientsForMaxTransfer(menu, storage, filter, craftingService, payload.craftMissing(),
+                        requestedIngredients, playerInventorySnapshot, craftingGridSnapshot, targetMode)
+                : requestedIngredients;
+        boolean craftingGridChanged = gridPreparation.changed();
 
         List<ItemStack> filteredItems = new ArrayList<>();
         List<ItemStack> missingItems = new ArrayList<>();
@@ -100,12 +104,27 @@ public final class WcwtTerminalPullService {
             if (requested.alternatives().isEmpty()) {
                 continue;
             }
+            int targetSlot = requested.targetSlot() >= 0 ? requested.targetSlot() : ingredientIndex;
+            if (gridPreparation.isBlocked(targetSlot)) {
+                continue;
+            }
 
             var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(requested.alternatives());
-            int satisfiedByInventory = consumeFromPlayerInventory(playerInventorySnapshot, menu, requested.alternatives(),
-                    wideIngredient, requested.count(), reservedPlayerItems);
             int satisfiedByCraftingGrid = consumeFromCraftingGrid(craftingGridSnapshot, requested.alternatives(),
-                    wideIngredient, requested.count() - satisfiedByInventory, reservedCraftingGridItems, ingredientIndex);
+                    wideIngredient, requested.count(), reservedCraftingGridItems, targetSlot);
+            int remainingAfterGrid = requested.count() - satisfiedByCraftingGrid;
+            if (remainingAfterGrid <= 0) {
+                continue;
+            }
+            int availableFromInventory = consumeFromPlayerInventory(playerInventorySnapshot, menu, requested.alternatives(),
+                    wideIngredient, remainingAfterGrid, reservedPlayerItems);
+            int satisfiedByInventory = craftingGrid == null
+                    ? availableFromInventory
+                    : moveFromPlayerInventoryToCraftingGrid(playerInventory, menu, craftingGrid, targetSlot,
+                            requested.alternatives(), wideIngredient, availableFromInventory);
+            if (craftingGrid != null && satisfiedByInventory > 0) {
+                craftingGridChanged = true;
+            }
             int missingAmount = requested.count() - satisfiedByInventory - satisfiedByCraftingGrid;
             if (missingAmount <= 0) {
                 continue;
@@ -121,7 +140,7 @@ public final class WcwtTerminalPullService {
                     autoCraftRequests.computeIfAbsent(craftableKey, ignored -> new ArrayList<>());
                     var slots = autoCraftRequests.get(craftableKey);
                     for (int i = 0; i < remainingToHandle; i++) {
-                        slots.add(ingredientIndex);
+                        slots.add(targetSlot);
                     }
                     remainingToHandle = 0;
                 }
@@ -137,7 +156,7 @@ public final class WcwtTerminalPullService {
             for (ItemStack extractedStack : extractedStacks) {
                 ItemStack remainder = extractedStack;
                 if (craftingGrid != null) {
-                    remainder = insertIntoCraftingGrid(craftingGrid, ingredientIndex, remainder);
+                    remainder = insertIntoCraftingGrid(craftingGrid, targetSlot, remainder);
                     if (remainder.getCount() != extractedStack.getCount()) {
                         craftingGridChanged = true;
                     }
@@ -165,6 +184,86 @@ public final class WcwtTerminalPullService {
     }
 
     @Nullable
+    private static IGridNode resolveCraftingGridNode(WirelessComprehensiveWorkTerminalMenu menu) {
+        var menuHost = menu.getMenuHost();
+        if (menuHost != null) {
+            IGridNode hostNode = menuHost.getActionableNode();
+            if (hostNode != null && hostNode.getGrid() != null) {
+                return hostNode;
+            }
+        }
+
+        IGridNode menuNode = menu.getNetworkNode();
+        return menuNode != null && menuNode.getGrid() != null ? menuNode : null;
+    }
+
+    private static CraftingGridPreparation prepareCraftingGridForPull(Inventory playerInventory, MEStorageMenu menu,
+            InternalInventory craftingGrid, List<RequestedIngredient> requestedIngredients, MEStorage storage,
+            IEnergySource energy, IActionSource actionSource) {
+        Map<Integer, RequestedIngredient> targets = new LinkedHashMap<>();
+        for (int ingredientIndex = 0; ingredientIndex < requestedIngredients.size(); ingredientIndex++) {
+            RequestedIngredient requested = requestedIngredients.get(ingredientIndex);
+            int targetSlot = requested.targetSlot() >= 0 ? requested.targetSlot() : ingredientIndex;
+            if (targetSlot >= 0 && targetSlot < craftingGrid.size()) {
+                targets.put(targetSlot, requested);
+            }
+        }
+
+        boolean changed = false;
+        boolean[] blockedSlots = new boolean[craftingGrid.size()];
+        for (int slot = 0; slot < craftingGrid.size(); slot++) {
+            ItemStack current = craftingGrid.getStackInSlot(slot);
+            if (current.isEmpty()) {
+                continue;
+            }
+
+            RequestedIngredient target = targets.get(slot);
+            boolean matchesTarget = false;
+            if (target != null) {
+                var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(target.alternatives());
+                matchesTarget = matchesAnyAlternative(current, target.alternatives(), wideIngredient);
+            }
+            if (matchesTarget) {
+                continue;
+            }
+
+            ItemStack remaining = returnToNetworkThenPlayer(playerInventory, menu, storage, energy, actionSource, current);
+            craftingGrid.setItemDirect(slot, remaining);
+            changed = true;
+            blockedSlots[slot] = !remaining.isEmpty();
+        }
+
+        return new CraftingGridPreparation(changed, blockedSlots);
+    }
+
+    private static ItemStack returnToNetworkThenPlayer(Inventory playerInventory, MEStorageMenu menu, MEStorage storage,
+            IEnergySource energy, IActionSource actionSource, ItemStack stack) {
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack remaining = stack.copy();
+        AEItemKey key = AEItemKey.of(remaining);
+        if (key != null) {
+            long inserted = StorageHelper.poweredInsert(energy, storage, key, remaining.getCount(), actionSource);
+            if (inserted > 0) {
+                remaining.shrink((int) Math.min(inserted, Integer.MAX_VALUE));
+            }
+        }
+        return insertIntoPlayerInventory(playerInventory, menu, remaining);
+    }
+
+    private record CraftingGridPreparation(boolean changed, boolean[] blockedSlots) {
+        private static CraftingGridPreparation empty() {
+            return new CraftingGridPreparation(false, new boolean[0]);
+        }
+
+        private boolean isBlocked(int slot) {
+            return slot >= 0 && slot < blockedSlots.length && blockedSlots[slot];
+        }
+    }
+
+    @Nullable
     private static InternalInventory getPullTargetInventory(WirelessComprehensiveWorkTerminalMenu menu,
             WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
         return switch (mode) {
@@ -184,7 +283,76 @@ public final class WcwtTerminalPullService {
         List<RequestedIngredient> scaled = new ArrayList<>(requestedIngredients.size());
         for (RequestedIngredient ingredient : requestedIngredients) {
             scaled.add(new RequestedIngredient(ingredient.alternatives(),
-                    Math.max(1, Math.multiplyExact(ingredient.count(), transferSets))));
+                    Math.max(1, Math.multiplyExact(ingredient.count(), transferSets)),
+                    ingredient.targetSlot()));
+        }
+        return scaled;
+    }
+
+    /**
+     * Shift/+ 最大传输时按每个配方槽独立放大，而不是用“所有输入都能满足的最小套数”。
+     *
+     * <p>这样某个输入完全缺失时只会跳过/报告该输入，不再把其它输入也限制成 1 个。
+     * 对部分可用的输入则尽量拉取已有数量；对可合成输入在按住 Ctrl 时仍保留原有自动合成行为。
+     */
+    private static List<RequestedIngredient> scaleRequestedIngredientsForMaxTransfer(MEStorageMenu menu,
+            MEStorage storage, @Nullable IPartitionList filter, @Nullable ICraftingService craftingService,
+            boolean craftMissing, List<RequestedIngredient> requestedIngredients,
+            List<ItemStack> playerInventorySnapshot, List<ItemStack> craftingGridSnapshot,
+            WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode targetMode) {
+        Map<AEItemKey, Long> availableByKey = new LinkedHashMap<>();
+
+        for (int i = 0; i < playerInventorySnapshot.size(); i++) {
+            if (menu.isPlayerInventorySlotLocked(i)) {
+                continue;
+            }
+            addStackAmount(availableByKey, playerInventorySnapshot.get(i));
+        }
+        for (var entry : storage.getAvailableStacks()) {
+            if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
+                continue;
+            }
+            if (filter != null && !filter.isListed(itemKey)) {
+                continue;
+            }
+            availableByKey.merge(itemKey, entry.getLongValue(), Long::sum);
+        }
+
+        List<RequestedIngredient> scaled = new ArrayList<>(requestedIngredients.size());
+        for (int ingredientIndex = 0; ingredientIndex < requestedIngredients.size(); ingredientIndex++) {
+            RequestedIngredient ingredient = requestedIngredients.get(ingredientIndex);
+            int maxSets = getMaxTransferSetsForTarget(targetMode, List.of(ingredient));
+            int maxUnits = (int) Math.min(Integer.MAX_VALUE, (long) ingredient.count() * Math.max(1, maxSets));
+            int reservedUnits = 0;
+            var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(ingredient.alternatives());
+            int targetSlot = ingredient.targetSlot() >= 0 ? ingredient.targetSlot() : ingredientIndex;
+            if (targetSlot >= 0 && targetSlot < craftingGridSnapshot.size()) {
+                ItemStack targetStack = craftingGridSnapshot.get(targetSlot);
+                if (matchesAnyAlternative(targetStack, ingredient.alternatives(), wideIngredient)) {
+                    addStackAmount(availableByKey, targetStack);
+                }
+            }
+
+            for (int unit = 0; unit < maxUnits; unit++) {
+                if (WcwtMeIngredientExtraction.reserveOneUnit(availableByKey, ingredient.alternatives(), wideIngredient)) {
+                    reservedUnits++;
+                    continue;
+                }
+                if (craftMissing && craftingService != null
+                        && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null) {
+                    reservedUnits++;
+                    continue;
+                }
+                break;
+            }
+
+            if (reservedUnits > 0) {
+                scaled.add(new RequestedIngredient(ingredient.alternatives(), reservedUnits, ingredient.targetSlot()));
+            } else {
+                // 保留一个最小请求，让服务端后续逻辑能给玩家显示“缺少物品”的反馈，
+                // 但它不会影响其它槽位继续按最大数量拉取。
+                scaled.add(new RequestedIngredient(ingredient.alternatives(), ingredient.count(), ingredient.targetSlot()));
+            }
         }
         return scaled;
     }
@@ -192,11 +360,11 @@ public final class WcwtTerminalPullService {
     private static int getMaxTransferSetsForTarget(
             WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode targetMode,
             List<RequestedIngredient> requestedIngredients) {
-        if (targetMode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
-            return 64;
+        if (targetMode != WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
+            return 1;
         }
 
-        int maxSets = MAX_PROCESSING_TRANSFER_STACK_SIZE;
+        int maxSets = 64;
         for (RequestedIngredient ingredient : requestedIngredients) {
             int maxStackSize = ingredient.alternatives().stream()
                     .filter(stack -> stack != null && !stack.isEmpty())
@@ -232,7 +400,7 @@ public final class WcwtTerminalPullService {
                     .max()
                     .orElse(64);
             int count = Math.max(1, Math.min(ingredient.count(), maxAllowed));
-            sanitized.add(new RequestedIngredient(alternatives, count));
+            sanitized.add(new RequestedIngredient(alternatives, count, ingredient.targetSlot()));
         }
         return sanitized;
     }
@@ -349,6 +517,43 @@ public final class WcwtTerminalPullService {
             }
         }
         return matched;
+    }
+
+    private static int moveFromPlayerInventoryToCraftingGrid(Inventory inventory, MEStorageMenu menu,
+            InternalInventory craftingGrid, int requestedSlot, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient, int amount) {
+        if (amount <= 0 || requestedSlot < 0 || requestedSlot >= craftingGrid.size()) {
+            return 0;
+        }
+
+        int movedTotal = 0;
+        for (int i = 0; i < inventory.items.size() && movedTotal < amount; i++) {
+            if (menu.isPlayerInventorySlotLocked(i)) {
+                continue;
+            }
+
+            ItemStack slotStack = inventory.items.get(i);
+            if (slotStack.isEmpty() || !matchesAnyAlternative(slotStack, alternatives, wideIngredient)) {
+                continue;
+            }
+
+            int toMoveCount = Math.min(slotStack.getCount(), amount - movedTotal);
+            ItemStack toMove = slotStack.copyWithCount(toMoveCount);
+            ItemStack remainder = insertIntoCraftingGrid(craftingGrid, requestedSlot, toMove);
+            int moved = toMoveCount - remainder.getCount();
+            if (moved <= 0) {
+                break;
+            }
+
+            slotStack.shrink(moved);
+            if (slotStack.isEmpty()) {
+                inventory.items.set(i, ItemStack.EMPTY);
+            }
+            movedTotal += moved;
+            inventory.setChanged();
+        }
+
+        return movedTotal;
     }
 
     private static int consumeFromCraftingGrid(List<ItemStack> craftingGridSnapshot, List<ItemStack> alternatives,

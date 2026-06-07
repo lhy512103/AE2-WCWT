@@ -63,11 +63,19 @@ public final class WcwtPullRecipeTransfer {
 
     private static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,
                                                                          IRecipeSlotsView recipeSlots) {
-        return collectInputSlots(recipeSlots).stream()
-                .filter(WcwtPullRecipeTransfer::hasItemStack)
-                .map(slotView -> toRequestedIngredient(menu, slotView))
-                .filter(ingredient -> !ingredient.alternatives().isEmpty())
-                .toList();
+        var inputSlots = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT);
+        List<RequestedIngredient> result = new ArrayList<>();
+        for (int slotIndex = 0; slotIndex < inputSlots.size(); slotIndex++) {
+            IRecipeSlotView slotView = inputSlots.get(slotIndex);
+            if (!hasItemStack(slotView)) {
+                continue;
+            }
+            RequestedIngredient ingredient = toRequestedIngredient(menu, slotView, slotIndex);
+            if (!ingredient.alternatives().isEmpty()) {
+                result.add(ingredient);
+            }
+        }
+        return result;
     }
 
     private static PreviewSlots findTransferPreview(MEStorageMenu container, IRecipeSlotsView recipeSlots) {
@@ -79,10 +87,11 @@ public final class WcwtPullRecipeTransfer {
         boolean anyResolved = false;
 
         for (IRecipeSlotView slotView : collectInputSlots(recipeSlots)) {
-            var ingredient = toIngredient(slotView);
-            if (ingredient.isEmpty()) {
+            List<ItemStack> alternatives = getAlternativeStacks(slotView);
+            if (alternatives.isEmpty()) {
                 continue;
             }
+            var ingredient = Ingredient.of(alternatives.stream().map(ItemStack::copy));
 
             int requiredCount = getDisplayedStack(slotView).getCount();
             requiredCount = Math.max(requiredCount, 1);
@@ -97,7 +106,8 @@ public final class WcwtPullRecipeTransfer {
                     }
 
                     var stack = playerItems.get(slot);
-                    if (stack.getCount() - reservedPlayerItems[slot] > 0 && ingredient.test(stack)) {
+                    if (stack.getCount() - reservedPlayerItems[slot] > 0
+                            && matchesAnyAlternative(stack, alternatives, ingredient)) {
                         reservedPlayerItems[slot]++;
                         found = true;
                         anyResolved = true;
@@ -105,13 +115,12 @@ public final class WcwtPullRecipeTransfer {
                     }
                 }
 
-                if (!found && container.hasIngredient(ingredient, reservedTerminalAmounts)) {
-                    reservedTerminalAmounts.merge(ingredient, 1, Integer::sum);
+                if (!found && hasStoredAlternative(container, alternatives, ingredient, reservedTerminalAmounts)) {
                     found = true;
                     anyResolved = true;
                 }
 
-                if (!found && hasCraftableAlternative(container, ingredient)) {
+                if (!found && hasCraftableAlternative(container, alternatives, ingredient)) {
                     craftable = true;
                     found = true;
                     anyResolved = true;
@@ -144,7 +153,34 @@ public final class WcwtPullRecipeTransfer {
                 .anyMatch(WcwtPullRecipeTransfer::hasItemStack);
     }
 
-    private static boolean hasCraftableAlternative(MEStorageMenu container, Ingredient ingredient) {
+    private static boolean hasStoredAlternative(MEStorageMenu container, List<ItemStack> alternatives,
+                                                Ingredient ingredient,
+                                                Object2IntOpenHashMap<Object> reservedAmounts) {
+        var clientRepo = container.getClientRepo();
+        if (clientRepo == null) {
+            return false;
+        }
+
+        for (var entry : clientRepo.getAllEntries()) {
+            if (entry.getStoredAmount() <= 0 || !(entry.getWhat() instanceof AEItemKey what)) {
+                continue;
+            }
+            if (!matchesAnyAlternative(what, alternatives, ingredient)) {
+                continue;
+            }
+
+            int reservedAmount = reservedAmounts.getOrDefault(entry, 0);
+            if (entry.getStoredAmount() - reservedAmount >= 1) {
+                reservedAmounts.merge(entry, 1, Integer::sum);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean hasCraftableAlternative(MEStorageMenu container, List<ItemStack> alternatives,
+                                                   Ingredient ingredient) {
         var clientRepo = container.getClientRepo();
         if (clientRepo == null) {
             return false;
@@ -155,13 +191,38 @@ public final class WcwtPullRecipeTransfer {
                 continue;
             }
 
-            for (ItemStack alternative : ingredient.getItems()) {
-                if (what.matches(alternative)) {
-                    return true;
-                }
+            if (matchesAnyAlternative(what, alternatives, ingredient)) {
+                return true;
             }
         }
 
+        return false;
+    }
+
+    private static boolean matchesAnyAlternative(AEItemKey itemKey, List<ItemStack> alternatives,
+                                                 Ingredient ingredient) {
+        return matchesAnyAlternative(itemKey.toStack(), alternatives, ingredient);
+    }
+
+    private static boolean matchesAnyAlternative(ItemStack stack, List<ItemStack> alternatives,
+                                                 Ingredient ingredient) {
+        if (stack.isEmpty()) {
+            return false;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (ItemStack.isSameItem(stack, alternative)
+                    && java.util.Objects.equals(stack.getTag(), alternative.getTag())) {
+                return true;
+            }
+        }
+        if (ingredient != null && ingredient.test(stack)) {
+            return true;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (!alternative.isEmpty() && ItemStack.isSameItem(stack, alternative)) {
+                return true;
+            }
+        }
         return false;
     }
 
@@ -169,19 +230,26 @@ public final class WcwtPullRecipeTransfer {
         return slotView.getDisplayedItemStack().isPresent() || slotView.getItemStacks().findAny().isPresent();
     }
 
-    private static Ingredient toIngredient(IRecipeSlotView slotView) {
-        return Ingredient.of(slotView.getItemStacks().map(ItemStack::copy));
-    }
-
     private static RequestedIngredient toRequestedIngredient(WirelessComprehensiveWorkTerminalMenu menu,
-                                                             IRecipeSlotView slotView) {
+                                                             IRecipeSlotView slotView,
+                                                             int targetSlot) {
         List<ItemStack> alternatives = chooseRequestedAlternative(menu, slotView);
         int count = Math.max(getDisplayedStack(slotView).getCount(), 1);
-        return new RequestedIngredient(alternatives, count);
+        return new RequestedIngredient(alternatives, count, targetSlot);
     }
 
     private static List<ItemStack> chooseRequestedAlternative(WirelessComprehensiveWorkTerminalMenu menu,
                                                               IRecipeSlotView slotView) {
+        List<ItemStack> visibleAlternatives = getAlternativeStacks(slotView);
+        if (visibleAlternatives.isEmpty()) {
+            return List.of();
+        }
+        Ingredient ingredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
+        ItemStack best = WcwtIngredientPriorities.chooseBestItem(menu, ingredient, visibleAlternatives);
+        return best.isEmpty() ? List.of() : List.of(best);
+    }
+
+    private static List<ItemStack> getAlternativeStacks(IRecipeSlotView slotView) {
         List<ItemStack> visibleAlternatives = new ArrayList<>();
         ItemStack displayed = getDisplayedStack(slotView);
         if (!displayed.isEmpty()) {
@@ -195,12 +263,7 @@ public final class WcwtPullRecipeTransfer {
                         visibleAlternatives.add(copy);
                     }
                 });
-        if (visibleAlternatives.isEmpty()) {
-            return List.of();
-        }
-        Ingredient ingredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
-        ItemStack best = WcwtIngredientPriorities.chooseBestItem(menu, ingredient, visibleAlternatives);
-        return best.isEmpty() ? List.of() : List.of(best);
+        return visibleAlternatives;
     }
 
     private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
@@ -277,7 +340,7 @@ public final class WcwtPullRecipeTransfer {
             var poseStack = guiGraphics.pose();
             poseStack.pushPose();
             try {
-                poseStack.translate(recipeX, recipeY, 0);
+                poseStack.translate(recipeX, recipeY, 400);
                 for (IRecipeSlotView slotView : preview.missingSlots()) {
                     slotView.drawHighlight(guiGraphics, RED_SLOT_HIGHLIGHT_COLOR);
                 }
