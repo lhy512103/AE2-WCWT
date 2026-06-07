@@ -354,22 +354,22 @@
     },
     "clearCraftingGrid": {
       "$comment": "清空合成网格按钮。",
-      "left": 129,
-      "bottom": 224
+      "left": 144,
+      "bottom": 179
     },
     "clearToPlayerInv": {
       "$comment": "把合成网格物品清回玩家背包按钮。",
-      "left": 139,
-      "bottom": 224
+      "left": 153,
+      "bottom": 179
     },
     "manual_clearCraftingGrid_anvil": {
       "$comment": "铁砧模式下的清空合成网格按钮位置。",
-      "left": 73,
+      "left": 144,
       "bottom": 179
     },
     "manual_clearToPlayerInv_anvil": {
       "$comment": "铁砧模式下把合成网格物品清回玩家背包按钮位置。",
-      "left": 83,
+      "left": 153,
       "bottom": 179
     },
     "CRAFTING_Locking": {
@@ -388,22 +388,22 @@
     },
     "manual_mode_button0": {
       "$comment": "铁砧模式下显示的模式按钮 0：工作台。",
-      "left": 93,
+      "left": 162,
       "bottom": 179,
       "width": 12,
       "height": 12
     },
     "manual_mode_button1": {
       "$comment": "左上手动工作区模式按钮 1：锻造台。",
-      "left": 149,
-      "bottom": 224,
+      "left": 162,
+      "bottom": 179,
       "width": 12,
       "height": 12
     },
     "manual_mode_button2": {
       "$comment": "左上手动工作区模式按钮 2：铁砧。",
-      "left": 149,
-      "bottom": 224,
+      "left": 162,
+      "bottom": 179,
       "width": 12,
       "height": 12
     },
