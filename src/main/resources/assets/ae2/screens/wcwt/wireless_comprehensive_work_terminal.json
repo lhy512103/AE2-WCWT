@@ -300,23 +300,23 @@
     "item_display_button": {
       "$comment": "顶部物品显示模式按钮。",
       "left": 79,
-      "top": 4,
-      "width": 22,
-      "height": 12
+      "top": 2,
+      "width": 16,
+      "height": 16
     },
     "fluid_display_button": {
       "$comment": "顶部流体显示模式按钮。",
-      "left": 104,
-      "top": 4,
-      "width": 22,
-      "height": 12
+      "left": 97,
+      "top": 2,
+      "width": 16,
+      "height": 16
     },
     "no_item_fluid_display_button": {
       "$comment": "顶部隐藏物品/流体显示模式按钮。",
-      "left": 129,
-      "top": 4,
-      "width": 22,
-      "height": 12
+      "left": 115,
+      "top": 2,
+      "width": 16,
+      "height": 16
     },
     "turn_off_sound_button": {
       "$comment": "顶部关闭声音按钮。",

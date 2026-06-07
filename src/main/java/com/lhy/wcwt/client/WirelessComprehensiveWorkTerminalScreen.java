@@ -26,6 +26,10 @@ import appeng.client.gui.style.StyleManager;
 import appeng.client.gui.widgets.Scrollbar;
 import appeng.client.gui.widgets.NumberEntryWidget;
 import appeng.client.Point;
+import appeng.api.config.Settings;
+import appeng.api.config.TypeFilter;
+import appeng.core.sync.network.NetworkHandler;
+import appeng.core.sync.packets.ConfigValuePacket;
 import appeng.core.localization.ButtonToolTips;
 import appeng.core.localization.GuiText;
 import com.lhy.wcwt.init.ModComponents;
@@ -373,6 +377,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean managementToolkitOpen;
     private boolean rebuildingFavoriteRepoView;
     private boolean viewCellsPanelVisible = WcwtClientConfig.lastViewCellsPanelVisible();
+    private boolean otherKeyTypesOnly = WcwtClientConfig.lastOtherKeyTypesFilter();
     
     public WirelessComprehensiveWorkTerminalScreen(WirelessComprehensiveWorkTerminalMenu menu, 
                                                      Inventory playerInventory, 
@@ -644,13 +649,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         // 显示过滤按钮
-        itemDisplayButton = new ItemDisplayButton(btn -> selectKeyTypePreset(KeyTypePreset.ITEMS));
+        itemDisplayButton = new ItemDisplayButton(btn -> toggleKeyTypePreset(KeyTypePreset.ITEMS));
         widgets.add("item_display_button", itemDisplayButton);
 
-        fluidDisplayButton = new FluidDisplayButton(btn -> selectKeyTypePreset(KeyTypePreset.FLUIDS));
+        fluidDisplayButton = new FluidDisplayButton(btn -> toggleKeyTypePreset(KeyTypePreset.FLUIDS));
         widgets.add("fluid_display_button", fluidDisplayButton);
 
-        otherTypesDisplayButton = new OtherTypesDisplayButton(btn -> selectKeyTypePreset(KeyTypePreset.OTHERS));
+        otherTypesDisplayButton = new OtherTypesDisplayButton(btn -> toggleKeyTypePreset(KeyTypePreset.OTHERS));
         widgets.add("no_item_fluid_display_button", otherTypesDisplayButton);
 
         muteButton = new TopActionButton(WCWT_STATES_TEXTURE, 80, 0, 16, 16, 256, 256,
@@ -815,6 +820,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void init() {
         super.init();
+        if (otherKeyTypesOnly) {
+            setAe2TypeFilter(TypeFilter.ALL);
+        }
         rebuildCraftableIndicatorCache();
         syncRepoRowSize();
         clearCraftingGridButton = resolveWidgetById("clearCraftingGrid");
@@ -886,29 +894,38 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void hookRepoUpdateListener() {
         repo.setUpdateViewListener(() -> {
-            rebuildFavoriteRepoView();
+            rebuildWcwtRepoView();
             invokeMeStorageUpdateScrollbar();
             rebuildCraftableIndicatorCache();
         });
     }
 
-    private void rebuildFavoriteRepoView() {
+    private void rebuildWcwtRepoView() {
         if (rebuildingFavoriteRepoView || !repo.hasPower()) {
             return;
         }
 
         rebuildingFavoriteRepoView = true;
         try {
-            if (!WcwtFavorites.isEnabled()) {
-                return;
-            }
-
             @SuppressWarnings("unchecked")
             var view = (List<GridInventoryEntry>) getRepoViewField().get(repo);
-            if (view == null || view.size() < 2) {
+            if (view == null || view.isEmpty()) {
                 return;
             }
 
+            Set<AEKeyType> enabledKeyTypes = getActiveRepoKeyTypes();
+            if (otherKeyTypesOnly) {
+                view.removeIf(entry -> entry == null || entry.getWhat() == null
+                        || entry.getWhat().getType() == AEKeyType.items()
+                        || entry.getWhat().getType() == AEKeyType.fluids());
+            } else if (!enabledKeyTypes.isEmpty()) {
+                view.removeIf(entry -> entry == null || entry.getWhat() == null
+                        || !enabledKeyTypes.contains(entry.getWhat().getType()));
+            }
+
+            if (!WcwtFavorites.isEnabled() || view.size() < 2) {
+                return;
+            }
             List<GridInventoryEntry> favorited = new ArrayList<>();
             List<GridInventoryEntry> normal = new ArrayList<>();
             for (var entry : view) {
@@ -952,7 +969,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (favoriteItemsButton != null) {
             favoriteItemsButton.refreshMessage();
         }
-        rebuildFavoriteRepoView();
+        rebuildWcwtRepoView();
         invokeMeStorageUpdateScrollbar();
     }
 
@@ -968,7 +985,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return false;
         }
         WcwtFavorites.toggle(entry.getWhat());
-        rebuildFavoriteRepoView();
+        rebuildWcwtRepoView();
         invokeMeStorageUpdateScrollbar();
         return true;
     }
@@ -1956,7 +1973,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         wcwtStep("restoreManagementToolkitOpenStateIfNeeded", this::restoreManagementToolkitOpenStateIfNeeded);
         wcwtStep("ensureFavoritesLoaded", WcwtFavorites::ensureLoaded);
         if (WcwtFavorites.isEnabled()) {
-            wcwtStep("rebuildFavoriteRepoView", this::rebuildFavoriteRepoView);
+            wcwtStep("rebuildWcwtRepoView", this::rebuildWcwtRepoView);
         }
         boolean syncedPatternManagementUploadEnabled = menu.isPatternManagementUploadEnabled();
         var syncedPatternManagementDisplayMode = patternManagementDisplayModeFromOrdinal(menu.getPatternManagementDisplayMode());
@@ -2096,42 +2113,22 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         OTHERS
     }
 
-    private void selectKeyTypePreset(KeyTypePreset preset) {
-        var synced = menu.getClientKeyTypeSelection();
-        if (synced.keyTypes().isEmpty()) {
-            return;
-        }
-
-        Set<AEKeyType> desired = switch (preset) {
-            case ITEMS -> Set.of(AEKeyType.items());
-            case FLUIDS -> Set.of(AEKeyType.fluids());
-            case OTHERS -> {
-                var others = new HashSet<AEKeyType>(synced.keyTypes().keySet());
-                others.remove(AEKeyType.items());
-                others.remove(AEKeyType.fluids());
-                yield others;
-            }
+    private void toggleKeyTypePreset(KeyTypePreset preset) {
+        TypeFilter current = getTypeFilter();
+        TypeFilter next = switch (preset) {
+            case ITEMS -> current == TypeFilter.ITEMS && !otherKeyTypesOnly ? TypeFilter.ALL : TypeFilter.ITEMS;
+            case FLUIDS -> current == TypeFilter.FLUIDS && !otherKeyTypesOnly ? TypeFilter.ALL : TypeFilter.FLUIDS;
+            case OTHERS -> TypeFilter.ALL;
         };
-        desired = desired.stream()
-                .filter(synced.keyTypes()::containsKey)
-                .collect(java.util.stream.Collectors.toCollection(HashSet::new));
-        if (desired.isEmpty()) {
-            desired = new HashSet<>(synced.keyTypes().keySet());
+        boolean previousOtherKeyTypesOnly = otherKeyTypesOnly;
+        otherKeyTypesOnly = preset == KeyTypePreset.OTHERS && !otherKeyTypesOnly;
+        if (preset != KeyTypePreset.OTHERS) {
+            otherKeyTypesOnly = false;
         }
-
-        if (new HashSet<>(synced.enabledSet()).equals(desired)) {
-            desired = new HashSet<>(synced.keyTypes().keySet());
+        if (previousOtherKeyTypesOnly != otherKeyTypesOnly) {
+            WcwtClientConfig.setLastOtherKeyTypesFilter(otherKeyTypesOnly);
         }
-
-        for (var keyType : desired) {
-            menu.selectKeyType(keyType, true);
-        }
-        for (var keyType : new ArrayList<>(synced.keyTypes().keySet())) {
-            if (!desired.contains(keyType)) {
-                menu.selectKeyType(keyType, false);
-            }
-        }
-
+        setAe2TypeFilter(next);
         updateKeyTypeFilterButtons();
         repo.updateView();
     }
@@ -2141,19 +2138,26 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
 
-        var keyTypes = menu.getClientKeyTypeSelection().keyTypes();
-        var enabled = new HashSet<>(menu.getClientKeyTypeSelection().enabledSet());
-        boolean itemOnly = enabled.size() == 1 && enabled.contains(AEKeyType.items());
-        boolean fluidOnly = enabled.size() == 1 && enabled.contains(AEKeyType.fluids());
-        boolean otherOnly = !enabled.isEmpty()
-                && !enabled.contains(AEKeyType.items())
-                && !enabled.contains(AEKeyType.fluids())
-                && keyTypes.keySet().stream()
-                        .filter(type -> type != AEKeyType.items() && type != AEKeyType.fluids())
-                        .allMatch(enabled::contains);
-        itemDisplayButton.setChecked(itemOnly);
-        fluidDisplayButton.setChecked(fluidOnly);
-        otherTypesDisplayButton.setChecked(otherOnly);
+        TypeFilter current = getTypeFilter();
+        itemDisplayButton.setChecked(!otherKeyTypesOnly && current == TypeFilter.ITEMS);
+        fluidDisplayButton.setChecked(!otherKeyTypesOnly && current == TypeFilter.FLUIDS);
+        otherTypesDisplayButton.setChecked(otherKeyTypesOnly);
+    }
+
+    private Set<AEKeyType> getActiveRepoKeyTypes() {
+        return switch (getTypeFilter()) {
+            case ITEMS -> Set.of(AEKeyType.items());
+            case FLUIDS -> Set.of(AEKeyType.fluids());
+            default -> Set.of();
+        };
+    }
+
+    private void setAe2TypeFilter(TypeFilter value) {
+        if (getTypeFilter() == value) {
+            return;
+        }
+        getMenu().getConfigManager().putSetting(Settings.TYPE_FILTER, value);
+        NetworkHandler.instance().sendToServer(new ConfigValuePacket(Settings.TYPE_FILTER, value));
     }
 
     private void requestPatternProvidersIfNeeded() {
@@ -2191,7 +2195,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void keepPatternProviderSubscriptionAlive() {
-        if (!requestedPatternProviders || !isPatternManagementActive() || !isPatternProviderListRefreshAllowed()) {
+        if (!isPatternManagementActive() || !isPatternProviderListRefreshAllowed()) {
+            return;
+        }
+        if (!requestedPatternProviders) {
+            requestPatternProvidersIfNeeded();
             return;
         }
 
@@ -2780,13 +2788,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isPatternManagementActive() {
-        if (isToolkitExpandedInManagementArea()) {
-            return false;
-        }
-        return patternManagementUploadEnabled
-                || (patternManageSearchField != null && patternManageSearchField.isFocused())
-                || selectedPatternProviderId >= 0
-                || !patternProviders.isEmpty();
+        return !isToolkitExpandedInManagementArea();
     }
 
     private boolean isPatternProviderListRefreshAllowed() {
@@ -3500,8 +3502,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             int frames = 12;
             int frame = (int) (System.currentTimeMillis() / 100L % frames);
             Blitter.texture("block/molecular_assembler_lights.png", 16, 192)
-                    .src(0, frame * 16, 16, 16)
-                    .dest(slot.x, slot.y, 16, 16)
+                    .src(2, frame * 16 + 2, 12, 12)
+                    .dest(slot.x - 1, slot.y - 1, 18, 18)
                     .blit(guiGraphics);
         }
     }

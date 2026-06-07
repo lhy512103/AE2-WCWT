@@ -7,6 +7,7 @@ import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.config.WcwtClientConfig;
+import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
@@ -299,7 +300,10 @@ public class WcwtRecipeTransferHandler
         Map<appeng.api.stacks.AEKey, Integer> bookmarkPriorities = WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
                 ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
                 : Map.of();
-        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities);
+        Map<appeng.api.stacks.AEKey, Integer> favoritePriorities = WcwtClientConfig.preferFavoritesForPatternEncoding()
+                ? WcwtFavorites.getFavoritePriorities()
+                : Map.of();
+        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities, favoritePriorities);
     }
 
     private static boolean shouldSkipTransferAnalysis(Object recipe) {

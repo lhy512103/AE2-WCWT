@@ -16,9 +16,11 @@ public final class WcwtClientConfig {
     public static final ForgeConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
     public static final ForgeConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
     public static final ForgeConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
+    public static final ForgeConfigSpec.BooleanValue PREFER_FAVORITES_FOR_PATTERN_ENCODING;
     public static final ForgeConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
     public static final ForgeConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
     public static final ForgeConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
+    public static final ForgeConfigSpec.BooleanValue LAST_OTHER_KEY_TYPES_FILTER;
     public static final ForgeConfigSpec.BooleanValue FAVORITED_ITEMS_FIRST;
     public static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> FAVORITED_KEYS;
 
@@ -47,6 +49,10 @@ public final class WcwtClientConfig {
                 .comment("If true: when JEI transfers ingredients into the WCWT pattern encoding area, matching items from the JEI bookmark list are preferred first, in bookmark order. If false: use the existing WCWT/AE2 selection logic only.")
                 .translation("wcwt.config.preferJeiBookmarksForPatternEncoding")
                 .define("preferJeiBookmarksForPatternEncoding", true);
+        PREFER_FAVORITES_FOR_PATTERN_ENCODING = BUILDER
+                .comment("If true: when JEI/EMI encodes a pattern with multiple item candidates, favorited WCWT terminal items are preferred before the normal WCWT/AE2 selection logic. JEI bookmark priority still wins when enabled.")
+                .translation("wcwt.config.preferFavoritesForPatternEncoding")
+                .define("preferFavoritesForPatternEncoding", false);
         EXPAND_TOOLKIT_IN_MANAGEMENT_AREA = BUILDER
                 .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel. Saving wcwt-client.toml usually reloads without restart.")
                 .translation("wcwt.config.expandToolkitInManagementArea")
@@ -57,6 +63,9 @@ public final class WcwtClientConfig {
         LAST_VIEW_CELLS_PANEL_VISIBLE = BUILDER
                 .comment("Remembers whether the WCWT view-cell panel was visible the last time this client toggled it.")
                 .define("lastViewCellsPanelVisible", true);
+        LAST_OTHER_KEY_TYPES_FILTER = BUILDER
+                .comment("Remembers whether the WCWT terminal was last filtering to non-item/non-fluid key types.")
+                .define("lastOtherKeyTypesFilter", false);
         FAVORITED_ITEMS_FIRST = BUILDER
                 .comment("If true: favorited ME terminal entries are displayed before non-favorited entries in WCWT.")
                 .translation("wcwt.config.favoritedItemsFirst")
@@ -94,6 +103,10 @@ public final class WcwtClientConfig {
         return PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING.get();
     }
 
+    public static boolean preferFavoritesForPatternEncoding() {
+        return PREFER_FAVORITES_FOR_PATTERN_ENCODING.get();
+    }
+
     public static boolean expandToolkitInManagementArea() {
         return EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.get();
     }
@@ -113,6 +126,15 @@ public final class WcwtClientConfig {
 
     public static void setLastViewCellsPanelVisible(boolean visible) {
         LAST_VIEW_CELLS_PANEL_VISIBLE.set(visible);
+        SPEC.save();
+    }
+
+    public static boolean lastOtherKeyTypesFilter() {
+        return LAST_OTHER_KEY_TYPES_FILTER.get();
+    }
+
+    public static void setLastOtherKeyTypesFilter(boolean enabled) {
+        LAST_OTHER_KEY_TYPES_FILTER.set(enabled);
         SPEC.save();
     }
 

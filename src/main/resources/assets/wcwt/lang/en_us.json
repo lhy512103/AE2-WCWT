@@ -229,6 +229,8 @@
   "wcwt.config.patternMultiplierApplyToEditorProcessing.tooltip": "On: the batch pattern multiplier also changes the current processing pattern input/output amounts and output rotation in the pattern editor. Off: it only affects encoded patterns in the pattern cache.",
   "wcwt.config.preferJeiBookmarksForPatternEncoding": "Prefer JEI bookmarks for pattern encoding transfer",
   "wcwt.config.preferJeiBookmarksForPatternEncoding.tooltip": "On: when JEI transfers ingredients from WCWT into the pattern encoding area, if an input has multiple valid item choices, prefer matching items from the JEI bookmark list first, in bookmark order. Off: use the existing WCWT/AE2 selection logic only.",
+  "wcwt.config.preferFavoritesForPatternEncoding": "Prefer favorites for pattern encoding",
+  "wcwt.config.preferFavoritesForPatternEncoding.tooltip": "On: when JEI/EMI encodes a pattern with multiple item candidates, prefer WCWT terminal favorites first. If none match, use the original logic. Default off.",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer": "Auto-switch manual workspace on recipe transfer",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "On: JEI/EMI transfers switch the manual workspace to crafting or smithing when the recipe type is known.",
   "wcwt.config.enableRecipePullTransfer": "Enable recipe pull/encode handling",

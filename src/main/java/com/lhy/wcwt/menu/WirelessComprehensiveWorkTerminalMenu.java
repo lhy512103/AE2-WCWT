@@ -1130,11 +1130,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return new ClientKeyTypeSelection(keyTypes);
     }
 
-    public void selectKeyType(AEKeyType keyType, boolean enabled) {
-        // AE2 1.20.1 Forge does not expose synced key-type filtering here.
-        // Keep the client interaction no-op for now so the migrated screen can compile and stay functional.
-    }
-
     public ManualWorkspaceMode getManualWorkspaceMode() {
         if (!isClientSide() && menuHost != null) {
             return ManualWorkspaceMode.fromOrdinal(menuHost.getManualWorkspaceMode());

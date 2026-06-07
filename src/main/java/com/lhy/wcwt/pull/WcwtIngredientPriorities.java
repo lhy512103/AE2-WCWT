@@ -24,11 +24,17 @@ public final class WcwtIngredientPriorities {
     private WcwtIngredientPriorities() {
     }
 
-    public record PriorityContext(Map<AEKey, Integer> ingredientPriorities, Map<AEKey, Integer> bookmarkPriorities) {
-        public static final PriorityContext EMPTY = new PriorityContext(Map.of(), Map.of());
+    public record PriorityContext(Map<AEKey, Integer> ingredientPriorities,
+                                  Map<AEKey, Integer> bookmarkPriorities,
+                                  Map<AEKey, Integer> favoritePriorities) {
+        public static final PriorityContext EMPTY = new PriorityContext(Map.of(), Map.of(), Map.of());
 
         public boolean hasBookmarkPriorities() {
             return bookmarkPriorities != null && !bookmarkPriorities.isEmpty();
+        }
+
+        public boolean hasFavoritePriorities() {
+            return favoritePriorities != null && !favoritePriorities.isEmpty();
         }
     }
 
@@ -61,8 +67,14 @@ public final class WcwtIngredientPriorities {
     }
 
     public static PriorityContext createContext(@Nullable MEStorageMenu menu, Map<AEKey, Integer> bookmarkPriorities) {
+        return createContext(menu, bookmarkPriorities, Map.of());
+    }
+
+    public static PriorityContext createContext(@Nullable MEStorageMenu menu, Map<AEKey, Integer> bookmarkPriorities,
+                                                Map<AEKey, Integer> favoritePriorities) {
         return new PriorityContext(getIngredientPriorities(menu),
-                bookmarkPriorities == null || bookmarkPriorities.isEmpty() ? Map.of() : Map.copyOf(bookmarkPriorities));
+                bookmarkPriorities == null || bookmarkPriorities.isEmpty() ? Map.of() : Map.copyOf(bookmarkPriorities),
+                favoritePriorities == null || favoritePriorities.isEmpty() ? Map.of() : Map.copyOf(favoritePriorities));
     }
 
     public static List<ItemStack> deduplicateItemAlternatives(List<ItemStack> alternatives) {
@@ -116,6 +128,10 @@ public final class WcwtIngredientPriorities {
         if (bookmarked != null) {
             return bookmarked;
         }
+        GenericStack favorited = chooseFavoritedGenericStack(context, candidates);
+        if (favorited != null) {
+            return favorited;
+        }
 
         return candidates.stream()
                 .max(Comparator
@@ -144,6 +160,10 @@ public final class WcwtIngredientPriorities {
         ItemStack bookmarked = chooseBookmarkedItem(context, ingredient);
         if (!bookmarked.isEmpty()) {
             return bookmarked;
+        }
+        ItemStack favorited = chooseFavoritedItem(context, ingredient);
+        if (!favorited.isEmpty()) {
+            return favorited;
         }
         ItemStack bestNetworkIngredient = findBestNetworkIngredient(context, ingredient);
         if (!bestNetworkIngredient.isEmpty()) {
@@ -177,6 +197,25 @@ public final class WcwtIngredientPriorities {
         return best;
     }
 
+    private static GenericStack chooseFavoritedGenericStack(PriorityContext context, List<GenericStack> candidates) {
+        if (!context.hasFavoritePriorities()) {
+            return null;
+        }
+        GenericStack best = null;
+        int bestPriority = Integer.MAX_VALUE;
+        for (GenericStack candidate : candidates) {
+            if (candidate == null || candidate.what() == null) {
+                continue;
+            }
+            Integer priority = context.favoritePriorities().get(candidate.what());
+            if (priority != null && priority < bestPriority) {
+                best = candidate;
+                bestPriority = priority;
+            }
+        }
+        return best;
+    }
+
     private static ItemStack chooseBookmarkedItem(PriorityContext context, Ingredient ingredient) {
         if (!context.hasBookmarkPriorities()) {
             return ItemStack.EMPTY;
@@ -189,6 +228,26 @@ public final class WcwtIngredientPriorities {
             }
             var key = AEItemKey.of(stack);
             Integer priority = key != null ? context.bookmarkPriorities().get(key) : null;
+            if (priority != null && priority < bestPriority) {
+                best = stack.copy();
+                bestPriority = priority;
+            }
+        }
+        return best;
+    }
+
+    private static ItemStack chooseFavoritedItem(PriorityContext context, Ingredient ingredient) {
+        if (!context.hasFavoritePriorities()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack best = ItemStack.EMPTY;
+        int bestPriority = Integer.MAX_VALUE;
+        for (ItemStack stack : ingredient.getItems()) {
+            if (stack == null || stack.isEmpty() || !ingredient.test(stack)) {
+                continue;
+            }
+            var key = AEItemKey.of(stack);
+            Integer priority = key != null ? context.favoritePriorities().get(key) : null;
             if (priority != null && priority < bestPriority) {
                 best = stack.copy();
                 bestPriority = priority;

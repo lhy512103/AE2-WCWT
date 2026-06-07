@@ -131,7 +131,7 @@ public class ExtendedUIButton extends Button implements ITooltip {
     }
 
     private int getIconRenderOffsetY() {
-        return uiType == IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING ? 0 : -1;
+        return 0;
     }
 
     @Override

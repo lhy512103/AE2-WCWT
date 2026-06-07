@@ -19,6 +19,7 @@ public class WcwtConfigScreen extends Screen {
 
     private final @Nullable Screen parent;
     private final List<ConfigRow> rows = new ArrayList<>();
+    private int serverPathY = 28 + ROW_HEIGHT * 8;
 
     public WcwtConfigScreen(@Nullable Screen parent) {
         super(Component.translatable("wcwt.config.title"));
@@ -73,6 +74,13 @@ public class WcwtConfigScreen extends Screen {
                         saveClientConfig();
                     });
             y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.preferFavoritesForPatternEncoding",
+                    () -> WcwtClientConfig.PREFER_FAVORITES_FOR_PATTERN_ENCODING.get(),
+                    value -> {
+                        WcwtClientConfig.PREFER_FAVORITES_FOR_PATTERN_ENCODING.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
             addBooleanRow(y, "wcwt.config.expandToolkitInManagementArea",
                     () -> WcwtClientConfig.EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.get(),
                     value -> {
@@ -84,6 +92,7 @@ public class WcwtConfigScreen extends Screen {
         }
 
         y += ROW_HEIGHT + 8;
+        serverPathY = y - 14;
         if (WcwtServerConfig.SPEC.isLoaded()) {
             addBooleanRow(y, "wcwt.config.patternProviderActiveRefresh",
                     () -> WcwtServerConfig.PATTERN_PROVIDER_ACTIVE_REFRESH.get(),
@@ -166,7 +175,7 @@ public class WcwtConfigScreen extends Screen {
         guiGraphics.drawCenteredString(font, title, width / 2, 16, 0xFFFFFF);
         guiGraphics.drawString(font, Component.literal("Client: config/wcwt-client.toml"), LABEL_X, 28, 0xA0A0A0);
         guiGraphics.drawString(font, Component.literal("Server: saves/<world>/serverconfig/wcwt-server.toml")
-                .withStyle(ChatFormatting.GRAY), LABEL_X, 28 + ROW_HEIGHT * 8, 0xA0A0A0);
+                .withStyle(ChatFormatting.GRAY), LABEL_X, serverPathY, 0xA0A0A0);
 
         for (ConfigRow row : rows) {
             guiGraphics.drawString(font, Component.translatable(row.translationKey()), LABEL_X, row.y(), 0xE0E0E0);

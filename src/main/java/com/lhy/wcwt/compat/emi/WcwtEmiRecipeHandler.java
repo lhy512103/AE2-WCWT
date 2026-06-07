@@ -10,6 +10,7 @@ import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
 import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
 import com.lhy.wcwt.config.WcwtClientConfig;
+import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.network.ManualWorkspaceModePacket;
@@ -675,7 +676,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         Map<AEKey, Integer> bookmarkPriorities = WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
                 ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
                 : Map.of();
-        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities);
+        Map<AEKey, Integer> favoritePriorities = WcwtClientConfig.preferFavoritesForPatternEncoding()
+                ? WcwtFavorites.getFavoritePriorities()
+                : Map.of();
+        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities, favoritePriorities);
     }
 
     @Nullable

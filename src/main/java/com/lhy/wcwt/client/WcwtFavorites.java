@@ -11,6 +11,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -76,6 +77,16 @@ public final class WcwtFavorites {
     public static Collection<AEKey> getFavoritedKeys() {
         ensureLoaded();
         return new ArrayList<>(FAVORITES.values());
+    }
+
+    public static Map<AEKey, Integer> getFavoritePriorities() {
+        ensureLoaded();
+        var result = new HashMap<AEKey, Integer>();
+        int index = 0;
+        for (AEKey key : FAVORITES.values()) {
+            result.putIfAbsent(key, index++);
+        }
+        return result;
     }
 
     private static void save() {
