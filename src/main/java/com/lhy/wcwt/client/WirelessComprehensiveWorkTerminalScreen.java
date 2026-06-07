@@ -47,6 +47,7 @@ import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.client.gui.panels.*;
+import com.lhy.wcwt.client.gui.WcwtAe2Textures;
 import com.lhy.wcwt.client.gui.widgets.*;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
 import com.lhy.wcwt.client.gui.widgets.WcwtScrollingUpgradesPanel;
@@ -314,8 +315,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             com.lhy.wcwt.util.ResourceLocationCompat.id("extendedae", "textures/guis/nicons.png");
     private static final ResourceLocation AE2_STATES_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/states.png");
-    private static final ResourceLocation AE2_CHECKBOX_TEXTURE =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/checkbox.png");
     private static final ResourceLocation AAE_STATES_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("advanced_ae", "textures/guis/states.png");
     private static final ResourceLocation WCWT_GUI_TEXTURE =
@@ -331,8 +330,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int SELECTED_PATTERN_BG_U = 32;
     private static final int SELECTED_PATTERN_BG_V = 128;
     private static final int SELECTED_PATTERN_BG_SIZE = 18;
-    private static final ResourceLocation AE2_PATTERN_MODES_TEXTURE =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/pattern_modes.png");
     private static final ResourceLocation WTLIB_ICONS_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/wtlib/guis/icons.png");
     private static final int AE2_RADIO_UNCHECKED_U = 28;
@@ -3401,7 +3398,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             case SMITHING_TABLE -> 70;
             case STONECUTTING -> 140;
         };
-        guiGraphics.blit(AE2_PATTERN_MODES_TEXTURE,
+        guiGraphics.blit(WcwtAe2Textures.patternModes(),
                 offsetX + bg.left(),
                 offsetY + bg.top(),
                 srcX, srcY, bg.width(), bg.height(), 256, 256);
@@ -3430,7 +3427,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             boolean selected = selectedRecipe != null && selectedRecipe.equals(recipe.id());
             int srcY = STONECUTTING_RESULT_SRC_Y + (selected ? STONECUTTING_RESULT_SLOT_H
                     : hover ? STONECUTTING_RESULT_SLOT_H * 2 : 0);
-            guiGraphics.blit(AE2_PATTERN_MODES_TEXTURE,
+            guiGraphics.blit(WcwtAe2Textures.patternModes(),
                     offsetX + bounds.left(), offsetY + bounds.top() - 1,
                     STONECUTTING_RESULT_SRC_X, srcY, STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H,
                     256, 256);
@@ -3501,7 +3498,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
             int frames = 12;
             int frame = (int) (System.currentTimeMillis() / 100L % frames);
-            Blitter.texture("block/molecular_assembler_lights.png", 16, 192)
+            Blitter.texture(WcwtAe2Textures.molecularAssemblerLights(), 16, 192)
                     .src(2, frame * 16 + 2, 12, 12)
                     .dest(slot.x - 1, slot.y - 1, 18, 18)
                     .blit(guiGraphics);
@@ -3816,7 +3813,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 && mouseY >= topPos + rect.top() && mouseY < topPos + rect.top() + rect.height();
         int bgU = (hover || active) ? 42 : 28;
         int bgV = (hover || active) ? 0 : 0;
-        guiGraphics.blit(AE2_CHECKBOX_TEXTURE, rect.left(), rect.top(), rect.width(), rect.height(),
+        guiGraphics.blit(WcwtAe2Textures.checkbox(), rect.left(), rect.top(), rect.width(), rect.height(),
                 bgU, bgV, 14, 14, 64, 64);
         int iconW = rect.width();
         int iconH = rect.height();
@@ -3838,7 +3835,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int bgV = patternManagementUploadEnabled
                 ? AE2_RADIO_CHECKED_FOCUS_V
                 : hover ? AE2_RADIO_UNCHECKED_FOCUS_V : AE2_RADIO_UNCHECKED_V;
-        guiGraphics.blit(AE2_CHECKBOX_TEXTURE, rect.left(), rect.top(), rect.width(), rect.height(),
+        guiGraphics.blit(WcwtAe2Textures.checkbox(), rect.left(), rect.top(), rect.width(), rect.height(),
                 bgU, bgV, AE2_RADIO_SIZE, AE2_RADIO_SIZE, 64, 64);
     }
 
@@ -3904,7 +3901,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 : hover ? AE2_RADIO_UNCHECKED_FOCUS_U : AE2_RADIO_UNCHECKED_U;
         int bgV = selected ? AE2_RADIO_CHECKED_FOCUS_V
                 : hover ? AE2_RADIO_UNCHECKED_FOCUS_V : AE2_RADIO_UNCHECKED_V;
-        guiGraphics.blit(AE2_CHECKBOX_TEXTURE, rect.left(), rect.top(), rect.width(), rect.height(),
+        guiGraphics.blit(WcwtAe2Textures.checkbox(), rect.left(), rect.top(), rect.width(), rect.height(),
                 bgU, bgV, AE2_RADIO_SIZE, AE2_RADIO_SIZE, 64, 64);
     }
 

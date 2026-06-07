@@ -1,15 +1,13 @@
 package com.lhy.wcwt.client.gui.panels;
 
+import com.lhy.wcwt.client.gui.WcwtAe2Textures;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
 
 /**
  * 卡槽箱面板
  * 显示 AE 网络工具提供的升级卡 3x3 卡槽
  */
 public class ToolboxPanel extends ExtendedUIPanel {
-    private static final ResourceLocation PANEL_TEXTURE = 
-        com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/extra_panels.png");
     private final ExtendedPanelLayout layout = ExtendedPanelLayout.load("wcwt_toolbox.json");
     private ExtendedPanelLayout.Rect toolboxSlot =
             new ExtendedPanelLayout.Rect(8, 20, 0, 0);
@@ -32,7 +30,8 @@ public class ToolboxPanel extends ExtendedUIPanel {
     protected void renderBackground(GuiGraphics guiGraphics) {
         // 渲染卡槽箱背景
         // 纹理位置: (69, 62, 59, 66) in extra_panels.png
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 69, 62, width, height, 128, 128);
+        guiGraphics.blit(WcwtAe2Textures.extraPanels(), x, y, 69, 62, width, height,
+                WcwtAe2Textures.EXTRA_PANELS_WIDTH, WcwtAe2Textures.EXTRA_PANELS_HEIGHT);
     }
     
     @Override

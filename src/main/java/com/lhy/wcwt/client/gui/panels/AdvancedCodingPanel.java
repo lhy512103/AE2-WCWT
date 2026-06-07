@@ -901,7 +901,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         }
     }
 
-    /** 使用 AE2 自带 {@code ae2:textures/guis/states.png} 中的标准槽底，避免引用本包未自带的 adv_pattern_encoder 贴图。 */
+    /** 使用当前 AE2 自带的标准槽底。 */
     private void drawStandardAeSlotBackground(GuiGraphics g, int absX, int absY) {
         Icon.SLOT_BACKGROUND.getBlitter().dest(absX, absY).blit(g);
     }

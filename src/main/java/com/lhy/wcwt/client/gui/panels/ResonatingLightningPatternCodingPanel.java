@@ -3,6 +3,7 @@ package com.lhy.wcwt.client.gui.panels;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.Scrollbar;
+import com.lhy.wcwt.client.gui.WcwtAe2Textures;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -37,13 +38,10 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wcwt_resonating_lightning_pattern_coding.png");
     private static final ResourceLocation AE2LT_ENCODER_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2lt", "textures/gui/ae2lt_pattern_encoder.png");
-    private static final ResourceLocation AE2_CHECKBOX_TEXTURE =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/checkbox.png");
 
     private static final int PANEL_WIDTH = 134;
     private static final int PANEL_HEIGHT = 186;
     private static final int AE2LT_TEXTURE_SIZE = 256;
-    private static final int AE2_CHECKBOX_TEXTURE_SIZE = 64;
     private static final int LIGHTNING_VISIBLE_ROWS = 3;
     private static final int LIGHTNING_ROW_HEIGHT = 22;
     private static final int LIGHTNING_SLOT_X = 19;
@@ -206,11 +204,11 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
     private void renderModeSwitch(GuiGraphics guiGraphics, OverloadViewEntry entry, int rowY) {
         int switchX = x + LIGHTNING_SWITCH_X;
-        guiGraphics.blit(AE2_CHECKBOX_TEXTURE,
+        guiGraphics.blit(WcwtAe2Textures.checkbox(),
                 switchX, rowY + 3,
                 AE2_CHECKBOX_U, entry.idOnly() ? AE2_CHECKBOX_V_ON : AE2_CHECKBOX_V_OFF,
                 LIGHTNING_SWITCH_W, LIGHTNING_SWITCH_H,
-                AE2_CHECKBOX_TEXTURE_SIZE, AE2_CHECKBOX_TEXTURE_SIZE);
+                WcwtAe2Textures.CHECKBOX_WIDTH, WcwtAe2Textures.CHECKBOX_HEIGHT);
     }
 
     private void renderLightningScrollbar(GuiGraphics guiGraphics) {
@@ -627,4 +625,3 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         }
     }
 }
-

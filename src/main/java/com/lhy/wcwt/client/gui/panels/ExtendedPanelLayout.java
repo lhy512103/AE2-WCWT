@@ -35,6 +35,14 @@ public final class ExtendedPanelLayout {
 
     public static ExtendedPanelLayout load(ResourceLocation id) {
         try {
+            Optional<net.minecraft.server.packs.resources.Resource> resource =
+                    Minecraft.getInstance().getResourceManager().getResource(id);
+            if (resource.isPresent()) {
+                try (var reader = new InputStreamReader(resource.get().open(), StandardCharsets.UTF_8)) {
+                    return new ExtendedPanelLayout(JsonParser.parseReader(reader).getAsJsonObject());
+                }
+            }
+
             var sourcePath = findDevelopmentSourcePath(id);
             if (sourcePath != null) {
                 try (Reader reader = Files.newBufferedReader(sourcePath, StandardCharsets.UTF_8)) {
@@ -42,14 +50,7 @@ public final class ExtendedPanelLayout {
                 }
             }
 
-            Optional<net.minecraft.server.packs.resources.Resource> resource =
-                    Minecraft.getInstance().getResourceManager().getResource(id);
-            if (resource.isEmpty()) {
-                return new ExtendedPanelLayout(new JsonObject());
-            }
-            try (var reader = new InputStreamReader(resource.get().open(), StandardCharsets.UTF_8)) {
-                return new ExtendedPanelLayout(JsonParser.parseReader(reader).getAsJsonObject());
-            }
+            return new ExtendedPanelLayout(new JsonObject());
         } catch (RuntimeException | java.io.IOException ignored) {
             return new ExtendedPanelLayout(new JsonObject());
         }
@@ -150,4 +151,3 @@ public final class ExtendedPanelLayout {
     public record Rect(int left, int top, int width, int height) {
     }
 }
-

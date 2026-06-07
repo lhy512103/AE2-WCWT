@@ -1,6 +1,7 @@
 package com.lhy.wcwt.client.gui.widgets;
 
 import appeng.client.gui.widgets.ITooltip;
+import com.lhy.wcwt.client.gui.WcwtAe2Textures;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
@@ -11,8 +12,6 @@ import net.minecraft.resources.ResourceLocation;
 import java.util.List;
 
 public class TopActionButton extends Button implements ITooltip {
-    private static final ResourceLocation AE2_CHECKBOX =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/checkbox.png");
     private static final int RADIO_UNCHECKED_U = 28;
     private static final int RADIO_UNCHECKED_V = 0;
     private static final int RADIO_FOCUS_U = 42;
@@ -54,8 +53,8 @@ public class TopActionButton extends Button implements ITooltip {
             guiGraphics.fill(getX() + width, getY(), getX() + width + 1, getY() + height, -1);
             guiGraphics.fill(getX() - 1, getY() + height, getX() + width + 1, getY() + height + 1, -1);
         }
-        guiGraphics.blit(AE2_CHECKBOX, getX(), getY(), width, height, bgU, bgV,
-                RADIO_SIZE, RADIO_SIZE, 64, 64);
+        guiGraphics.blit(WcwtAe2Textures.checkbox(), getX(), getY(), width, height, bgU, bgV,
+                RADIO_SIZE, RADIO_SIZE, WcwtAe2Textures.CHECKBOX_WIDTH, WcwtAe2Textures.CHECKBOX_HEIGHT);
 
         int iconSize = Math.min(width, height) - 2;
         float scale = Math.min((float) iconSize / iconW, (float) iconSize / iconH);

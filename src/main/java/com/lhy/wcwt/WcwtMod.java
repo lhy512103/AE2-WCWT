@@ -26,7 +26,11 @@ import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import com.lhy.wcwt.util.ResourceLocationCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.repository.Pack;
+import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -34,6 +38,7 @@ import net.minecraft.world.item.Items;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.AddPackFindersEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.fml.InterModComms;
@@ -43,6 +48,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.resource.PathPackResources;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,6 +56,7 @@ import org.slf4j.LoggerFactory;
 public class WcwtMod {
     public static final String MOD_ID = "wcwt";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    private static final String BUILT_IN_1_21_STYLE_PACK = "wcwt_1_21_style";
 
     private static final ResourceKey<CreativeModeTab> AE2WTLIB_TAB = ResourceKey.create(
             Registries.CREATIVE_MODE_TAB,
@@ -67,6 +74,7 @@ public class WcwtMod {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(WcwtPacketsBootstrap::register);
         modEventBus.addListener(this::addCreativeTabItems);
+        modEventBus.addListener(this::addBuiltinResourcePacks);
 
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
@@ -101,6 +109,28 @@ public class WcwtMod {
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "magnet_card", 1, groupKey, false);
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true);
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true);
+        });
+    }
+
+    private void addBuiltinResourcePacks(AddPackFindersEvent event) {
+        if (event.getPackType() != PackType.CLIENT_RESOURCES) {
+            return;
+        }
+
+        event.addRepositorySource(packConsumer -> {
+            var modFile = ModList.get().getModFileById(MOD_ID).getFile();
+            var packPath = modFile.findResource("resourcepacks", BUILT_IN_1_21_STYLE_PACK);
+            var pack = Pack.readMetaAndCreate(
+                    "builtin/" + MOD_ID + "/" + BUILT_IN_1_21_STYLE_PACK,
+                    Component.literal("AE2 WCWT 1.21 Style"),
+                    false,
+                    packId -> new PathPackResources(packId, true, packPath),
+                    PackType.CLIENT_RESOURCES,
+                    Pack.Position.TOP,
+                    PackSource.BUILT_IN);
+            if (pack != null) {
+                packConsumer.accept(pack);
+            }
         });
     }
 
