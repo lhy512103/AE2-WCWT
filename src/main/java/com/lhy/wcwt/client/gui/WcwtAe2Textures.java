@@ -41,7 +41,6 @@ public final class WcwtAe2Textures {
     private static final ResourceLocation FALLBACK_MOLECULAR_ASSEMBLER_LIGHTS =
             ResourceLocationCompat.id("ae2", "textures/block/molecular_assembler_lights.png");
 
-    private static ResourceManager cachedResourceManager;
     private static boolean hasStates;
     private static boolean hasCheckbox;
     private static boolean hasPatternModes;
@@ -62,6 +61,24 @@ public final class WcwtAe2Textures {
 
     public static ResourceLocation patternModes() {
         return themedOrFallback(PATTERN_MODES, FALLBACK_PATTERN_MODES);
+    }
+
+    public static boolean usingThemedPatternModes() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft == null) {
+            return false;
+        }
+        updateCache(minecraft.getResourceManager());
+        return hasPatternModes;
+    }
+
+    public static boolean usingThemedExtraPanels() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft == null) {
+            return false;
+        }
+        updateCache(minecraft.getResourceManager());
+        return hasExtraPanels;
     }
 
     public static ResourceLocation extraPanels() {
@@ -99,10 +116,6 @@ public final class WcwtAe2Textures {
     }
 
     private static void updateCache(ResourceManager resourceManager) {
-        if (cachedResourceManager == resourceManager) {
-            return;
-        }
-        cachedResourceManager = resourceManager;
         hasStates = resourceManager.getResource(STATES).isPresent();
         hasCheckbox = resourceManager.getResource(CHECKBOX).isPresent();
         hasPatternModes = resourceManager.getResource(PATTERN_MODES).isPresent();

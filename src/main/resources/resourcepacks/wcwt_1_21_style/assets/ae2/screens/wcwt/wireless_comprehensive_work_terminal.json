@@ -233,7 +233,7 @@
     },
     "scrollingUpgrades": {
       "$comment": "右侧 WTLib 滚动升级面板位置。",
-      "right": 1,
+      "right": 6,
       "top": 0
     },
     "cellScrollingUpgrades": {
@@ -243,27 +243,27 @@
     },
     "upgradeScrollbar": {
       "$comment": "WTLib 升级面板滑块位置，相对主界面右上角。",
-      "right": -25,
+      "right": -21,
       "top": 8
     },
     "cellUpgradeScrollbar": {
       "$comment": "元件升级槽面板滑块位置，相对主界面右上角。",
-      "right": -17,
+      "right": -15,
       "top": 52
     },
     "viewCells": {
       "$comment": "AE2 VIEW_CELL 面板位置；相对 scrollingUpgrades 右上角偏移。",
-      "left": 2,
+      "left": -2,
       "top": 0
     },
     "viewCellsScrollbar": {
       "$comment": "AE2 VIEW_CELL 面板滑块位置；相对 viewCells 面板左上角偏移。",
-      "left": 26,
+      "left": 27,
       "top": 8
     },
     "extendedButtonsLayout": {
       "$comment": "右侧扩展按钮列的附加布局约束。minTopGap 表示首个扩展按钮距离 WTLib 升级面板底部的最小安全间距；设为 0 则不额外留空。",
-      "minTopGap": 6
+      "minTopGap": 3
     },
     "scrollbar": {
       "$comment": "AE2 终端物品列表主滑块。",
@@ -587,36 +587,36 @@
     },
     "processingPatternModeScrollbar": {
       "$comment": "样板编码区：处理模式输入/输出列表滑块坐标；Java 会在模式切换时重新读取 left/top/bottom/height。",
-      "left": 184,
-      "bottom": 215,
+      "left": 183,
+      "bottom": 216,
       "width": 0,
       "height": 52
     },
     "stonecuttingPatternModeScrollbar": {
       "$comment": "WCWT 切石机样板结果滑块；切石机模式结果列表右侧。",
-      "left": 286,
-      "bottom": 214,
-      "height": 54
+      "left": 285,
+      "bottom": 212,
+      "height": 44
     },
     "pattern_crafting_grid": {
       "$comment": "样板编码区：合成模式 3x3 输入槽起点。",
-      "left": 185,
-      "bottom": 215,
+      "left": 183,
+      "bottom": 216,
       "width": 18,
       "height": 18,
       "columns": 3
     },
     "pattern_crafting_preview": {
       "$comment": "样板编码区：合成模式预览输出槽。",
-      "left": 277,
-      "bottom": 197,
+      "left": 273,
+      "bottom": 198,
       "width": 18,
       "height": 18
     },
     "pattern_processing_inputs": {
       "$comment": "样板编码区：处理模式输入槽起点；visibleRows 控制当前页显示行数。",
-      "left": 193,
-      "bottom": 215,
+      "left": 192,
+      "bottom": 216,
       "width": 18,
       "height": 18,
       "columns": 3,
@@ -625,58 +625,58 @@
     "pattern_processing_outputs": {
       "$comment": "样板编码区：处理模式输出槽起点；visibleRows 控制当前页显示行数。",
       "left": 277,
-      "bottom": 215,
+      "bottom": 216,
       "width": 18,
       "height": 18,
       "visibleRows": 3
     },
     "pattern_smithing_template": {
       "$comment": "样板编码区：锻造模板输入槽。",
-      "left": 188,
-      "bottom": 197,
+      "left": 183,
+      "bottom": 198,
       "width": 18,
       "height": 18
     },
     "pattern_smithing_base": {
       "$comment": "样板编码区：锻造基底输入槽。",
-      "left": 206,
-      "bottom": 197,
+      "left": 201,
+      "bottom": 198,
       "width": 18,
       "height": 18
     },
     "pattern_smithing_addition": {
       "$comment": "样板编码区：锻造追加材料输入槽。",
-      "left": 224,
-      "bottom": 197,
+      "left": 219,
+      "bottom": 198,
       "width": 18,
       "height": 18
     },
     "pattern_smithing_preview": {
       "$comment": "样板编码区：锻造预览输出槽。",
-      "left": 278,
-      "bottom": 197,
+      "left": 277,
+      "bottom": 198,
       "width": 18,
       "height": 18
     },
     "pattern_stonecutting_input": {
       "$comment": "样板编码区：切石机输入槽。",
-      "left": 188,
-      "bottom": 197,
+      "left": 183,
+      "bottom": 198,
       "width": 18,
       "height": 18
     },
     "pattern_stonecutting_results": {
       "$comment": "样板编码区：切石机结果列表起点；宽高是单个结果按钮步进尺寸。",
-      "left": 220,
-      "bottom": 214,
-      "width": 16,
-      "height": 18,
+      "left": 202,
+      "bottom": 211,
+      "width": 20,
+      "height": 22,
       "columns": 4
     },
     "caching_scrollbar": {
       "$comment": "样板缓存区滑块位置和高度。",
-      "left": 341,
-      "bottom": 143,
+      "left": 342,
+      "bottom": 144,
       "height": 34
     },
     "craftingSubstitutions": {
@@ -850,7 +850,7 @@
     },
     "manage_scrollbar": {
       "$comment": "样板管理区供应器/样板列表滑块。",
-      "left": 341,
+      "left": 343,
       "bottom": 82,
       "height": 71
     },

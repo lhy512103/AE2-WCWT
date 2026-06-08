@@ -1,0 +1,30 @@
+{
+  "$schema": "../../../schema.json",
+  "$comment": "1.21 style resource pack override for the toolkit embedded in the pattern provider management area.",
+  "widgets": {
+    "management_toolkit_background": {
+      "$comment": "Embedded toolkit background in the management area. wcwt_tools.png effective size is 162x72.",
+      "left": 175,
+      "bottom": 83,
+      "width": 162,
+      "height": 72
+    },
+    "management_toolkit_scrollbar": {
+      "$comment": "Embedded toolkit scrollbar shifted 2px right for the built-in 1.21 style resource pack.",
+      "left": 343,
+      "bottom": 82,
+      "width": 12,
+      "height": 72
+    }
+  },
+  "slots": {
+    "management_toolkit_slots": {
+      "$comment": "Embedded toolkit slot anchor. First slot starts at background left=1, top=1; slots are 16x16 with 18px step.",
+      "left": 176,
+      "bottom": 81,
+      "width": 16,
+      "height": 16,
+      "grid": "BREAK_AFTER_9COLS"
+    }
+  }
+}

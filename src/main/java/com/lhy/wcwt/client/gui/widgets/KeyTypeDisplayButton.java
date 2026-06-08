@@ -20,8 +20,8 @@ abstract class KeyTypeDisplayButton extends Button implements ITooltip {
     private static final int BUTTON_H = 12;
     private static final int DISABLED_U = 176;
     private static final int DISABLED_HOVER_U = 192;
-    private static final int ENABLED_U = 208;
-    private static final int ENABLED_HOVER_U = 224;
+    private static final int ENABLED_U = 224;
+    private static final int ENABLED_HOVER_U = 208;
 
     private final int iconV;
     private boolean checked;

@@ -347,6 +347,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int STONECUTTING_RESULT_SLOT_H = 18;
     private static final int STONECUTTING_RESULT_SRC_X = 126;
     private static final int STONECUTTING_RESULT_SRC_Y = 141;
+    private static final int THEMED_STONECUTTING_RESULT_ROWS = 2;
+    private static final int THEMED_STONECUTTING_RESULT_SLOT_W = 20;
+    private static final int THEMED_STONECUTTING_RESULT_SLOT_H = 22;
+    private static final int THEMED_STONECUTTING_RESULT_SRC_X = 124;
+    private static final int THEMED_STONECUTTING_RESULT_SRC_Y = 140;
+    private static final int THEMED_EXTENDED_BUTTONS_Z_OFFSET = 40;
     private static final int PATTERN_OPTION_BUTTON_SIZE = 16;
     private static final int PINNED_ROW_SRC_X = 7;
     private static final int PINNED_ROW_SRC_Y = 307;
@@ -2295,13 +2301,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (stonecuttingPatternScrollbar != null) {
             int rows = (menu.getStonecuttingRecipes().size() + STONECUTTING_RESULT_COLS - 1) / STONECUTTING_RESULT_COLS;
-            stonecuttingPatternScrollbar.setRange(0, Math.max(0, rows - STONECUTTING_RESULT_ROWS), STONECUTTING_RESULT_ROWS);
+            int visibleRows = stonecuttingResultRows();
+            stonecuttingPatternScrollbar.setRange(0, Math.max(0, rows - visibleRows), visibleRows);
             var scrollbar = mainLayout.widget("stonecuttingPatternModeScrollbar",
                     new ExtendedPanelLayout.Rect(294, imageHeight - 202, 0, 44), imageWidth, imageHeight);
             stonecuttingPatternScrollbar.setPosition(new Point(scrollbar.left(), scrollbar.top()));
             stonecuttingPatternScrollbar.setHeight(scrollbar.height());
             stonecuttingPatternScrollbar.setVisible(patternEncodingMode == EncodingMode.STONECUTTING
-                    && rows > STONECUTTING_RESULT_ROWS);
+                    && rows > visibleRows);
         }
 
         int scroll = processingVisible && patternEncodingScrollbar != null
@@ -2385,6 +2392,36 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 new ExtendedPanelLayout.Rect(176, imageHeight - 223,
                         PATTERN_ENCODING_BG_WIDTH, PATTERN_ENCODING_BG_HEIGHT),
                 imageWidth, imageHeight);
+    }
+
+    private static int stonecuttingResultRows() {
+        return WcwtAe2Textures.usingThemedPatternModes()
+                ? THEMED_STONECUTTING_RESULT_ROWS
+                : STONECUTTING_RESULT_ROWS;
+    }
+
+    private static int stonecuttingResultSlotWidth() {
+        return WcwtAe2Textures.usingThemedPatternModes()
+                ? THEMED_STONECUTTING_RESULT_SLOT_W
+                : STONECUTTING_RESULT_SLOT_W;
+    }
+
+    private static int stonecuttingResultSlotHeight() {
+        return WcwtAe2Textures.usingThemedPatternModes()
+                ? THEMED_STONECUTTING_RESULT_SLOT_H
+                : STONECUTTING_RESULT_SLOT_H;
+    }
+
+    private static int stonecuttingResultSrcX() {
+        return WcwtAe2Textures.usingThemedPatternModes()
+                ? THEMED_STONECUTTING_RESULT_SRC_X
+                : STONECUTTING_RESULT_SRC_X;
+    }
+
+    private static int stonecuttingResultSrcY() {
+        return WcwtAe2Textures.usingThemedPatternModes()
+                ? THEMED_STONECUTTING_RESULT_SRC_Y
+                : STONECUTTING_RESULT_SRC_Y;
     }
 
     private ExtendedPanelLayout.Rect patternEncodingSlot(String id, int left, int top, int width, int height) {
@@ -3316,8 +3353,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (bounds == null) {
             return;
         }
+        var pose = guiGraphics.pose();
+        pose.pushPose();
+        if (WcwtAe2Textures.usingThemedExtraPanels()) {
+            pose.translate(0, 0, THEMED_EXTENDED_BUTTONS_Z_OFFSET);
+        }
         WcwtExtendedButtonsBackground.draw(guiGraphics, bounds.getX(), bounds.getY(),
                 getVisibleExtendedButtons().size(), getExtendedButtonsBackgroundStyle());
+        pose.popPose();
     }
 
     @Nullable
@@ -3411,7 +3454,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var recipes = menu.getStonecuttingRecipes();
         int scroll = stonecuttingPatternScrollbar == null ? 0 : stonecuttingPatternScrollbar.getCurrentScroll();
         int startIndex = scroll * STONECUTTING_RESULT_COLS;
-        int endIndex = Math.min(recipes.size(), startIndex + STONECUTTING_RESULT_COLS * STONECUTTING_RESULT_ROWS);
+        int resultSlotHeight = stonecuttingResultSlotHeight();
+        int endIndex = Math.min(recipes.size(), startIndex + STONECUTTING_RESULT_COLS * stonecuttingResultRows());
         ResourceLocation selectedRecipe = menu.getStonecuttingRecipeId();
         int relMouseX = (int) Math.round(this.minecraft.mouseHandler.xpos()
                 * this.minecraft.getWindow().getGuiScaledWidth() / this.minecraft.getWindow().getScreenWidth())
@@ -3425,23 +3469,27 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             var recipe = recipes.get(i);
             boolean hover = inRect(relMouseX, relMouseY, bounds);
             boolean selected = selectedRecipe != null && selectedRecipe.equals(recipe.id());
-            int srcY = STONECUTTING_RESULT_SRC_Y + (selected ? STONECUTTING_RESULT_SLOT_H
-                    : hover ? STONECUTTING_RESULT_SLOT_H * 2 : 0);
+            int srcY = stonecuttingResultSrcY() + (selected ? resultSlotHeight
+                    : hover ? resultSlotHeight * 2 : 0);
             guiGraphics.blit(WcwtAe2Textures.patternModes(),
                     offsetX + bounds.left(), offsetY + bounds.top() - 1,
-                    STONECUTTING_RESULT_SRC_X, srcY, STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H,
+                    stonecuttingResultSrcX(), srcY, bounds.width(), bounds.height(),
                     256, 256);
 
             ItemStack result = recipe.value().getResultItem(Objects.requireNonNull(Minecraft.getInstance().level)
                     .registryAccess());
-            guiGraphics.renderItem(result, offsetX + bounds.left(), offsetY + bounds.top());
-            guiGraphics.renderItemDecorations(font, result, offsetX + bounds.left(), offsetY + bounds.top());
+            int itemX = WcwtAe2Textures.usingThemedPatternModes() ? offsetX + bounds.left() + 2 : offsetX + bounds.left();
+            int itemY = WcwtAe2Textures.usingThemedPatternModes()
+                    ? offsetY + bounds.top() + (selected || hover ? 3 : 2)
+                    : offsetY + bounds.top();
+            guiGraphics.renderItem(result, itemX, itemY);
+            guiGraphics.renderItemDecorations(font, result, itemX, itemY);
         }
     }
 
     private ExtendedPanelLayout.Rect getStonecuttingRecipeBounds(int index) {
         var origin = patternEncodingSlot("pattern_stonecutting_results",
-                202, imageHeight - 211, STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H);
+                202, imageHeight - 211, stonecuttingResultSlotWidth(), stonecuttingResultSlotHeight());
         int columns = mainLayout.widgetInt("pattern_stonecutting_results", "columns", STONECUTTING_RESULT_COLS);
         int col = index % columns;
         int row = index / columns;
@@ -3465,7 +3513,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         int scroll = stonecuttingPatternScrollbar == null ? 0 : stonecuttingPatternScrollbar.getCurrentScroll();
         int startIndex = scroll * STONECUTTING_RESULT_COLS;
-        int endIndex = Math.min(recipes.size(), startIndex + STONECUTTING_RESULT_COLS * STONECUTTING_RESULT_ROWS);
+        int endIndex = Math.min(recipes.size(), startIndex + STONECUTTING_RESULT_COLS * stonecuttingResultRows());
         for (int i = startIndex; i < endIndex; i++) {
             if (inRect(relX, relY, getStonecuttingRecipeBounds(i - startIndex))) {
                 return recipes.get(i);

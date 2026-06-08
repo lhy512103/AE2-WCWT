@@ -1,6 +1,18 @@
 {
   "pack": {
     "pack_format": 15,
-    "description": "AE2 WCWT 1.21-style UI textures"
+    "description": [
+      {
+        "text": "designed by "
+      },
+      {
+        "text": "\u9ea6\u6dc7\u6dcb\n",
+        "color": "green"
+      },
+      {
+        "text": "AE2 WCWT",
+        "color": "gold"
+      }
+    ]
   }
 }

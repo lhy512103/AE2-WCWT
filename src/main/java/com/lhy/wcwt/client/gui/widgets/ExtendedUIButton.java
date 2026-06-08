@@ -2,6 +2,7 @@ package com.lhy.wcwt.client.gui.widgets;
 
 import appeng.client.gui.widgets.ITooltip;
 import com.lhy.wcwt.api.IExtendedUIHost;
+import com.lhy.wcwt.client.gui.WcwtAe2Textures;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
@@ -31,6 +32,8 @@ import java.util.function.BooleanSupplier;
  *   综合工作终端/GUI/ae2/textures/guis/wcwt/wcwt_states.png 实际像素核对并修改此处常量。
  */
 public class ExtendedUIButton extends Button implements ITooltip {
+
+    private static final int THEMED_Z_OFFSET = 40;
 
     private static final ResourceLocation TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wcwt_states.png");
@@ -67,6 +70,12 @@ public class ExtendedUIButton extends Button implements ITooltip {
     public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
 
+        var pose = guiGraphics.pose();
+        pose.pushPose();
+        if (WcwtAe2Textures.usingThemedExtraPanels()) {
+            pose.translate(0, 0, THEMED_Z_OFFSET);
+        }
+
         // 1. 渲染按钮面（精灵图实际只有两种状态：普通 / 高亮）。
         //    点击后 isActive()==true 一直保持高亮，直到对应面板关闭；
         //    鼠标悬停也使用同一张高亮纹理。
@@ -90,6 +99,7 @@ public class ExtendedUIButton extends Button implements ITooltip {
         int iconOffsetY = (BTN_H - iconH) / 2 + getIconRenderOffsetY();
         guiGraphics.blit(TEXTURE, getX() - 1 + iconOffsetX, getY() + iconOffsetY,
                 iconU, iconV, iconW, iconH, 256, 256);
+        pose.popPose();
     }
 
     /**
