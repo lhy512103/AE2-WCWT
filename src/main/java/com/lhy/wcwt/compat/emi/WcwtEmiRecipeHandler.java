@@ -7,8 +7,7 @@ import appeng.core.localization.ItemModText;
 import appeng.integration.modules.jeirei.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
-import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
-import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
+import com.lhy.wcwt.compat.WcwtRecipeViewerBookmarkKeys;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -38,9 +37,11 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
@@ -214,7 +215,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 return false;
             }
             boolean maxTransfer = context.getAmount() > 1 || Screen.hasShiftDown();
-            boolean craftMissing = context.getDestination() != EmiCraftContext.Destination.NONE;
+            boolean craftMissing = context.getDestination() != EmiCraftContext.Destination.NONE || Screen.hasControlDown();
             ModNetworking.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
                     requestedIngredients, menu.getManualWorkspaceMode().ordinal()));
             return true;
@@ -230,7 +231,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return false;
         }
 
-        WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipe, recipe.getBackingRecipe(), mode);
+        updateEaepProviderSearchKey(recipe, recipe.getBackingRecipe(), mode);
         ModNetworking.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         return true;
     }
@@ -551,8 +552,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                     : appeng.util.CraftingRecipeUtil.getIngredients(backingRecipe);
             List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
             for (Ingredient ingredient : ingredients) {
-                resolved.add(WcwtRecipeTransferHandler.toBestGenericStack(priorityContext,
-                        ingredient, List.of(), -1));
+                resolved.add(toBestGenericStack(priorityContext, ingredient));
             }
             return resolved;
         }
@@ -636,7 +636,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
         Ingredient wideIngredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
         if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
-            ItemStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedItem(
+            ItemStack bookmarked = WcwtRecipeViewerBookmarkKeys.chooseBookmarkedItem(
                     wideIngredient, visibleAlternatives, priorityContext.bookmarkPriorities());
             if (!bookmarked.isEmpty()) {
                 int count = Math.max(1, (int) Math.min(Integer.MAX_VALUE, ingredient.getAmount()));
@@ -674,12 +674,54 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     private static WcwtIngredientPriorities.PriorityContext createPriorityContext(WirelessComprehensiveWorkTerminalMenu menu) {
         Map<AEKey, Integer> bookmarkPriorities = WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
-                ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
+                ? WcwtRecipeViewerBookmarkKeys.getBookmarkPriorities()
                 : Map.of();
         Map<AEKey, Integer> favoritePriorities = WcwtClientConfig.preferFavoritesForPatternEncoding()
                 ? WcwtFavorites.getFavoritePriorities()
                 : Map.of();
         return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities, favoritePriorities);
+    }
+
+    @Nullable
+    private static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+                                                   Ingredient ingredient) {
+        if (ingredient == null || ingredient.isEmpty()) {
+            return null;
+        }
+        ItemStack best = WcwtIngredientPriorities.chooseBestItemForEncoding(priorityContext, ingredient);
+        return best.isEmpty() ? null : GenericStack.fromItemStack(best.copyWithCount(1));
+    }
+
+    private static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
+        if (!ModList.get().isLoaded("extendedae_plus")) {
+            return;
+        }
+        try {
+            Class<?> configClass = Class.forName("com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig");
+            if (mode != EncodingMode.PROCESSING) {
+                configClass.getMethod("presetCraftingProviderSearchKey").invoke(null);
+                return;
+            }
+
+            String name = null;
+            if (recipe != null) {
+                Object mapped = configClass.getMethod("mapRecipeTypeToSearchKey", Recipe.class).invoke(null, recipe);
+                if (mapped instanceof String mappedName) {
+                    name = mappedName;
+                }
+            }
+            if ((name == null || name.isBlank()) && recipeBase != null) {
+                Object derived = configClass.getMethod("deriveSearchKeyFromUnknownRecipe", Object.class)
+                        .invoke(null, recipeBase);
+                if (derived instanceof String derivedName) {
+                    name = derivedName;
+                }
+            }
+            if (name != null && !name.isBlank()) {
+                configClass.getMethod("setLastProcessingName", String.class).invoke(null, name);
+            }
+        } catch (Throwable ignored) {
+        }
     }
 
     @Nullable

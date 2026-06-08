@@ -17,6 +17,7 @@ public final class WcwtClientConfig {
     public static final ForgeConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
     public static final ForgeConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
     public static final ForgeConfigSpec.BooleanValue PREFER_FAVORITES_FOR_PATTERN_ENCODING;
+    public static final ForgeConfigSpec.BooleanValue FILL_PROVIDER_SEARCH_FROM_JEI_BOOKMARK;
     public static final ForgeConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
     public static final ForgeConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
     public static final ForgeConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
@@ -53,6 +54,10 @@ public final class WcwtClientConfig {
                 .comment("If true: when JEI/EMI encodes a pattern with multiple item candidates, favorited WCWT terminal items are preferred before the normal WCWT/AE2 selection logic. JEI bookmark priority still wins when enabled.")
                 .translation("wcwt.config.preferFavoritesForPatternEncoding")
                 .define("preferFavoritesForPatternEncoding", false);
+        FILL_PROVIDER_SEARCH_FROM_JEI_BOOKMARK = BUILDER
+                .comment("If true: the EAEP/JEI fill-search hotkey also fills the WCWT pattern provider search field from the hovered JEI ingredient or bookmark.")
+                .translation("wcwt.config.fillProviderSearchFromJeiBookmark")
+                .define("fillProviderSearchFromJeiBookmark", true);
         EXPAND_TOOLKIT_IN_MANAGEMENT_AREA = BUILDER
                 .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel. Saving wcwt-client.toml usually reloads without restart.")
                 .translation("wcwt.config.expandToolkitInManagementArea")
@@ -105,6 +110,10 @@ public final class WcwtClientConfig {
 
     public static boolean preferFavoritesForPatternEncoding() {
         return PREFER_FAVORITES_FOR_PATTERN_ENCODING.get();
+    }
+
+    public static boolean fillProviderSearchFromJeiBookmark() {
+        return FILL_PROVIDER_SEARCH_FROM_JEI_BOOKMARK.get();
     }
 
     public static boolean expandToolkitInManagementArea() {

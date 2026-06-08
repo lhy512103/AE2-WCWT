@@ -1600,10 +1600,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     public boolean fillProviderSearchFromJeiIngredient() {
         String name = resolveJeiHoveredSearchName();
         if (name == null || name.isBlank()) {
+            name = resolveEmiHoveredSearchName();
+        }
+        if (name == null || name.isBlank()) {
             return false;
         }
         applyJeiNameToMeTerminalSearch(name);
-        if (patternManageSearchField != null) {
+        if (WcwtClientConfig.fillProviderSearchFromJeiBookmark() && patternManageSearchField != null) {
             patternManageSearchField.setValue(name);
             rebuildPatternManagementRows();
         }
@@ -1624,10 +1627,46 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             ItemListMod.setSearchText(name);
         } catch (Throwable ignored) {
         }
+        applyRecipeViewerSearchText(name);
+    }
+
+    private static void applyRecipeViewerSearchText(String name) {
+        if (ModList.get().isLoaded("jei")) {
+            try {
+                Object runtime = Class.forName("mezz.jei.common.Internal")
+                        .getMethod("getJeiRuntime")
+                        .invoke(null);
+                Object filter = Class.forName("mezz.jei.api.runtime.IJeiRuntime")
+                        .getMethod("getIngredientFilter")
+                        .invoke(runtime);
+                Class.forName("mezz.jei.api.runtime.IIngredientFilter")
+                        .getMethod("setFilterText", String.class)
+                        .invoke(filter, name);
+            } catch (Throwable ignored) {
+            }
+        }
+        if (ModList.get().isLoaded("extendedae_plus")) {
+            try {
+                Class<?> proxyClass = Class.forName("com.extendedae_plus.integration.jei.JeiRuntimeProxy");
+                proxyClass.getMethod("setIngredientFilterText", String.class).invoke(null, name);
+            } catch (Throwable ignored) {
+            }
+        }
+        if (ModList.get().isLoaded("emi")) {
+            try {
+                Class<?> apiClass = Class.forName("dev.emi.emi.api.EmiApi");
+                apiClass.getMethod("setSearchText", String.class).invoke(null, name);
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     @Nullable
     private String resolveJeiHoveredSearchName() {
+        String direct = resolveJeiHoveredSearchNameDirect();
+        if (direct != null && !direct.isBlank()) {
+            return direct;
+        }
         try {
             Class<?> proxyClass = Class.forName("com.extendedae_plus.integration.jei.JeiRuntimeProxy");
             if (proxyClass.getMethod("get").invoke(null) == null) {
@@ -1638,9 +1677,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             Method getIngredient = proxyClass.getMethod("getIngredientUnderMouse");
             Object ingResult = getIngredient.invoke(null);
             if (ingResult instanceof Optional<?> optional && optional.isPresent()) {
-                Object n = getName.invoke(null, optional.get());
-                if (n instanceof String text && !text.isBlank()) {
+                String text = getJeiTypedIngredientDisplayName(getName, optional.get());
+                if (text != null && !text.isBlank()) {
                     return text;
+                }
+            }
+
+            Method getBookmark = proxyClass.getMethod("getBookmarkUnderMouse");
+            Object bookmarkOpt = getBookmark.invoke(null);
+            if (bookmarkOpt instanceof Optional<?> ob && ob.isPresent()) {
+                String fromBookmark = searchNameFromJeiBookmark(ob.get(), getName);
+                if (fromBookmark != null && !fromBookmark.isBlank()) {
+                    return fromBookmark;
                 }
             }
 
@@ -1655,6 +1703,246 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         } catch (ClassNotFoundException e) {
             return null;
         } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private String resolveJeiHoveredSearchNameDirect() {
+        if (!ModList.get().isLoaded("jei")) {
+            return null;
+        }
+        try {
+            Class<?> internalClass = Class.forName("mezz.jei.common.Internal");
+            Object runtime = internalClass.getMethod("getJeiRuntime").invoke(null);
+            Object typedIngredient = getJeiTypedIngredientUnderMouse(runtime);
+            return searchNameFromJeiTypedIngredient(runtime, typedIngredient);
+        } catch (ClassNotFoundException e) {
+            return null;
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private static Object getJeiTypedIngredientUnderMouse(Object runtime) {
+        if (runtime == null) {
+            return null;
+        }
+        Object typed = getJeiOverlayTypedIngredient(runtime, "getIngredientListOverlay");
+        if (typed != null) {
+            return typed;
+        }
+        typed = getJeiOverlayTypedIngredient(runtime, "getBookmarkOverlay");
+        if (typed != null) {
+            return typed;
+        }
+        return null;
+    }
+
+    @Nullable
+    private static Object getJeiOverlayTypedIngredient(Object runtime, String overlayGetter) {
+        try {
+            Object overlay = Class.forName("mezz.jei.api.runtime.IJeiRuntime")
+                    .getMethod(overlayGetter)
+                    .invoke(runtime);
+            if (overlay == null) {
+                return null;
+            }
+            String overlayInterface = "getBookmarkOverlay".equals(overlayGetter)
+                    ? "mezz.jei.api.runtime.IBookmarkOverlay"
+                    : "mezz.jei.api.runtime.IIngredientListOverlay";
+            Object result = Class.forName(overlayInterface)
+                    .getMethod("getIngredientUnderMouse")
+                    .invoke(overlay);
+            if (result instanceof Optional<?> optional && optional.isPresent()) {
+                return optional.get();
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String searchNameFromJeiTypedIngredient(Object runtime, @Nullable Object typedIngredient) {
+        if (runtime == null || typedIngredient == null) {
+            return null;
+        }
+        try {
+            Class<?> typedIngredientInterface = Class.forName("mezz.jei.api.ingredients.ITypedIngredient");
+            Object itemStackOpt = typedIngredientInterface.getMethod("getItemStack").invoke(typedIngredient);
+            if (itemStackOpt instanceof Optional<?> optional && optional.isPresent()
+                    && optional.get() instanceof ItemStack item && !item.isEmpty()) {
+                return item.getHoverName().getString();
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Class<?> typedIngredientInterface = Class.forName("mezz.jei.api.ingredients.ITypedIngredient");
+            Object type = typedIngredientInterface.getMethod("getType").invoke(typedIngredient);
+            Object ingredient = typedIngredientInterface.getMethod("getIngredient").invoke(typedIngredient);
+            Object manager = Class.forName("mezz.jei.api.runtime.IJeiRuntime")
+                    .getMethod("getIngredientManager")
+                    .invoke(runtime);
+            Object helper = findJeiIngredientHelper(manager, type);
+            if (helper == null) {
+                return null;
+            }
+            Object displayName = Class.forName("mezz.jei.api.ingredients.IIngredientHelper")
+                    .getMethod("getDisplayName", Object.class)
+                    .invoke(helper, ingredient);
+            if (displayName instanceof String text && !text.isBlank()) {
+                return text;
+            }
+            if (displayName instanceof Component component) {
+                return component.getString();
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Object ingredient = Class.forName("mezz.jei.api.ingredients.ITypedIngredient")
+                    .getMethod("getIngredient")
+                    .invoke(typedIngredient);
+            if (ingredient instanceof ItemStack item && !item.isEmpty()) {
+                return item.getHoverName().getString();
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private static Object findJeiIngredientHelper(Object manager, Object type) {
+        try {
+            Class<?> ingredientTypeInterface = Class.forName("mezz.jei.api.ingredients.IIngredientType");
+            return Class.forName("mezz.jei.api.runtime.IIngredientManager")
+                    .getMethod("getIngredientHelper", ingredientTypeInterface)
+                    .invoke(manager, type);
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private String resolveEmiHoveredSearchName() {
+        if (!ModList.get().isLoaded("emi")) {
+            return null;
+        }
+        try {
+            Class<?> apiClass = Class.forName("dev.emi.emi.api.EmiApi");
+            Object interaction = apiClass.getMethod("getHoveredStack", boolean.class).invoke(null, true);
+            if (interaction == null) {
+                return null;
+            }
+            try {
+                Object empty = interaction.getClass().getMethod("isEmpty").invoke(interaction);
+                if (empty instanceof Boolean b && b) {
+                    return null;
+                }
+            } catch (Throwable ignored) {
+            }
+            Object ingredient = interaction.getClass().getMethod("getStack").invoke(interaction);
+            return searchNameFromEmiIngredient(ingredient);
+        } catch (ClassNotFoundException e) {
+            return null;
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String searchNameFromEmiIngredient(@Nullable Object ingredient) {
+        if (ingredient == null) {
+            return null;
+        }
+        try {
+            Object stacks = ingredient.getClass().getMethod("getEmiStacks").invoke(ingredient);
+            if (stacks instanceof List<?> list) {
+                for (Object stack : list) {
+                    String name = searchNameFromEmiStack(stack);
+                    if (name != null && !name.isBlank()) {
+                        return name;
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+        }
+        return searchNameFromEmiStack(ingredient);
+    }
+
+    @Nullable
+    private static String searchNameFromEmiStack(@Nullable Object stack) {
+        if (stack == null) {
+            return null;
+        }
+        try {
+            Object empty = stack.getClass().getMethod("isEmpty").invoke(stack);
+            if (empty instanceof Boolean b && b) {
+                return null;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Object name = stack.getClass().getMethod("getName").invoke(stack);
+            if (name instanceof Component component) {
+                return component.getString();
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
+            Object itemStack = stack.getClass().getMethod("getItemStack").invoke(stack);
+            if (itemStack instanceof ItemStack item && !item.isEmpty()) {
+                return item.getHoverName().getString();
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String getJeiTypedIngredientDisplayName(Method getName, Object typedIngredient) {
+        try {
+            Object n = getName.invoke(null, typedIngredient);
+            if (n instanceof String text && !text.isBlank()) {
+                return text;
+            }
+        } catch (Throwable ignored) {
+        }
+        return null;
+    }
+
+    @Nullable
+    private static String searchNameFromJeiBookmark(Object bookmark, Method getName) {
+        String direct = getJeiTypedIngredientDisplayName(getName, bookmark);
+        if (direct != null && !direct.isBlank()) {
+            return direct;
+        }
+
+        for (Method method : bookmark.getClass().getMethods()) {
+            if (method.getParameterCount() != 0) {
+                continue;
+            }
+            String methodName = method.getName().toLowerCase(java.util.Locale.ROOT);
+            if (!methodName.contains("ingredient") && !methodName.contains("stack")) {
+                continue;
+            }
+            try {
+                Object value = method.invoke(bookmark);
+                if (value instanceof Optional<?> optional) {
+                    value = optional.orElse(null);
+                }
+                if (value == null) {
+                    continue;
+                }
+                String typedName = getJeiTypedIngredientDisplayName(getName, value);
+                if (typedName != null && !typedName.isBlank()) {
+                    return typedName;
+                }
+                if (value instanceof ItemStack item && !item.isEmpty()) {
+                    return item.getHoverName().getString();
+                }
+            } catch (Throwable ignored) {
+            }
         }
         return null;
     }
@@ -2967,8 +3255,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var slots = menu.getSlots(SlotSemantics.TOOLBOX);
         for (int i = 0; i < slots.size(); i++) {
             var slot = slots.get(i);
-            int x = bounds.getX() - leftPos + toolboxPanel.getSlotRelativeX() + (i % 3) * 17;
-            int y = bounds.getY() - topPos + toolboxPanel.getSlotRelativeY() + (i / 3) * 18;
+            int x = bounds.getX() - leftPos + toolboxPanel.getSlotRelativeX() + (i % 3) * toolboxPanel.getSlotSpacingX();
+            int y = bounds.getY() - topPos + toolboxPanel.getSlotRelativeY() + (i / 3) * toolboxPanel.getSlotSpacingY();
             showSlot(slot, x, y);
         }
     }

@@ -49,6 +49,7 @@ AE2 WCWT includes an optional built-in resource pack:
 - Adds matching AE2 1.21-style GUI resources used by this terminal.
 - Overrides the wireless comprehensive work terminal item texture in resource-pack mode.
 - Includes the animated terminal item texture from the 1.21.1 NeoForge reference version.
+- Requires the `AE2_bright_assets_and_redraws` resource pack to be loaded together for the intended appearance.
 
 This pack is optional. When it is not loaded, the mod keeps the default 1.20.1-style resources.
 
@@ -181,6 +182,7 @@ AE2 WCWT 内置一个可选资源包：
 - 提供本终端使用到的 AE2 1.21 风格 GUI 资源。
 - 在资源包模式下替换无线综合工作终端的物品贴图。
 - 包含来自 1.21.1 NeoForge 参考版本的终端物品动画贴图。
+- 需要搭配 `AE2_bright_assets_and_redraws` 资源包一起加载，才能获得预期显示效果。
 
 该资源包是可选的。不启用时，模组保持默认 1.20.1 风格资源。
 

@@ -1476,17 +1476,59 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
 
-        if (encodedPatternSlot != null) {
-            var encodedPattern = encodedPatternSlot.getItem();
-            if (PatternDetailsHelper.isEncodedPattern(encodedPattern)) {
-                encodedPatternSlot.set(AEItems.BLANK_PATTERN.stack(encodedPattern.getCount()));
-            }
-        }
+        clearPatternEncodingOutputSlot();
 
         patternEncodingLogic.getEncodedInputInv().clear();
         patternEncodingLogic.getEncodedOutputInv().clear();
         updatePatternPreview(getPatternEncodingMode());
         broadcastChanges();
+    }
+
+    private void clearPatternEncodingOutputSlot() {
+        if (encodedPatternSlot == null) {
+            return;
+        }
+        var outputStack = encodedPatternSlot.getItem();
+        if (outputStack.isEmpty()
+                || (!PatternDetailsHelper.isEncodedPattern(outputStack) && !isBlankPattern(outputStack))) {
+            return;
+        }
+
+        if (isClientSide()) {
+            encodedPatternSlot.set(ItemStack.EMPTY);
+            return;
+        }
+
+        ItemStack remainingBlanks = returnBlankPatternToBlankSlotOrNetwork(outputStack.getCount());
+        encodedPatternSlot.set(remainingBlanks);
+        if (remainingBlanks.isEmpty()) {
+            forceInventorySyncOnNextBroadcast();
+        }
+    }
+
+    private ItemStack returnBlankPatternToBlankSlotOrNetwork(int count) {
+        if (count <= 0) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack remainingBlanks = AEItems.BLANK_PATTERN.stack(count);
+        if (blankPatternSlot != null && blankPatternSlot.mayPlace(remainingBlanks)) {
+            remainingBlanks = blankPatternSlot.safeInsert(remainingBlanks);
+            if (remainingBlanks.isEmpty()) {
+                return ItemStack.EMPTY;
+            }
+        }
+
+        try {
+            var blankKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
+            long inserted = StorageHelper.poweredInsert(getWcwtEnergySource(), storage, blankKey,
+                    remainingBlanks.getCount(), getActionSource());
+            if (inserted > 0) {
+                remainingBlanks.shrink((int) Math.min(inserted, remainingBlanks.getCount()));
+            }
+        } catch (Exception ignored) {
+        }
+        return remainingBlanks;
     }
 
     public boolean isPatternSubstitute() {

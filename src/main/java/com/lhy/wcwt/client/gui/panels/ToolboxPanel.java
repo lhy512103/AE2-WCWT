@@ -9,8 +9,12 @@ import net.minecraft.client.gui.GuiGraphics;
  */
 public class ToolboxPanel extends ExtendedUIPanel {
     private final ExtendedPanelLayout layout = ExtendedPanelLayout.load("wcwt_toolbox.json");
+    private static final int DEFAULT_SLOT_SPACING_X = 17;
+    private static final int DEFAULT_SLOT_SPACING_Y = 18;
     private ExtendedPanelLayout.Rect toolboxSlot =
             new ExtendedPanelLayout.Rect(8, 20, 0, 0);
+    private int slotSpacingX = DEFAULT_SLOT_SPACING_X;
+    private int slotSpacingY = DEFAULT_SLOT_SPACING_Y;
     
     public ToolboxPanel(int x, int y) {
         super(x, y, 59, 66);
@@ -23,6 +27,8 @@ public class ToolboxPanel extends ExtendedUIPanel {
         var returnButton = layout.widget("return_button", new ExtendedPanelLayout.Rect(13, -5, 12, 12));
         configureReturnButton(width - returnButton.left(), returnButton.top(), returnButton.width(), returnButton.height());
         toolboxSlot = layout.slot("TOOLBOX", toolboxSlot);
+        slotSpacingX = layout.slotInt("TOOLBOX", "slotSpacingX", DEFAULT_SLOT_SPACING_X);
+        slotSpacingY = layout.slotInt("TOOLBOX", "slotSpacingY", DEFAULT_SLOT_SPACING_Y);
         createReturnButton();
     }
     
@@ -46,6 +52,14 @@ public class ToolboxPanel extends ExtendedUIPanel {
 
     public int getSlotRelativeY() {
         return toolboxSlot.top();
+    }
+
+    public int getSlotSpacingX() {
+        return slotSpacingX;
+    }
+
+    public int getSlotSpacingY() {
+        return slotSpacingY;
     }
     
 }

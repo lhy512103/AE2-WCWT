@@ -4,6 +4,7 @@ import com.lhy.wcwt.WcwtMod;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
 import net.minecraftforge.client.settings.KeyConflictContext;
+import org.lwjgl.glfw.GLFW;
 
 /**
  * WCWT 自定义按键。
@@ -20,6 +21,8 @@ public final class WcwtKeybindings {
             create("open_resonating_lightning_pattern_coding");
     public static final KeyMapping TOGGLE_FAVORITE_ITEM = create("toggle_favorite_item", KeyConflictContext.IN_GAME);
     public static final KeyMapping TOGGLE_CRAFTING_LOCK = create("toggle_crafting_lock", KeyConflictContext.GUI);
+    public static final KeyMapping FILL_RECIPE_VIEWER_SEARCH =
+            create("fill_recipe_viewer_search", KeyConflictContext.GUI, GLFW.GLFW_KEY_F);
 
     private WcwtKeybindings() {
     }
@@ -29,11 +32,15 @@ public final class WcwtKeybindings {
     }
 
     private static KeyMapping create(String name, KeyConflictContext conflictContext) {
+        return create(name, conflictContext, InputConstants.UNKNOWN.getValue());
+    }
+
+    private static KeyMapping create(String name, KeyConflictContext conflictContext, int keyCode) {
         return new KeyMapping(
                 "key." + WcwtMod.MOD_ID + "." + name,
                 conflictContext,
                 InputConstants.Type.KEYSYM,
-                InputConstants.UNKNOWN.getValue(),
+                keyCode,
                 CATEGORY);
     }
 }

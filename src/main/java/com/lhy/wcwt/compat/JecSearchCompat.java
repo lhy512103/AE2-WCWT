@@ -9,6 +9,7 @@ import org.jetbrains.annotations.Nullable;
 public final class JecSearchCompat {
     private static @Nullable Boolean available;
     private static @Nullable java.lang.reflect.Method containsMethod;
+    private static @Nullable Object containsTarget;
 
     private JecSearchCompat() {
     }
@@ -24,14 +25,12 @@ public final class JecSearchCompat {
         tryInit();
         if (Boolean.TRUE.equals(available) && containsMethod != null) {
             try {
-                Object result = containsMethod.invoke(null, text, query);
-                if (result instanceof Boolean matched && matched) {
+                if (invokeContains(text, query)) {
                     return true;
                 }
                 String lowerText = text.toLowerCase(java.util.Locale.ROOT);
                 String lowerQuery = query.toLowerCase(java.util.Locale.ROOT);
-                Object lowerResult = containsMethod.invoke(null, lowerText, lowerQuery);
-                if (lowerResult instanceof Boolean matched && matched) {
+                if (invokeContains(lowerText, lowerQuery)) {
                     return true;
                 }
             } catch (Throwable ignored) {
@@ -43,17 +42,45 @@ public final class JecSearchCompat {
                 .contains(query.toLowerCase(java.util.Locale.ROOT));
     }
 
+    private static boolean invokeContains(String text, String query) throws ReflectiveOperationException {
+        Object result = containsMethod.invoke(containsTarget, text, query);
+        return result instanceof Boolean matched && matched;
+    }
+
     private static void tryInit() {
         if (available != null) {
             return;
         }
-        try {
-            Class<?> clazz = Class.forName("me.towdium.jecharacters.utils.Match");
-            containsMethod = clazz.getMethod("contains", CharSequence.class, CharSequence.class);
+        if (tryStaticContains("me.towdium.jecharacters.utils.Match", String.class, CharSequence.class)
+                || tryStaticContains("me.towdium.jecharacters.utils.Match", CharSequence.class, CharSequence.class)
+                || tryPinInInstanceContains()) {
             available = true;
+            return;
+        }
+        containsMethod = null;
+        containsTarget = null;
+        available = false;
+    }
+
+    private static boolean tryStaticContains(String className, Class<?> first, Class<?> second) {
+        try {
+            Class<?> clazz = Class.forName(className);
+            containsMethod = clazz.getMethod("contains", first, second);
+            containsTarget = null;
+            return true;
         } catch (Throwable ignored) {
-            containsMethod = null;
-            available = false;
+            return false;
+        }
+    }
+
+    private static boolean tryPinInInstanceContains() {
+        try {
+            Class<?> clazz = Class.forName("me.towdium.pinin.PinIn");
+            containsMethod = clazz.getMethod("contains", String.class, String.class);
+            containsTarget = clazz.getConstructor().newInstance();
+            return true;
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 }

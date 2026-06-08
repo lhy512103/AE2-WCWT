@@ -1,0 +1,41 @@
+{
+  "$schema": "../../../schema.json",
+  "comment": "卡槽箱面板 - 内置 1.21 风格资源包覆盖布局",
+  "background": {
+    "comment": "使用 AE2 原版的 extra_panels.png 纹理",
+    "texture": "ae2:textures/guis/extra_panels.png",
+    "textureWidth": 128,
+    "textureHeight": 128,
+    "srcRect": [69, 62, 59, 66]
+  },
+  "text": {
+    "title": {
+      "text": {
+        "translate": "gui.wcwt.extended_ui.tool_slots_box"
+      },
+      "position": {
+        "left": 4,
+        "top": 3
+      }
+    }
+  },
+  "slots": {
+    "TOOLBOX": {
+      "comment": "卡槽箱槽位 - 内置资源包下横向间距比默认布局大 1px。",
+      "left": 0,
+      "top": 6,
+      "grid": "BREAK_AFTER_3COLS",
+      "slotSpacingX": 18,
+      "slotSpacingY": 18
+    }
+  },
+  "widgets": {
+    "return_button": {
+      "comment": "返回按钮（缩小版 10x10）- 关闭卡槽箱面板",
+      "left": 44,
+      "top": -7,
+      "width": 12,
+      "height": 12
+    }
+  }
+}

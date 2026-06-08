@@ -81,6 +81,13 @@ public class WcwtConfigScreen extends Screen {
                         saveClientConfig();
                     });
             y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.fillProviderSearchFromJeiBookmark",
+                    () -> WcwtClientConfig.FILL_PROVIDER_SEARCH_FROM_JEI_BOOKMARK.get(),
+                    value -> {
+                        WcwtClientConfig.FILL_PROVIDER_SEARCH_FROM_JEI_BOOKMARK.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
             addBooleanRow(y, "wcwt.config.expandToolkitInManagementArea",
                     () -> WcwtClientConfig.EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.get(),
                     value -> {

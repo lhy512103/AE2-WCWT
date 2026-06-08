@@ -67,6 +67,7 @@ public class ModClientSetup {
         event.register(WcwtKeybindings.OPEN_RESONATING_LIGHTNING_PATTERN_CODING);
         event.register(WcwtKeybindings.TOGGLE_FAVORITE_ITEM);
         event.register(WcwtKeybindings.TOGGLE_CRAFTING_LOCK);
+        event.register(WcwtKeybindings.FILL_RECIPE_VIEWER_SEARCH);
     }
 
     @SubscribeEvent
@@ -111,7 +112,30 @@ public class ModClientSetup {
         boolean locked = !host.isCraftingGridLocked();
         host.setCraftingGridLocked(locked);
         ModNetworking.sendToServer(new CraftingLockPacket(locked));
+        refreshCurrentEmiRecipePage(minecraft.screen);
         return true;
+    }
+
+    private static void refreshCurrentEmiRecipePage(Object screen) {
+        if (screen == null || !ModList.get().isLoaded("emi")
+                || !"dev.emi.emi.screen.RecipeScreen".equals(screen.getClass().getName())) {
+            return;
+        }
+        try {
+            Class<?> screenClass = screen.getClass();
+            int tabPage = getPrivateInt(screenClass, screen, "tabPage");
+            int tab = getPrivateInt(screenClass, screen, "tab");
+            int page = getPrivateInt(screenClass, screen, "page");
+            Method setPage = screenClass.getMethod("setPage", int.class, int.class, int.class);
+            setPage.invoke(screen, tabPage, tab, page);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static int getPrivateInt(Class<?> owner, Object target, String name) throws ReflectiveOperationException {
+        var field = owner.getDeclaredField(name);
+        field.setAccessible(true);
+        return field.getInt(target);
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
@@ -152,6 +176,9 @@ public class ModClientSetup {
     }
 
     private static boolean matchesFillSearchHotkey(int keyCode, int scanCode) {
+        if (WcwtKeybindings.FILL_RECIPE_VIEWER_SEARCH.matches(keyCode, scanCode)) {
+            return true;
+        }
         if (ModList.get().isLoaded("extendedae_plus")) {
             try {
                 Class<?> kb = Class.forName("com.extendedae_plus.client.ModKeybindings");
