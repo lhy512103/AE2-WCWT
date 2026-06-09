@@ -29,6 +29,7 @@ import de.mari_023.ae2wtlib.api.TextConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
@@ -348,6 +349,7 @@ public final class WcwtWirelessFeatures {
         requestedStack.setCount((int) extracted);
         inventory.setItem(targetSlot, requestedStack);
         inventory.selected = targetSlot;
+        player.connection.send(new ClientboundSetCarriedItemPacket(inventory.selected));
         player.inventoryMenu.broadcastChanges();
         debugMagnet(player, "pick-block inserted into hotbar: requested={}, extracted={}, targetSlot={}, terminal={}",
                 describeStack(requestedStack), extracted, targetSlot, describeStack(terminal));
