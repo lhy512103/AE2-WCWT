@@ -74,7 +74,11 @@ public final class ModNetworking {
             implements net.neoforged.neoforge.network.handling.IPayloadContext {
         @Override
         public net.minecraft.world.entity.player.Player player() {
-            return context.getSender() != null ? context.getSender() : net.minecraft.client.Minecraft.getInstance().player;
+            var sender = context.getSender();
+            if (sender == null) {
+                throw new IllegalStateException("PayloadContext.player() is only available for serverbound WCWT packets");
+            }
+            return sender;
         }
 
         @Override

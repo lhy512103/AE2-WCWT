@@ -51,6 +51,7 @@ import com.lhy.wcwt.client.gui.WcwtAe2Textures;
 import com.lhy.wcwt.client.gui.widgets.*;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
 import com.lhy.wcwt.client.gui.widgets.WcwtScrollingUpgradesPanel;
+import com.lhy.wcwt.menu.PatternMultiplierType;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.EncodePatternPacket;
@@ -642,7 +643,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         // 样板倍增按钮
         multiplierButtons = new PatternMultiplierButton[8];
-        var multiplierTypes = PatternMultiplierButton.MultiplierType.values();
+        var multiplierTypes = PatternMultiplierType.values();
         for (int i = 0; i < multiplierButtons.length; i++) {
             int index = i;
             multiplierButtons[i] = new PatternMultiplierButton(
@@ -1466,7 +1467,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return mapping.matches(keyCode, scanCode);
     }
     
-    private void onMultiplierButtonClick(PatternMultiplierButton.MultiplierType type) {
+    private void onMultiplierButtonClick(PatternMultiplierType type) {
         // 发送样板倍增器数据包到服务端
         ModNetworking.sendToServer(new PatternMultiplierPacket(
                 type,

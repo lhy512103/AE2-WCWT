@@ -1,16 +1,13 @@
 package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.client.Minecraft;
 import com.lhy.wcwt.compat.minecraft.network.codec.ByteBufCodecs;
 import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
 import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 
 public record PatternProviderFocusPacket(long providerId, int slot) implements CustomPacketPayload {
     public static final Type<PatternProviderFocusPacket> TYPE =
@@ -29,14 +26,8 @@ public record PatternProviderFocusPacket(long providerId, int slot) implements C
     }
 
     public static void handle(PatternProviderFocusPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> handleClient(packet));
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    private static void handleClient(PatternProviderFocusPacket packet) {
-        if (Minecraft.getInstance().screen instanceof WirelessComprehensiveWorkTerminalScreen screen) {
-            screen.focusPatternProviderSlot(packet.providerId(), packet.slot());
-        }
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> com.lhy.wcwt.client.WcwtClientNetworkHandler.handlePatternProviderFocus(packet)));
     }
 }
 

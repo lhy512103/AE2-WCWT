@@ -2,7 +2,6 @@ package com.lhy.wcwt.network;
 
 import com.google.common.collect.Maps;
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.client.WcwtRestockState;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
@@ -12,6 +11,8 @@ import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacket
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.fml.DistExecutor;
 
 import java.util.HashMap;
 
@@ -34,11 +35,8 @@ public record WcwtRestockAmountsPacket(boolean enabled, HashMap<Holder<Item>, Lo
     }
 
     public static void handle(WcwtRestockAmountsPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> {
-            HashMap<Item, Long> map = Maps.newHashMapWithExpectedSize(packet.items().size());
-            packet.items().forEach((item, count) -> map.put(item.value(), count));
-            WcwtRestockState.update(packet.enabled(), map);
-        });
+        context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
+                () -> () -> com.lhy.wcwt.client.WcwtClientNetworkHandler.handleRestockAmounts(packet)));
     }
 }
 

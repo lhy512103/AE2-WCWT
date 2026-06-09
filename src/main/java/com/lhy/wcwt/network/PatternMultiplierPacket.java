@@ -1,7 +1,7 @@
 package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
+import com.lhy.wcwt.menu.PatternMultiplierType;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import io.netty.buffer.ByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.ByteBufCodecs;
@@ -15,7 +15,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  * 客户端 → 服务器：应用倍增/除法/交换操作
  */
 public record PatternMultiplierPacket(
-    PatternMultiplierButton.MultiplierType multiplierType,
+    PatternMultiplierType multiplierType,
     boolean applyToEditorProcessing
 ) implements CustomPacketPayload {
     
@@ -26,8 +26,8 @@ public record PatternMultiplierPacket(
     
     public static final StreamCodec<ByteBuf, PatternMultiplierPacket> STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.VAR_INT.map(
-            ordinal -> PatternMultiplierButton.MultiplierType.values()[ordinal],
-            PatternMultiplierButton.MultiplierType::ordinal
+            ordinal -> PatternMultiplierType.values()[ordinal],
+            PatternMultiplierType::ordinal
         ),
         PatternMultiplierPacket::multiplierType,
         ByteBufCodecs.BOOL,

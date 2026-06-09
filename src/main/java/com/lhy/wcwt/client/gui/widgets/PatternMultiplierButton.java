@@ -1,6 +1,7 @@
 package com.lhy.wcwt.client.gui.widgets;
 
 import appeng.client.gui.widgets.ITooltip;
+import com.lhy.wcwt.menu.PatternMultiplierType;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
@@ -17,36 +18,9 @@ public class PatternMultiplierButton extends Button implements ITooltip {
     private static final ResourceLocation TEXTURE = 
         com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wcwt_states.png");
     
-    public enum MultiplierType {
-        SWAP("⇄", "gui.wcwt.multiplier.swap"),       // 主副切换
-        TIMES_2("×2", "gui.wcwt.multiplier.times2"), // x2
-        TIMES_3("×3", "gui.wcwt.multiplier.times3"), // x3
-        TIMES_5("×5", "gui.wcwt.multiplier.times5"), // x5
-        EQUALS_1("=1", "gui.wcwt.multiplier.equals1"), // =1
-        DIVIDE_2("÷2", "gui.wcwt.multiplier.divide2"), // /2
-        DIVIDE_3("÷3", "gui.wcwt.multiplier.divide3"), // /3
-        DIVIDE_5("÷5", "gui.wcwt.multiplier.divide5"); // /5
-        
-        private final String display;
-        private final String translationKey;
-        
-        MultiplierType(String display, String translationKey) {
-            this.display = display;
-            this.translationKey = translationKey;
-        }
-        
-        public String getDisplay() {
-            return display;
-        }
-        
-        public String getTranslationKey() {
-            return translationKey;
-        }
-    }
+    private final PatternMultiplierType type;
     
-    private final MultiplierType type;
-    
-    public PatternMultiplierButton(MultiplierType type, OnPress onPress) {
+    public PatternMultiplierButton(PatternMultiplierType type, OnPress onPress) {
         super(0, 0, 17, 16, Component.empty(), onPress, Button.DEFAULT_NARRATION);
         this.type = type;
     }
@@ -89,7 +63,7 @@ public class PatternMultiplierButton extends Button implements ITooltip {
         return visible;
     }
     
-    public MultiplierType getType() {
+    public PatternMultiplierType getType() {
         return type;
     }
 }

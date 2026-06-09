@@ -33,7 +33,6 @@ import appeng.util.inv.PlayerInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
@@ -3846,7 +3845,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      * 应用样板倍增器操作
      * 基于ExtendedAE的ContainerPatternModifier.modify()实现
      */
-    public void applyPatternMultiplier(PatternMultiplierButton.MultiplierType type, boolean applyToEditorProcessing) {
+    public void applyPatternMultiplier(PatternMultiplierType type, boolean applyToEditorProcessing) {
         // 根据类型确定操作参数
         int scale;
         boolean divide;
