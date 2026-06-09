@@ -80,12 +80,12 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
         };
     }
 
-    private static ItemStack locateCurioStack(Player player, int visibleCurioSlot) {
-        var curios = CuriosBridge.getVisibleSlots(player);
-        if (visibleCurioSlot < 0 || visibleCurioSlot >= curios.size()) {
+    private static ItemStack locateCurioStack(Player player, int equippedCurioIndex) {
+        var curios = CuriosBridge.getEquippedSlots(player);
+        if (equippedCurioIndex < 0 || equippedCurioIndex >= curios.size()) {
             return ItemStack.EMPTY;
         }
-        var curio = curios.get(visibleCurioSlot);
+        var curio = curios.get(equippedCurioIndex);
         return curio.handler().getStackInSlot(curio.slotIndex());
     }
 

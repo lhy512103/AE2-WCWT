@@ -20,7 +20,8 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     public static NetworkToolMenuHost findToolkitNetworkToolHost(Player player) {
-        return findInInventory(player);
+        NetworkToolMenuHost inventoryHost = findInInventory(player);
+        return inventoryHost != null ? inventoryHost : findInCurios(player);
     }
 
     @Nullable
@@ -39,7 +40,7 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     private static NetworkToolMenuHost findInCurios(Player player) {
-        var curios = CuriosBridge.getVisibleSlots(player);
+        var curios = CuriosBridge.getEquippedSlots(player);
         for (int curioIndex = 0; curioIndex < curios.size(); curioIndex++) {
             var curio = curios.get(curioIndex);
             ItemStack terminalStack = curio.handler().getStackInSlot(curio.slotIndex());
