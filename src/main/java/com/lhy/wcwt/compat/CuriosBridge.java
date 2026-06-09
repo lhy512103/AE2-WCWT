@@ -30,6 +30,14 @@ public final class CuriosBridge {
     }
 
     public static List<CurioSlotSpec> getVisibleSlots(Player player) {
+        return getSlots(player, true);
+    }
+
+    public static List<CurioSlotSpec> getEquippedSlots(Player player) {
+        return getSlots(player, false);
+    }
+
+    private static List<CurioSlotSpec> getSlots(Player player, boolean onlyVisible) {
         if (!isLoaded() || player == null) {
             return List.of();
         }
@@ -43,7 +51,7 @@ public final class CuriosBridge {
         for (var entry : curiosHandler.getCurios().entrySet()) {
             String identifier = entry.getKey();
             ICurioStacksHandler stacksHandler = entry.getValue();
-            if (identifier == null || stacksHandler == null || !stacksHandler.isVisible()) {
+            if (identifier == null || stacksHandler == null || (onlyVisible && !stacksHandler.isVisible())) {
                 continue;
             }
 

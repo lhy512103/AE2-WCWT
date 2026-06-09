@@ -10,7 +10,7 @@ import net.minecraft.world.item.ItemStack;
 public final class WcwtCurioHotkeyAction implements HotkeyAction {
     @Override
     public boolean run(Player player) {
-        for (var curio : CuriosBridge.getVisibleSlots(player)) {
+        for (var curio : CuriosBridge.getEquippedSlots(player)) {
             ItemStack stack = curio.handler().getStackInSlot(curio.slotIndex());
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminal) {
                 if (terminal.openFromCurio(player, new CurioLocator(curio.identifier(), curio.slotIndex()), stack, false)) {

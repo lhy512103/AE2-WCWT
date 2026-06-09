@@ -9,7 +9,9 @@
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin"
   ],
-  "client": [],
+  "client": [
+    "client.WcwtMinecraftPickBlockMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

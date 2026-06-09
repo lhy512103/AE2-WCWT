@@ -7,6 +7,7 @@ import appeng.core.localization.ItemModText;
 import appeng.integration.modules.jeirei.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
+import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.compat.WcwtRecipeViewerBookmarkKeys;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.client.WcwtFavorites;
@@ -693,35 +694,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     }
 
     private static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
-        if (!ModList.get().isLoaded("extendedae_plus")) {
-            return;
-        }
-        try {
-            Class<?> configClass = Class.forName("com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig");
-            if (mode != EncodingMode.PROCESSING) {
-                configClass.getMethod("presetCraftingProviderSearchKey").invoke(null);
-                return;
-            }
-
-            String name = null;
-            if (recipe != null) {
-                Object mapped = configClass.getMethod("mapRecipeTypeToSearchKey", Recipe.class).invoke(null, recipe);
-                if (mapped instanceof String mappedName) {
-                    name = mappedName;
-                }
-            }
-            if ((name == null || name.isBlank()) && recipeBase != null) {
-                Object derived = configClass.getMethod("deriveSearchKeyFromUnknownRecipe", Object.class)
-                        .invoke(null, recipeBase);
-                if (derived instanceof String derivedName) {
-                    name = derivedName;
-                }
-            }
-            if (name != null && !name.isBlank()) {
-                configClass.getMethod("setLastProcessingName", String.class).invoke(null, name);
-            }
-        } catch (Throwable ignored) {
-        }
+        WcwtRecipeSearchKeyResolver.updateEaepProviderSearchKey(recipeBase, recipe, mode);
     }
 
     @Nullable

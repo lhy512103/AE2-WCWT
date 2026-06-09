@@ -6,6 +6,7 @@ import appeng.integration.modules.jeirei.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
+import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.init.ModMenus;
@@ -13,7 +14,6 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
-import com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.ingredients.IIngredientType;
@@ -31,7 +31,6 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.jetbrains.annotations.Nullable;
@@ -148,21 +147,7 @@ public class WcwtRecipeTransferHandler
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
-        if (!ModList.get().isLoaded("extendedae_plus")) {
-            return;
-        }
-        if (mode != EncodingMode.PROCESSING) {
-            RecipeTypeNameConfig.presetCraftingProviderSearchKey();
-            return;
-        }
-
-        String name = recipe != null ? RecipeTypeNameConfig.mapRecipeTypeToSearchKey(recipe) : null;
-        if ((name == null || name.isBlank()) && recipeBase != null) {
-            name = RecipeTypeNameConfig.deriveSearchKeyFromUnknownRecipe(recipeBase);
-        }
-        if (name != null && !name.isBlank()) {
-            RecipeTypeNameConfig.setLastProcessingName(name);
-        }
+        WcwtRecipeSearchKeyResolver.updateEaepProviderSearchKey(recipeBase, recipe, mode);
     }
 
     private static EncodingMode getTransferMode(@Nullable Recipe<?> recipe, IRecipeSlotsView slotsView) {

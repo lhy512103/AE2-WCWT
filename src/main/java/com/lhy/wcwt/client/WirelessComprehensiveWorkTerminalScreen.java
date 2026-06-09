@@ -41,6 +41,7 @@ import de.mari_023.ae2wtlib.AE2wtlibSlotSemantics;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -304,6 +305,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SLOT_STEP = 18;
     private static final int PATTERN_MANAGEMENT_HEADER_Y_OFFSET = -1;
     private static final int PATTERN_MANAGEMENT_SLOT_Y_OFFSET = 0;
+    private static final long PATTERN_MANAGEMENT_SEARCH_HIGHLIGHT_PERIOD_MS = 4000L;
+    private static final int PATTERN_MANAGEMENT_SEARCH_MATCH_ALPHA = 0xA0;
+    private static final int PATTERN_MANAGEMENT_SEARCH_MATCH_BG_ALPHA = 0x3C;
+    private static final int PATTERN_MANAGEMENT_SEARCH_PROVIDER_ALPHA = 0x30;
+    private static final int PATTERN_MANAGEMENT_SEARCH_PROVIDER_BG_ALPHA = 0x14;
     private static final int BUTTON_PRESS_OFFSET_Y = 1;
     private static final int ANVIL_TOO_EXPENSIVE_COST = 40;
     private static final long FOCUSED_PATTERN_FLASH_PERIOD_MS = 480L;
@@ -1968,12 +1974,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 }
             }
             if (recipeBase instanceof Recipe<?> recipe) {
-                String mapped = RecipeTypeNameConfig.mapRecipeTypeToSearchKey(recipe);
+                String mapped = WcwtRecipeSearchKeyResolver.resolveProcessingSearchKey(recipeBase, recipe);
                 if (mapped != null && !mapped.isBlank()) {
                     return mapped;
                 }
             }
-            String derived = RecipeTypeNameConfig.deriveSearchKeyFromUnknownRecipe(recipeBookmark);
+            String derived = WcwtRecipeSearchKeyResolver.resolveProcessingSearchKey(recipeBookmark, null);
             if (derived != null && !derived.isBlank()) {
                 return derived;
             }
@@ -4001,6 +4007,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                                               int mouseX, int mouseY) {
         int relMouseX = mouseX - leftPos;
         int relMouseY = mouseY - topPos;
+        String filter = getPatternManagementSearchFilter();
+        boolean providerMatched = !filter.isEmpty()
+                && JecSearchCompat.contains(row.entry().group().name().getString(), filter);
         for (int col = 0; col < row.slots(); col++) {
             int slot = row.offset() + col;
             ItemStack stack = row.entry().slots().getOrDefault(slot, ItemStack.EMPTY);
@@ -4014,6 +4023,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             guiGraphics.blit(WCWT_MANAGEMENT_TEXTURE, x, y, 0, 0,
                     drawW, PATTERN_MANAGEMENT_SLOT_BG_SIZE,
                     256, 256);
+            if (isPatternManagementSearchActive(filter)) {
+                renderPatternManagementSearchHighlight(guiGraphics, x, y,
+                        !stack.isEmpty() && patternStackMatches(stack, filter),
+                        providerMatched);
+            }
             if (shouldHighlightFocusedPatternSlot(row.entry().providerId(), slot)) {
                 renderFocusedPatternManagementSlotHighlight(guiGraphics, x, y);
             }
@@ -4028,6 +4042,103 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 renderSlotHighlight(guiGraphics, patternManagementSlotHitMinX(x), patternManagementSlotHitMinY(y), 0);
             }
         }
+    }
+
+    private String getPatternManagementSearchFilter() {
+        return patternManageSearchField != null ? patternManageSearchField.getValue().trim().toLowerCase() : "";
+    }
+
+    private boolean isPatternManagementSearchActive(String filter) {
+        return patternManagementShowSlots && !filter.isEmpty();
+    }
+
+    private void renderPatternManagementSearchHighlight(GuiGraphics guiGraphics, int bgX, int bgY,
+                                                        boolean stackMatched, boolean providerMatched) {
+        if (!stackMatched && !providerMatched) {
+            return;
+        }
+        int x = patternManagementSlotHitMinX(bgX);
+        int y = patternManagementSlotHitMinY(bgY);
+        int size = PATTERN_MANAGEMENT_SLOT_HIT_SIZE;
+        int rainbowRgb = getPatternManagementSearchRainbowRgb();
+        int borderColor = stackMatched
+                ? withAlpha(rainbowRgb, PATTERN_MANAGEMENT_SEARCH_MATCH_ALPHA)
+                : withAlpha(0xFFFFFF, PATTERN_MANAGEMENT_SEARCH_PROVIDER_ALPHA);
+        int backgroundColor = stackMatched
+                ? withAlpha(rainbowRgb, PATTERN_MANAGEMENT_SEARCH_MATCH_BG_ALPHA)
+                : withAlpha(0xFFFFFF, PATTERN_MANAGEMENT_SEARCH_PROVIDER_BG_ALPHA);
+        drawPatternManagementSlotBox(guiGraphics, x, y, size, borderColor, backgroundColor);
+    }
+
+    private static int getPatternManagementSearchRainbowRgb() {
+        long now = System.currentTimeMillis();
+        float hue = (now % PATTERN_MANAGEMENT_SEARCH_HIGHLIGHT_PERIOD_MS)
+                / (float) PATTERN_MANAGEMENT_SEARCH_HIGHLIGHT_PERIOD_MS;
+        return hsvToRgb(hue, 1.0F, 1.0F);
+    }
+
+    private static int withAlpha(int rgb, int alpha255) {
+        return ((alpha255 & 0xFF) << 24) | (rgb & 0x00FFFFFF);
+    }
+
+    private static int hsvToRgb(float h, float s, float v) {
+        if (s <= 0.0F) {
+            int g = Math.round(v * 255.0F);
+            return (g << 16) | (g << 8) | g;
+        }
+        float hh = (h - (float) Math.floor(h)) * 6.0F;
+        int sector = (int) Math.floor(hh);
+        float f = hh - sector;
+        float p = v * (1.0F - s);
+        float q = v * (1.0F - s * f);
+        float t = v * (1.0F - s * (1.0F - f));
+        float r;
+        float g;
+        float b;
+        switch (sector) {
+            case 0 -> {
+                r = v;
+                g = t;
+                b = p;
+            }
+            case 1 -> {
+                r = q;
+                g = v;
+                b = p;
+            }
+            case 2 -> {
+                r = p;
+                g = v;
+                b = t;
+            }
+            case 3 -> {
+                r = p;
+                g = q;
+                b = v;
+            }
+            case 4 -> {
+                r = t;
+                g = p;
+                b = v;
+            }
+            default -> {
+                r = v;
+                g = p;
+                b = q;
+            }
+        }
+        return (Math.round(r * 255.0F) << 16)
+                | (Math.round(g * 255.0F) << 8)
+                | Math.round(b * 255.0F);
+    }
+
+    private void drawPatternManagementSlotBox(GuiGraphics guiGraphics, int x, int y, int size,
+                                              int borderColor, int backgroundColor) {
+        guiGraphics.fill(x - 1, y - 1, x + size + 1, y, borderColor);
+        guiGraphics.fill(x - 1, y + size, x + size + 1, y + size + 1, borderColor);
+        guiGraphics.fill(x - 1, y, x, y + size, borderColor);
+        guiGraphics.fill(x + size, y, x + size + 1, y + size, borderColor);
+        guiGraphics.fill(x, y, x + size, y + size, backgroundColor);
     }
 
     private void renderManagementToolkit(GuiGraphics guiGraphics) {
