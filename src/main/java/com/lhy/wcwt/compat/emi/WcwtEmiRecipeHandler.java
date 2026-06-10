@@ -584,7 +584,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return List.of();
         }
         return recipe.getOutputs().stream()
-                .map(stack -> toGenericStack(stack, 1))
+                .map(stack -> toGenericStack(stack, stack.getAmount()))
                 .filter(Objects::nonNull)
                 .toList();
     }

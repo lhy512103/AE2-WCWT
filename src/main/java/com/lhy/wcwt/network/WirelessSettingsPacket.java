@@ -3,6 +3,7 @@ package com.lhy.wcwt.network;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.menu.locator.WcwtCurioLocator;
 import net.minecraft.nbt.CompoundTag;
 import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
@@ -40,14 +41,23 @@ public record WirelessSettingsPacket(boolean pickBlock, boolean restock, boolean
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu
                     && menu.getMenuHost() != null) {
-                ItemStack stack = menu.getMenuHost().getItemStack();
-                CompoundTag root = getOrCreateRootTag(stack);
-                root.putBoolean("pick_block", packet.pickBlock());
-                root.putBoolean("craft_if_missing", packet.craftIfMissing());
-                root.putBoolean("restock", packet.restock());
-                setMagnetSettings(stack, packet.magnet(), packet.pickupToMe());
+                applySettings(menu.getMenuHost().getItemStack(), packet);
+                if (menu.getLocator() instanceof WcwtCurioLocator curioLocator) {
+                    applySettings(curioLocator.locateItem(context.player()), packet);
+                }
             }
         });
+    }
+
+    private static void applySettings(ItemStack stack, WirelessSettingsPacket packet) {
+        if (stack.isEmpty()) {
+            return;
+        }
+        CompoundTag root = getOrCreateRootTag(stack);
+        root.putBoolean("pick_block", packet.pickBlock());
+        root.putBoolean("craft_if_missing", packet.craftIfMissing());
+        root.putBoolean("restock", packet.restock());
+        setMagnetSettings(stack, packet.magnet(), packet.pickupToMe());
     }
 
     private static void setMagnetSettings(ItemStack stack, boolean magnet, boolean pickupToMe) {

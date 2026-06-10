@@ -1,5 +1,6 @@
 package com.lhy.wcwt.compat.jei;
 
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.jeirei.EncodingHelper;
@@ -191,7 +192,7 @@ public class WcwtRecipeTransferHandler
         }
 
         return collectStacksPreservingSlots(priorityContext, recipeSlots, RecipeIngredientRole.INPUT,
-                mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE);
+                mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE, false);
     }
 
     /**
@@ -211,10 +212,11 @@ public class WcwtRecipeTransferHandler
     private static List<@Nullable GenericStack> collectStacksPreservingSlots(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                                              IRecipeSlotsView recipeSlots,
                                                                              RecipeIngredientRole role,
-                                                                             int limit) {
+                                                                             int limit,
+                                                                             boolean preserveItemAmounts) {
         return recipeSlots.getSlotViews(role).stream()
                 .limit(limit)
-                .map(slotView -> toPreferredGenericStack(priorityContext, slotView))
+                .map(slotView -> toPreferredGenericStack(priorityContext, slotView, preserveItemAmounts))
                 .toList();
     }
 
@@ -224,15 +226,17 @@ public class WcwtRecipeTransferHandler
         var priorityContext = createPriorityContext(menu);
         if (isCreateBasinRecipe(recipe)) {
             List<@Nullable GenericStack> resolved = new ArrayList<>();
-            for (Ingredient ingredient : recipe.getIngredients()) {
-                resolved.add(toBestGenericStack(priorityContext, ingredient, List.of(), -1));
+            for (GenericStack stack : collectItemStacksPreservingSlots(priorityContext,
+                    recipeSlots, RecipeIngredientRole.INPUT)) {
+                resolved.add(stack);
             }
             for (SizedFluidIngredient fluidIngredient : getCreateFluidIngredients(recipe)) {
                 resolved.add(toGenericStack(fluidIngredient));
             }
             return resolved;
         }
-        return collectStacksPreservingSlots(priorityContext, recipeSlots, RecipeIngredientRole.INPUT, Integer.MAX_VALUE);
+        return collectStacksPreservingSlots(priorityContext, recipeSlots, RecipeIngredientRole.INPUT,
+                Integer.MAX_VALUE, true);
     }
 
     private static List<@Nullable GenericStack> collectProcessingOutputs(@Nullable Recipe<?> recipe,
@@ -240,7 +244,7 @@ public class WcwtRecipeTransferHandler
         if (isCreateBasinRecipe(recipe)) {
             List<@Nullable GenericStack> resolved = new ArrayList<>();
             for (ItemStack stack : getCreateRollableResultStacks(recipe)) {
-                resolved.add(GenericStack.fromItemStack(stack.copyWithCount(1)));
+                resolved.add(GenericStack.fromItemStack(stack.copy()));
             }
             for (FluidStack fluidStack : getCreateFluidResults(recipe)) {
                 if (!fluidStack.isEmpty()) {
@@ -250,7 +254,7 @@ public class WcwtRecipeTransferHandler
             return resolved;
         }
         return collectStacksPreservingSlots(WcwtIngredientPriorities.PriorityContext.EMPTY,
-                recipeSlots, RecipeIngredientRole.OUTPUT, Integer.MAX_VALUE);
+                recipeSlots, RecipeIngredientRole.OUTPUT, Integer.MAX_VALUE, true);
     }
 
     @Nullable
@@ -267,10 +271,21 @@ public class WcwtRecipeTransferHandler
     }
 
     @Nullable
+    private static List<GenericStack> collectItemStacksPreservingSlots(
+            WcwtIngredientPriorities.PriorityContext priorityContext,
+            IRecipeSlotsView recipeSlots,
+            RecipeIngredientRole role) {
+        return collectStacksPreservingSlots(priorityContext, recipeSlots, role, Integer.MAX_VALUE, true).stream()
+                .filter(Objects::nonNull)
+                .filter(stack -> stack.what() instanceof AEItemKey)
+                .toList();
+    }
+
     private static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
-                                                        IRecipeSlotView slotView) {
+                                                        IRecipeSlotView slotView,
+                                                        boolean preserveItemAmounts) {
         List<GenericStack> fallbackCandidates = slotView.getAllIngredients()
-                .map(WcwtRecipeTransferHandler::toGenericStack)
+                .map(ingredient -> toGenericStack(ingredient, preserveItemAmounts))
                 .filter(Objects::nonNull)
                 .toList();
         if (fallbackCandidates.isEmpty()) {
@@ -364,27 +379,39 @@ public class WcwtRecipeTransferHandler
 
     @Nullable
     static GenericStack toGenericStackForBookmark(@Nullable ITypedIngredient<?> ingredient) {
-        return toGenericStack(ingredient);
+        return toGenericStack(ingredient, false);
     }
 
     @Nullable
     private static GenericStack toGenericStack(@Nullable ITypedIngredient<?> ingredient) {
+        return toGenericStack(ingredient, false);
+    }
+
+    @Nullable
+    private static GenericStack toGenericStack(@Nullable ITypedIngredient<?> ingredient, boolean preserveItemAmounts) {
         if (ingredient == null) {
             return null;
         }
         GenericStack converted = convertWithAe2JeiIntegration(ingredient);
         if (converted != null) {
-            return converted;
+            return normalizeItemAmount(converted, preserveItemAmounts);
         }
 
         Object raw = ingredient.getIngredient();
         if (raw instanceof ItemStack stack && !stack.isEmpty()) {
-            return GenericStack.fromItemStack(stack.copyWithCount(1));
+            return GenericStack.fromItemStack(preserveItemAmounts ? stack.copy() : stack.copyWithCount(1));
         }
         if (raw instanceof FluidStack fluid && !fluid.isEmpty()) {
             return GenericStack.fromFluidStack(fluid.copy());
         }
         return convertMekanismChemical(raw);
+    }
+
+    private static GenericStack normalizeItemAmount(GenericStack stack, boolean preserveItemAmounts) {
+        if (!preserveItemAmounts && stack.what() instanceof AEItemKey) {
+            return new GenericStack(stack.what(), 1);
+        }
+        return stack;
     }
 
     @Nullable
