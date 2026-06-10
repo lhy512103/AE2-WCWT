@@ -1502,12 +1502,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             encodePatternButton.setFocused(false);
         }
         setFocused(null);
-        PreferredUploadProvider preferredProvider = resolvePreferredUploadProvider(searchKey);
+        boolean useEaepUploadScreen = patternManagementUploadEnabled
+                && net.minecraft.client.gui.screens.Screen.hasShiftDown();
+        PreferredUploadProvider preferredProvider = useEaepUploadScreen
+                ? PreferredUploadProvider.NONE
+                : resolvePreferredUploadProvider(searchKey);
         ModNetworking.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
                 searchKey == null ? "" : searchKey,
                 WcwtClientConfig.patternUploadFailFallbackToEditor(),
                 preferredProvider.providerId(),
-                preferredProvider.providerName()));
+                preferredProvider.providerName(),
+                useEaepUploadScreen));
     }
 
     private PreferredUploadProvider resolvePreferredUploadProvider(@Nullable String searchKey) {

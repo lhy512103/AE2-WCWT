@@ -16,7 +16,8 @@ public record EncodePatternPacket(EncodingMode mode,
                                   String providerSearchText,
                                   boolean fallbackToEditSlot,
                                   long preferredProviderId,
-                                  String preferredProviderName)
+                                  String preferredProviderName,
+                                  boolean useEaepUploadScreen)
         implements CustomPacketPayload {
     private static final boolean DEBUG_ENCODE = Boolean.getBoolean("wcwt.debug.encode");
     public static final CustomPacketPayload.Type<EncodePatternPacket> TYPE =
@@ -31,6 +32,7 @@ public record EncodePatternPacket(EncodingMode mode,
                 ByteBufCodecs.BOOL.encode(buf, packet.fallbackToEditSlot());
                 ByteBufCodecs.VAR_LONG.encode(buf, packet.preferredProviderId());
                 ByteBufCodecs.STRING_UTF8.encode(buf, packet.preferredProviderName());
+                ByteBufCodecs.BOOL.encode(buf, packet.useEaepUploadScreen());
             },
             buf -> new EncodePatternPacket(
                     MODE_STREAM_CODEC.decode(buf),
@@ -38,15 +40,23 @@ public record EncodePatternPacket(EncodingMode mode,
                     ByteBufCodecs.STRING_UTF8.decode(buf),
                     ByteBufCodecs.BOOL.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
-                    ByteBufCodecs.STRING_UTF8.decode(buf)));
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.BOOL.decode(buf)));
 
     public EncodePatternPacket(EncodingMode mode) {
-        this(mode, false, "", false, -1L, "");
+        this(mode, false, "", false, -1L, "", false);
     }
 
     public EncodePatternPacket(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
                                boolean fallbackToEditSlot) {
-        this(mode, uploadEnabled, providerSearchText, fallbackToEditSlot, -1L, "");
+        this(mode, uploadEnabled, providerSearchText, fallbackToEditSlot, -1L, "", false);
+    }
+
+    public EncodePatternPacket(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
+                               boolean fallbackToEditSlot, long preferredProviderId,
+                               String preferredProviderName) {
+        this(mode, uploadEnabled, providerSearchText, fallbackToEditSlot, preferredProviderId,
+                preferredProviderName, false);
     }
 
     @Override
@@ -62,7 +72,8 @@ public record EncodePatternPacket(EncodingMode mode,
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 menu.encodePattern(packet.mode(), packet.uploadEnabled(), packet.providerSearchText(),
-                        packet.fallbackToEditSlot(), packet.preferredProviderId(), packet.preferredProviderName());
+                        packet.fallbackToEditSlot(), packet.preferredProviderId(), packet.preferredProviderName(),
+                        packet.useEaepUploadScreen());
             } else if (DEBUG_ENCODE) {
                 WcwtMod.LOGGER.info("WCWT encode debug: packet ignored, current menu={}",
                         context.player().containerMenu == null ? "null" : context.player().containerMenu.getClass().getName());

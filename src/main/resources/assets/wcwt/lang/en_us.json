@@ -24,6 +24,7 @@
   "key.wcwt.open_cosmetic_armor": "Open Cosmetic Armor",
   "key.wcwt.open_curios": "Open Curios",
   "key.wcwt.open_tool_slots_box": "Open Card Box",
+  "key.wcwt.open_terminal": "Open Wireless Comprehensive Terminal",
   "key.wcwt.open_toolkit": "Open Toolkit",
   "key.wcwt.open_resonating_lightning_pattern_coding": "Open Resonating Overload Encoder",
   "key.wcwt.toggle_favorite_item": "Toggle Favorite Network Item",
@@ -239,6 +240,8 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "On: JEI/EMI transfers switch the manual workspace to crafting or smithing when the recipe type is known.",
   "wcwt.config.enableRecipePullTransfer": "Enable recipe pull/encode handling",
   "wcwt.config.enableRecipePullTransfer.tooltip": "On: enable WCWT JEI/EMI recipe pull, pattern encoding transfer, and preview highlights. Off: disable them.",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs": "Remove GTCEu non-consumable inputs",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "On: when JEI/EMI transfers GTCEu processing recipes into the pattern encoding area, remove catalyst-like item inputs that are not consumed. Default on.",
   "wcwt.config.expandToolkitInManagementArea": "Expand toolkit in management area",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "On: opening the toolkit shows it in the pattern management area and hides provider rows. Off: keep the original right-side toolkit panel.",
 
@@ -250,6 +253,8 @@
   "message.wcwt.pull_shift_hint": "Hold Shift: pull ingredients for one recipe batch",
   "message.wcwt.eco_pattern_duplicate": "ECO crafting subsystem already contains this pattern.",
   "message.wcwt.eco_pattern_uploaded": "Pattern uploaded to the ECO crafting subsystem.",
+  "message.wcwt.eaep_provider_missing": "WCWT: no pattern provider is available for EAEP upload.",
+  "message.wcwt.eaep_pending_failed": "WCWT: failed to create the EAEP pending pattern upload.",
   "message.wcwt.toolkit_network_slot_occupied": "The toolkit AE Network Tool slot is already occupied.",
   "message.wcwt.toolkit_network_tool_not_found": "No AE Network Tool found on cursor or in your inventory."
 }

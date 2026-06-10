@@ -64,6 +64,9 @@ public class WcwtPackets {
                 PatternProviderListPacket.STREAM_CODEC, PatternProviderListPacket::handle);
         ModNetworking.registerClientbound(id++, PatternProviderFocusPacket.class, PatternProviderFocusPacket.TYPE,
                 PatternProviderFocusPacket.STREAM_CODEC, PatternProviderFocusPacket::handle);
+        ModNetworking.registerClientbound(id++, OpenEaepProviderSelectScreenPacket.class,
+                OpenEaepProviderSelectScreenPacket.TYPE, OpenEaepProviderSelectScreenPacket.STREAM_CODEC,
+                OpenEaepProviderSelectScreenPacket::handle);
         ModNetworking.registerServerbound(id++, PatternManagementActionPacket.class,
                 PatternManagementActionPacket.TYPE, PatternManagementActionPacket.STREAM_CODEC,
                 PatternManagementActionPacket::handle);
@@ -73,6 +76,8 @@ public class WcwtPackets {
         ModNetworking.registerServerbound(id++, ToolkitNetworkToolDepositPacket.class,
                 ToolkitNetworkToolDepositPacket.TYPE, ToolkitNetworkToolDepositPacket.STREAM_CODEC,
                 ToolkitNetworkToolDepositPacket::handle);
+        ModNetworking.registerServerbound(id++, OpenTerminalHotkeyPacket.class, OpenTerminalHotkeyPacket.TYPE,
+                OpenTerminalHotkeyPacket.STREAM_CODEC, OpenTerminalHotkeyPacket::handle);
         ModNetworking.registerServerbound(id++, OpenToolkitHotkeyPacket.class, OpenToolkitHotkeyPacket.TYPE,
                 OpenToolkitHotkeyPacket.STREAM_CODEC, OpenToolkitHotkeyPacket::handle);
         ModNetworking.registerServerbound(id++, ResonatingLightningPatternActionPacket.class,

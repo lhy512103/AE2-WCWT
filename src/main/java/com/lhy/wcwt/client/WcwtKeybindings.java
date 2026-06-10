@@ -12,6 +12,7 @@ import org.lwjgl.glfw.GLFW;
 public final class WcwtKeybindings {
     public static final String CATEGORY = "key.wcwt.category";
 
+    public static final KeyMapping OPEN_TERMINAL = create("open_terminal", KeyConflictContext.IN_GAME);
     public static final KeyMapping OPEN_ADVANCED_CODING = create("open_advanced_coding");
     public static final KeyMapping OPEN_COSMETIC_ARMOR = create("open_cosmetic_armor");
     public static final KeyMapping OPEN_CURIOS = create("open_curios");

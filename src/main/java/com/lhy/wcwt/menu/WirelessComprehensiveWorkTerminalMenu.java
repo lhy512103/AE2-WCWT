@@ -42,6 +42,7 @@ import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.EncodePatternPacket;
+import com.lhy.wcwt.network.OpenEaepProviderSelectScreenPacket;
 import com.lhy.wcwt.network.PatternEncodingModePacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
 import com.lhy.wcwt.network.PatternProviderFocusPacket;
@@ -52,6 +53,7 @@ import com.lhy.wcwt.util.PatternProviderSorts;
 import com.mojang.datafixers.util.Pair;
 import com.extendedae_plus.util.PatternProviderDataUtil;
 import com.extendedae_plus.util.uploadPattern.MatrixUploadUtil;
+import com.extendedae_plus.util.uploadPattern.ProviderUploadUtil;
 import com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -2202,10 +2204,19 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
                               boolean fallbackToEditSlot, long preferredProviderId,
                               @Nullable String preferredProviderName) {
+        encodePattern(mode, uploadEnabled, providerSearchText, fallbackToEditSlot, preferredProviderId,
+                preferredProviderName, false);
+    }
+
+    public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
+                              boolean fallbackToEditSlot, long preferredProviderId,
+                              @Nullable String preferredProviderName,
+                              boolean useEaepUploadScreen) {
         if (isClientSide()) {
             logEncode("client clicked encode, mode={}", mode);
             ModNetworking.sendToServer(new EncodePatternPacket(mode, uploadEnabled, providerSearchText,
-                    fallbackToEditSlot, preferredProviderId, preferredProviderName == null ? "" : preferredProviderName));
+                    fallbackToEditSlot, preferredProviderId, preferredProviderName == null ? "" : preferredProviderName,
+                    useEaepUploadScreen));
             return;
         }
 
@@ -2268,6 +2279,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         ResourceLocation recipeId = resolveEncodedPatternRecipeId(mode);
         String resolvedProviderSearchText = resolvePatternUploadSearchText(mode, providerSearchText, recipeId);
         writePatternUploadMetadata(encodedPattern, resolvedProviderSearchText);
+
+        if (uploadEnabled && useEaepUploadScreen) {
+            openEaepProviderSelectScreenForEncodedPattern(mode, encodedPattern, consumeEditPattern,
+                    resolvedProviderSearchText);
+            return;
+        }
 
         UploadAttemptResult uploadAttempt = UploadAttemptResult.NO_TARGET;
         if (uploadEnabled && mode == EncodingMode.PROCESSING && preferredProviderId > 0) {
@@ -2351,6 +2368,60 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         logEncode("uploaded mode={}, search={}, provider={}, encoded={}",
                 mode, resolvedProviderSearchText, uploadAttempt.providerName(), encodedPattern);
+        broadcastChanges();
+        return true;
+    }
+
+    private boolean openEaepProviderSelectScreenForEncodedPattern(EncodingMode mode,
+                                                                  ItemStack encodedPattern,
+                                                                  boolean consumeEditPattern,
+                                                                  @Nullable String resolvedProviderSearchText) {
+        if (!ModList.get().isLoaded("extendedae_plus") || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return false;
+        }
+
+        List<PatternContainer> providers = ProviderUploadUtil.listAvailableProvidersFromPlayerNetwork(serverPlayer);
+        if (providers.isEmpty()) {
+            serverPlayer.displayClientMessage(Component.translatable("message.wcwt.eaep_provider_missing"), true);
+            return false;
+        }
+
+        var entries = new ArrayList<OpenEaepProviderSelectScreenPacket.Entry>(providers.size());
+        for (int i = 0; i < providers.size(); i++) {
+            PatternContainer provider = providers.get(i);
+            int emptySlots = getAvailablePatternSlots(provider);
+            if (emptySlots <= 0) {
+                continue;
+            }
+            entries.add(new OpenEaepProviderSelectScreenPacket.Entry(
+                    -1L - i,
+                    getUploadProviderDisplayName(provider),
+                    emptySlots));
+        }
+        if (entries.isEmpty()) {
+            serverPlayer.displayClientMessage(Component.translatable("message.wcwt.eaep_provider_missing"), true);
+            return false;
+        }
+
+        ItemStack pendingPattern = PatternUploadMetadata.copyWithoutUploadData(encodedPattern);
+        if (ProviderUploadUtil.beginPendingCtrlQUpload(serverPlayer, pendingPattern) == null) {
+            serverPlayer.displayClientMessage(Component.translatable("message.wcwt.eaep_pending_failed"), true);
+            return false;
+        }
+
+        String searchText = normalizeProviderSearchText(resolvedProviderSearchText);
+        if (searchText != null) {
+            RecipeTypeNameConfig.setLastProviderSearchKey(searchText);
+        } else if (mode != EncodingMode.PROCESSING) {
+            RecipeTypeNameConfig.presetCraftingProviderSearchKey();
+        }
+
+        consumePatternForUpload(consumeEditPattern);
+        patternEncodingLogic.setMode(mode);
+        syncedPatternEncodingMode = mode.ordinal();
+        updatePatternPreview(mode);
+        tryFillBlankPatternFromNetwork();
+        ModNetworking.sendToPlayer(serverPlayer, new OpenEaepProviderSelectScreenPacket(entries));
         broadcastChanges();
         return true;
     }

@@ -22,6 +22,7 @@
   "key.wcwt.open_cosmetic_armor": "打开装饰盔甲",
   "key.wcwt.open_curios": "打开饰品栏",
   "key.wcwt.open_tool_slots_box": "打开卡槽箱",
+  "key.wcwt.open_terminal": "打开综合工作终端",
   "key.wcwt.open_toolkit": "打开工具包",
   "key.wcwt.open_resonating_lightning_pattern_coding": "打开谐振过载编码器",
   "key.wcwt.toggle_favorite_item": "切换收藏网络物品",
@@ -237,6 +238,8 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "开：JEI/EMI 拉取配方时，会按已识别的配方类型自动切到工作台或锻造台。",
   "wcwt.config.enableRecipePullTransfer": "启用配方拉取/编码处理",
   "wcwt.config.enableRecipePullTransfer.tooltip": "开：启用 WCWT 的 JEI/EMI 配方拉取、编码传输与预览高亮。关：关闭这些处理。",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs": "剔除 GTCEu 不消耗输入",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "开：JEI/EMI 拉取 GTCEu 加工配方到样板编码区时，自动移除催化剂等不会被消耗的物品输入。默认开启。",
   "wcwt.config.expandToolkitInManagementArea": "工具包在管理区位置展开",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "开：打开工具包时，改在样板管理区位置展开显示，并隐藏供应器列表；关闭时保持原来的右侧工具包面板。",
 
@@ -248,6 +251,8 @@
   "message.wcwt.pull_shift_hint": "按住 Shift：拉取一组配方用量",
   "message.wcwt.eco_pattern_duplicate": "ECO合成子系统已存在相同样板。",
   "message.wcwt.eco_pattern_uploaded": "样板已上传至ECO合成子系统。",
+  "message.wcwt.eaep_provider_missing": "WCWT：没有可用于 EAEP 上传的样板供应器。",
+  "message.wcwt.eaep_pending_failed": "WCWT：无法创建 EAEP 待上传样板。",
   "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 网络工具槽已满。",
   "message.wcwt.toolkit_network_tool_not_found": "未发现可放入的网络工具（光标上或背包内）。"
 }

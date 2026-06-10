@@ -6,6 +6,7 @@ import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.jeirei.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
+import com.lhy.wcwt.compat.GtceuRecipeTransferExclusions;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -105,6 +106,7 @@ public class WcwtRecipeTransferHandler
         List<@Nullable GenericStack> outputs = encodingRecipe ? List.of()
                 : collectProcessingOutputs(minecraftRecipe, recipeSlots);
         if (mode == EncodingMode.PROCESSING) {
+            inputs = GtceuRecipeTransferExclusions.removeNonConsumableInputs(recipe, inputs);
             inputs = compactProcessingIngredientOrder(inputs);
             outputs = compactProcessingIngredientOrder(outputs);
         }

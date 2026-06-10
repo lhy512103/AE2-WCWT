@@ -46,6 +46,13 @@ public class WcwtConfigScreen extends Screen {
                         saveClientConfig();
                     });
             y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.filterGtceuNonConsumablePatternInputs",
+                    () -> WcwtClientConfig.FILTER_GTCEU_NON_CONSUMABLE_PATTERN_INPUTS.get(),
+                    value -> {
+                        WcwtClientConfig.FILTER_GTCEU_NON_CONSUMABLE_PATTERN_INPUTS.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
             addBooleanRow(y, "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer",
                     () -> WcwtClientConfig.AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER.get(),
                     value -> {

@@ -2,19 +2,16 @@ package com.lhy.wcwt;
 
 import appeng.api.config.Actionable;
 import appeng.api.features.GridLinkables;
-import appeng.api.features.HotkeyAction;
 import appeng.api.ids.AECreativeTabIds;
 import appeng.api.upgrades.Upgrades;
 import appeng.core.definitions.AEItems;
 import appeng.core.localization.GuiText;
 import appeng.hotkeys.HotkeyActions;
-import appeng.hotkeys.InventoryHotkeyAction;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.client.ModClientSetup;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.config.WcwtServerConfig;
-import com.lhy.wcwt.hotkeys.WcwtCurioHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtRestockHotkeyAction;
 import com.lhy.wcwt.init.ModCreativeTabs;
@@ -97,12 +94,6 @@ public class WcwtMod {
             GridLinkables.register(
                     ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);
-            HotkeyActions.register(
-                    new InventoryHotkeyAction(
-                            ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
-                            ((WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get())::openFromInventory),
-                    HotkeyAction.WIRELESS_TERMINAL);
-            HotkeyActions.register(new WcwtCurioHotkeyAction(), HotkeyAction.WIRELESS_TERMINAL);
             HotkeyActions.register(new WcwtRestockHotkeyAction(), "ae2wtlib_restock");
             HotkeyActions.register(new WcwtMagnetHotkeyAction(), "ae2wtlib_magnet");
             registerInventorySorterCompat();

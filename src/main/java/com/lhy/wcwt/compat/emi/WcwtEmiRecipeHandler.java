@@ -6,6 +6,7 @@ import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ItemModText;
 import appeng.integration.modules.jeirei.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
+import com.lhy.wcwt.compat.GtceuRecipeTransferExclusions;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.compat.WcwtRecipeViewerBookmarkKeys;
@@ -228,6 +229,9 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         var priorityContext = createPriorityContext(menu);
         List<@Nullable GenericStack> inputs = collectEncodingInputs(priorityContext, recipe, widgets);
         List<@Nullable GenericStack> outputs = collectEncodingOutputs(recipe);
+        if (mode == EncodingMode.PROCESSING) {
+            inputs = GtceuRecipeTransferExclusions.removeNonConsumableInputs(recipe, inputs);
+        }
         if (inputs.stream().allMatch(Objects::isNull) && outputs.stream().allMatch(Objects::isNull)) {
             return false;
         }
