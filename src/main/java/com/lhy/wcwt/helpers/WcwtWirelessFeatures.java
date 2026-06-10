@@ -55,7 +55,7 @@ public final class WcwtWirelessFeatures {
     private static final double DEFAULT_MAGNET_RANGE = 16.0;
     private static final boolean DEBUG_MAGNET = Boolean.getBoolean("wcwt.debug.magnet");
     private static final boolean DEBUG_PICK_BLOCK =
-            Boolean.getBoolean("wcwt.debug.pickBlock") || DEBUG_MAGNET;
+            Boolean.getBoolean("wcwt.debug.pickBlock") || Boolean.getBoolean("wcwt.debug.toolkit") || DEBUG_MAGNET;
     private static final WeakHashMap<ServerPlayer, Integer> RESTOCK_SYNC_TICKS = new WeakHashMap<>();
     private static final WeakHashMap<ServerPlayer, Integer> MAGNET_DEBUG_TICKS = new WeakHashMap<>();
 

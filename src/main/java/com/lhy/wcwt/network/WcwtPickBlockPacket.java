@@ -12,7 +12,9 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record WcwtPickBlockPacket(ItemStack itemStack) implements CustomPacketPayload {
     private static final boolean DEBUG_PICK_BLOCK =
-            Boolean.getBoolean("wcwt.debug.pickBlock") || Boolean.getBoolean("wcwt.debug.magnet");
+            Boolean.getBoolean("wcwt.debug.pickBlock")
+                    || Boolean.getBoolean("wcwt.debug.toolkit")
+                    || Boolean.getBoolean("wcwt.debug.magnet");
 
     public static final Type<WcwtPickBlockPacket> TYPE =
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pick_block"));
