@@ -4,7 +4,6 @@ import org.jetbrains.annotations.Nullable;
 
 import appeng.items.contents.NetworkToolMenuHost;
 import appeng.items.tools.NetworkToolItem;
-import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import net.minecraft.world.entity.player.Inventory;
@@ -20,8 +19,9 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     public static NetworkToolMenuHost findToolkitNetworkToolHost(Player player) {
-        NetworkToolMenuHost inventoryHost = findInInventory(player);
-        return inventoryHost != null ? inventoryHost : findInCurios(player);
+        // AE2's ToolboxMenu validates the returned host through a player inventory slot.
+        // A Curios-backed terminal has no such slot, so exposing it here closes the terminal menu on the next tick.
+        return findInInventory(player);
     }
 
     @Nullable
@@ -31,21 +31,6 @@ public final class WcwtToolkitNetworkToolSupport {
             ItemStack terminalStack = inventory.getItem(slot);
             var host = createHostFromTerminal(player, terminalStack,
                     new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.INVENTORY, slot, 0));
-            if (host != null) {
-                return host;
-            }
-        }
-        return null;
-    }
-
-    @Nullable
-    private static NetworkToolMenuHost findInCurios(Player player) {
-        var curios = CuriosBridge.getEquippedSlots(player);
-        for (int curioIndex = 0; curioIndex < curios.size(); curioIndex++) {
-            var curio = curios.get(curioIndex);
-            ItemStack terminalStack = curio.handler().getStackInSlot(curio.slotIndex());
-            var host = createHostFromTerminal(player, terminalStack,
-                    new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, curioIndex, 0));
             if (host != null) {
                 return host;
             }

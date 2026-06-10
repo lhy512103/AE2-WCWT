@@ -22,6 +22,7 @@ import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
+import com.lhy.wcwt.menu.locator.WcwtCurioLocator;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import com.lhy.wcwt.util.ResourceLocationCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -85,6 +86,10 @@ public class WcwtMod {
 
     private void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            MenuLocators.register(
+                    WcwtCurioLocator.class,
+                    WcwtCurioLocator::writeToPacket,
+                    WcwtCurioLocator::readFromPacket);
             MenuLocators.register(
                     WcwtToolkitNetworkToolLocator.class,
                     WcwtToolkitNetworkToolLocator::writeToPacket,

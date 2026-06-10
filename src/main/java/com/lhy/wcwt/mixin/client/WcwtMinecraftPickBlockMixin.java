@@ -23,7 +23,7 @@ public abstract class WcwtMinecraftPickBlockMixin {
             target = "Lnet/minecraft/world/entity/player/Inventory;findSlotMatchingItem(Lnet/minecraft/world/item/ItemStack;)I"))
     private void wcwt$pickBlockFromNetwork(CallbackInfo ci, @Local ItemStack picked, @Local int slot) {
         if (player == null || player.getAbilities().instabuild || player.isSpectator()
-                || picked.isEmpty() || slot != -1 || !WcwtWirelessFeatures.hasPickBlockTerminal(player)) {
+                || picked.isEmpty() || slot != -1) {
             return;
         }
 

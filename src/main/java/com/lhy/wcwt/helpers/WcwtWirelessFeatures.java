@@ -19,11 +19,11 @@ import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.menu.locator.WcwtCurioLocator;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.WcwtPickBlockPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
 import com.lhy.wcwt.network.WcwtUpdateRestockPacket;
-import de.mari_023.ae2wtlib.curio.CurioLocator;
 import de.mari_023.ae2wtlib.api.AE2wtlibTags;
 import de.mari_023.ae2wtlib.api.TextConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -401,9 +401,9 @@ public final class WcwtWirelessFeatures {
         if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu
                 && menu.getLocator() != null) {
             MenuLocator locator = menu.getLocator();
-            ItemStack current = locator.locate(player, ItemStack.class);
+            ItemStack current = menu.getMenuHost() != null ? menu.getMenuHost().getItemStack() : ItemStack.EMPTY;
             if (current.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(current)) {
-                return new TerminalTarget(current, locator, null);
+                return new TerminalTarget(current, locator, menu.getMenuHost().getSlot());
             }
         }
 
@@ -414,7 +414,7 @@ public final class WcwtWirelessFeatures {
         for (var curio : CuriosBridge.getEquippedSlots(player)) {
             ItemStack stack = curio.handler().getStackInSlot(curio.slotIndex());
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
-                return new TerminalTarget(stack, new CurioLocator(curio.identifier(), curio.slotIndex()), null);
+                return new TerminalTarget(stack, new WcwtCurioLocator(curio.identifier(), curio.slotIndex()), null);
             }
         }
 
@@ -423,8 +423,7 @@ public final class WcwtWirelessFeatures {
             ItemStack stack = inventory.getItem(i);
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
                 var locator = MenuLocators.forInventorySlot(i);
-                ItemStack located = locator.locate(player, ItemStack.class);
-                return new TerminalTarget(located != null ? located : ItemStack.EMPTY, locator, i);
+                return new TerminalTarget(stack, locator, i);
             }
         }
         return null;
@@ -460,7 +459,7 @@ public final class WcwtWirelessFeatures {
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
                 debugMagnet(player, "terminal target found in curios: slot={}, stack={}",
                         curio.slotIndex(), describeStack(stack));
-                return new TerminalTarget(stack, new CurioLocator(curio.identifier(), curio.slotIndex()), null);
+                return new TerminalTarget(stack, new WcwtCurioLocator(curio.identifier(), curio.slotIndex()), null);
             }
         }
 
