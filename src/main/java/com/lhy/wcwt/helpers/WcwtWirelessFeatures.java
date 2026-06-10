@@ -242,6 +242,49 @@ public final class WcwtWirelessFeatures {
                 instanceof WirelessComprehensiveWorkTerminalItem;
     }
 
+    public static String describePickBlockTerminals(Player player) {
+        if (player == null) {
+            return "player=<null>";
+        }
+        StringBuilder builder = new StringBuilder();
+        int matches = 0;
+        for (var curio : CuriosBridge.getEquippedSlots(player)) {
+            ItemStack stack = curio.handler().getStackInSlot(curio.slotIndex());
+            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem) {
+                if (!builder.isEmpty()) {
+                    builder.append("; ");
+                }
+                builder.append("curio ")
+                        .append(curio.identifier())
+                        .append("[")
+                        .append(curio.slotIndex())
+                        .append("]=")
+                        .append(describeStack(stack))
+                        .append(", pick_block=")
+                        .append(getBoolean(stack, "pick_block"));
+                matches++;
+            }
+        }
+
+        Inventory inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
+            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem) {
+                if (!builder.isEmpty()) {
+                    builder.append("; ");
+                }
+                builder.append("inventory[")
+                        .append(i)
+                        .append("]=")
+                        .append(describeStack(stack))
+                        .append(", pick_block=")
+                        .append(getBoolean(stack, "pick_block"));
+                matches++;
+            }
+        }
+        return matches == 0 ? "no WCWT terminal found" : builder.toString();
+    }
+
     public static boolean toggleMagnetHotkey(Player player) {
         TerminalTarget terminalTarget = findHotkeyTerminalTarget(player, WcwtWirelessFeatures::hasMagnetCard);
         if (terminalTarget == null || terminalTarget.stack().isEmpty()) {
@@ -287,8 +330,8 @@ public final class WcwtWirelessFeatures {
 
     public static void pickBlock(ServerPlayer player, ItemStack requestedStack) {
         int existingSlot = requestedStack.isEmpty() ? -1 : player.getInventory().findSlotMatchingItem(requestedStack);
-        debugPickBlock(player, "server handling requested={}, existingSlot={}",
-                describeStack(requestedStack), existingSlot);
+        debugPickBlock(player, "server handling requested={}, existingSlot={}, terminals={}",
+                describeStack(requestedStack), existingSlot, describePickBlockTerminals(player));
         if (requestedStack.isEmpty()) {
             debugPickBlock(player, "skipped: requested stack empty");
             return;
@@ -298,7 +341,7 @@ public final class WcwtWirelessFeatures {
             return;
         }
         var terminalTarget = findTerminalTarget(player,
-                stack -> getBoolean(stack, "pick_block"));
+                stack -> getBoolean(stack, "pick_block"), true);
         if (terminalTarget == null) {
             debugPickBlock(player, "skipped: no WCWT terminal with pick_block enabled");
             return;
@@ -459,7 +502,12 @@ public final class WcwtWirelessFeatures {
         for (var curio : CuriosBridge.getEquippedSlots(player)) {
             ItemStack stack = curio.handler().getStackInSlot(curio.slotIndex());
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
+                debugPickBlockAny(player, "terminal stack found in curio {}[{}]: stack={}",
+                        curio.identifier(), curio.slotIndex(), describeStack(stack));
                 return stack;
+            } else if (DEBUG_PICK_BLOCK && stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem) {
+                debugPickBlockAny(player, "terminal stack rejected in curio {}[{}]: stack={}, pick_block={}",
+                        curio.identifier(), curio.slotIndex(), describeStack(stack), getBoolean(stack, "pick_block"));
             }
         }
 
@@ -467,9 +515,14 @@ public final class WcwtWirelessFeatures {
         for (int i = 0; i < inventory.getContainerSize(); i++) {
             ItemStack stack = inventory.getItem(i);
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
+                debugPickBlockAny(player, "terminal stack found in inventory[{}]: stack={}", i, describeStack(stack));
                 return stack;
+            } else if (DEBUG_PICK_BLOCK && stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem) {
+                debugPickBlockAny(player, "terminal stack rejected in inventory[{}]: stack={}, pick_block={}",
+                        i, describeStack(stack), getBoolean(stack, "pick_block"));
             }
         }
+        debugPickBlockAny(player, "terminal stack not found by predicate");
         return ItemStack.EMPTY;
     }
 
@@ -480,12 +533,26 @@ public final class WcwtWirelessFeatures {
 
     private static TerminalTarget findTerminalTarget(ServerPlayer player,
                                                      java.util.function.Predicate<ItemStack> predicate) {
+        return findTerminalTarget(player, predicate, false);
+    }
+
+    private static TerminalTarget findTerminalTarget(ServerPlayer player,
+                                                     java.util.function.Predicate<ItemStack> predicate,
+                                                     boolean debugPickBlockScan) {
         for (var curio : CuriosBridge.getEquippedSlots(player)) {
             ItemStack stack = curio.handler().getStackInSlot(curio.slotIndex());
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
                 debugMagnet(player, "terminal target found in curios: slot={}, stack={}",
                         curio.slotIndex(), describeStack(stack));
+                if (debugPickBlockScan) {
+                    debugPickBlock(player, "terminal target found in curio {}[{}]: stack={}",
+                            curio.identifier(), curio.slotIndex(), describeStack(stack));
+                }
                 return new TerminalTarget(stack, new WcwtCurioLocator(curio.identifier(), curio.slotIndex()), null);
+            } else if (debugPickBlockScan && DEBUG_PICK_BLOCK
+                    && stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem) {
+                debugPickBlock(player, "terminal target rejected in curio {}[{}]: stack={}, pick_block={}",
+                        curio.identifier(), curio.slotIndex(), describeStack(stack), getBoolean(stack, "pick_block"));
             }
         }
 
@@ -494,10 +561,20 @@ public final class WcwtWirelessFeatures {
             ItemStack stack = inventory.getItem(i);
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
                 debugMagnet(player, "terminal target found in inventory: slot={}, stack={}", i, describeStack(stack));
+                if (debugPickBlockScan) {
+                    debugPickBlock(player, "terminal target found in inventory[{}]: stack={}", i, describeStack(stack));
+                }
                 return new TerminalTarget(stack, MenuLocators.forInventorySlot(i), i);
+            } else if (debugPickBlockScan && DEBUG_PICK_BLOCK
+                    && stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem) {
+                debugPickBlock(player, "terminal target rejected in inventory[{}]: stack={}, pick_block={}",
+                        i, describeStack(stack), getBoolean(stack, "pick_block"));
             }
         }
         debugMagnet(player, "terminal target not found");
+        if (debugPickBlockScan) {
+            debugPickBlock(player, "terminal target not found by predicate");
+        }
         return null;
     }
 
@@ -672,6 +749,16 @@ public final class WcwtWirelessFeatures {
         }
         Object[] withPlayer = new Object[args.length + 1];
         withPlayer[0] = player.getScoreboardName();
+        System.arraycopy(args, 0, withPlayer, 1, args.length);
+        WcwtMod.LOGGER.info("WCWT pick-block debug: player={}, " + message, withPlayer);
+    }
+
+    private static void debugPickBlockAny(Player player, String message, Object... args) {
+        if (!DEBUG_PICK_BLOCK) {
+            return;
+        }
+        Object[] withPlayer = new Object[args.length + 1];
+        withPlayer[0] = player == null ? "<null>" : player.getScoreboardName();
         System.arraycopy(args, 0, withPlayer, 1, args.length);
         WcwtMod.LOGGER.info("WCWT pick-block debug: player={}, " + message, withPlayer);
     }

@@ -183,6 +183,7 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
   
   "item.wcwt.wireless_comprehensive_work_terminal": "ME WCWT",
+  "curios.identifier.wcwt_terminal": "ME WCWT",
   "itemGroup.wcwt": "WCWT",
   "advancements.wcwt.wireless_comprehensive_work_terminal.title": "What a Thunder Terminal!",
   "advancements.wcwt.wireless_comprehensive_work_terminal.description": "Obtain an ME Wireless Comprehensive Work Terminal.",

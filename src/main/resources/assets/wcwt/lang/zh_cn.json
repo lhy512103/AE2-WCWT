@@ -181,6 +181,7 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
   
   "item.wcwt.wireless_comprehensive_work_terminal": "ME综合工作终端",
+  "curios.identifier.wcwt_terminal": "ME综合工作终端",
   "itemGroup.wcwt": "WCWT",
   "advancements.wcwt.wireless_comprehensive_work_terminal.title": "我嘞个雷霆大终端！",
   "advancements.wcwt.wireless_comprehensive_work_terminal.description": "获得 ME 综合工作终端。",

@@ -3,11 +3,15 @@ package com.lhy.wcwt.mixin.client;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Options;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -26,15 +30,56 @@ public abstract class WcwtMinecraftPickBlockMixin {
     @Shadow
     public LocalPlayer player;
 
-    @Inject(method = "pickBlock", at = @At("HEAD"))
-    private void wcwt$logPickBlockEntry(CallbackInfo ci) {
-        if (!WCWT_DEBUG_PICK_BLOCK) {
+    @Shadow
+    public HitResult hitResult;
+
+    @Shadow
+    public Options options;
+
+    private boolean wcwt$sentPickBlockThisCall;
+    private boolean wcwt$pickKeyWasDown;
+    private int wcwt$lastSentPickBlockTick = -1;
+
+    @Inject(method = "handleKeybinds", at = @At("HEAD"))
+    private void wcwt$pickBlockKeyFallback(CallbackInfo ci) {
+        if (player == null || options == null || options.keyPickItem == null) {
+            wcwt$pickKeyWasDown = false;
             return;
         }
-        WcwtMod.LOGGER.info("WCWT pick-block debug: client pickBlock entered player={}, instabuild={}, spectator={}",
+
+        boolean pickKeyDown = options.keyPickItem.isDown();
+        if (pickKeyDown && !wcwt$pickKeyWasDown) {
+            if (WCWT_DEBUG_PICK_BLOCK) {
+                WcwtMod.LOGGER.info(
+                        "WCWT pick-block debug: client pick key pressed fallback player={}, hitResult={}, terminals={}",
+                        player.getScoreboardName(),
+                        hitResult == null ? "<null>" : hitResult.getType(),
+                        WcwtWirelessFeatures.describePickBlockTerminals(player));
+            }
+            wcwt$tryPickBlockBeforeOtherOverrides();
+        }
+        wcwt$pickKeyWasDown = pickKeyDown;
+    }
+
+    @Inject(method = "pickBlock", at = @At("HEAD"))
+    private void wcwt$logPickBlockEntry(CallbackInfo ci) {
+        wcwt$sentPickBlockThisCall = player != null && wcwt$lastSentPickBlockTick == player.tickCount;
+        if (!WCWT_DEBUG_PICK_BLOCK) {
+            if (!wcwt$sentPickBlockThisCall) {
+                wcwt$tryPickBlockBeforeOtherOverrides();
+            }
+            return;
+        }
+        WcwtMod.LOGGER.info("WCWT pick-block debug: client pickBlock entered player={}, instabuild={}, spectator={}, hitResult={}",
                 player == null ? "<null>" : player.getScoreboardName(),
                 player != null && player.getAbilities().instabuild,
-                player != null && player.isSpectator());
+                player != null && player.isSpectator(),
+                hitResult == null ? "<null>" : hitResult.getType());
+        if (wcwt$sentPickBlockThisCall) {
+            WcwtMod.LOGGER.info("WCWT pick-block debug: client pickBlock early path skipped because fallback already sent this tick");
+        } else {
+            wcwt$tryPickBlockBeforeOtherOverrides();
+        }
     }
 
     @Inject(method = "pickBlock", at = @At(value = "INVOKE_ASSIGN",
@@ -47,6 +92,9 @@ public abstract class WcwtMinecraftPickBlockMixin {
             ItemStack picked,
             Inventory inventory,
             int slot) {
+        if (wcwt$sentPickBlockThisCall) {
+            return;
+        }
         if (WCWT_DEBUG_PICK_BLOCK) {
             WcwtMod.LOGGER.info(
                     "WCWT pick-block debug: client after vanilla lookup picked={}, slot={}, willSend={}",
@@ -63,6 +111,66 @@ public abstract class WcwtMinecraftPickBlockMixin {
             WcwtMod.LOGGER.info("WCWT pick-block debug: client sending request for {}", picked);
         }
         WcwtWirelessFeatures.pickBlock(picked.copy());
+    }
+
+    private void wcwt$tryPickBlockBeforeOtherOverrides() {
+        if (player == null) {
+            wcwt$debugEarlySkip("player missing");
+            return;
+        }
+        if (player.getAbilities().instabuild) {
+            wcwt$debugEarlySkip("creative instabuild");
+            return;
+        }
+        if (player.isSpectator()) {
+            wcwt$debugEarlySkip("spectator");
+            return;
+        }
+        if (hitResult == null) {
+            wcwt$debugEarlySkip("hitResult missing");
+            return;
+        }
+        if (hitResult.getType() != HitResult.Type.BLOCK) {
+            wcwt$debugEarlySkip("hitResult type " + hitResult.getType());
+            return;
+        }
+        if (!WcwtWirelessFeatures.hasPickBlockTerminal(player)) {
+            wcwt$debugEarlySkip("no WCWT with pick_block enabled; " + WcwtWirelessFeatures.describePickBlockTerminals(player));
+            return;
+        }
+
+        BlockHitResult blockHit = (BlockHitResult) hitResult;
+        BlockPos pos = blockHit.getBlockPos();
+        BlockState state = player.level().getBlockState(pos);
+        if (state.isAir()) {
+            wcwt$debugEarlySkip("target block is air at " + pos);
+            return;
+        }
+
+        ItemStack picked = state.getBlock().getCloneItemStack(player.level(), pos, state);
+        int slot = picked.isEmpty() ? -1 : player.getInventory().findSlotMatchingItem(picked);
+        if (WCWT_DEBUG_PICK_BLOCK) {
+            WcwtMod.LOGGER.info(
+                    "WCWT pick-block debug: client early lookup picked={}, slot={}, willSend={}",
+                    wcwt$describeStack(picked), slot, !picked.isEmpty() && slot == -1);
+        }
+        if (picked.isEmpty() || slot != -1) {
+            return;
+        }
+
+        wcwt$sentPickBlockThisCall = true;
+        wcwt$lastSentPickBlockTick = player.tickCount;
+        if (WCWT_DEBUG_PICK_BLOCK) {
+            WcwtMod.LOGGER.info("WCWT pick-block debug: client early sending request picked={}, pos={}, block={}",
+                    wcwt$describeStack(picked), pos, BuiltInRegistries.BLOCK.getKey(state.getBlock()));
+        }
+        WcwtWirelessFeatures.pickBlock(picked.copy());
+    }
+
+    private static void wcwt$debugEarlySkip(String reason) {
+        if (WCWT_DEBUG_PICK_BLOCK) {
+            WcwtMod.LOGGER.info("WCWT pick-block debug: client early skipped: {}", reason);
+        }
     }
 
     private static String wcwt$describeStack(ItemStack stack) {

@@ -33,10 +33,13 @@ public record WcwtPickBlockPacket(ItemStack itemStack) implements CustomPacketPa
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
                 if (DEBUG_PICK_BLOCK) {
-                    WcwtMod.LOGGER.info("WCWT pick-block debug: server packet received player={}, requested={}",
-                            player.getScoreboardName(), packet.itemStack());
+                    WcwtMod.LOGGER.info("WCWT pick-block debug: server packet received player={}, requested={}, sidePlayer={}",
+                            player.getScoreboardName(), packet.itemStack(), context.player());
                 }
                 WcwtWirelessFeatures.pickBlock(player, packet.itemStack());
+            } else if (DEBUG_PICK_BLOCK) {
+                WcwtMod.LOGGER.info("WCWT pick-block debug: packet ignored because context player is not ServerPlayer: {}",
+                        context.player());
             }
         });
     }
