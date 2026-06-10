@@ -48,7 +48,8 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
                 stack,
                 null,
                 toolkit,
-                toolkitSlot);
+                toolkitSlot,
+                this);
         return hostInterface.isInstance(toolHost) ? hostInterface.cast(toolHost) : null;
     }
 
@@ -73,7 +74,7 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
                 buf.readInt());
     }
 
-    private ItemStack locateTerminalStack(Player player) {
+    public ItemStack locateTerminalStack(Player player) {
         return switch (sourceKind) {
             case INVENTORY -> player.getInventory().getItem(sourceSlot);
             case CURIOS -> locateCurioStack(player, sourceSlot);

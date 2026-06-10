@@ -11,6 +11,9 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record WcwtPickBlockPacket(ItemStack itemStack) implements CustomPacketPayload {
+    private static final boolean DEBUG_PICK_BLOCK =
+            Boolean.getBoolean("wcwt.debug.pickBlock") || Boolean.getBoolean("wcwt.debug.magnet");
+
     public static final Type<WcwtPickBlockPacket> TYPE =
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "pick_block"));
 
@@ -27,6 +30,10 @@ public record WcwtPickBlockPacket(ItemStack itemStack) implements CustomPacketPa
     public static void handle(WcwtPickBlockPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
+                if (DEBUG_PICK_BLOCK) {
+                    WcwtMod.LOGGER.info("WCWT pick-block debug: server packet received player={}, requested={}",
+                            player.getScoreboardName(), packet.itemStack());
+                }
                 WcwtWirelessFeatures.pickBlock(player, packet.itemStack());
             }
         });

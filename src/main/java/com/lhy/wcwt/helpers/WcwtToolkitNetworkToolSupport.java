@@ -4,6 +4,8 @@ import org.jetbrains.annotations.Nullable;
 
 import appeng.items.contents.NetworkToolMenuHost;
 import appeng.items.tools.NetworkToolItem;
+import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import net.minecraft.world.entity.player.Inventory;
@@ -14,14 +16,28 @@ import net.minecraft.world.item.ItemStack;
  * 为 AE 原版的网络工具工具箱逻辑补充 WCWT 工具包来源。
  */
 public final class WcwtToolkitNetworkToolSupport {
+    private static final boolean DEBUG_TOOLKIT =
+            Boolean.getBoolean("wcwt.debug.toolkit") || Boolean.getBoolean("wcwt.debug.magnet");
+
     private WcwtToolkitNetworkToolSupport() {
     }
 
     @Nullable
     public static NetworkToolMenuHost findToolkitNetworkToolHost(Player player) {
-        // AE2's ToolboxMenu validates the returned host through a player inventory slot.
-        // A Curios-backed terminal has no such slot, so exposing it here closes the terminal menu on the next tick.
-        return findInInventory(player);
+        NetworkToolMenuHost inventoryHost = findInInventory(player);
+        if (inventoryHost != null) {
+            debug(player, "found toolkit network tool in inventory-backed WCWT");
+            return inventoryHost;
+        }
+
+        NetworkToolMenuHost curiosHost = findInCurios(player);
+        if (curiosHost != null) {
+            debug(player, "found toolkit network tool in Curios-backed WCWT");
+            return curiosHost;
+        }
+
+        debug(player, "no toolkit network tool host found");
+        return null;
     }
 
     @Nullable
@@ -32,6 +48,23 @@ public final class WcwtToolkitNetworkToolSupport {
             var host = createHostFromTerminal(player, terminalStack,
                     new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.INVENTORY, slot, 0));
             if (host != null) {
+                return host;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private static NetworkToolMenuHost findInCurios(Player player) {
+        var curios = CuriosBridge.getEquippedSlots(player);
+        for (int curioIndex = 0; curioIndex < curios.size(); curioIndex++) {
+            var curio = curios.get(curioIndex);
+            ItemStack terminalStack = curio.handler().getStackInSlot(curio.slotIndex());
+            var host = createHostFromTerminal(player, terminalStack,
+                    new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, curioIndex, 0));
+            if (host != null) {
+                debug(player, "Curios WCWT toolkit network tool: identifier={}, slot={}, equippedIndex={}",
+                        curio.identifier(), curio.slotIndex(), curioIndex);
                 return host;
             }
         }
@@ -50,15 +83,18 @@ public final class WcwtToolkitNetworkToolSupport {
                 : null;
         var toolkit = WirelessComprehensiveWorkTerminalMenuHost.createToolkitInventory(player, terminalStack);
         if (toolkit == null) {
+            debug(player, "WCWT toolkit unavailable for {}", baseLocator);
             return null;
         }
 
         for (int toolkitSlot = 0; toolkitSlot < toolkit.size(); toolkitSlot++) {
             ItemStack stack = toolkit.getStackInSlot(toolkitSlot);
-            if (!(stack.getItem() instanceof NetworkToolItem networkToolItem)) {
+            if (!(stack.getItem() instanceof NetworkToolItem)) {
                 continue;
             }
             var locator = new WcwtToolkitNetworkToolLocator(baseLocator.sourceKind(), baseLocator.sourceSlot(), toolkitSlot);
+            debug(player, "WCWT toolkit network tool candidate: source={}, toolkitSlot={}, stack={}",
+                    baseLocator, toolkitSlot, stack);
             return new WcwtToolkitNetworkToolMenuHost(
                     player,
                     locator.getPlayerInventorySlot(),
@@ -66,8 +102,19 @@ public final class WcwtToolkitNetworkToolSupport {
                     stack,
                     null,
                     toolkit,
-                    toolkitSlot);
+                    toolkitSlot,
+                    locator);
         }
         return null;
+    }
+
+    private static void debug(Player player, String message, Object... args) {
+        if (!DEBUG_TOOLKIT) {
+            return;
+        }
+        Object[] withPlayer = new Object[args.length + 1];
+        withPlayer[0] = player == null ? "<null>" : player.getScoreboardName();
+        System.arraycopy(args, 0, withPlayer, 1, args.length);
+        WcwtMod.LOGGER.info("WCWT toolkit debug: player={}, " + message, withPlayer);
     }
 }

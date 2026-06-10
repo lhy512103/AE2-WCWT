@@ -8,6 +8,7 @@ import appeng.items.tools.NetworkToolItem;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import appeng.util.inv.filter.IAEItemFilter;
+import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -27,16 +28,42 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost {
     private final InternalInventory toolkit;
     private final int toolkitSlot;
     private final AppEngInternalInventory toolkitInventory;
+    @Nullable
+    private final WcwtToolkitNetworkToolLocator locator;
     private boolean toolkitInventoryDirty;
     private int ticksUntilFlush = FLUSH_INTERVAL_TICKS;
 
     public WcwtToolkitNetworkToolMenuHost(Player player, @Nullable Integer terminalInventorySlot,
             ItemStack terminalStack, ItemStack toolStack, @Nullable IInWorldGridNodeHost host,
             InternalInventory toolkit, int toolkitSlot) {
+        this(player, terminalInventorySlot, terminalStack, toolStack, host, toolkit, toolkitSlot, null);
+    }
+
+    public WcwtToolkitNetworkToolMenuHost(Player player, @Nullable Integer terminalInventorySlot,
+            ItemStack terminalStack, ItemStack toolStack, @Nullable IInWorldGridNodeHost host,
+            InternalInventory toolkit, int toolkitSlot, @Nullable WcwtToolkitNetworkToolLocator locator) {
         super(player, terminalInventorySlot, terminalStack, host);
         this.toolkit = toolkit;
         this.toolkitSlot = toolkitSlot;
+        this.locator = locator;
         this.toolkitInventory = createToolkitAwareNetworkToolInventory(player, toolStack);
+    }
+
+    public boolean isCuriosBacked() {
+        return getSlot() == null;
+    }
+
+    public boolean isSourceStillPresent() {
+        if (locator == null) {
+            return true;
+        }
+
+        ItemStack currentTerminal = locator.locateTerminalStack(getPlayer());
+        ItemStack expectedTerminal = getItemStack();
+        return currentTerminal == expectedTerminal
+                || (!currentTerminal.isEmpty()
+                && !expectedTerminal.isEmpty()
+                && ItemStack.isSameItemSameTags(currentTerminal, expectedTerminal));
     }
 
     public long insert(Player player, AEKey what, long amount, Actionable mode) {
