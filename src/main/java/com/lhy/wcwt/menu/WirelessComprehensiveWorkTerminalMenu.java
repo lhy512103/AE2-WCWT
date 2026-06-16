@@ -1628,7 +1628,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private UploadAttemptResult uploadEncodedPatternToMatchingProvider(ItemStack encodedPattern, String searchText) {
-        String query = resolveUploadSearchTextFromPattern(encodedPattern, searchText);
+        String query = normalizeProviderSearchText(resolveEaepProviderSearchKey(
+                resolveUploadSearchTextFromPattern(encodedPattern, searchText)));
+        if (query == null) {
+            query = "";
+        }
         if (query.isEmpty() || encodedPattern.isEmpty() || !PatternDetailsHelper.isEncodedPattern(encodedPattern)) {
             return UploadAttemptResult.NO_TARGET;
         }
@@ -2011,12 +2015,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (normalized != null) {
             return normalized;
         }
-        String fromRecipe = recipeId != null ? resolveEaepProviderSearchKey(recipeId.toString()) : null;
+        String fromRecipe = recipeId != null ? normalizeProviderSearchText(recipeId.toString()) : null;
         if (fromRecipe != null) {
             return fromRecipe;
         }
         if (mode != EncodingMode.PROCESSING) {
-            return resolveEaepProviderSearchKey(DEFAULT_CRAFTING_PROVIDER_SEARCH_KEY);
+            return DEFAULT_CRAFTING_PROVIDER_SEARCH_KEY;
         }
         return null;
     }

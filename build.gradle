@@ -78,6 +78,52 @@ repositories {
         name = "TerraformersMC"
         url = "https://maven.terraformersmc.com/"
     }
+    maven {
+        name = "ModMaven"
+        url = "https://modmaven.dev"
+    }
+    maven {
+        name = "FTB Mods"
+        url = "https://maven.ftb.dev/releases"
+        content {
+            includeGroup "dev.ftb.mods"
+        }
+    }
+    maven {
+        name = "Shedaniel Maven"
+        url = "https://maven.shedaniel.me/"
+        content {
+            includeGroup "dev.architectury"
+        }
+    }
+    maven {
+        name = "Curios Maven"
+        url = "https://maven.theillusivec4.top/"
+        content {
+            includeGroup "top.theillusivec4.curios"
+        }
+    }
+    maven {
+        name = "Kotlin for Forge"
+        url = "https://thedarkcolour.github.io/KotlinForForge/"
+        content {
+            includeGroup "thedarkcolour"
+        }
+    }
+    maven {
+        name = "DevOS Snapshots"
+        url = "https://mvn.devos.one/snapshots/"
+        content {
+            includeGroup "com.tterrag.registrate"
+        }
+    }
+    maven {
+        name = "SquidDev Maven"
+        url = "https://maven.squiddev.cc"
+        content {
+            includeGroup "cc.tweaked"
+        }
+    }
     exclusiveContent {
         forRepository {
             maven {
@@ -92,6 +138,7 @@ repositories {
         url = uri("https://modmaven.dev/")
         content {
             includeGroup "appeng"
+            includeGroup "org.appliedenergistics"
             includeGroup "de.mari_023"
         }
     }
@@ -104,25 +151,7 @@ repositories {
     }
 }
 
-dependencies {
-    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
-    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
-    compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
-    compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}"
-    compileOnly "maven.modrinth:create:6.0.10+mc${minecraft_version}"
-    implementation "curse.maven:advancedae-1084104:7849217"
-    runtimeOnly "curse.maven:geckolib-388172:7707149"
-    implementation "curse.maven:ex-pattern-provider-892005:8025439"
-    implementation "curse.maven:glodium-957920:5821676"
-    implementation "curse.maven:extendedae-plus-1337639:7960385"
-    implementation "curse.maven:applied-energistics-2-wireless-terminals-459929:8048692"
-    implementation "de.mari_023:ae2wtlib_api:19.5.0"
-    runtimeOnly "de.mari_023:ae2wtlib:19.5.0"
-
-    localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
-    localRuntime "dev.emi:emi-neoforge:${emi_version}"
-    localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"
-}
+apply from: "$rootDir/dependencies.gradle"
 
 tasks.named("processResources", ProcessResources).configure {
     var replaceProperties = [

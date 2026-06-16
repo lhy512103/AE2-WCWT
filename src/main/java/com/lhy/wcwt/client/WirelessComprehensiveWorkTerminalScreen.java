@@ -1388,8 +1388,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
         }
         if ((searchKey == null || searchKey.isBlank()) && patternEncodingMode != EncodingMode.PROCESSING) {
-            searchKey = resolveEaepProviderSearchKey("crafting");
-            generatedFallbackSearchKey = searchKey != null && !searchKey.isBlank();
+            searchKey = "crafting";
+            generatedFallbackSearchKey = true;
         }
         if (searchKey != null && !searchKey.isBlank() && patternManageSearchField != null && !generatedFallbackSearchKey) {
             patternManageSearchField.setValue(searchKey);

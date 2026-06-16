@@ -78,7 +78,12 @@ public record PatternManagementActionPacket(Action action,
                         }
                     }
                     case ADD_MAPPING -> {
+                        String oldResolvedMapping = ExtendedAePlusBridge.resolveSearchKeyAlias(packet.searchText);
                         boolean ok = ExtendedAePlusBridge.addOrUpdateAliasMapping(packet.searchText, packet.mappingText);
+                        if (ok) {
+                            rewritePatternCacheUploadSearchText(menu, packet.searchText,
+                                    oldResolvedMapping, packet.mappingText);
+                        }
                         player.displayClientMessage(Component.translatable(ok
                                 ? "gui.wcwt.pattern_management.mapping_added"
                                 : "gui.wcwt.pattern_management.mapping_failed"), true);
@@ -95,6 +100,44 @@ public record PatternManagementActionPacket(Action action,
                 PacketDistributor.sendToPlayer(player, PatternProviderListPacket.buildForPlayer(player));
             }
         });
+    }
+
+    private static void rewritePatternCacheUploadSearchText(WirelessComprehensiveWorkTerminalMenu menu,
+                                                            String aliasKey,
+                                                            String oldResolvedMapping,
+                                                            String newResolvedMapping) {
+        String normalizedAlias = normalizeSearchText(aliasKey);
+        if (normalizedAlias == null) {
+            return;
+        }
+        var host = menu.getMenuHost();
+        if (host == null || host.getPatternCacheInventory() == null) {
+            return;
+        }
+        String normalizedOld = normalizeSearchText(oldResolvedMapping);
+        String normalizedNew = normalizeSearchText(newResolvedMapping);
+        var patternCache = host.getPatternCacheInventory();
+        for (int slot = 0; slot < patternCache.size(); slot++) {
+            ItemStack stack = patternCache.getStackInSlot(slot);
+            String current = normalizeSearchText(PatternUploadMetadata.getProviderSearchText(stack));
+            if (current == null) {
+                continue;
+            }
+            if (current.equalsIgnoreCase(normalizedAlias)
+                    || current.equals(normalizedOld)
+                    || current.equals(normalizedNew)) {
+                PatternUploadMetadata.write(stack, normalizedAlias);
+                patternCache.setItemDirect(slot, stack);
+            }
+        }
+    }
+
+    private static String normalizeSearchText(String text) {
+        if (text == null) {
+            return null;
+        }
+        String trimmed = text.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private static void exchangeProviderSlot(ServerPlayer player, long providerId, int providerSlot) {
@@ -183,7 +226,8 @@ public record PatternManagementActionPacket(Action action,
         if (preferredProviderId > 0) {
             provider = getProviderByOrdinal(providers, preferredProviderId);
         }
-        String patternSearchText = PatternUploadMetadata.getProviderSearchText(sourceStack);
+        String patternSearchText = ExtendedAePlusBridge.resolveSearchKeyAlias(
+                PatternUploadMetadata.getProviderSearchText(sourceStack));
         if (provider == null && patternSearchText != null) {
             provider = findMatchingProviderBySearchText(providers, patternSearchText);
         }
@@ -236,7 +280,8 @@ public record PatternManagementActionPacket(Action action,
 
             foundPattern = true;
             PatternContainer targetProvider = provider;
-            String patternSearchText = PatternUploadMetadata.getProviderSearchText(pattern);
+            String patternSearchText = ExtendedAePlusBridge.resolveSearchKeyAlias(
+                    PatternUploadMetadata.getProviderSearchText(pattern));
             if (patternSearchText != null) {
                 targetProvider = findMatchingProviderBySearchText(providers, patternSearchText);
             }
@@ -374,13 +419,14 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static PatternContainer findMatchingProviderBySearchText(List<PatternContainer> providers, String searchText) {
-        if (searchText == null || searchText.isBlank()) {
+        String resolvedSearchText = ExtendedAePlusBridge.resolveSearchKeyAlias(searchText);
+        if (resolvedSearchText == null || resolvedSearchText.isBlank()) {
             return null;
         }
         var matches = providers.stream()
                 .filter(provider -> {
                     String displayName = getProviderDisplayName(provider);
-                    return JecSearchCompat.contains(displayName, searchText);
+                    return JecSearchCompat.contains(displayName, resolvedSearchText);
                 })
                 .map(PatternManagementActionPacket::getProviderDisplayName)
                 .distinct()
@@ -478,6 +524,20 @@ public record PatternManagementActionPacket(Action action,
                 return result instanceof String text ? text : null;
             } catch (Throwable ignored) {
                 return null;
+            }
+        }
+
+        static String resolveSearchKeyAlias(String rawKey) {
+            if (rawKey == null || rawKey.isBlank()) {
+                return null;
+            }
+            String normalized = rawKey.trim();
+            try {
+                var method = Class.forName(UTIL_CLASS).getMethod("resolveSearchKeyAlias", String.class);
+                Object result = method.invoke(null, normalized);
+                return result instanceof String text && !text.isBlank() ? text.trim() : normalized;
+            } catch (Throwable ignored) {
+                return normalized;
             }
         }
     }

@@ -1,0 +1,69 @@
+dependencies {
+    // AE2
+    compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}"
+    compileOnly "de.mari_023:ae2wtlib_api:${ae2wtlib_version}"
+
+    // AE2 addons
+    compileOnly "curse.maven:advancedae-1084104:${advancedae_file}"
+    compileOnly "curse.maven:ex-pattern-provider-892005:${extendedae_file}"
+    compileOnly "curse.maven:extendedae-plus-1337639:${extendedae_plus_file}"
+    compileOnly "curse.maven:ae2-jei-integration-1074338:${ae2jei_integration_file}"
+    compileOnly "curse.maven:applied-flux-965012:${applied_flux_file}"
+    compileOnly "curse.maven:applied-create-1474758:${applied_create_file}"
+    compileOnly "curse.maven:mega-cells-622112:${mega_cells_file}"
+    compileOnly "curse.maven:applied-mekanistics-574300:${applied_mekanistics_file}"
+
+    // Cross-mod APIs used by optional compatibility code
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
+    compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
+    compileOnly "mekanism:Mekanism:${mekanism_version}"
+    compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+
+    // Local runtime core mods
+    localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"
+    localRuntime "de.mari_023:ae2wtlib:${ae2wtlib_version}"
+    localRuntime "curse.maven:spark-361579:${spark_file}"
+    localRuntime "maven.modrinth:modernfix:${modernfix_version}"
+    localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+
+    // Local runtime recipe viewers
+    localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    localRuntime "dev.emi:emi-neoforge:${emi_version}"
+
+    // Local runtime AE2 addons
+    localRuntime "curse.maven:advancedae-1084104:${advancedae_file}"
+    localRuntime "curse.maven:ex-pattern-provider-892005:${extendedae_file}"
+    localRuntime "curse.maven:extendedae-plus-1337639:${extendedae_plus_file}"
+    localRuntime "curse.maven:applied-energistics-2-wireless-terminals-459929:${ae2wt_terminals_file}"
+    localRuntime "curse.maven:ae2-jei-integration-1074338:${ae2jei_integration_file}"
+    localRuntime "curse.maven:applied-flux-965012:${applied_flux_file}"
+    localRuntime "curse.maven:applied-create-1474758:${applied_create_file}"
+    localRuntime "curse.maven:mega-cells-622112:${mega_cells_file}"
+    localRuntime "curse.maven:applied-mekanistics-574300:${applied_mekanistics_file}"
+
+    // Local runtime dependencies and integration targets
+    localRuntime "curse.maven:glodium-957920:${glodium_file}"
+    localRuntime "curse.maven:geckolib-388172:${geckolib_file}"
+    localRuntime "curse.maven:cloth-config-348521:${cloth_config_file}"
+    localRuntime "curse.maven:modern-ui-352491:${modern_ui_file}"
+    localRuntime "curse.maven:mouse-tweaks-60089:${mouse_tweaks_file}"
+    localRuntime "curse.maven:configured-457570:${configured_file}"
+    localRuntime "curse.maven:searchables-858542:${searchables_file}"
+    localRuntime "curse.maven:controlling-250398:${controlling_file}"
+    localRuntime "curse.maven:imblocker-483760:${imblocker_file}"
+    localRuntime "curse.maven:just-enough-characters-250702:${jech_file}"
+    localRuntime "dev.architectury:architectury-neoforge:${architectury_version}"
+    localRuntime "dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}"
+    localRuntime "dev.ftb.mods:ftb-ultimine-neoforge:${ftb_ultimine_version}"
+    localRuntime "maven.modrinth:jade:${jade_version}"
+    localRuntime("com.simibubi.create:create-1.21.1:${create_version}") {
+        // Needed to prevent game-test crashes pulled by Create's optional integrations.
+        exclude group: "maven.modrinth", module: "journeymap"
+        exclude group: "info.journeymap", module: "journeymap-api-neoforge"
+    }
+    localRuntime "curse.maven:mekanism-268560:${mekanism_file}"
+    localRuntime "me.desht.pneumaticcraft:pneumaticcraft-repressurized:${pneumaticcraft_version}"
+    localRuntime "thedarkcolour:kotlinforforge-neoforge:${kotlinforforge_version}"
+}
