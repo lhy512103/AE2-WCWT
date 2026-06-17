@@ -39,8 +39,9 @@ public class FavoriteItemsButton extends IconButton {
         }
 
         boolean active = activeState.getAsBoolean();
-        boolean highlighted = active || isHovered();
-        int yOffset = isHovered() ? 1 : 0;
+        boolean pressed = isHovered() || isFocused();
+        boolean highlighted = active || pressed;
+        int yOffset = pressed ? 1 : 0;
         Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER
                 : isFocused() ? Icon.TOOLBAR_BUTTON_BACKGROUND_FOCUS : Icon.TOOLBAR_BUTTON_BACKGROUND;
         bgIcon.getBlitter()
@@ -49,7 +50,7 @@ public class FavoriteItemsButton extends IconButton {
                 .blit(guiGraphics);
 
         int iconU = highlighted ? ICON_U_ACTIVE : ICON_U_NORMAL;
-        int iconYOffset = highlighted ? 1 : 0;
+        int iconYOffset = pressed ? 1 : 0;
         var pose = guiGraphics.pose();
         pose.pushPose();
         pose.translate(0, 0, 3);

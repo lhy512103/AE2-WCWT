@@ -33,6 +33,8 @@
   "gui.wcwt.favorite_items_first.hint.prefix": "Press ",
   "gui.wcwt.favorite_items_first.hint.suffix": " on a network item to favorite or unfavorite it",
   "gui.wcwt.favorite.marked": "Favorited",
+  "gui.wcwt.view_cells.visible": "View cells panel: shown",
+  "gui.wcwt.view_cells.hidden": "View cells panel: hidden",
   "gui.wcwt.toolkit.slot.sword": "Swords",
   "gui.wcwt.toolkit.slot.pickaxe": "Pickaxes",
   "gui.wcwt.toolkit.slot.axe": "Axes",

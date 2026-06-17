@@ -1,6 +1,8 @@
 package com.lhy.wcwt.client;
 
 import appeng.client.gui.Icon;
+import appeng.client.gui.ICompositeWidget;
+import appeng.client.gui.Tooltip;
 import appeng.client.gui.me.common.MEStorageScreen;
 import appeng.client.gui.me.common.ClientDisplaySlot;
 import appeng.client.gui.me.common.RepoSlot;
@@ -70,6 +72,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.ChatFormatting;
@@ -125,6 +128,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedUIButton toolkitButton;
     private ExtendedUIButton resonatingLightningPatternCodingButton;
     private FavoriteItemsButton favoriteItemsButton;
+    private ViewCellsToggleButton viewCellsToggleButton;
+    private boolean viewCellsVisible = true;
+    private @Nullable ViewCellsVisibilityWidget viewCellsVisibilityWidget;
+    private @Nullable Renderable viewCellsOverlayRenderable;
 
     /** 4 个样板模式 tab 按钮中**最顶**的那个（modeTabButton3）。扩展按钮 Y 锚到它的顶部。*/
     private TabButton topModeTabButton;
@@ -353,6 +360,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private long lastAeNetworkToolkitDoubleClickMs;
     private final Set<AEKey> craftableIndicatorKeys = new HashSet<>();
     private @Nullable Method meStorageUpdateScrollbarMethod;
+    private static volatile @Nullable Field compositeWidgetsField;
     private ItemStack lastEncodedPatternForUploadSync = ItemStack.EMPTY;
     private @Nullable String lastEncodedPatternUploadSearchText;
     private boolean attemptedRestoreManagementToolkitOpenState;
@@ -373,6 +381,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         hookRepoUpdateListener();
         favoriteItemsButton = addToLeftToolbar(new FavoriteItemsButton(WcwtFavorites::isEnabled,
                 btn -> toggleFavoritedItemsFirst()));
+        viewCellsToggleButton = addToLeftToolbar(new ViewCellsToggleButton(
+                () -> viewCellsVisible,
+                btn -> toggleViewCellsPanel()));
+        installViewCellsVisibilityWidget();
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
 
         var host = menu.getMenuHost();
@@ -655,6 +667,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 Component.translatable("gui.ae2wtlib.trash"),
                 btn -> menu.openWcwtTrashMenu());
         widgets.add("trashButton", trashButton);
+
+        installViewCellsVisibilityWidget();
     }
 
     private void openExtremeSoundMuffler() {
@@ -671,6 +685,100 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void openWirelessTerminalSettings() {
         switchToScreen(new WcwtWirelessTerminalSettingsSubScreen(this));
+    }
+
+    private void toggleViewCellsPanel() {
+        Minecraft.getInstance().getSoundManager().play(
+                SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
+        viewCellsVisible = !viewCellsVisible;
+        updateViewCellsPanelVisibility();
+    }
+
+    private void updateViewCellsPanelVisibility() {
+        if (viewCellsVisibilityWidget != null) {
+            viewCellsVisibilityWidget.setVisible(viewCellsVisible);
+        }
+        setSemanticSlotsHidden(SlotSemantics.VIEW_CELL, !viewCellsVisible);
+        if (viewCellsToggleButton != null) {
+            viewCellsToggleButton.setMessage(Component.translatable(viewCellsVisible
+                    ? "gui.wcwt.view_cells.visible"
+                    : "gui.wcwt.view_cells.hidden"));
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void installViewCellsVisibilityWidget() {
+        try {
+            Field field = compositeWidgetsField;
+            if (field == null) {
+                field = appeng.client.gui.WidgetContainer.class.getDeclaredField("compositeWidgets");
+                field.setAccessible(true);
+                compositeWidgetsField = field;
+            }
+            Object value = field.get(widgets);
+            if (!(value instanceof Map<?, ?> rawMap)) {
+                return;
+            }
+            Map<String, ICompositeWidget> compositeWidgets = (Map<String, ICompositeWidget>) rawMap;
+            ICompositeWidget viewCells = compositeWidgets.get("viewCells");
+            if (viewCells == null) {
+                viewCellsToggleButton.visible = false;
+                viewCellsToggleButton.active = false;
+                return;
+            }
+            if (!(viewCells instanceof ViewCellsVisibilityWidget)) {
+                viewCellsVisibilityWidget = new ViewCellsVisibilityWidget(viewCells, () -> viewCellsVisible);
+                compositeWidgets.put("viewCells", viewCellsVisibilityWidget);
+            } else {
+                viewCellsVisibilityWidget = (ViewCellsVisibilityWidget) viewCells;
+            }
+            moveCompositeWidgetToEnd(compositeWidgets, "viewCells");
+        } catch (ReflectiveOperationException | SecurityException ignored) {
+            if (viewCellsToggleButton != null) {
+                viewCellsToggleButton.visible = false;
+                viewCellsToggleButton.active = false;
+            }
+        }
+    }
+
+    private static void moveCompositeWidgetToEnd(Map<String, ICompositeWidget> widgets, String id) {
+        ICompositeWidget widget = widgets.remove(id);
+        if (widget != null) {
+            widgets.put(id, widget);
+        }
+    }
+
+    private void installViewCellsOverlayRenderable() {
+        if (viewCellsOverlayRenderable != null) {
+            renderables.remove(viewCellsOverlayRenderable);
+        }
+        viewCellsOverlayRenderable = this::renderViewCellsOverlay;
+        renderables.add(viewCellsOverlayRenderable);
+    }
+
+    private void renderViewCellsOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (viewCellsVisibilityWidget == null || !viewCellsVisibilityWidget.isVisible()) {
+            return;
+        }
+
+        viewCellsVisibilityWidget.drawOverlay(guiGraphics, new Rect2i(leftPos, topPos, imageWidth, imageHeight),
+                new Point(mouseX - leftPos, mouseY - topPos));
+        var pose = guiGraphics.pose();
+        pose.pushPose();
+        pose.translate(leftPos, topPos, 0);
+        try {
+            for (Slot slot : menu.getSlots(SlotSemantics.VIEW_CELL)) {
+                if (!slot.isActive()) {
+                    continue;
+                }
+                renderSlot(guiGraphics, slot);
+                if (isHovering(slot, mouseX, mouseY)) {
+                    renderSlotHighlight(guiGraphics, slot, mouseX, mouseY, partialTick);
+                }
+            }
+        } finally {
+            pose.popPose();
+        }
     }
 
     private static class WcwtWirelessTerminalSettingsSubScreen
@@ -800,6 +908,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         // 扩展按钮位置依赖升级槽实际高度，必须在 setMaxRows 之后调用。
         initExtendedUIButtons();
         initializePanels();
+        installViewCellsVisibilityWidget();
+        updateViewCellsPanelVisibility();
+        installViewCellsOverlayRenderable();
         updateManualWorkspaceUi();
     }
 
@@ -1208,6 +1319,122 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             zones.add(new Rect2i(bounds.getX() - 2, bounds.getY() - 2, bounds.getWidth() + 4, bounds.getHeight() + 4));
         }
     }
+
+    private static final class ViewCellsVisibilityWidget implements ICompositeWidget {
+        private final ICompositeWidget delegate;
+        private final java.util.function.BooleanSupplier visible;
+
+        private ViewCellsVisibilityWidget(ICompositeWidget delegate, java.util.function.BooleanSupplier visible) {
+            this.delegate = delegate;
+            this.visible = visible;
+        }
+
+        @Override
+        public boolean isVisible() {
+            return visible.getAsBoolean() && delegate.isVisible();
+        }
+
+        private void setVisible(boolean ignored) {
+        }
+
+        @Override
+        public void setPosition(Point position) {
+            delegate.setPosition(position);
+        }
+
+        @Override
+        public void setSize(int width, int height) {
+            delegate.setSize(width, height);
+        }
+
+        @Override
+        public Rect2i getBounds() {
+            return isVisible() ? delegate.getBounds() : new Rect2i(0, 0, 0, 0);
+        }
+
+        @Override
+        public void addExclusionZones(List<Rect2i> exclusionZones, Rect2i screenBounds) {
+            if (isVisible()) {
+                delegate.addExclusionZones(exclusionZones, screenBounds);
+            }
+        }
+
+        @Override
+        public void populateScreen(java.util.function.Consumer<AbstractWidget> addWidget,
+                                   Rect2i bounds,
+                                   appeng.client.gui.AEBaseScreen<?> screen) {
+            delegate.populateScreen(addWidget, bounds, screen);
+        }
+
+        @Override
+        public void tick() {
+            if (isVisible()) {
+                delegate.tick();
+            }
+        }
+
+        @Override
+        public void updateBeforeRender() {
+            if (isVisible()) {
+                delegate.updateBeforeRender();
+            }
+        }
+
+        @Override
+        public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+        }
+
+        private void drawOverlay(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+            if (isVisible()) {
+                delegate.drawBackgroundLayer(guiGraphics, bounds, mouse);
+                delegate.drawForegroundLayer(guiGraphics, bounds, mouse);
+            }
+        }
+
+        @Override
+        public void drawForegroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+        }
+
+        @Override
+        public boolean onMouseDown(Point mousePos, int button) {
+            return isVisible() && delegate.onMouseDown(mousePos, button);
+        }
+
+        @Override
+        public boolean wantsAllMouseDownEvents() {
+            return isVisible() && delegate.wantsAllMouseDownEvents();
+        }
+
+        @Override
+        public boolean onMouseUp(Point mousePos, int button) {
+            return isVisible() && delegate.onMouseUp(mousePos, button);
+        }
+
+        @Override
+        public boolean wantsAllMouseUpEvents() {
+            return isVisible() && delegate.wantsAllMouseUpEvents();
+        }
+
+        @Override
+        public boolean onMouseDrag(Point mousePos, int button) {
+            return isVisible() && delegate.onMouseDrag(mousePos, button);
+        }
+
+        @Override
+        public boolean onMouseWheel(Point mousePos, double delta) {
+            return isVisible() && delegate.onMouseWheel(mousePos, delta);
+        }
+
+        @Override
+        public boolean wantsAllMouseWheelEvents() {
+            return isVisible() && delegate.wantsAllMouseWheelEvents();
+        }
+
+        @Override
+        public @Nullable Tooltip getTooltip(int mouseX, int mouseY) {
+            return isVisible() ? delegate.getTooltip(mouseX, mouseY) : null;
+        }
+    }
     
     private void toggleExtendedUI(IExtendedUIHost.ExtendedUIType type) {
         Minecraft.getInstance().getSoundManager().play(
@@ -1283,6 +1510,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (favoriteItemsButton != null) {
             favoriteItemsButton.visible = true;
             favoriteItemsButton.active = favoriteItemsButton.visible;
+        }
+        if (viewCellsToggleButton != null) {
+            viewCellsToggleButton.visible = viewCellsVisibilityWidget != null;
+            viewCellsToggleButton.active = viewCellsToggleButton.visible;
         }
         if (resonatingLightningPatternCodingButton != null) {
             resonatingLightningPatternCodingButton.visible = !hideExtendedButtons

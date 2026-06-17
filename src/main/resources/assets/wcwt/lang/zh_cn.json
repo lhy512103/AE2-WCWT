@@ -31,6 +31,8 @@
   "gui.wcwt.favorite_items_first.hint.prefix": "对着主仓库物品按 ",
   "gui.wcwt.favorite_items_first.hint.suffix": " 可收藏/取消收藏",
   "gui.wcwt.favorite.marked": "已收藏",
+  "gui.wcwt.view_cells.visible": "显示元件面板：显示",
+  "gui.wcwt.view_cells.hidden": "显示元件面板：隐藏",
   "gui.wcwt.toolkit.slot.sword": "剑类",
   "gui.wcwt.toolkit.slot.pickaxe": "镐类",
   "gui.wcwt.toolkit.slot.axe": "斧类",
