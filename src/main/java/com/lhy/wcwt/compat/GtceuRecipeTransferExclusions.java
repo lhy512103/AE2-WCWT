@@ -3,6 +3,9 @@ package com.lhy.wcwt.compat;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import com.lhy.wcwt.config.WcwtClientConfig;
+import com.lhy.wcwt.util.ResourceLocationCompat;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import org.jetbrains.annotations.Nullable;
@@ -18,6 +21,8 @@ public final class GtceuRecipeTransferExclusions {
     private static final String GT_RECIPE_CLASS = "com.gregtechceu.gtceu.api.recipe.GTRecipe";
     private static final String GT_JEI_WRAPPER_CLASS = "com.gregtechceu.gtceu.integration.jei.recipe.GTRecipeWrapper";
     private static final String GT_EMI_RECIPE_CLASS = "com.gregtechceu.gtceu.integration.emi.recipe.GTEmiRecipe";
+    private static final ResourceLocation GTCEU_PROGRAMMED_CIRCUIT =
+            ResourceLocationCompat.id("gtceu", "programmed_circuit");
 
     private GtceuRecipeTransferExclusions() {
     }
@@ -39,10 +44,18 @@ public final class GtceuRecipeTransferExclusions {
         }
 
         List<@Nullable GenericStack> filtered = new ArrayList<>(inputs.size());
+        boolean keepProgrammedCircuit =
+                WcwtClientConfig.keepGtceuProgrammedCircuitWhenFilteringNonConsumables();
         for (GenericStack input : inputs) {
-            if (input != null && input.what() instanceof AEItemKey itemKey
-                    && removeFirstMatching(nonConsumableInputs, itemKey.toStack())) {
-                continue;
+            if (input != null && input.what() instanceof AEItemKey itemKey) {
+                ItemStack stack = itemKey.toStack();
+                if (keepProgrammedCircuit && isGtceuProgrammedCircuit(stack)) {
+                    filtered.add(input);
+                    continue;
+                }
+                if (removeFirstMatching(nonConsumableInputs, stack)) {
+                    continue;
+                }
             }
             filtered.add(input);
         }
@@ -115,6 +128,10 @@ public final class GtceuRecipeTransferExclusions {
             }
         }
         return false;
+    }
+
+    private static boolean isGtceuProgrammedCircuit(ItemStack stack) {
+        return GTCEU_PROGRAMMED_CIRCUIT.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()));
     }
 
     private static boolean isClassNamed(Object instance, String className) {
