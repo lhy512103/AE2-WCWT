@@ -574,13 +574,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             for (var spec : curiosSlots) {
                 addSlot(new WcwtCurioSlot(spec), WcwtSlotSemantics.AE_CURIOS);
             }
-            return;
-        }
-
-        // 没有安装 Curios 时保留旧的终端内置单槽，防止已有存档中的该组件无法显示。
-        var curiosInv = menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_CURIOS);
-        if (curiosInv != null) {
-            addSlot(new AppEngSlot(curiosInv, 0), WcwtSlotSemantics.AE_CURIOS);
         }
     }
 

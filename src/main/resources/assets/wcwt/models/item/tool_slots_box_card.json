@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "wcwt:item/tool_slots_box_card"
+  }
+}

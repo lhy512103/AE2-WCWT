@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "entities": [
+    "minecraft:player"
+  ],
+  "slots": [
+    "wireless_comprehensive_work_terminal"
+  ]
+}

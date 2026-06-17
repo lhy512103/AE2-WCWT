@@ -31,8 +31,7 @@ dependencies {
 
     // Local runtime recipe viewers
     localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
-    // Temporarily disabled; uncomment to restore EMI in local client runtime.
-    // clientLocalRuntime "dev.emi:emi-neoforge:${emi_version}"
+    localRuntime "dev.emi:emi-neoforge:${emi_version}"
 
     // Local runtime AE2 addons
     localRuntime "curse.maven:advancedae-1084104:${advancedae_file}"

@@ -9,6 +9,8 @@ import appeng.util.CraftingRecipeUtil;
 import com.simibubi.create.content.processing.basin.BasinRecipe;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
+import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
+import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -301,6 +303,14 @@ public class WcwtRecipeTransferHandler
             return null;
         }
 
+        if (priorityContext.hasFavoritePriorities()) {
+            ItemStack favorited = WcwtRecipeTransferCommon.chooseFavoritedItem(
+                    ingredient, visibleAlternatives, priorityContext.favoritePriorities());
+            if (!favorited.isEmpty()) {
+                return GenericStack.fromItemStack(favorited.copyWithCount(1));
+            }
+        }
+
         if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
             ItemStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedItem(
                     ingredient, visibleAlternatives, priorityContext.bookmarkPriorities());
@@ -328,6 +338,15 @@ public class WcwtRecipeTransferHandler
     private static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                         IRecipeSlotView slotView,
                                                         boolean preserveDisplayedItemCounts) {
+        if (priorityContext.hasFavoritePriorities()) {
+            GenericStack favoritedItem = WcwtRecipeTransferCommon.chooseFavoritedItemStack(
+                    slotView.getItemStacks().toList(), priorityContext.favoritePriorities(),
+                    preserveDisplayedItemCounts);
+            if (favoritedItem != null) {
+                return favoritedItem;
+            }
+        }
+
         if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
             GenericStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedStack(
                     slotView, priorityContext.bookmarkPriorities());
@@ -386,7 +405,26 @@ public class WcwtRecipeTransferHandler
         Map<appeng.api.stacks.AEKey, Integer> bookmarkPriorities = WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
                 ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
                 : Map.of();
-        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities);
+        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities, getWcwtFavoritePriorities());
+    }
+
+    private static Map<appeng.api.stacks.AEKey, Integer> getWcwtFavoritePriorities() {
+        if (!WcwtClientConfig.preferWcwtFavoritesForRecipeTransfer()) {
+            return Map.of();
+        }
+        var favorites = WcwtFavorites.getFavoritedKeys();
+        if (favorites.isEmpty()) {
+            return Map.of();
+        }
+        Map<appeng.api.stacks.AEKey, Integer> priorities = new java.util.LinkedHashMap<>(favorites.size());
+        int index = 0;
+        for (appeng.api.stacks.AEKey key : favorites) {
+            if (key != null) {
+                priorities.putIfAbsent(key, index);
+            }
+            index++;
+        }
+        return priorities;
     }
 
     private static boolean shouldSkipTransferAnalysis(Object recipe) {

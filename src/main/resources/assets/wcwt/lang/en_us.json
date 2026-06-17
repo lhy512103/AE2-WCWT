@@ -24,6 +24,7 @@
   "key.wcwt.open_cosmetic_armor": "Open Cosmetic Armor",
   "key.wcwt.open_curios": "Open Curios",
   "key.wcwt.open_tool_slots_box": "Open Card Box",
+  "key.wcwt.open_terminal": "Open ME WCWT",
   "key.wcwt.open_toolkit": "Open Toolkit",
   "key.wcwt.open_resonating_lightning_pattern_coding": "Open Resonating Overload Encoder",
   "key.wcwt.toggle_crafting_grid_lock": "Toggle Crafting Grid Lock",
@@ -35,6 +36,7 @@
   "gui.wcwt.favorite.marked": "Favorited",
   "gui.wcwt.view_cells.visible": "View cells panel: shown",
   "gui.wcwt.view_cells.hidden": "View cells panel: hidden",
+  "curios.identifier.wireless_comprehensive_work_terminal": "ME WCWT",
   "gui.wcwt.toolkit.slot.sword": "Swords",
   "gui.wcwt.toolkit.slot.pickaxe": "Pickaxes",
   "gui.wcwt.toolkit.slot.axe": "Axes",
@@ -136,6 +138,12 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
   
   "item.wcwt.wireless_comprehensive_work_terminal": "ME WCWT",
+  "item.wcwt.advanced_coding_card": "Advanced Coding Card",
+  "item.wcwt.cosmetic_armor_card": "Cosmetic Armor Card",
+  "item.wcwt.curios_card": "Curios Card",
+  "item.wcwt.tool_slots_box_card": "Network Tool Slot Box Card",
+  "item.wcwt.toolkit_card": "Toolkit Card",
+  "item.wcwt.resonating_lightning_pattern_coding_card": "Resonating Overload Encoder Card",
   
   "gui.wcwt.filter.item.enabled": "Item Filter: ON",
   "gui.wcwt.filter.item.enabled.desc": "Only showing items",
@@ -174,6 +182,8 @@
   "wcwt.config.patternMultiplierApplyToEditorProcessing.tooltip": "On: the batch pattern multiplier also changes the current processing pattern input/output amounts and output rotation in the pattern editor. Off: it only affects encoded patterns in the pattern cache.",
   "wcwt.config.preferJeiBookmarksForPatternEncoding": "Prefer JEI bookmarks for pattern encoding transfer",
   "wcwt.config.preferJeiBookmarksForPatternEncoding.tooltip": "On: when JEI transfers ingredients from WCWT into the pattern encoding area, if an input has multiple valid item choices, prefer matching items from the JEI bookmark list first, in bookmark order. Off: use the existing WCWT/AE2 selection logic only.",
+  "wcwt.config.preferWcwtFavoritesForRecipeTransfer": "Prefer WCWT favorited items for recipe transfer",
+  "wcwt.config.preferWcwtFavoritesForRecipeTransfer.tooltip": "On: when JEI/EMI recipe transfer or pattern encoding has multiple item choices, prefer items favorited in the WCWT storage view first. Off: keep the existing WCWT/AE2 priority.",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer": "Auto-switch manual workspace on recipe transfer",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "On: JEI/EMI transfers switch the manual workspace to crafting or smithing when the recipe type is known.",
   "wcwt.config.enableRecipePullTransfer": "Enable recipe pull/encode handling",
@@ -181,6 +191,13 @@
   "wcwt.config.expandToolkitInManagementArea": "Expand toolkit in management area",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "On: opening the toolkit shows it in the pattern management area and hides provider rows. Off: keep the original right-side toolkit panel.",
   "wcwt.config.favoritedItemsFirst": "Favorited items first",
+  "wcwt.config.favoritedItemsFirst.tooltip": "On: favorited items in the WCWT storage view are shown before normal items.",
+  "wcwt.config.favoritedKeys": "Favorited item list",
+  "wcwt.config.favoritedKeys.tooltip": "Client-side saved WCWT favorite item key list. Usually does not need manual editing.",
+  "wcwt.config.lastManagementToolkitOpen": "Remember management toolkit state",
+  "wcwt.config.lastManagementToolkitOpen.tooltip": "Remembers whether the management-area toolkit was open when the terminal was last closed.",
+  "wcwt.config.lastViewCellsPanelVisible": "Remember view cells panel state",
+  "wcwt.config.lastViewCellsPanelVisible.tooltip": "Remembers whether the WCWT view cells panel was visible after the last toggle.",
 
   "message.wcwt.pull_no_link": "WCWT: the terminal is not connected to an available ME network.",
   "message.wcwt.pull_no_inputs": "WCWT: this JEI recipe has no item inputs to pull.",
@@ -191,5 +208,7 @@
   "message.wcwt.eco_pattern_duplicate": "ECO crafting subsystem already contains this pattern.",
   "message.wcwt.eco_pattern_uploaded": "Pattern uploaded to the ECO crafting subsystem.",
   "message.wcwt.toolkit_network_slot_occupied": "The toolkit AE Network Tool slot is already occupied.",
-  "message.wcwt.toolkit_network_tool_not_found": "No AE Network Tool found on cursor or in your inventory."
+  "message.wcwt.toolkit_network_tool_not_found": "No AE Network Tool found on cursor or in your inventory.",
+  "advancements.wcwt.obtain_terminal.title": "What a Thunder Terminal!",
+  "advancements.wcwt.obtain_terminal.description": "Obtain a ME Wireless Comprehensive Work Terminal"
 }

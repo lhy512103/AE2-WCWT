@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "curios"
+    },
+    {
+      "type": "neoforge:not",
+      "value": {
+        "type": "neoforge:tag_empty",
+        "tag": "wcwt:curios_card_ingredients"
+      }
+    }
+  ],
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:advanced_card"
+    },
+    {
+      "tag": "wcwt:curios_card_ingredients"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "wcwt:curios_card"
+  }
+}

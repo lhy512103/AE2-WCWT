@@ -199,6 +199,12 @@ public class WcwtPackets {
         );
 
         registrar.playToServer(
+            OpenTerminalHotkeyPacket.TYPE,
+            OpenTerminalHotkeyPacket.STREAM_CODEC,
+            OpenTerminalHotkeyPacket::handle
+        );
+
+        registrar.playToServer(
             OpenToolkitHotkeyPacket.TYPE,
             OpenToolkitHotkeyPacket.STREAM_CODEC,
             OpenToolkitHotkeyPacket::handle

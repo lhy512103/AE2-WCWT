@@ -38,7 +38,6 @@ java {
 
 configurations {
     localRuntime {
-        exclude group: "dev.emi"
         exclude group: "curse.maven", module: "ae2-jei-integration-1074338"
         exclude group: "curse.maven", module: "imblocker-483760"
         exclude group: "curse.maven", module: "just-enough-characters-250702"

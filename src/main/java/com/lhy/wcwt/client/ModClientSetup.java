@@ -6,6 +6,7 @@ import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.CraftingLockPacket;
+import com.lhy.wcwt.network.OpenTerminalHotkeyPacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import appeng.init.client.InitScreens;
 import net.minecraft.client.Minecraft;
@@ -44,6 +45,7 @@ public class ModClientSetup {
         event.register(WcwtKeybindings.OPEN_COSMETIC_ARMOR);
         event.register(WcwtKeybindings.OPEN_CURIOS);
         event.register(WcwtKeybindings.OPEN_TOOL_SLOTS_BOX);
+        event.register(WcwtKeybindings.OPEN_TERMINAL);
         event.register(WcwtKeybindings.OPEN_TOOLKIT);
         event.register(WcwtKeybindings.OPEN_RESONATING_LIGHTNING_PATTERN_CODING);
         event.register(WcwtKeybindings.TOGGLE_CRAFTING_GRID_LOCK);
@@ -105,12 +107,17 @@ public class ModClientSetup {
             return;
         }
         if (minecraft.screen instanceof WirelessComprehensiveWorkTerminalScreen) {
+            while (WcwtKeybindings.OPEN_TERMINAL.consumeClick()) {
+            }
             while (WcwtKeybindings.OPEN_TOOLKIT.consumeClick()) {
                 if (DEBUG_TOOLKIT) {
                     WcwtMod.LOGGER.info("WCWT toolkit debug: consumed toolkit hotkey while WCWT screen already open");
                 }
             }
             return;
+        }
+        while (WcwtKeybindings.OPEN_TERMINAL.consumeClick()) {
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new OpenTerminalHotkeyPacket());
         }
         while (WcwtKeybindings.OPEN_TOOLKIT.consumeClick()) {
             if (DEBUG_TOOLKIT) {

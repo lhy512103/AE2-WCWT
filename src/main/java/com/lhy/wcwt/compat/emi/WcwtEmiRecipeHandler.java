@@ -6,9 +6,9 @@ import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ItemModText;
 import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
+import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
-import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
-import com.lhy.wcwt.compat.jei.WcwtRecipeTransferHandler;
+import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
@@ -229,7 +229,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return false;
         }
 
-        WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipe, recipe.getBackingRecipe() != null
+        WcwtRecipeTransferCommon.updateEaepProviderSearchKey(recipe, recipe.getBackingRecipe() != null
                 ? recipe.getBackingRecipe().value() : null, mode);
         PacketDistributor.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         return true;
@@ -479,10 +479,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             if (backingRecipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basinRecipe) {
                 List<@Nullable GenericStack> fallback = new ArrayList<>();
                 for (Ingredient ingredient : basinRecipe.getIngredients()) {
-                    fallback.add(WcwtRecipeTransferHandler.toBestGenericStack(priorityContext, ingredient, List.of()));
+                    fallback.add(WcwtRecipeTransferCommon.toBestGenericStack(priorityContext, ingredient, List.of()));
                 }
                 for (var fluidIngredient : basinRecipe.getFluidIngredients()) {
-                    fallback.add(WcwtRecipeTransferHandler.toGenericStack(fluidIngredient));
+                    fallback.add(WcwtRecipeTransferCommon.toGenericStack(fluidIngredient));
                 }
                 return fallback.stream().filter(Objects::nonNull).toList();
             }
@@ -608,8 +608,16 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return null;
         }
         Ingredient wideIngredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
+        if (priorityContext.hasFavoritePriorities()) {
+            ItemStack favorited = WcwtRecipeTransferCommon.chooseFavoritedItem(
+                    wideIngredient, visibleAlternatives, priorityContext.favoritePriorities());
+            if (!favorited.isEmpty()) {
+                int count = Math.max(1, (int) Math.min(Integer.MAX_VALUE, ingredient.getAmount()));
+                return new RequestedIngredient(List.of(favorited), count, slotIndex);
+            }
+        }
         if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
-            ItemStack bookmarked = WcwtJeiBookmarkKeys.chooseBookmarkedItem(
+            ItemStack bookmarked = WcwtRecipeTransferCommon.chooseBookmarkedItem(
                     wideIngredient, visibleAlternatives, priorityContext.bookmarkPriorities());
             if (!bookmarked.isEmpty()) {
                 int count = Math.max(1, (int) Math.min(Integer.MAX_VALUE, ingredient.getAmount()));
@@ -663,6 +671,13 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 itemCandidates.add(itemStack.copy());
             }
         }
+        if (priorityContext.hasFavoritePriorities()) {
+            GenericStack favorited = WcwtRecipeTransferCommon.chooseFavoritedStack(candidates,
+                    priorityContext.favoritePriorities());
+            if (favorited != null) {
+                return favorited;
+            }
+        }
         if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
             var priorities = priorityContext.bookmarkPriorities();
             if (!priorities.isEmpty()) {
@@ -688,9 +703,28 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     private static WcwtIngredientPriorities.PriorityContext createPriorityContext(WirelessComprehensiveWorkTerminalMenu menu) {
         Map<AEKey, Integer> bookmarkPriorities = WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
-                ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
+                ? WcwtRecipeTransferCommon.getEmiFavoritePriorities()
                 : Map.of();
-        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities);
+        return WcwtIngredientPriorities.createContext(menu, bookmarkPriorities, getWcwtFavoritePriorities());
+    }
+
+    private static Map<AEKey, Integer> getWcwtFavoritePriorities() {
+        if (!WcwtClientConfig.preferWcwtFavoritesForRecipeTransfer()) {
+            return Map.of();
+        }
+        var favorites = WcwtFavorites.getFavoritedKeys();
+        if (favorites.isEmpty()) {
+            return Map.of();
+        }
+        Map<AEKey, Integer> priorities = new java.util.LinkedHashMap<>(favorites.size());
+        int index = 0;
+        for (AEKey key : favorites) {
+            if (key != null) {
+                priorities.putIfAbsent(key, index);
+            }
+            index++;
+        }
+        return priorities;
     }
 
     @Nullable

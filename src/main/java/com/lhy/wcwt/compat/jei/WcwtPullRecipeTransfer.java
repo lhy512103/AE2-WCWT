@@ -2,6 +2,7 @@ package com.lhy.wcwt.compat.jei;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -28,6 +29,9 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
+import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
+import com.lhy.wcwt.client.WcwtFavorites;
+import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtPullIngredientOrdering;
 import appeng.parts.encoding.EncodingMode;
@@ -237,8 +241,32 @@ public final class WcwtPullRecipeTransfer {
             return List.of();
         }
         Ingredient ingredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
-        ItemStack best = WcwtIngredientPriorities.chooseBestItem(menu, ingredient, visibleAlternatives);
+        var priorityContext = WcwtIngredientPriorities.createContext(menu, Map.of(), getWcwtFavoritePriorities());
+        ItemStack best = WcwtRecipeTransferCommon.chooseFavoritedItem(
+                ingredient, visibleAlternatives, priorityContext.favoritePriorities());
+        if (best.isEmpty()) {
+            best = WcwtIngredientPriorities.chooseBestItem(priorityContext, ingredient, visibleAlternatives);
+        }
         return best.isEmpty() ? List.of() : List.of(best);
+    }
+
+    private static Map<appeng.api.stacks.AEKey, Integer> getWcwtFavoritePriorities() {
+        if (!WcwtClientConfig.preferWcwtFavoritesForRecipeTransfer()) {
+            return Map.of();
+        }
+        var favorites = WcwtFavorites.getFavoritedKeys();
+        if (favorites.isEmpty()) {
+            return Map.of();
+        }
+        Map<appeng.api.stacks.AEKey, Integer> priorities = new java.util.LinkedHashMap<>(favorites.size());
+        int index = 0;
+        for (appeng.api.stacks.AEKey key : favorites) {
+            if (key != null) {
+                priorities.putIfAbsent(key, index);
+            }
+            index++;
+        }
+        return priorities;
     }
 
     private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {

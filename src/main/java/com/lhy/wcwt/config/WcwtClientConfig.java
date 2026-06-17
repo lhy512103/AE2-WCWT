@@ -17,6 +17,7 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SEARCH_HIGHLIGHT;
     public static final ModConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
     public static final ModConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
+    public static final ModConfigSpec.BooleanValue PREFER_WCWT_FAVORITES_FOR_RECIPE_TRANSFER;
     public static final ModConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
     public static final ModConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
     public static final ModConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
@@ -52,15 +53,21 @@ public final class WcwtClientConfig {
                 .comment("If true: when JEI transfers ingredients into the WCWT pattern encoding area, matching items from the JEI bookmark list are preferred first, in bookmark order. If false: use the existing WCWT/AE2 selection logic only.")
                 .translation("wcwt.config.preferJeiBookmarksForPatternEncoding")
                 .define("preferJeiBookmarksForPatternEncoding", true);
+        PREFER_WCWT_FAVORITES_FOR_RECIPE_TRANSFER = BUILDER
+                .comment("If true: when JEI/EMI recipe transfer has multiple matching item candidates, WCWT favorited ME terminal items are preferred before the existing selection logic. Disabled by default to preserve AE2-like behavior.")
+                .translation("wcwt.config.preferWcwtFavoritesForRecipeTransfer")
+                .define("preferWcwtFavoritesForRecipeTransfer", false);
         EXPAND_TOOLKIT_IN_MANAGEMENT_AREA = BUILDER
                 .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel. Saving wcwt-client.toml usually reloads without restart.")
                 .translation("wcwt.config.expandToolkitInManagementArea")
                 .define("expandToolkitInManagementArea", false);
         LAST_MANAGEMENT_TOOLKIT_OPEN = BUILDER
                 .comment("Remembers whether the management-area toolkit was open the last time this client closed the terminal.")
+                .translation("wcwt.config.lastManagementToolkitOpen")
                 .define("lastManagementToolkitOpen", false);
         LAST_VIEW_CELLS_PANEL_VISIBLE = BUILDER
                 .comment("Remembers whether the AE2 view cells panel was visible the last time this client toggled it in WCWT.")
+                .translation("wcwt.config.lastViewCellsPanelVisible")
                 .define("lastViewCellsPanelVisible", true);
         FAVORITED_ITEMS_FIRST = BUILDER
                 .comment("If true: favorited ME terminal entries are displayed before non-favorited entries in WCWT.")
@@ -68,6 +75,7 @@ public final class WcwtClientConfig {
                 .define("favoritedItemsFirst", false);
         FAVORITED_KEYS = BUILDER
                 .comment("Serialized client-side favorite AE keys for WCWT terminal sorting and overlays.")
+                .translation("wcwt.config.favoritedKeys")
                 .defineList("favoritedKeys", java.util.List.of(), entry -> entry instanceof String);
         SPEC = BUILDER.build();
     }
@@ -101,6 +109,10 @@ public final class WcwtClientConfig {
 
     public static boolean preferJeiBookmarksForPatternEncoding() {
         return PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING.get();
+    }
+
+    public static boolean preferWcwtFavoritesForRecipeTransfer() {
+        return PREFER_WCWT_FAVORITES_FOR_RECIPE_TRANSFER.get();
     }
 
     public static boolean expandToolkitInManagementArea() {

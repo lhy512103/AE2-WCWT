@@ -24,11 +24,16 @@ public final class WcwtIngredientPriorities {
     private WcwtIngredientPriorities() {
     }
 
-    public record PriorityContext(Map<AEKey, Integer> ingredientPriorities, Map<AEKey, Integer> bookmarkPriorities) {
-        public static final PriorityContext EMPTY = new PriorityContext(Map.of(), Map.of());
+    public record PriorityContext(Map<AEKey, Integer> ingredientPriorities, Map<AEKey, Integer> bookmarkPriorities,
+                                  Map<AEKey, Integer> favoritePriorities) {
+        public static final PriorityContext EMPTY = new PriorityContext(Map.of(), Map.of(), Map.of());
 
         public boolean hasBookmarkPriorities() {
             return bookmarkPriorities != null && !bookmarkPriorities.isEmpty();
+        }
+
+        public boolean hasFavoritePriorities() {
+            return favoritePriorities != null && !favoritePriorities.isEmpty();
         }
     }
 
@@ -61,8 +66,14 @@ public final class WcwtIngredientPriorities {
     }
 
     public static PriorityContext createContext(@Nullable MEStorageMenu menu, Map<AEKey, Integer> bookmarkPriorities) {
+        return createContext(menu, bookmarkPriorities, Map.of());
+    }
+
+    public static PriorityContext createContext(@Nullable MEStorageMenu menu, Map<AEKey, Integer> bookmarkPriorities,
+                                                Map<AEKey, Integer> favoritePriorities) {
         return new PriorityContext(getIngredientPriorities(menu),
-                bookmarkPriorities == null || bookmarkPriorities.isEmpty() ? Map.of() : Map.copyOf(bookmarkPriorities));
+                bookmarkPriorities == null || bookmarkPriorities.isEmpty() ? Map.of() : Map.copyOf(bookmarkPriorities),
+                favoritePriorities == null || favoritePriorities.isEmpty() ? Map.of() : Map.copyOf(favoritePriorities));
     }
 
     public static List<ItemStack> deduplicateItemAlternatives(List<ItemStack> alternatives) {

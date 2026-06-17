@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:item_exists",
+      "item": "advanced_ae:adv_pattern_encoder"
+    }
+  ],
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:advanced_card"
+    },
+    {
+      "item": "advanced_ae:adv_pattern_encoder"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "wcwt:advanced_coding_card"
+  }
+}

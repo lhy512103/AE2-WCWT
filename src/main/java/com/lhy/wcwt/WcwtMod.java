@@ -1,7 +1,6 @@
 package com.lhy.wcwt;
 
 import appeng.api.config.Actionable;
-import appeng.api.features.HotkeyAction;
 import appeng.api.features.GridLinkables;
 import appeng.api.ids.AECreativeTabIds;
 import appeng.api.upgrades.Upgrades;
@@ -20,6 +19,7 @@ import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.config.WcwtClientConfig;
+import com.lhy.wcwt.compat.WcwtCuriosCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -71,14 +71,10 @@ public class WcwtMod {
             GridLinkables.register(
                     ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);
-            HotkeyActions.register(
-                    ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
-                    (player, locator) -> ((WirelessComprehensiveWorkTerminalItem)
-                            ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()).openFromInventory(player, locator),
-                    HotkeyAction.WIRELESS_TERMINAL);
             HotkeyActions.register(new WcwtMagnetHotkeyAction(), "ae2wtlib_magnet");
             HotkeyActions.register(new WcwtStowHotkeyAction(), "ae2wtlib_stow");
             registerInventorySorterCompat();
+            WcwtCuriosCompat.registerPredicates();
 
             // 给 WCWT 物品注册兼容的升级卡。
             // 不注册的话 ScrollingUpgradesPanel 的"可用升级"为空，槽位 isItemValid 也会拒绝任何卡。
@@ -90,7 +86,7 @@ public class WcwtMod {
             //   - AE2 原生：appeng.core.definitions.AEItems.<名称>（如 ENERGY_CARD / CRAFTING_CARD / INVERTER_CARD / FUZZY_CARD ...）
             //   - WTLib 的卡（QUANTUM_BRIDGE_CARD / MAGNET_CARD）：用 registerExternalUpgradeCard(...) 按 ResourceLocation 查找。
             //   - ae2importexportcard（输入卡 / 输出卡）：同上；模组未安装时自动跳过。
-            // 注意：所有升级卡的最大数量之和不能超过 WirelessComprehensiveWorkTerminalItem.UPGRADE_INVENTORY_SIZE（当前 14），
+            // 注意：所有升级卡的最大数量之和不能超过 WirelessComprehensiveWorkTerminalItem.UPGRADE_INVENTORY_SIZE（当前 20），
             //       超出会导致后注册的升级显示不全。改这个上限去 WirelessComprehensiveWorkTerminalItem 里改 UPGRADE_INVENTORY_SIZE 常量。
             var wcwt = ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
             String groupKey = GuiText.WirelessTerminals.getTranslationKey();
@@ -99,6 +95,12 @@ public class WcwtMod {
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "magnet_card", 1, groupKey, false); // 磁力卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true); // 输入卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true); // 输出卡 ×1
+            Upgrades.add(ModItems.ADVANCED_CODING_CARD, wcwt, 1, groupKey);
+            Upgrades.add(ModItems.COSMETIC_ARMOR_CARD, wcwt, 1, groupKey);
+            Upgrades.add(ModItems.CURIOS_CARD, wcwt, 1, groupKey);
+            Upgrades.add(ModItems.TOOL_SLOTS_BOX_CARD, wcwt, 1, groupKey);
+            Upgrades.add(ModItems.TOOLKIT_CARD, wcwt, 1, groupKey);
+            Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD, wcwt, 1, groupKey);
         });
     }
 
@@ -141,6 +143,12 @@ public class WcwtMod {
             var charged = new ItemStack(terminal);
             terminal.injectAEPower(charged, terminal.getAEMaxPower(charged), Actionable.MODULATE);
             event.accept(charged);
+            event.accept(ModItems.ADVANCED_CODING_CARD);
+            event.accept(ModItems.COSMETIC_ARMOR_CARD);
+            event.accept(ModItems.CURIOS_CARD);
+            event.accept(ModItems.TOOL_SLOTS_BOX_CARD);
+            event.accept(ModItems.TOOLKIT_CARD);
+            event.accept(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD);
         }
     }
 }

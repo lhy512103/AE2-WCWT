@@ -1089,25 +1089,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
-    /** 扩展UI按钮每次 init() 重新定位并注册（因为 addRenderableWidget 会被 clearWidgets() 清空）。*/
+    /** 扩展UI按钮每次 init() 重新注册（因为 addRenderableWidget 会被 clearWidgets() 清空）。*/
     private void initExtendedUIButtons() {
         var host = menu.getMenuHost();
         if (host == null) return;
-
-        // 扩展 UI 按钮位置优先读取 JSON 的 extended_functions_0..3。
-        // 按钮不可用时会折叠，后面的按钮自动补位到前一个 JSON 槽位。
-        final int EXT_BTN_GAP_TOP = 1;
-        final int EXT_BTN_GAP_LEFT = 1;
-        int fallbackX;
-        if (topModeTabButton != null && topModeTabButton.getWidth() > 0) {
-            int tabRight = topModeTabButton.getX() + topModeTabButton.getWidth();
-            fallbackX = tabRight + EXT_BTN_GAP_LEFT + 4; // setX = 外框左 + 4
-        } else {
-            fallbackX = leftPos + 331 + 22 + EXT_BTN_GAP_LEFT + 4;
-        }
-        int panelHeight = (upgradesPanel != null) ? upgradesPanel.getBounds().getHeight() : 46;
-        int fallbackY = topPos + panelHeight + EXT_BTN_GAP_TOP + 2; // setY = 外框顶 + 4
-        int extBtnSpacing = 21;
 
         advancedCodingButton = new ExtendedUIButton(
                 host, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING,
@@ -1128,20 +1113,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 host, IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING,
                 btn -> toggleExtendedUI(IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING));
 
-        int visibleIndex = 0;
-        visibleIndex = placeExtendedButton(advancedCodingButton, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
-        visibleIndex = placeExtendedButton(cosmeticArmorButton, IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
-        visibleIndex = placeExtendedButton(curiosButton, IExtendedUIHost.ExtendedUIType.CURIOS,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
-        visibleIndex = placeExtendedButton(toolboxButton, IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
-        visibleIndex = placeExtendedButton(toolkitButton, IExtendedUIHost.ExtendedUIType.TOOLKIT,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
-        placeExtendedButton(resonatingLightningPatternCodingButton,
-                IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING,
-                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+        addRenderableWidget(advancedCodingButton);
+        addRenderableWidget(cosmeticArmorButton);
+        addRenderableWidget(curiosButton);
+        addRenderableWidget(toolboxButton);
+        addRenderableWidget(toolkitButton);
+        addRenderableWidget(resonatingLightningPatternCodingButton);
+
+        layoutExtendedUIButtons();
 
         // 调整渲染图层：将它们在 renderables 列表中移到最前面，
         // 从而被后渲染的四个样板按钮遮挡（图层放在下面）。
@@ -1158,6 +1137,44 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderables.add(0, curiosButton);
         renderables.add(0, cosmeticArmorButton);
         renderables.add(0, advancedCodingButton);
+    }
+
+    private void layoutExtendedUIButtons() {
+        if (advancedCodingButton == null || cosmeticArmorButton == null || curiosButton == null
+                || toolboxButton == null || toolkitButton == null
+                || resonatingLightningPatternCodingButton == null) {
+            return;
+        }
+
+        // 扩展 UI 按钮位置优先读取 JSON 的 extended_functions_0..3。
+        // 按钮不可用时会折叠，后面的按钮自动补位到前一个 JSON 槽位。
+        final int EXT_BTN_GAP_TOP = 1;
+        final int EXT_BTN_GAP_LEFT = 1;
+        int fallbackX;
+        if (topModeTabButton != null && topModeTabButton.getWidth() > 0) {
+            int tabRight = topModeTabButton.getX() + topModeTabButton.getWidth();
+            fallbackX = tabRight + EXT_BTN_GAP_LEFT + 4; // setX = 外框左 + 4
+        } else {
+            fallbackX = leftPos + 331 + 22 + EXT_BTN_GAP_LEFT + 4;
+        }
+        int panelHeight = (upgradesPanel != null) ? upgradesPanel.getBounds().getHeight() : 46;
+        int fallbackY = topPos + panelHeight + EXT_BTN_GAP_TOP + 2; // setY = 外框顶 + 4
+        int extBtnSpacing = 21;
+
+        int visibleIndex = 0;
+        visibleIndex = placeExtendedButton(advancedCodingButton, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING,
+                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+        visibleIndex = placeExtendedButton(cosmeticArmorButton, IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR,
+                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+        visibleIndex = placeExtendedButton(curiosButton, IExtendedUIHost.ExtendedUIType.CURIOS,
+                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+        visibleIndex = placeExtendedButton(toolboxButton, IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX,
+                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+        visibleIndex = placeExtendedButton(toolkitButton, IExtendedUIHost.ExtendedUIType.TOOLKIT,
+                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
+        placeExtendedButton(resonatingLightningPatternCodingButton,
+                IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING,
+                visibleIndex, fallbackX, fallbackY, extBtnSpacing);
     }
 
     private int placeExtendedButton(ExtendedUIButton button, IExtendedUIHost.ExtendedUIType type, int visibleIndex,
@@ -1185,15 +1202,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 rect.height());
         button.setX(leftPos + rect.left());
         button.setY(topPos + rect.top());
-        addRenderableWidget(button);
         return visibleIndex + 1;
     }
 
     private boolean isExtendedUIAvailable(IExtendedUIHost.ExtendedUIType type) {
+        if (!isExtendedUiCardInstalled(type)) {
+            return false;
+        }
         return switch (type) {
             case ADVANCED_CODING -> true;
             case COSMETIC_ARMOR -> ModList.get().isLoaded("cosmeticarmorreworked");
-            case CURIOS -> ModList.get().isLoaded("curios");
+            case CURIOS -> true;
             case TOOL_SLOTS_BOX -> menu.getToolbox().isPresent();
             case TOOLKIT -> true;
             case RESONATING_LIGHTNING_PATTERN_CODING ->
@@ -1466,9 +1485,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var host = menu.getMenuHost();
         if (host == null) return;
 
+        layoutExtendedUIButtons();
         host.setCurrentExtendedUI(menu.getSyncedExtendedUIType());
         
         var currentUI = host.getCurrentExtendedUI();
+        if (currentUI != IExtendedUIHost.ExtendedUIType.NONE && !isExtendedUIAvailable(currentUI)) {
+            currentUI = IExtendedUIHost.ExtendedUIType.NONE;
+            host.closeExtendedUI();
+            PacketDistributor.sendToServer(new ExtendedUIPacket(currentUI));
+        }
         boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
         boolean hideExtendedButtons = currentUI == IExtendedUIHost.ExtendedUIType.ADVANCED_CODING
                 || currentUI == IExtendedUIHost.ExtendedUIType.CURIOS
@@ -2857,6 +2882,27 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             case ALL, VISIBLE -> true;
             case NOT_FULL -> entry.slots().size() < entry.inventorySize();
         };
+    }
+
+    private boolean isExtendedUiCardInstalled(IExtendedUIHost.ExtendedUIType type) {
+        var host = menu.getMenuHost();
+        if (host == null) {
+            return false;
+        }
+        var card = switch (type) {
+            case ADVANCED_CODING -> com.lhy.wcwt.init.ModItems.ADVANCED_CODING_CARD.get();
+            case COSMETIC_ARMOR -> com.lhy.wcwt.init.ModItems.COSMETIC_ARMOR_CARD.get();
+            case CURIOS -> com.lhy.wcwt.init.ModItems.CURIOS_CARD.get();
+            case TOOL_SLOTS_BOX -> com.lhy.wcwt.init.ModItems.TOOL_SLOTS_BOX_CARD.get();
+            case TOOLKIT -> com.lhy.wcwt.init.ModItems.TOOLKIT_CARD.get();
+            case RESONATING_LIGHTNING_PATTERN_CODING ->
+                    com.lhy.wcwt.init.ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD.get();
+            case NONE -> null;
+        };
+        if (card == null) {
+            return false;
+        }
+        return host.getUpgrades().isInstalled(card);
     }
 
     private String providerDisplayText(PatternProviderListPacket.Entry entry) {

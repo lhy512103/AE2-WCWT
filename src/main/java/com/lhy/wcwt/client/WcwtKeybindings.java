@@ -15,6 +15,7 @@ public final class WcwtKeybindings {
     public static final KeyMapping OPEN_COSMETIC_ARMOR = create("open_cosmetic_armor");
     public static final KeyMapping OPEN_CURIOS = create("open_curios");
     public static final KeyMapping OPEN_TOOL_SLOTS_BOX = create("open_tool_slots_box");
+    public static final KeyMapping OPEN_TERMINAL = create("open_terminal", KeyConflictContext.IN_GAME);
     public static final KeyMapping OPEN_TOOLKIT = create("open_toolkit", KeyConflictContext.IN_GAME);
     public static final KeyMapping OPEN_RESONATING_LIGHTNING_PATTERN_CODING =
             create("open_resonating_lightning_pattern_coding");

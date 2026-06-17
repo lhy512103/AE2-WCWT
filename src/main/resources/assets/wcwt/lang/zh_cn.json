@@ -22,6 +22,7 @@
   "key.wcwt.open_cosmetic_armor": "打开装饰盔甲",
   "key.wcwt.open_curios": "打开饰品栏",
   "key.wcwt.open_tool_slots_box": "打开卡槽箱",
+  "key.wcwt.open_terminal": "打开ME综合工作终端",
   "key.wcwt.open_toolkit": "打开工具包",
   "key.wcwt.open_resonating_lightning_pattern_coding": "打开谐振过载编码器",
   "key.wcwt.toggle_crafting_grid_lock": "切换合成网格锁定",
@@ -33,6 +34,7 @@
   "gui.wcwt.favorite.marked": "已收藏",
   "gui.wcwt.view_cells.visible": "显示元件面板：显示",
   "gui.wcwt.view_cells.hidden": "显示元件面板：隐藏",
+  "curios.identifier.wireless_comprehensive_work_terminal": "ME综合工作终端",
   "gui.wcwt.toolkit.slot.sword": "剑类",
   "gui.wcwt.toolkit.slot.pickaxe": "镐类",
   "gui.wcwt.toolkit.slot.axe": "斧类",
@@ -134,6 +136,12 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
   
   "item.wcwt.wireless_comprehensive_work_terminal": "ME综合工作终端",
+  "item.wcwt.advanced_coding_card": "高级编码卡",
+  "item.wcwt.cosmetic_armor_card": "装饰盔甲卡",
+  "item.wcwt.curios_card": "饰品栏卡",
+  "item.wcwt.tool_slots_box_card": "网络工具卡槽包卡",
+  "item.wcwt.toolkit_card": "工具包卡",
+  "item.wcwt.resonating_lightning_pattern_coding_card": "谐振过载编码器卡",
   
   "gui.wcwt.filter.item.enabled": "物品过滤：开",
   "gui.wcwt.filter.item.enabled.desc": "只显示物品",
@@ -172,6 +180,8 @@
   "wcwt.config.patternMultiplierApplyToEditorProcessing.tooltip": "开：批处理区的样板倍增器也会修改当前样板编辑区里处理样板模式的输入/输出数量与输出轮换。关：仅作用于样板缓存区里的已编码样板。",
   "wcwt.config.preferJeiBookmarksForPatternEncoding": "JEI 拉取样板时优先使用书签栏物品",
   "wcwt.config.preferJeiBookmarksForPatternEncoding.tooltip": "开：从 WCWT 终端通过 JEI 拉取到样板编码区时，若某个输入存在多种可选物品，优先使用 JEI 书签栏中匹配的物品，且按书签从前到后的顺序优先。关：仅使用现有 WCWT/AE2 选择逻辑。",
+  "wcwt.config.preferWcwtFavoritesForRecipeTransfer": "配方拉取优先使用WCWT收藏物品",
+  "wcwt.config.preferWcwtFavoritesForRecipeTransfer.tooltip": "开：JEI/EMI 拉取配方或编码样板遇到多候选物品时，先使用 WCWT 主仓库区收藏过的物品。关：保持现有 WCWT/AE2 优先级。",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer": "拉取配方时自动切换手动工作区",
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "开：JEI/EMI 拉取配方时，会按已识别的配方类型自动切到工作台或锻造台。",
   "wcwt.config.enableRecipePullTransfer": "启用配方拉取/编码处理",
@@ -179,6 +189,13 @@
   "wcwt.config.expandToolkitInManagementArea": "工具包在管理区位置展开",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "开：打开工具包时，改在样板管理区位置展开显示，并隐藏供应器列表；关闭时保持原来的右侧工具包面板。",
   "wcwt.config.favoritedItemsFirst": "收藏物品优先显示",
+  "wcwt.config.favoritedItemsFirst.tooltip": "开：WCWT 主仓库区中收藏过的物品会排在普通物品前面。",
+  "wcwt.config.favoritedKeys": "收藏物品列表",
+  "wcwt.config.favoritedKeys.tooltip": "客户端保存的 WCWT 收藏物品键值列表，一般不需要手动编辑。",
+  "wcwt.config.lastManagementToolkitOpen": "记住管理区工具包展开状态",
+  "wcwt.config.lastManagementToolkitOpen.tooltip": "记录上次关闭终端时，样板管理区内嵌工具包是否处于打开状态。",
+  "wcwt.config.lastViewCellsPanelVisible": "记住显示元件面板状态",
+  "wcwt.config.lastViewCellsPanelVisible.tooltip": "记录上次切换 WCWT 显示元件面板后的显示/隐藏状态。",
 
   "message.wcwt.pull_no_link": "WCWT：终端未连接到可用的 ME 网络。",
   "message.wcwt.pull_no_inputs": "WCWT：该 JEI 配方没有可拉取的物品输入。",
@@ -189,5 +206,7 @@
   "message.wcwt.eco_pattern_duplicate": "ECO合成子系统已存在相同样板。",
   "message.wcwt.eco_pattern_uploaded": "样板已上传至ECO合成子系统。",
   "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 网络工具槽已满。",
-  "message.wcwt.toolkit_network_tool_not_found": "未发现可放入的网络工具（光标上或背包内）。"
+  "message.wcwt.toolkit_network_tool_not_found": "未发现可放入的网络工具（光标上或背包内）。",
+  "advancements.wcwt.obtain_terminal.title": "我嘞个雷霆大终端！",
+  "advancements.wcwt.obtain_terminal.description": "获得ME综合工作终端"
 }
