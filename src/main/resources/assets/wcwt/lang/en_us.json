@@ -243,7 +243,7 @@
   "wcwt.config.filterGtceuNonConsumablePatternInputs": "Remove GTCEu non-consumable inputs",
   "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "On: when JEI/EMI transfers GTCEu processing recipes into the pattern encoding area, remove catalyst-like item inputs that are not consumed. Default on.",
   "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables": "Keep GTCEu programmed circuits when filtering",
-  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "On: when GTCEu non-consumable input filtering is enabled, keep gtceu:programmed_circuit inputs in processing patterns. Default on.",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "On: when GTCEu non-consumable input filtering is enabled, keep Programmed Circuit inputs in processing patterns. Default on.",
   "wcwt.config.expandToolkitInManagementArea": "Expand toolkit in management area",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "On: opening the toolkit shows it in the pattern management area and hides provider rows. Off: keep the original right-side toolkit panel.",
 

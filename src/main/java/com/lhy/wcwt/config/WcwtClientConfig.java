@@ -41,7 +41,7 @@ public final class WcwtClientConfig {
                 .translation("wcwt.config.filterGtceuNonConsumablePatternInputs")
                 .define("filterGtceuNonConsumablePatternInputs", true);
         KEEP_GTCEU_PROGRAMMED_CIRCUIT_WHEN_FILTERING_NON_CONSUMABLES = BUILDER
-                .comment("If true: when GTCEu non-consumable input filtering is enabled, keep gtceu:programmed_circuit inputs in encoded processing patterns.")
+                .comment("If true: when GTCEu non-consumable input filtering is enabled, keep Programmed Circuit inputs in encoded processing patterns.")
                 .translation("wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables")
                 .define("keepGtceuProgrammedCircuitWhenFilteringNonConsumables", true);
         AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER = BUILDER
