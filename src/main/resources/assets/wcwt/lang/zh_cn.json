@@ -135,7 +135,9 @@
   "gui.wcwt.multiplier.divide_3": "÷3",
   "gui.wcwt.multiplier.divide_5": "÷5",
   
+  "itemGroup.wcwt.main": "AE2 WCWT",
   "item.wcwt.wireless_comprehensive_work_terminal": "ME综合工作终端",
+  "item.wcwt.wireless_universal_comprehensive_work_terminal": "无线综合非通用终端",
   "item.wcwt.advanced_coding_card": "高级编码卡",
   "item.wcwt.cosmetic_armor_card": "装饰盔甲卡",
   "item.wcwt.curios_card": "饰品栏卡",
@@ -207,6 +209,15 @@
   "message.wcwt.eco_pattern_uploaded": "样板已上传至ECO合成子系统。",
   "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 网络工具槽已满。",
   "message.wcwt.toolkit_network_tool_not_found": "未发现可放入的网络工具（光标上或背包内）。",
+  "gui.wcwt.universal_terminal.next": "切换到下一个终端",
+  "gui.wcwt.universal_terminal.empty": "未合入其它终端",
+  "gui.wcwt.cycle_terminal.desc": "左键切换到：%s",
+  "gui.wcwt.cycle_terminal.desc1": "右键切换到：%s",
+  "gui.wcwt.cycle_terminal.middle": "鼠标中键返回：ME综合工作终端",
+  "tooltip.wcwt.universal_terminals": "已合入终端",
+  "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+右键空气可拆出已合入终端",
   "advancements.wcwt.obtain_terminal.title": "我嘞个雷霆大终端！",
-  "advancements.wcwt.obtain_terminal.description": "获得ME综合工作终端"
+  "advancements.wcwt.obtain_terminal.description": "获得ME综合工作终端",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "什么？雷霆大终端都没法满足你了嘛！",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "获得无线综合非通用终端"
 }

@@ -126,7 +126,9 @@
   "gui.wcwt.multiplier.divide_3": "÷3",
   "gui.wcwt.multiplier.divide_5": "÷5",
 
+  "itemGroup.wcwt.main": "AE2 WCWT",
   "item.wcwt.wireless_comprehensive_work_terminal": "ME 総合作業端末",
+  "item.wcwt.wireless_universal_comprehensive_work_terminal": "ME ワイヤレス総合非汎用端末",
   "item.wcwt.advanced_coding_card": "高度エンコードカード",
   "item.wcwt.cosmetic_armor_card": "装飾防具カード",
   "item.wcwt.curios_card": "Curios カード",
@@ -198,6 +200,15 @@
   "message.wcwt.eco_pattern_uploaded": "パターンを ECO クラフトサブシステムへアップロードしました。",
   "message.wcwt.toolkit_network_slot_occupied": "ツールキットの AE ネットワークツール用スロットは既に埋まっています。",
   "message.wcwt.toolkit_network_tool_not_found": "カーソル上またはインベントリ内に AE ネットワークツールが見つかりません。",
+  "gui.wcwt.universal_terminal.next": "次の端末へ切り替え",
+  "gui.wcwt.universal_terminal.empty": "内蔵端末なし",
+  "gui.wcwt.cycle_terminal.desc": "左クリックで切り替え: %s",
+  "gui.wcwt.cycle_terminal.desc1": "右クリックで切り替え: %s",
+  "gui.wcwt.cycle_terminal.middle": "中クリックで戻る: ME 総合作業端末",
+  "tooltip.wcwt.universal_terminals": "内蔵端末",
+  "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+空中右クリックで内蔵端末を分離",
   "advancements.wcwt.obtain_terminal.title": "なんという雷鳴の大端末！",
-  "advancements.wcwt.obtain_terminal.description": "ME 総合作業端末を入手する"
+  "advancements.wcwt.obtain_terminal.description": "ME 総合作業端末を入手する",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "何？雷鳴の大端末でも満足できないの？",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "ME ワイヤレス総合非汎用端末を入手する"
 }

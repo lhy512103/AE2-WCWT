@@ -126,7 +126,9 @@
   "gui.wcwt.multiplier.divide_3": "÷3",
   "gui.wcwt.multiplier.divide_5": "÷5",
 
+  "itemGroup.wcwt.main": "AE2 WCWT",
   "item.wcwt.wireless_comprehensive_work_terminal": "ME 綜合工作終端",
+  "item.wcwt.wireless_universal_comprehensive_work_terminal": "無線綜合非通用終端",
   "item.wcwt.advanced_coding_card": "高級編碼卡",
   "item.wcwt.cosmetic_armor_card": "裝飾盔甲卡",
   "item.wcwt.curios_card": "飾品欄卡",
@@ -198,6 +200,15 @@
   "message.wcwt.eco_pattern_uploaded": "樣板已上傳至 ECO 合成子系統。",
   "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 網路工具槽已滿。",
   "message.wcwt.toolkit_network_tool_not_found": "未發現可放入的網路工具（光標上或背包內）。",
+  "gui.wcwt.universal_terminal.next": "切換到下一個終端",
+  "gui.wcwt.universal_terminal.empty": "未合入其它終端",
+  "gui.wcwt.cycle_terminal.desc": "左鍵切換到：%s",
+  "gui.wcwt.cycle_terminal.desc1": "右鍵切換到：%s",
+  "gui.wcwt.cycle_terminal.middle": "滑鼠中鍵返回：ME 綜合工作終端",
+  "tooltip.wcwt.universal_terminals": "已合入終端",
+  "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+右鍵空氣可拆出已合入終端",
   "advancements.wcwt.obtain_terminal.title": "我嘞個雷霆大終端！",
-  "advancements.wcwt.obtain_terminal.description": "獲得 ME 綜合工作終端"
+  "advancements.wcwt.obtain_terminal.description": "獲得 ME 綜合工作終端",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "什麼？雷霆大終端都沒法滿足你了嘛！",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "獲得無線綜合非通用終端"
 }

@@ -1,0 +1,30 @@
+{
+  "display": {
+    "icon": {
+      "id": "wcwt:wireless_comprehensive_work_terminal"
+    },
+    "title": {
+      "translate": "advancements.wcwt.obtain_non_universal_terminal.title"
+    },
+    "description": {
+      "translate": "advancements.wcwt.obtain_non_universal_terminal.description"
+    },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "has_non_universal_terminal": {
+      "trigger": "minecraft:recipe_crafted",
+      "conditions": {
+        "recipe_id": "wcwt:wireless_comprehensive_work_terminal"
+      }
+    }
+  },
+  "requirements": [
+    [
+      "has_non_universal_terminal"
+    ]
+  ]
+}

@@ -3,15 +3,24 @@ package com.lhy.wcwt.client;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
+import com.lhy.wcwt.client.gui.widgets.WcwtUniversalTerminalButton;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.OpenTerminalHotkeyPacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
+import com.lhy.wcwt.network.SplitUniversalTerminalPacket;
+import com.lhy.wcwt.universal.WcwtUniversalTerminals;
+import appeng.client.gui.AEBaseScreen;
+import appeng.menu.AEBaseMenu;
+import appeng.menu.locator.MenuHostLocator;
 import appeng.init.client.InitScreens;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
+import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
@@ -23,11 +32,16 @@ import net.neoforged.fml.ModList;
 import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public class ModClientSetup {
     private static boolean ipnCompatInitialized;
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
+    private static final Map<Screen, WcwtUniversalTerminalButton> INJECTED_UNIVERSAL_TERMINAL_BUTTONS =
+            new WeakHashMap<>();
+    private static Method addToLeftToolbarMethod;
 
     @SubscribeEvent
     public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
@@ -85,6 +99,44 @@ public class ModClientSetup {
         }
     }
 
+    @SubscribeEvent
+    public static void onInteractionKeyMappingTriggered(InputEvent.InteractionKeyMappingTriggered event) {
+        var minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null || minecraft.player == null || !event.isUseItem()) {
+            return;
+        }
+        if (!Screen.hasControlDown() || !Screen.hasShiftDown()) {
+            return;
+        }
+        var stack = minecraft.player.getItemInHand(event.getHand());
+        if (!WcwtUniversalTerminals.isUniversal(stack)) {
+            return;
+        }
+        event.setCanceled(true);
+        event.setSwingHand(false);
+        net.neoforged.neoforge.network.PacketDistributor
+                .sendToServer(new SplitUniversalTerminalPacket(event.getHand()));
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onWirelessTerminalScreenInitPre(ScreenEvent.Init.Pre event) {
+        if (event.getScreen() instanceof WirelessComprehensiveWorkTerminalScreen) {
+            return;
+        }
+        if (event.getScreen() instanceof AEBaseScreen<?> aeScreen
+                && aeScreen.getMenu() instanceof AEBaseMenu menu
+                && resolveMenuLocator(menu) instanceof WcwtEmbeddedTerminalLocator) {
+            WcwtUniversalTerminalButton button = INJECTED_UNIVERSAL_TERMINAL_BUTTONS.get(aeScreen);
+            if (button == null) {
+                button = new WcwtUniversalTerminalButton(menu);
+                if (addToLeftToolbar(aeScreen, button)) {
+                    INJECTED_UNIVERSAL_TERMINAL_BUTTONS.put(aeScreen, button);
+                }
+            }
+            button.refresh(menu);
+        }
+    }
+
     /**
      * 与 Inventory Profiles Next 相同：{@code Init.Post} 注入控件。使用最低优先级，
      * 保证在 IPN 的 {@link ScreenEvent.Init.Post} 之后执行，再递归隐藏深层子控件。
@@ -93,6 +145,36 @@ public class ModClientSetup {
     public static void onWirelessTerminalScreenInitPost(ScreenEvent.Init.Post event) {
         if (event.getScreen() instanceof WirelessComprehensiveWorkTerminalScreen) {
             InventoryProfilesNextCompat.installRuntimeHints();
+        }
+    }
+
+    private static MenuHostLocator resolveMenuLocator(AEBaseMenu menu) {
+        return WcwtUniversalTerminalButton.resolveLocator(menu);
+    }
+
+    @SubscribeEvent
+    public static void onScreenRenderPre(ScreenEvent.Render.Pre event) {
+        if (INJECTED_UNIVERSAL_TERMINAL_BUTTONS.get(event.getScreen()) instanceof WcwtUniversalTerminalButton button
+                && event.getScreen() instanceof AEBaseScreen<?> aeScreen
+                && aeScreen.getMenu() instanceof AEBaseMenu menu
+                && resolveMenuLocator(menu) instanceof WcwtEmbeddedTerminalLocator) {
+            button.refresh(menu);
+        }
+    }
+
+    private static boolean addToLeftToolbar(AEBaseScreen<?> screen, Button button) {
+        try {
+            Method method = addToLeftToolbarMethod;
+            if (method == null) {
+                method = AEBaseScreen.class.getDeclaredMethod("addToLeftToolbar", Button.class);
+                method.setAccessible(true);
+                addToLeftToolbarMethod = method;
+            }
+            method.invoke(screen, button);
+            return true;
+        } catch (ReflectiveOperationException e) {
+            WcwtMod.LOGGER.warn("Failed to add WCWT universal terminal button to AE2 toolbar", e);
+            return false;
         }
     }
 

@@ -1,6 +1,5 @@
 package com.lhy.wcwt;
 
-import appeng.api.config.Actionable;
 import appeng.api.features.GridLinkables;
 import appeng.api.ids.AECreativeTabIds;
 import appeng.api.upgrades.Upgrades;
@@ -11,13 +10,17 @@ import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.items.tools.powered.powersink.PoweredItemCapabilities;
 import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.init.ModComponents;
+import com.lhy.wcwt.init.ModCreativeTabs;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.init.ModRecipeSerializers;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtStowHotkeyAction;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
+import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
+import com.lhy.wcwt.universal.WcwtItemIds;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.compat.WcwtCuriosCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -26,7 +29,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import net.neoforged.bus.api.IEventBus;
@@ -54,7 +56,9 @@ public class WcwtMod {
         WcwtSlotSemantics.init();
         ModComponents.DATA_COMPONENTS.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
+        ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
+        ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::addCreativeTabItems);
         modEventBus.addListener(this::registerCapabilities);
@@ -68,6 +72,10 @@ public class WcwtMod {
                     WcwtToolkitNetworkToolLocator.class,
                     WcwtToolkitNetworkToolLocator::writeToPacket,
                     WcwtToolkitNetworkToolLocator::readFromPacket);
+            MenuLocators.register(
+                    WcwtEmbeddedTerminalLocator.class,
+                    WcwtEmbeddedTerminalLocator::writeToPacket,
+                    WcwtEmbeddedTerminalLocator::readFromPacket);
             GridLinkables.register(
                     ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);
@@ -91,7 +99,7 @@ public class WcwtMod {
             var wcwt = ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
             String groupKey = GuiText.WirelessTerminals.getTranslationKey();
             Upgrades.add(AEItems.ENERGY_CARD, wcwt, 10, groupKey);                              // 能源卡 ×10
-            registerExternalUpgradeCard(wcwt, "ae2wtlib", "quantum_bridge_card", 1, groupKey, false); // 量子桥卡 ×1
+            registerExternalUpgradeCard(wcwt, WcwtItemIds.AE2WTLIB_QUANTUM_BRIDGE_CARD, 1, null, false); // 量子桥卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "magnet_card", 1, groupKey, false); // 磁力卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true); // 输入卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true); // 输出卡 ×1
@@ -116,14 +124,20 @@ public class WcwtMod {
      */
     private static void registerExternalUpgradeCard(Item host, String namespace, String path, int max, String groupKey,
             boolean quietIfMissing) {
-        var card = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath(namespace, path));
+        registerExternalUpgradeCard(host, ResourceLocation.fromNamespaceAndPath(namespace, path), max, groupKey,
+                quietIfMissing);
+    }
+
+    private static void registerExternalUpgradeCard(Item host, ResourceLocation cardId, int max, String groupKey,
+            boolean quietIfMissing) {
+        var card = BuiltInRegistries.ITEM.get(cardId);
         if (card != null && card != Items.AIR) {
             Upgrades.add(card, host, max, groupKey);
-            LOGGER.info("Registered compatible upgrade '{}:{}' (×{}) for WCWT", namespace, path, max);
+            LOGGER.info("Registered compatible upgrade '{}' (×{}) for WCWT", cardId, max);
         } else if (quietIfMissing) {
-            LOGGER.debug("Optional upgrade '{}:{}' not present; skipping", namespace, path);
+            LOGGER.debug("Optional upgrade '{}' not present; skipping", cardId);
         } else {
-            LOGGER.warn("Upgrade '{}:{}' not found at runtime; skipping registration", namespace, path);
+            LOGGER.warn("Upgrade '{}' not found at runtime; skipping registration", cardId);
         }
     }
 
@@ -137,18 +151,7 @@ public class WcwtMod {
 
     private void addCreativeTabItems(BuildCreativeModeTabContentsEvent event) {
         if (AECreativeTabIds.MAIN.equals(event.getTabKey()) || AE2WTLIB_TAB.equals(event.getTabKey())) {
-            var terminal = (WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
-            event.accept(new ItemStack(terminal));
-
-            var charged = new ItemStack(terminal);
-            terminal.injectAEPower(charged, terminal.getAEMaxPower(charged), Actionable.MODULATE);
-            event.accept(charged);
-            event.accept(ModItems.ADVANCED_CODING_CARD);
-            event.accept(ModItems.COSMETIC_ARMOR_CARD);
-            event.accept(ModItems.CURIOS_CARD);
-            event.accept(ModItems.TOOL_SLOTS_BOX_CARD);
-            event.accept(ModItems.TOOLKIT_CARD);
-            event.accept(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD);
+            ModCreativeTabs.addWcwtItems(event);
         }
     }
 }

@@ -133,6 +133,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedUIButton resonatingLightningPatternCodingButton;
     private FavoriteItemsButton favoriteItemsButton;
     private ViewCellsToggleButton viewCellsToggleButton;
+    private WcwtUniversalTerminalButton universalTerminalButton;
     private boolean viewCellsVisible = WcwtClientConfig.lastViewCellsPanelVisible();
     private @Nullable ViewCellsVisibilityWidget viewCellsVisibilityWidget;
     private @Nullable Renderable viewCellsOverlayRenderable;
@@ -389,6 +390,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         viewCellsToggleButton = addToLeftToolbar(new ViewCellsToggleButton(
                 () -> viewCellsVisible,
                 btn -> toggleViewCellsPanel()));
+        universalTerminalButton = addToLeftToolbar(new WcwtUniversalTerminalButton());
         installViewCellsVisibilityWidget();
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
 
@@ -1543,6 +1545,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             viewCellsToggleButton.visible = viewCellsVisibilityWidget != null;
             viewCellsToggleButton.active = viewCellsToggleButton.visible;
         }
+        if (universalTerminalButton != null) {
+            universalTerminalButton.refresh(menu);
+        }
         if (resonatingLightningPatternCodingButton != null) {
             resonatingLightningPatternCodingButton.visible = !hideExtendedButtons
                     && isExtendedUIAvailable(IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING);
@@ -2064,6 +2069,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        if (universalTerminalButton != null) {
+            universalTerminalButton.refresh(menu);
+        }
         WcwtFavorites.ensureLoaded();
         if (WcwtFavorites.isEnabled()) {
             rebuildFavoriteRepoView();

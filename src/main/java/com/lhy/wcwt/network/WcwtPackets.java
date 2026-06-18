@@ -211,6 +211,18 @@ public class WcwtPackets {
         );
 
         registrar.playToServer(
+            SwitchUniversalTerminalPacket.TYPE,
+            SwitchUniversalTerminalPacket.STREAM_CODEC,
+            SwitchUniversalTerminalPacket::handle
+        );
+
+        registrar.playToServer(
+            SplitUniversalTerminalPacket.TYPE,
+            SplitUniversalTerminalPacket.STREAM_CODEC,
+            SplitUniversalTerminalPacket::handle
+        );
+
+        registrar.playToServer(
             ResonatingLightningPatternActionPacket.TYPE,
             ResonatingLightningPatternActionPacket.STREAM_CODEC,
             ResonatingLightningPatternActionPacket::handle

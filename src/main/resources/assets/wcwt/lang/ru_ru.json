@@ -128,7 +128,9 @@
   "gui.wcwt.multiplier.divide_3": "÷3",
   "gui.wcwt.multiplier.divide_5": "÷5",
 
+  "itemGroup.wcwt.main": "AE2 WCWT",
   "item.wcwt.wireless_comprehensive_work_terminal": "ME комп. терминал",
+  "item.wcwt.wireless_universal_comprehensive_work_terminal": "Беспроводной комплексный неуниверсальный терминал ME",
   "item.wcwt.advanced_coding_card": "Карта расширенного кодирования",
   "item.wcwt.cosmetic_armor_card": "Карта косметической брони",
   "item.wcwt.curios_card": "Карта Curios",
@@ -200,6 +202,15 @@
   "message.wcwt.eco_pattern_uploaded": "Шаблон загружен в подсистему крафта ECO.",
   "message.wcwt.toolkit_network_slot_occupied": "Слот сетевого инструмента AE в наборе уже занят.",
   "message.wcwt.toolkit_network_tool_not_found": "Не найден сетевой инструмент AE на курсоре или в инвентаре.",
+  "gui.wcwt.universal_terminal.next": "Переключить на следующий терминал",
+  "gui.wcwt.universal_terminal.empty": "Встроенных терминалов нет",
+  "gui.wcwt.cycle_terminal.desc": "ЛКМ: переключить на %s",
+  "gui.wcwt.cycle_terminal.desc1": "ПКМ: переключить на %s",
+  "gui.wcwt.cycle_terminal.middle": "СКМ: вернуться к терминалу ME WCWT",
+  "tooltip.wcwt.universal_terminals": "Встроенные терминалы",
+  "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+ПКМ по воздуху: отделить встроенные терминалы",
   "advancements.wcwt.obtain_terminal.title": "Громовой большой терминал!",
-  "advancements.wcwt.obtain_terminal.description": "Получите беспроводной комплексный рабочий терминал ME"
+  "advancements.wcwt.obtain_terminal.description": "Получите беспроводной комплексный рабочий терминал ME",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "Что? Даже громового терминала недостаточно?",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "Получите беспроводной комплексный неуниверсальный терминал ME"
 }

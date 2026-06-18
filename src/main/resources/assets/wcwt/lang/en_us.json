@@ -137,7 +137,9 @@
   "gui.wcwt.multiplier.divide_3": "÷3",
   "gui.wcwt.multiplier.divide_5": "÷5",
   
+  "itemGroup.wcwt.main": "AE2 WCWT",
   "item.wcwt.wireless_comprehensive_work_terminal": "ME WCWT",
+  "item.wcwt.wireless_universal_comprehensive_work_terminal": "ME Wireless Comprehensive Non-Universal Terminal",
   "item.wcwt.advanced_coding_card": "Advanced Coding Card",
   "item.wcwt.cosmetic_armor_card": "Cosmetic Armor Card",
   "item.wcwt.curios_card": "Curios Card",
@@ -209,6 +211,15 @@
   "message.wcwt.eco_pattern_uploaded": "Pattern uploaded to the ECO crafting subsystem.",
   "message.wcwt.toolkit_network_slot_occupied": "The toolkit AE Network Tool slot is already occupied.",
   "message.wcwt.toolkit_network_tool_not_found": "No AE Network Tool found on cursor or in your inventory.",
+  "gui.wcwt.universal_terminal.next": "Switch to next terminal",
+  "gui.wcwt.universal_terminal.empty": "No embedded terminals",
+  "gui.wcwt.cycle_terminal.desc": "Left-click to switch to: %s",
+  "gui.wcwt.cycle_terminal.desc1": "Right-click to switch to: %s",
+  "gui.wcwt.cycle_terminal.middle": "Middle-click to return to: ME WCWT",
+  "tooltip.wcwt.universal_terminals": "Embedded terminals",
+  "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+right-click air to split embedded terminals",
   "advancements.wcwt.obtain_terminal.title": "What a Thunder Terminal!",
-  "advancements.wcwt.obtain_terminal.description": "Obtain a ME Wireless Comprehensive Work Terminal"
+  "advancements.wcwt.obtain_terminal.description": "Obtain a ME Wireless Comprehensive Work Terminal",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "What? Even the Thunder Terminal Wasn't Enough?",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "Obtain a ME Wireless Comprehensive Non-Universal Terminal"
 }

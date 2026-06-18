@@ -1,5 +1,95 @@
 # Changelog
 
+## v1.3.0
+
+### English
+
+#### New Features
+
+1. Added an independent hotkey for opening the ME Comprehensive Work Terminal. The original AE wireless terminal open hotkey is no longer used for this terminal.
+2. Added pattern search highlighting in the pattern management area.
+3. Added Polymorph compatibility for the manual crafting area and pattern encoding area. Conflicting recipes can now be selected and encoded without installing Polymorphic Energistics.
+4. Restored visibility of vanilla AE view cell slots and added a button to show or hide the view cell panel.
+5. Added a default Curios slot for the ME Comprehensive Work Terminal. Other Curios slots can no longer accept this terminal.
+6. Added an optional client config feature to prefer items favorited in the main storage area when encoding or pulling recipes with multiple candidate ingredients. Disabled by default.
+7. Added the advancement "我嘞个雷霆大终端！" for obtaining the terminal for the first time.
+8. Added six extension UI cards: Advanced Coding Card, Cosmetic Armor Card, Curios Card, Network Tool Slot Pack Card, Toolkit Card, and Resonating Overload Encoder Card. Extension UI buttons now only appear when the corresponding card is installed in the upgrade slots.
+9. Added the Wireless Comprehensive Non-Universal Terminal:
+   - Crafted by combining the ME Comprehensive Work Terminal with other wireless terminals.
+   - Similar to the wireless universal terminal, but each terminal remains independent and only shares part of the switching logic.
+   - Left-click the bottom-left terminal switch button to switch to the next terminal, right-click to switch to the previous terminal, and middle-click to return to the comprehensive work terminal.
+   - Unlocks the advancement "什么？雷霆大终端已经满足不了你了嘛！" the first time it is crafted.
+   - Hold the Wireless Comprehensive Non-Universal Terminal and Ctrl+Shift+right-click air to split out the merged terminals.
+
+#### Fixes
+
+1. Fixed server-side pattern provider mapping name changes not taking effect.
+2. Fixed processing recipe encoding with multiple candidates not using existing network patterns.
+3. Fixed EMI-only pattern encoding rendering errors caused by missing JEI classes.
+4. Fixed identical pattern providers in the same pattern management provider list group not being grouped under a shared title.
+5. Fixed space/shift item extraction from the network filling the offhand slot.
+6. Fixed the advanced coding extension UI cell workbench upgrade scrollbar sliding outside the scroll track after inserting a storage cell.
+7. Fixed the visible type configuration screen not being centered the first time it opened.
+8. Fixed tool durability bars or energy bars rendering incompletely for the first 11 fixed toolkit slots when the toolkit was embedded in the pattern management area.
+9. Fixed EMI pattern encoding outputs for fluids or chemicals always being encoded as 0.001B.
+10. Fixed shift-left-clicking items into the terminal while out of power, unlinked, or disconnected inserting items into smithing/anvil workspace empty slots.
+11. Fixed locked crafting grid processing recipe pulls not merging identical ingredients and leaving extra gaps.
+12. Fixed encoded patterns not showing the encoding player information when ExtendedAE-Plus is installed.
+13. Fixed shift-taking results from manual smithing mode not consuming ingredients.
+14. Fixed shift-removing armor from armor slots sending it directly to the ME network, and fixed shift-inserting armor preferring armor slots incorrectly.
+15. Fixed the bottom border of highlighted adjacent pattern provider list slots rendering incompletely.
+16. Fixed the favorited item icon being offset by 1px.
+17. Fixed inaccurate focusing after uploading patterns.
+18. Fixed the quantum bridge card tooltip not showing compatibility with the comprehensive work terminal.
+
+#### Improvements
+
+1. Improved click interaction feel for slots in the pattern management provider list.
+
+### 中文
+
+#### 新增
+
+1. 新增独立的开启ME综合工作终端快捷键，原打开无线终端快捷键不可用；
+2. 新增样板管理区样板搜索高亮；
+3. 手动合成区和样板编码区兼容“多态合成(Polymorph)”模组，无需安装Polymorphic Energistics模组也可编码冲突配方样板；
+4. 修复原版AE显示元件槽位不可见的问题，新增显示/隐藏显示元件面板按钮；
+5. 新增ME综合工作终端饰品栏默认槽位，其它饰品栏不可再放入本终端；
+6. 新增多候选配方编码/拉取物品时优先使用主仓库区收藏物品功能，可在客户端配置中开关，默认关；
+7. 新增首次获得终端时解锁成就“我嘞个雷霆大终端！”；
+8. 新增6种扩展UI卡：高级编码卡、装饰盔甲卡、饰品栏卡、网络工具包卡槽包卡、工具包卡、谐振过载编码器卡，扩展UI按钮必须在升级槽内安装有对应卡时才会显示；
+9. 新增无线综合非通用终端：
+   - 使用ME综合工作终端与其它无线终端可合成；
+   - 与无线通用终端功能类似，但不同终端互相独立，仅供用部分逻辑；
+   - 在左下角切换终端按钮左键可切换下一终端，右键切换上一终端、中键跳转到综合工作终端；
+   - 首次合成时可解锁成就“什么？雷霆大终端已经满足不了你了嘛！”；
+   - 手持无线综合非通用终端ctrl+shift+右键空气可将已合并终端拆分；
+
+#### 修复
+
+1. 修复服务器修改样板映射名称后不生效的bug；
+2. 修复处理配方多候选配方编码时不使用网络里已有样板的bug；
+3. 修复EMI-only 环境下，由于 JEI 类缺失编码样板时提示渲染错误的bug；
+4. 修复样板管理区供应器列表组内多个相同供应器标题不分组显示标题；
+5. 修复空格/shift从网络取物品把副手填满的问题；
+6. 修复高级编码扩展UI界面元件工作台放入存储元件后的升级槽滑块滑动时超出滑动条的bug；
+7. 修复首次打开配置可见类型界面时界面位置未处于正中心的bug；
+8. 修复工具包嵌入样板管理区时，放入前11个固定槽位的工具耐久条或者电量条显示不完整的bug；
+9. 修复使用EMI编码样板且配方产物为流体或者化学品时，编码样板时数量恒为0.001B；
+10. 修复终端在电源不足/未链接/断开链接时按shift+左键物品会进入锻造台区和铁砧区的物品空格栏的bug；
+11. 修复合成网格锁定时，拉取处理配方物品的相同材料不自动合并到一起且存在多余空格的bug；
+12. 修复在安装有ExtendedAE-Plus 模组时编码样板不显示样板编码玩家信息的bug；
+13. 修复手动合成区锻造台模式按住shift取出物品时不消耗原材料的bug；
+14. 修复按住shift从盔甲槽取下盔甲直接放入ME网络、shift放入盔甲优先放入盔甲槽的bug；
+15. 修复样板管理区供应器列表上下相邻槽位间高亮框底部边框显示不完整的问题；
+16. 修复收藏物品图标偏移1px的问题；
+17. 修复上传样板时无法精准聚焦到上传样板位置的问题；
+18. 修复量子桥卡tooltip不显示可用于综合工作终端的问题；
+
+#### 优化
+
+1. 优化样板管理区供应器列表槽位点击交互体验。
+
 ## v1.2.1
 
 ### English

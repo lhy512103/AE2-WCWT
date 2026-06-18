@@ -31,7 +31,7 @@ dependencies {
 
     // Local runtime recipe viewers
     localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
-    localRuntime "dev.emi:emi-neoforge:${emi_version}"
+    // localRuntime "dev.emi:emi-neoforge:${emi_version}"
 
     // Local runtime AE2 addons
     localRuntime "curse.maven:advancedae-1084104:${advancedae_file}"
@@ -43,6 +43,7 @@ dependencies {
     localRuntime "curse.maven:applied-create-1474758:${applied_create_file}"
     localRuntime "curse.maven:mega-cells-622112:${mega_cells_file}"
     localRuntime "curse.maven:applied-mekanistics-574300:${applied_mekanistics_file}"
+    localRuntime "curse.maven:merequester-688367:7844592"
 
     // Local runtime dependencies and integration targets
     localRuntime "curse.maven:glodium-957920:${glodium_file}"
