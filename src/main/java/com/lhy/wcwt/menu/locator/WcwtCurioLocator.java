@@ -26,10 +26,6 @@ public record WcwtCurioLocator(String identifier, int slotIndex) implements Menu
             return null;
         }
 
-        if (hostInterface.isInstance(stack)) {
-            return hostInterface.cast(stack);
-        }
-
         ItemMenuHost menuHost = terminal.getMenuHost(player, this, stack);
         if (hostInterface.isInstance(menuHost)) {
             return hostInterface.cast(menuHost);
@@ -38,6 +34,9 @@ public record WcwtCurioLocator(String identifier, int slotIndex) implements Menu
             WcwtMod.LOGGER.warn(
                     "Item in Curios slot {}[{}] did not create a compatible WCWT menu of type {}: {}",
                     identifier, slotIndex, hostInterface, menuHost);
+        }
+        if (hostInterface.isInstance(stack)) {
+            return hostInterface.cast(stack);
         }
         return null;
     }

@@ -602,6 +602,11 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return getLinkStatus().connected();
     }
 
+    @Override
+    public String getCloseHotkey() {
+        return null;
+    }
+
     public int getCurrentLinkStatusCode() {
         LinkStatus status = getLinkStatus();
         if (shouldPreferOutOfRangeMessage(status)) {

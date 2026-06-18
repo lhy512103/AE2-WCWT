@@ -5,6 +5,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -117,8 +118,7 @@ public final class ByteBufCodecs {
     }
 
     private static Registry<net.minecraft.world.item.Item> itemRegistry(RegistryAccess access) {
-        RegistryAccess actualAccess = access != null ? access : net.minecraft.client.Minecraft.getInstance().level.registryAccess();
-        return actualAccess.registryOrThrow(Registries.ITEM);
+        return access != null ? access.registryOrThrow(Registries.ITEM) : BuiltInRegistries.ITEM;
     }
 
     private static FriendlyByteBuf asFriendly(ByteBuf buf) {

@@ -4854,6 +4854,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         if (inRect(relX, relY, patternManagementAddButton)) {
             playPatternManagementClickSound();
+            // 先在客户端本地更新 EAEP 映射，再发包同步服务端
+            updateClientMapping_Add();
             refreshPatternProviders();
             sendPatternManagementAction(PatternManagementActionPacket.Action.ADD_MAPPING, -1, -1);
             if (patternManageSearchField != null && patternManageMappingField != null
@@ -4866,12 +4868,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (inRect(relX, relY, patternManagementReloadButton)) {
             playPatternManagementClickSound();
+            // 先在客户端本地重载 EAEP 映射，再发包同步服务端
+            updateClientMapping_Reload();
             refreshPatternProviders();
             sendPatternManagementAction(PatternManagementActionPacket.Action.RELOAD_MAPPING, -1, -1);
             return true;
         }
         if (inRect(relX, relY, patternManagementDeleteButton)) {
             playPatternManagementClickSound();
+            // 先在客户端本地删除 EAEP 映射，再发包同步服务端
+            updateClientMapping_Delete();
             refreshPatternProviders();
             sendPatternManagementAction(PatternManagementActionPacket.Action.DELETE_MAPPING, -1, -1);
             clearPatternManagementMappingField();
@@ -5030,6 +5036,44 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
         }
         return -1L;
+    }
+
+    /**
+     * 客户端本地更新 EAEP 映射（增加/更新），确保独服下客户端也能立即使用新映射。
+     */
+    private void updateClientMapping_Add() {
+        if (!ModList.get().isLoaded("extendedae_plus")) return;
+        String search = patternManageSearchField != null ? patternManageSearchField.getValue().trim() : "";
+        String mapping = patternManageMappingField != null ? patternManageMappingField.getValue().trim() : "";
+        if (search.isEmpty() || mapping.isEmpty()) return;
+        try {
+            RecipeTypeNameConfig.addOrUpdateAliasMapping(search, mapping);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * 客户端本地重载 EAEP 映射，确保独服下客户端也能立即刷新。
+     */
+    private void updateClientMapping_Reload() {
+        if (!ModList.get().isLoaded("extendedae_plus")) return;
+        try {
+            RecipeTypeNameConfig.loadRecipeTypeNames();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * 客户端本地删除 EAEP 映射，确保独服下客户端也能立即移除。
+     */
+    private void updateClientMapping_Delete() {
+        if (!ModList.get().isLoaded("extendedae_plus")) return;
+        String mapping = patternManageMappingField != null ? patternManageMappingField.getValue().trim() : "";
+        if (mapping.isEmpty()) return;
+        try {
+            RecipeTypeNameConfig.removeMappingsByCnValue(mapping);
+        } catch (Exception ignored) {
+        }
     }
 
     private void sendPatternManagementAction(PatternManagementActionPacket.Action action, long providerId, int cacheSlot) {
