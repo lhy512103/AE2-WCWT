@@ -1,9 +1,15 @@
+// ──────────────────────────────────────────────────────────────
+//  WCWT – Wireless Comprehensive Work Terminal (Forge 1.20.1)
+//  版本号 → gradle/libs.versions.toml   模组元数据 → gradle.properties
+// ──────────────────────────────────────────────────────────────
+
 buildscript {
     repositories {
         maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
         mavenCentral()
     }
     dependencies {
+        // buildscript 阶段无法访问 version catalog，直接声明版本
         classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
     }
 }
@@ -12,6 +18,10 @@ plugins {
     id 'eclipse'
     id 'idea'
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
+}
+
+configurations {
+    clientRuntimeOnly
 }
 
 apply plugin: 'org.spongepowered.mixin'
@@ -28,6 +38,7 @@ java {
     withSourcesJar()
 }
 
+// ── Forge & mappings ───────────────────────────────────────────
 minecraft {
     mappings channel: mapping_channel, version: mapping_version
     copyIdeResources = true
@@ -40,6 +51,7 @@ minecraft {
             property 'forge.logging.console.level', 'info'
             property 'mixin.env.remapRefMap', 'true'
             property 'mixin.env.refMapRemappingFile', "${projectDir}/build/createSrgToMcp/output.srg"
+            property 'wcwt.debug.jeiBookmark', 'true'
 
             mods {
                 "${mod_id}" {
@@ -47,11 +59,9 @@ minecraft {
                 }
             }
         }
-
         client {
             property 'forge.enabledGameTestNamespaces', mod_id
         }
-
         server {
             property 'forge.enabledGameTestNamespaces', mod_id
             args '--nogui'
@@ -64,27 +74,12 @@ mixin {
     config "${mod_id}.mixins.json"
 }
 
+// ── 仓库 ──────────────────────────────────────────────────────
 repositories {
-    flatDir {
-        dirs 'libs'
-    }
+    flatDir { dirs 'libs' }
+
     mavenCentral()
-    maven {
-        url = 'https://maven.blamejared.com/'
-        content {
-            includeGroup 'mezz.jei'
-        }
-    }
-    exclusiveContent {
-        forRepository {
-            maven {
-                url = 'https://cursemaven.com'
-            }
-        }
-        filter {
-            includeGroup 'curse.maven'
-        }
-    }
+
     maven {
         url = 'https://modmaven.dev/'
         content {
@@ -93,55 +88,45 @@ repositories {
             includeGroup 'org.appliedenergistics'
         }
     }
+
+    maven {
+        url = 'https://maven.blamejared.com/'
+        content { includeGroup 'mezz.jei' }
+    }
+
+    exclusiveContent {
+        forRepository { maven { url = 'https://cursemaven.com' } }
+        filter { includeGroup 'curse.maven' }
+    }
+
     maven {
         url = 'https://api.modrinth.com/maven'
-        content {
-            includeGroup 'maven.modrinth'
-        }
+        content { includeGroup 'maven.modrinth' }
     }
+
+    maven {
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content { includeGroup 'software.bernie.geckolib' }
+    }
+
     maven { url = 'https://maven.terraformersmc.com/releases/' }
     maven { url = 'https://maven.shedaniel.me/' }
     maven { url = 'https://maven.theillusivec4.top/' }
     maven { url = 'https://maven.architectury.dev/' }
 }
 
-dependencies {
-    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+// ── 依赖（抽取到 dependencies.gradle） ─────────────────────────
+apply from: 'dependencies.gradle'
 
-    implementation "appeng:appliedenergistics2-forge:${ae2_version}"
-    runtimeOnly fg.deobf("org.appliedenergistics:guideme:${guideme_version}")
-
-    implementation fg.deobf("maven.modrinth:applied-energistics-2-wireless-terminals:${ae2wtlib_version}")
-    compileOnly "io.github.llamalad7:mixinextras-neoforge:0.4.1"
-    runtimeOnly fg.deobf("me.shedaniel.cloth:cloth-config-forge:${cloth_version}")
-    runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
-    compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}:api")
-    // Development runtime only. WCWT still does not declare Curios as a hard dependency in mods.toml.
-    runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${curios_version}")
-    compileOnly "curse.maven:extendedae-plus-1337639:8141730"
-
-//    compileOnly "mezz.jei:jei-${minecraft_version}-common-api:${jei_version}"
-//    compileOnly "mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}"
-    compileOnly "mezz.jei:jei-${minecraft_version}-forge:${jei_version}"
-    // 临时开发硬编码：把 JEI 放进 runClient/runtime，方便调 JEI 覆盖区/配方转移。
-    // 如需恢复“纯软依赖”，删除下面这一行即可；上面 compileOnly API 保留给源码编译。
-    runtimeOnly fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-    // 如果后续要临时把 JEI 完全并入主编译类路径，也可以把上面的 compileOnly forge 改成：
-    // implementation fg.deobf("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-
-    compileOnly "dev.emi:emi-forge:${emi_version}:api"
-
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
-}
-
+// ── 资源替换 ──────────────────────────────────────────────────
 tasks.named('processResources', ProcessResources).configure {
     var replaceProperties = [
-            minecraft_version      : minecraft_version,
-            minecraft_version_range: minecraft_version_range,
-            forge_version          : forge_version,
-            forge_version_range    : forge_version_range,
-            loader_version_range   : loader_version_range,
-            ae2wtlib_version       : ae2wtlib_version,
+            minecraft_version      : libs.versions.minecraft.get(),
+            minecraft_version_range: "[${libs.versions.minecraft.get()},1.21)",
+            forge_version          : libs.versions.forge.get(),
+            forge_version_range    : '[47,)',
+            loader_version_range   : '[47,)',
+            ae2wtlib_version       : libs.versions.ae2wtlib.get(),
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,
@@ -158,6 +143,7 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
+// ── JAR manifest ──────────────────────────────────────────────
 tasks.named('jar', Jar).configure {
     manifest {
         attributes([
@@ -173,6 +159,14 @@ tasks.named('jar', Jar).configure {
     finalizedBy 'reobfJar'
 }
 
+// ── 客户端专用运行依赖 ──────────────────────────────────────────
+tasks.withType(JavaExec).configureEach {
+    if (name == 'runClient') {
+        classpath += configurations.clientRuntimeOnly
+    }
+}
+
+// ── 编译选项 ──────────────────────────────────────────────────
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }

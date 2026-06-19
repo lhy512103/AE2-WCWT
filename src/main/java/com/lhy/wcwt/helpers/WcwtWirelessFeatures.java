@@ -5,7 +5,9 @@ import appeng.api.config.FuzzyMode;
 import appeng.api.config.IncludeExclude;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
 import appeng.api.upgrades.IUpgradeableItem;
 import appeng.me.helpers.PlayerSource;
 import appeng.menu.locator.MenuLocator;
@@ -48,6 +50,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 public final class WcwtWirelessFeatures {
     private static final ResourceLocation MAGNET_CARD_ID =
@@ -56,6 +59,7 @@ public final class WcwtWirelessFeatures {
     private static final boolean DEBUG_MAGNET = Boolean.getBoolean("wcwt.debug.magnet");
     private static final boolean DEBUG_PICK_BLOCK =
             Boolean.getBoolean("wcwt.debug.pickBlock") || Boolean.getBoolean("wcwt.debug.toolkit") || DEBUG_MAGNET;
+    private static final boolean DEBUG_JEI_BOOKMARK = Boolean.getBoolean("wcwt.debug.jeiBookmark");
     private static final WeakHashMap<ServerPlayer, Integer> RESTOCK_SYNC_TICKS = new WeakHashMap<>();
     private static final WeakHashMap<ServerPlayer, Integer> MAGNET_DEBUG_TICKS = new WeakHashMap<>();
 
@@ -242,6 +246,12 @@ public final class WcwtWirelessFeatures {
                 instanceof WirelessComprehensiveWorkTerminalItem;
     }
 
+    public static boolean hasAnyTerminal(Player player) {
+        boolean found = player != null && findHotkeyTerminalTarget(player, stack -> true) != null;
+        debugJeiBookmarkAny(player, "hasAnyTerminal found={}", found);
+        return found;
+    }
+
     public static String describePickBlockTerminals(Player player) {
         if (player == null) {
             return "player=<null>";
@@ -329,6 +339,48 @@ public final class WcwtWirelessFeatures {
     }
 
     public static void pickBlock(ServerPlayer player, ItemStack requestedStack) {
+        AEItemKey key = AEItemKey.of(requestedStack);
+        if (key == null) {
+            debugPickBlock(player, "skipped: requested stack has no AE item key, requested={}",
+                    describeStack(requestedStack));
+            return;
+        }
+        pickBlock(player, key, requestedStack.getMaxStackSize(), HotbarTarget.REPLACE_SELECTED,
+                stack -> getBoolean(stack, "pick_block"));
+    }
+
+    public static void orderJeiBookmark(ServerPlayer player, @Nullable GenericStack requestedStack) {
+        debugJeiBookmark(player, "server received order requested={}", requestedStack);
+        if (requestedStack == null || requestedStack.what() == null || requestedStack.amount() <= 0) {
+            debugPickBlock(player, "JEI bookmark skipped: requested stack invalid: {}", requestedStack);
+            debugJeiBookmark(player, "server skipped order: invalid stack");
+            return;
+        }
+        AEKey what = requestedStack.what();
+        if (what instanceof AEItemKey itemKey) {
+            // 取出/合成：与 EAEP 原版一致，尝试取出一整组（maxStackSize）；
+            // 若库存为空但可合成，pickBlock 内部会打开合成数量界面。
+            int targetAmount = itemKey.toStack(1).getMaxStackSize();
+            debugJeiBookmark(player, "server handling item order key={}, targetAmount={}", itemKey, targetAmount);
+            pickBlock(player, itemKey, targetAmount, HotbarTarget.FREE_SLOT, stack -> true);
+            return;
+        }
+        debugJeiBookmark(player, "server handling craft order key={}", what);
+        openCraftingAmountMenu(player, what, true);
+    }
+
+    public static void openJeiBookmarkCrafting(ServerPlayer player, @Nullable GenericStack requestedStack) {
+        debugJeiBookmark(player, "server received craft open requested={}", requestedStack);
+        if (requestedStack == null || requestedStack.what() == null || requestedStack.amount() <= 0) {
+            debugJeiBookmark(player, "server skipped craft open: invalid stack");
+            return;
+        }
+        openCraftingAmountMenu(player, requestedStack.what(), true);
+    }
+
+    private static void pickBlock(ServerPlayer player, AEItemKey what, int targetAmount, HotbarTarget hotbarTarget,
+                                  Predicate<ItemStack> terminalPredicate) {
+        ItemStack requestedStack = what.toStack(Math.max(1, targetAmount));
         int existingSlot = requestedStack.isEmpty() ? -1 : player.getInventory().findSlotMatchingItem(requestedStack);
         debugPickBlock(player, "server handling requested={}, existingSlot={}, terminals={}",
                 describeStack(requestedStack), existingSlot, describePickBlockTerminals(player));
@@ -336,14 +388,14 @@ public final class WcwtWirelessFeatures {
             debugPickBlock(player, "skipped: requested stack empty");
             return;
         }
-        if (existingSlot != -1) {
+        if (hotbarTarget == HotbarTarget.REPLACE_SELECTED && existingSlot != -1) {
             debugPickBlock(player, "skipped: requested stack already in player inventory slot={}", existingSlot);
             return;
         }
         var terminalTarget = findTerminalTarget(player,
-                stack -> getBoolean(stack, "pick_block"), true);
+                terminalPredicate, true);
         if (terminalTarget == null) {
-            debugPickBlock(player, "skipped: no WCWT terminal with pick_block enabled");
+            debugPickBlock(player, "skipped: no WCWT terminal found");
             return;
         }
 
@@ -361,22 +413,18 @@ public final class WcwtWirelessFeatures {
         var playerSource = new PlayerSource(player);
 
         var inventory = player.getInventory();
-        int targetSlot = inventory.getSuitableHotbarSlot();
-        var toReplace = inventory.getItem(targetSlot);
+        int targetSlot = hotbarTarget == HotbarTarget.FREE_SLOT ? inventory.getFreeSlot() : inventory.getSuitableHotbarSlot();
+        if (targetSlot < 0) {
+            debugPickBlock(player, "skipped: player inventory has no target slot");
+            return;
+        }
+        var toReplace = hotbarTarget == HotbarTarget.FREE_SLOT ? ItemStack.EMPTY : inventory.getItem(targetSlot);
 
-        var insert = networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(), Actionable.SIMULATE,
-                playerSource);
+        var insert = toReplace.isEmpty() ? 0 : networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(),
+                Actionable.SIMULATE, playerSource);
         if (insert < toReplace.getCount()) {
             debugPickBlock(player, "skipped: cannot store replaced stack={}, inserted={}, terminal={}",
                     describeStack(toReplace), insert, describeStack(terminal));
-            return;
-        }
-
-        int targetAmount = requestedStack.getMaxStackSize();
-        var what = AEItemKey.of(requestedStack);
-        if (what == null) {
-            debugPickBlock(player, "skipped: requested stack has no AE item key, requested={}",
-                    describeStack(requestedStack));
             return;
         }
 
@@ -397,8 +445,8 @@ public final class WcwtWirelessFeatures {
             return;
         }
 
-        insert = networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(), Actionable.MODULATE,
-                playerSource);
+        insert = toReplace.isEmpty() ? 0 : networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(),
+                Actionable.MODULATE, playerSource);
         if (insert < toReplace.getCount()) {
             toReplace.setCount(toReplace.getCount() - (int) insert);
             inventory.setItem(targetSlot, toReplace);
@@ -417,11 +465,37 @@ public final class WcwtWirelessFeatures {
 
         requestedStack.setCount((int) extracted);
         inventory.setItem(targetSlot, requestedStack);
-        inventory.selected = targetSlot;
-        player.connection.send(new ClientboundSetCarriedItemPacket(inventory.selected));
+        if (hotbarTarget == HotbarTarget.REPLACE_SELECTED) {
+            inventory.selected = targetSlot;
+            player.connection.send(new ClientboundSetCarriedItemPacket(inventory.selected));
+        }
         player.inventoryMenu.broadcastChanges();
         debugPickBlock(player, "inserted into hotbar: requested={}, extracted={}, targetSlot={}, terminal={}",
                 describeStack(requestedStack), extracted, targetSlot, describeStack(terminal));
+    }
+
+    private static void openCraftingAmountMenu(ServerPlayer player, AEKey what, boolean requireCraftable) {
+        var terminalTarget = findTerminalTarget(player, stack -> true, true);
+        if (terminalTarget == null) {
+            debugPickBlock(player, "craft menu skipped: no WCWT terminal found for key={}", what);
+            debugJeiBookmark(player, "craft menu skipped: no WCWT terminal found key={}", what);
+            return;
+        }
+        IGrid grid = getGrid(player, terminalTarget);
+        if (grid == null || grid.getCraftingService() == null) {
+            debugPickBlock(player, "craft menu skipped: grid/crafting missing for key={}", what);
+            debugJeiBookmark(player, "craft menu skipped: grid/crafting missing key={}, terminalSource={}",
+                    what, terminalTarget.sourceDescription());
+            return;
+        }
+        if (requireCraftable && grid.getCraftingService().getCraftingFor(what).isEmpty()) {
+            debugPickBlock(player, "craft menu skipped: key is not craftable key={}", what);
+            debugJeiBookmark(player, "craft menu skipped: key is not craftable key={}", what);
+            return;
+        }
+        debugJeiBookmark(player, "opening WCWT craft amount menu key={}, locator={}, source={}",
+                what, terminalTarget.locator(), terminalTarget.sourceDescription());
+        CraftAmountMenu.open(player, terminalTarget.locator(), what, 1);
     }
 
     private static boolean canInsertPickup(ItemStack terminal, ItemStack stack, ServerPlayer player) {
@@ -763,6 +837,26 @@ public final class WcwtWirelessFeatures {
         WcwtMod.LOGGER.info("WCWT pick-block debug: player={}, " + message, withPlayer);
     }
 
+    private static void debugJeiBookmark(ServerPlayer player, String message, Object... args) {
+        if (!DEBUG_JEI_BOOKMARK) {
+            return;
+        }
+        Object[] withPlayer = new Object[args.length + 1];
+        withPlayer[0] = player.getScoreboardName();
+        System.arraycopy(args, 0, withPlayer, 1, args.length);
+        WcwtMod.LOGGER.info("WCWT JEI bookmark debug: player={}, " + message, withPlayer);
+    }
+
+    private static void debugJeiBookmarkAny(Player player, String message, Object... args) {
+        if (!DEBUG_JEI_BOOKMARK) {
+            return;
+        }
+        Object[] withPlayer = new Object[args.length + 1];
+        withPlayer[0] = player == null ? "<null>" : player.getScoreboardName();
+        System.arraycopy(args, 0, withPlayer, 1, args.length);
+        WcwtMod.LOGGER.info("WCWT JEI bookmark debug: player={}, " + message, withPlayer);
+    }
+
     private static String describeStack(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return "<empty>";
@@ -785,5 +879,10 @@ public final class WcwtWirelessFeatures {
             }
             return locator == null ? "<direct stack>" : locator.toString();
         }
+    }
+
+    private enum HotbarTarget {
+        REPLACE_SELECTED,
+        FREE_SLOT
     }
 }

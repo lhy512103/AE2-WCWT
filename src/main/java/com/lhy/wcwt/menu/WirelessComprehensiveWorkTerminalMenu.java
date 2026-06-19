@@ -4330,7 +4330,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      *     - List&lt;GenericStack&gt; getSparseOutputs()
      *     - LinkedHashMap&lt;AEKey,Direction&gt; getDirectionMap()
      *   net.pedroksl.advanced_ae.common.patterns.AdvPatternDetailsEncoder
-     *     - static ItemStack encodeProcessingPattern(List, List, HashMap)
+     *     - static ItemStack encodeProcessingPattern(GenericStack[], GenericStack[], HashMap)
      */
     private static final class AdvAeBridge {
         private static volatile boolean inited = false;
@@ -4354,7 +4354,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                         "net.pedroksl.advanced_ae.common.patterns.AdvPatternDetailsEncoder");
                 encoderEncode = encoderClass.getMethod(
                         "encodeProcessingPattern",
-                        java.util.List.class, java.util.List.class, HashMap.class);
+                        GenericStack[].class, GenericStack[].class, HashMap.class);
                 return true;
             } catch (Throwable t) {
                 advPatternClass = null;
@@ -4372,17 +4372,17 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 var detail = PatternDetailsHelper.decodePattern(stack, level);
                 if (detail == null) return null;
 
-                java.util.List<GenericStack> sparseInputs;
-                java.util.List<GenericStack> sparseOutputs;
+                GenericStack[] sparseInputs;
+                GenericStack[] sparseOutputs;
                 LinkedHashMap<AEKey, Direction> dirMap;
 
                 if (advPatternClass.isInstance(detail)) {
-                    sparseInputs  = (java.util.List<GenericStack>) advGetSparseInputs.invoke(detail);
-                    sparseOutputs = (java.util.List<GenericStack>) advGetSparseOutputs.invoke(detail);
-                    dirMap = (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail);
+                    sparseInputs  = (GenericStack[]) advGetSparseInputs.invoke(detail);
+                    sparseOutputs = (GenericStack[]) advGetSparseOutputs.invoke(detail);
+                    dirMap = new LinkedHashMap<>((LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail));
                 } else if (detail instanceof appeng.crafting.pattern.AEProcessingPattern proc) {
-                    sparseInputs  = java.util.Arrays.asList(proc.getSparseInputs());
-                    sparseOutputs = java.util.Arrays.asList(proc.getSparseOutputs());
+                    sparseInputs  = proc.getSparseInputs();
+                    sparseOutputs = proc.getSparseOutputs();
                     dirMap = new LinkedHashMap<>();
                     for (var input : sparseInputs) {
                         if (input != null) dirMap.putIfAbsent(input.what(), null);
@@ -4411,9 +4411,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 if (detail == null || !advPatternClass.isInstance(detail)) return null;
 
                 var sparseInputs = replaceInStacks(
-                        (List<GenericStack>) advGetSparseInputs.invoke(detail), replaceWhat, replaceWith);
+                        java.util.Arrays.asList((GenericStack[]) advGetSparseInputs.invoke(detail)), replaceWhat, replaceWith)
+                        .toArray(new GenericStack[0]);
                 var sparseOutputs = replaceInStacks(
-                        (List<GenericStack>) advGetSparseOutputs.invoke(detail), replaceWhat, replaceWith);
+                        java.util.Arrays.asList((GenericStack[]) advGetSparseOutputs.invoke(detail)), replaceWhat, replaceWith)
+                        .toArray(new GenericStack[0]);
                 var dirMap = new LinkedHashMap<>(
                         (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail));
                 if (dirMap.containsKey(replaceWhat)) {
@@ -4440,8 +4442,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 var detail = PatternDetailsHelper.decodePattern(stack, level);
                 if (detail == null || !advPatternClass.isInstance(detail)) return null;
 
-                var input = ((List<GenericStack>) advGetSparseInputs.invoke(detail)).toArray(new GenericStack[0]);
-                var output = ((List<GenericStack>) advGetSparseOutputs.invoke(detail)).toArray(new GenericStack[0]);
+                var input = (GenericStack[]) advGetSparseInputs.invoke(detail);
+                var output = (GenericStack[]) advGetSparseOutputs.invoke(detail);
                 if (!checkCanModify(input, scale, divide) || !checkCanModify(output, scale, divide)) {
                     return null;
                 }
@@ -4455,8 +4457,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
                 Object result = encoderEncode.invoke(
                         null,
-                        java.util.Arrays.asList(scaledInput),
-                        java.util.Arrays.asList(scaledOutput),
+                        scaledInput,
+                        scaledOutput,
                         new HashMap<>(dirMap));
                 return result instanceof ItemStack is ? is : null;
             } catch (Throwable t) {
@@ -4472,9 +4474,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 var detail = PatternDetailsHelper.decodePattern(stack, level);
                 if (detail == null || !advPatternClass.isInstance(detail)) return null;
 
-                var input = (List<GenericStack>) advGetSparseInputs.invoke(detail);
-                var output = (List<GenericStack>) advGetSparseOutputs.invoke(detail);
-                long gcd = computeSharedGcd(input, output);
+                var input = (GenericStack[]) advGetSparseInputs.invoke(detail);
+                var output = (GenericStack[]) advGetSparseOutputs.invoke(detail);
+                long gcd = computeSharedGcd(java.util.Arrays.asList(input), java.util.Arrays.asList(output));
                 if (gcd <= 1L) {
                     return null;
                 }
@@ -4483,8 +4485,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
                 Object result = encoderEncode.invoke(
                         null,
-                        divideStacks(input, gcd),
-                        divideStacks(output, gcd),
+                        divideStacks(java.util.Arrays.asList(input), gcd).toArray(new GenericStack[0]),
+                        divideStacks(java.util.Arrays.asList(output), gcd).toArray(new GenericStack[0]),
                         new HashMap<>(dirMap));
                 return result instanceof ItemStack is ? is : null;
             } catch (Throwable t) {
@@ -4500,8 +4502,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 var detail = PatternDetailsHelper.decodePattern(stack, level);
                 if (detail == null || !advPatternClass.isInstance(detail)) return null;
 
-                var input = (List<GenericStack>) advGetSparseInputs.invoke(detail);
-                var output = ((List<GenericStack>) advGetSparseOutputs.invoke(detail)).toArray(new GenericStack[0]);
+                var input = (GenericStack[]) advGetSparseInputs.invoke(detail);
+                var output = (GenericStack[]) advGetSparseOutputs.invoke(detail);
                 var rotatedOutput = rotateOutputs(output);
                 var dirMap = new LinkedHashMap<>(
                         (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail));
@@ -4509,7 +4511,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 Object result = encoderEncode.invoke(
                         null,
                         input,
-                        java.util.Arrays.asList(rotatedOutput),
+                        rotatedOutput,
                         new HashMap<>(dirMap));
                 return result instanceof ItemStack is ? is : null;
             } catch (Throwable t) {

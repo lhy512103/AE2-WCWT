@@ -12,9 +12,12 @@
     "WcwtServerPlayerGameModeMixin",
     "compat.eaep.WcwtEaepCuriosItemLocatorMixin",
     "compat.eaep.WcwtEaepOpenCraftFromJeiC2SPacketMixin",
-    "compat.eaep.WcwtEaepPullFromJeiOrCraftC2SPacketMixin"
+    "compat.eaep.WcwtEaepPullFromJeiOrCraftC2SPacketMixin",
+    "guideme.GuideMEClientMixin"
   ],
   "client": [
+    "compat.eaep.WcwtEaepInputEventsMixin",
+    "compat.jei.WcwtJeiBookmarkInputHandlerMixin",
     "client.WcwtMinecraftPickBlockMixin"
   ],
   "injectors": {

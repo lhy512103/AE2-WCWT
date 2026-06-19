@@ -1,28 +1,62 @@
 package com.lhy.wcwt.mixin.compat.eaep;
 
 import appeng.api.stacks.GenericStack;
-import com.extendedae_plus.network.PullFromJeiOrCraftC2SPacket;
-import com.lhy.wcwt.compat.eaep.WcwtEaepJeiCraftingCompat;
+import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Coerce;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(value = PullFromJeiOrCraftC2SPacket.class, remap = false)
-public abstract class WcwtEaepPullFromJeiOrCraftC2SPacketMixin {
-    @Shadow
-    @Final
-    private GenericStack stack;
+import java.lang.reflect.Field;
+import java.util.function.Supplier;
 
-    @Inject(method = "lambda$handle$1", at = @At("HEAD"), cancellable = true, remap = false)
-    private static void wcwt$handleCurioWcwt(NetworkEvent.Context context, PullFromJeiOrCraftC2SPacket packet,
+@Mixin(targets = "com.extendedae_plus.network.PullFromJeiOrCraftC2SPacket", remap = false)
+public abstract class WcwtEaepPullFromJeiOrCraftC2SPacketMixin {
+    @Unique
+    private static Field wcwt$stackField;
+
+    @Inject(
+            method = "handle(Lcom/extendedae_plus/network/PullFromJeiOrCraftC2SPacket;Ljava/util/function/Supplier;)V",
+            at = @At("HEAD"),
+            cancellable = true,
+            remap = false)
+    private static void wcwt$handleWithWcwt(@Coerce Object packet,
+                                            Supplier<NetworkEvent.Context> contextSupplier,
                                             CallbackInfo ci) {
-        GenericStack stack = ((WcwtEaepPullFromJeiOrCraftC2SPacketMixin) (Object) packet).stack;
-        if (WcwtEaepJeiCraftingCompat.handlePullFromJeiOrCraft(context.getSender(), stack)) {
-            ci.cancel();
+        NetworkEvent.Context context = contextSupplier.get();
+        ServerPlayer player = context.getSender();
+        if (player == null || !WcwtWirelessFeatures.hasAnyTerminal(player)) {
+            return;
         }
+
+        GenericStack stack = wcwt$getStack(packet);
+        context.enqueueWork(() -> WcwtWirelessFeatures.orderJeiBookmark(player, stack));
+        context.setPacketHandled(true);
+        ci.cancel();
+    }
+
+    @Unique
+    private static GenericStack wcwt$getStack(Object packet) {
+        try {
+            Object value = wcwt$getStackField(packet).get(packet);
+            return value instanceof GenericStack stack ? stack : null;
+        } catch (ReflectiveOperationException | LinkageError ignored) {
+            return null;
+        }
+    }
+
+    @Unique
+    private static Field wcwt$getStackField(Object packet) throws ReflectiveOperationException {
+        Field field = wcwt$stackField;
+        if (field == null || field.getDeclaringClass() != packet.getClass()) {
+            field = packet.getClass().getDeclaredField("stack");
+            field.setAccessible(true);
+            wcwt$stackField = field;
+        }
+        return field;
     }
 }

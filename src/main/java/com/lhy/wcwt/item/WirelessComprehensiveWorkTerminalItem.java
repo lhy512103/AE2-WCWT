@@ -8,6 +8,7 @@ import appeng.core.localization.PlayerMessages;
 import appeng.items.tools.powered.WirelessCraftingTerminalItem;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
+import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
 import net.minecraft.core.BlockPos;
@@ -110,6 +111,16 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
     public boolean openFromCurio(Player player, MenuLocator locator, ItemStack stack, boolean returningFromSubmenu) {
         if (checkPreconditions(stack, player)) {
             return MenuOpener.open(getMenuType(), player, locator, returningFromSubmenu);
+        }
+        return false;
+    }
+
+    @Override
+    protected boolean openFromInventory(Player player, int inventorySlot, boolean returningFromSubmenu) {
+        ItemStack stack = player.getInventory().getItem(inventorySlot);
+        if (checkPreconditions(stack, player)) {
+            return MenuOpener.open(getMenuType(), player, MenuLocators.forInventorySlot(inventorySlot),
+                    returningFromSubmenu);
         }
         return false;
     }

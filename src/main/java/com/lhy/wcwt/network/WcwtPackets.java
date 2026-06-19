@@ -39,6 +39,8 @@ public class WcwtPackets {
                 WirelessSettingsPacket.STREAM_CODEC, WirelessSettingsPacket::handle);
         ModNetworking.registerServerbound(id++, WcwtPickBlockPacket.class, WcwtPickBlockPacket.TYPE,
                 WcwtPickBlockPacket.STREAM_CODEC, WcwtPickBlockPacket::handle);
+        ModNetworking.registerServerbound(id++, WcwtJeiBookmarkOrderPacket.class, WcwtJeiBookmarkOrderPacket.TYPE,
+                WcwtJeiBookmarkOrderPacket.STREAM_CODEC, WcwtJeiBookmarkOrderPacket::handle);
         ModNetworking.registerClientbound(id++, WcwtRestockAmountsPacket.class, WcwtRestockAmountsPacket.TYPE,
                 WcwtRestockAmountsPacket.STREAM_CODEC, WcwtRestockAmountsPacket::handle);
         ModNetworking.registerClientbound(id++, WcwtUpdateRestockPacket.class, WcwtUpdateRestockPacket.TYPE,

@@ -30,4 +30,7 @@ forge*changelog.txt
 
 # keep only intentionally vendored jars
 libs/*
-!libs/ae2wtlib-15.2.2-forge.jar
+!libs/caramelChat-mc1.20.1-forge-1.2.0.jar
+!libs/configuration-forge-1.20.1-2.2.1.jar
+!libs/cosmetic-armor-reworked-1.20.1-1a.jar
+!libs/Searchables-forge-1.20.1-1.0.3.jar
