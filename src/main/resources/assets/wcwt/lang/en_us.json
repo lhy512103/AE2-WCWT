@@ -244,6 +244,12 @@
   "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "On: when JEI/EMI transfers GTCEu processing recipes into the pattern encoding area, remove catalyst-like item inputs that are not consumed. Default on.",
   "wcwt.config.expandToolkitInManagementArea": "Expand toolkit in management area",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "On: opening the toolkit shows it in the pattern management area and hides provider rows. Off: keep the original right-side toolkit panel.",
+  "wcwt.config.priorityShiftMoveToCosmeticArmor": "Prioritize cosmetic armor Shift move",
+  "wcwt.config.priorityShiftMoveToCosmeticArmor.tooltip": "On: while the Cosmetic Armor extended UI is open, Shift-clicking armor in the inventory tries cosmetic armor slots first.",
+  "wcwt.config.priorityShiftMoveToCardBox": "Prioritize card box Shift move",
+  "wcwt.config.priorityShiftMoveToCardBox.tooltip": "On: while the Card Box is open, Shift-clicking upgrade cards in the inventory or ME network tries the card box first.",
+  "wcwt.config.priorityShiftMoveToToolkit": "Prioritize toolkit Shift move",
+  "wcwt.config.priorityShiftMoveToToolkit.tooltip": "On: while the Toolkit is open, Shift-clicking eligible non-stackable inventory items tries toolkit slots first.",
 
   "message.wcwt.pull_no_link": "WCWT: the terminal is not connected to an available ME network.",
   "message.wcwt.pull_no_inputs": "WCWT: this JEI recipe has no item inputs to pull.",

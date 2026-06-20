@@ -20,6 +20,9 @@ public final class WcwtClientConfig {
     public static final ForgeConfigSpec.BooleanValue PREFER_FAVORITES_FOR_PATTERN_ENCODING;
     public static final ForgeConfigSpec.BooleanValue FILL_PROVIDER_SEARCH_FROM_JEI_BOOKMARK;
     public static final ForgeConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
+    public static final ForgeConfigSpec.BooleanValue PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR;
+    public static final ForgeConfigSpec.BooleanValue PRIORITY_SHIFT_MOVE_TO_CARD_BOX;
+    public static final ForgeConfigSpec.BooleanValue PRIORITY_SHIFT_MOVE_TO_TOOLKIT;
     public static final ForgeConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
     public static final ForgeConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
     public static final ForgeConfigSpec.BooleanValue LAST_OTHER_KEY_TYPES_FILTER;
@@ -67,6 +70,18 @@ public final class WcwtClientConfig {
                 .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel. Saving wcwt-client.toml usually reloads without restart.")
                 .translation("wcwt.config.expandToolkitInManagementArea")
                 .define("expandToolkitInManagementArea", false);
+        PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR = BUILDER
+                .comment("If true: while the Cosmetic Armor extended UI is open, shift-clicking armor from the inventory prefers cosmetic armor slots first.")
+                .translation("wcwt.config.priorityShiftMoveToCosmeticArmor")
+                .define("priorityShiftMoveToCosmeticArmor", true);
+        PRIORITY_SHIFT_MOVE_TO_CARD_BOX = BUILDER
+                .comment("If true: while the Card Box extended UI is open, shift-clicking upgrade cards from the inventory or ME network prefers card box slots first.")
+                .translation("wcwt.config.priorityShiftMoveToCardBox")
+                .define("priorityShiftMoveToCardBox", true);
+        PRIORITY_SHIFT_MOVE_TO_TOOLKIT = BUILDER
+                .comment("If true: while the Toolkit extended UI is open, shift-clicking eligible non-stackable tools from the inventory prefers toolkit slots first.")
+                .translation("wcwt.config.priorityShiftMoveToToolkit")
+                .define("priorityShiftMoveToToolkit", true);
         LAST_MANAGEMENT_TOOLKIT_OPEN = BUILDER
                 .comment("Remembers whether the management-area toolkit was open the last time this client closed the terminal.")
                 .define("lastManagementToolkitOpen", false);
@@ -127,6 +142,18 @@ public final class WcwtClientConfig {
 
     public static boolean expandToolkitInManagementArea() {
         return EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.get();
+    }
+
+    public static boolean priorityShiftMoveToCosmeticArmor() {
+        return PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR.get();
+    }
+
+    public static boolean priorityShiftMoveToCardBox() {
+        return PRIORITY_SHIFT_MOVE_TO_CARD_BOX.get();
+    }
+
+    public static boolean priorityShiftMoveToToolkit() {
+        return PRIORITY_SHIFT_MOVE_TO_TOOLKIT.get();
     }
 
     public static boolean lastManagementToolkitOpen() {

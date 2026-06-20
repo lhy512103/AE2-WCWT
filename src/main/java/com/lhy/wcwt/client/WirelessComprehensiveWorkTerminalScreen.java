@@ -830,6 +830,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void init() {
         super.init();
+        syncQuickMoveOptionsToMenu();
         if (otherKeyTypesOnly) {
             setAe2TypeFilter(TypeFilter.ALL);
         }
@@ -858,6 +859,20 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         initExtendedUIButtons();
         initializePanels();
         updateManualWorkspaceUi();
+    }
+
+    private void syncQuickMoveOptionsToMenu() {
+        int options = 0;
+        if (WcwtClientConfig.priorityShiftMoveToCosmeticArmor()) {
+            options |= WirelessComprehensiveWorkTerminalMenu.QUICK_MOVE_TO_COSMETIC_ARMOR;
+        }
+        if (WcwtClientConfig.priorityShiftMoveToCardBox()) {
+            options |= WirelessComprehensiveWorkTerminalMenu.QUICK_MOVE_TO_CARD_BOX;
+        }
+        if (WcwtClientConfig.priorityShiftMoveToToolkit()) {
+            options |= WirelessComprehensiveWorkTerminalMenu.QUICK_MOVE_TO_TOOLKIT;
+        }
+        menu.syncQuickMoveOptionsFromClient(options);
     }
 
     private void syncRepoRowSize() {
@@ -1305,13 +1320,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var host = menu.getMenuHost();
         if (host == null) return;
 
-        if (type == IExtendedUIHost.ExtendedUIType.TOOLKIT && shouldUseManagementToolkit()) {
-            managementToolkitOpen = !managementToolkitOpen;
-            rememberManagementToolkitOpenState(managementToolkitOpen);
-            updateExtendedUIVisibility();
-            return;
-        }
-        
         // 如果点击的是当前已打开的UI，则关闭它
         IExtendedUIHost.ExtendedUIType newType;
         if (host.getCurrentExtendedUI() == type) {
@@ -1321,6 +1329,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             newType = type;
             host.setCurrentExtendedUI(type);
         }
+        rememberManagementToolkitOpenState(newType == IExtendedUIHost.ExtendedUIType.TOOLKIT);
         
         // 发送网络数据包同步状态
         ModNetworking.sendToServer(new ExtendedUIPacket(newType));
@@ -5704,13 +5713,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isToolkitExpandedInManagementArea() {
-        return shouldUseManagementToolkit() && managementToolkitOpen;
+        return shouldUseManagementToolkit()
+                && menu.getMenuHost() != null
+                && menu.getMenuHost().getCurrentExtendedUI() == IExtendedUIHost.ExtendedUIType.TOOLKIT;
     }
 
     private boolean isToolkitButtonActive() {
-        if (shouldUseManagementToolkit()) {
-            return managementToolkitOpen;
-        }
         var host = menu.getMenuHost();
         return host != null && host.getCurrentExtendedUI() == IExtendedUIHost.ExtendedUIType.TOOLKIT;
     }
@@ -5727,7 +5735,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         attemptedRestoreManagementToolkitOpenState = true;
-        managementToolkitOpen = WcwtClientConfig.lastManagementToolkitOpen();
+        var host = menu.getMenuHost();
+        if (host == null || !WcwtClientConfig.lastManagementToolkitOpen()) {
+            return;
+        }
+        if (menu.getSyncedExtendedUIType() != IExtendedUIHost.ExtendedUIType.NONE) {
+            return;
+        }
+        host.setCurrentExtendedUI(IExtendedUIHost.ExtendedUIType.TOOLKIT);
+        ModNetworking.sendToServer(new ExtendedUIPacket(IExtendedUIHost.ExtendedUIType.TOOLKIT));
         updateExtendedUIVisibility();
     }
 

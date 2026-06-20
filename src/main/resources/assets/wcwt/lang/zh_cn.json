@@ -242,6 +242,12 @@
   "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "开：JEI/EMI 拉取 GTCEu 加工配方到样板编码区时，自动移除催化剂等不会被消耗的物品输入。默认开启。",
   "wcwt.config.expandToolkitInManagementArea": "工具包在管理区位置展开",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "开：打开工具包时，改在样板管理区位置展开显示，并隐藏供应器列表；关闭时保持原来的右侧工具包面板。",
+  "wcwt.config.priorityShiftMoveToCosmeticArmor": "装饰盔甲优先 Shift 移动",
+  "wcwt.config.priorityShiftMoveToCosmeticArmor.tooltip": "开：打开装饰盔甲扩展界面时，物品栏 Shift 点击盔甲会优先放入装饰盔甲槽。",
+  "wcwt.config.priorityShiftMoveToCardBox": "卡槽箱优先 Shift 移动",
+  "wcwt.config.priorityShiftMoveToCardBox.tooltip": "开：打开卡槽箱时，物品栏或 ME 网络 Shift 点击升级卡会优先放入卡槽箱。",
+  "wcwt.config.priorityShiftMoveToToolkit": "工具包优先 Shift 移动",
+  "wcwt.config.priorityShiftMoveToToolkit.tooltip": "开：打开工具包时，物品栏 Shift 点击可放入工具包的不可堆叠物品会优先放入工具包。",
 
   "message.wcwt.pull_no_link": "WCWT：终端未连接到可用的 ME 网络。",
   "message.wcwt.pull_no_inputs": "WCWT：该 JEI 配方没有可拉取的物品输入。",

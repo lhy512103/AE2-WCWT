@@ -101,6 +101,27 @@ public class WcwtConfigScreen extends Screen {
                         WcwtClientConfig.EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.set(value);
                         saveClientConfig();
                     });
+            y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.priorityShiftMoveToCosmeticArmor",
+                    () -> WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR.get(),
+                    value -> {
+                        WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.priorityShiftMoveToCardBox",
+                    () -> WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_CARD_BOX.get(),
+                    value -> {
+                        WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_CARD_BOX.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.priorityShiftMoveToToolkit",
+                    () -> WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_TOOLKIT.get(),
+                    value -> {
+                        WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_TOOLKIT.set(value);
+                        saveClientConfig();
+                    });
         } else {
             addDisabledRow(y, "wcwt.config.clientNotLoaded");
         }

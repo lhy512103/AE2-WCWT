@@ -39,6 +39,7 @@ public record ExtendedUIPacket(IExtendedUIHost.ExtendedUIType uiType) implements
                 var host = menu.getMenuHost();
                 if (host != null) {
                     host.setCurrentExtendedUI(packet.uiType());
+                    menu.broadcastChanges();
                 }
             }
         });
