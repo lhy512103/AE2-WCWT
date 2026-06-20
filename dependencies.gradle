@@ -52,6 +52,7 @@ dependencies {
     runtimeOnly fg.deobf("top.theillusivec4.curios:curios-forge:${v.curios.get()}")
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${v.jei.get()}")
     runtimeOnly fg.deobf("lain.mods:cosmetic-armor-reworked:${v.cosmetic.armor.get()}")
+    runtimeOnly fg.deobf(libs.modern.ui)
 
     // ══════════════════════════════════════════════════════════
     //  clientRuntimeOnly — 仅 runClient 加载
@@ -59,7 +60,6 @@ dependencies {
     clientRuntimeOnly fg.deobf("maven.modrinth:justenoughcharacters:${v.jecharacters.get()}")
     clientRuntimeOnly fg.deobf("maven.modrinth:extreme_sound_muffler:${v.sound.muffler.get()}")
     clientRuntimeOnly fg.deobf("caramelChat-mc1.20.1-forge:caramelChat-mc1.20.1-forge:${v.caramel.chat.get()}")
-    clientRuntimeOnly fg.deobf(libs.modern.ui)
     clientRuntimeOnly fg.deobf(libs.mouse.tweaks)
     clientRuntimeOnly fg.deobf("Searchables-forge-1.20.1:Searchables-forge-1.20.1:${v.searchables.get()}")
     clientRuntimeOnly fg.deobf(libs.controlling)

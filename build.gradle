@@ -46,7 +46,6 @@ minecraft {
 
     runs {
         configureEach {
-            workingDirectory project.file('run')
             property 'forge.logging.markers', 'REGISTRIES'
             property 'forge.logging.console.level', 'info'
             property 'mixin.env.remapRefMap', 'true'
@@ -60,11 +59,13 @@ minecraft {
             }
         }
         client {
+            workingDirectory project.file('run/client')
             property 'forge.enabledGameTestNamespaces', mod_id
         }
         server {
+            workingDirectory project.file('run/server')
             property 'forge.enabledGameTestNamespaces', mod_id
-            args '--nogui'
+            // args '--nogui'
         }
     }
 }

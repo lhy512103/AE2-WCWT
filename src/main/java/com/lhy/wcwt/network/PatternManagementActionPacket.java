@@ -9,7 +9,6 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import com.extendedae_plus.util.PatternProviderDataUtil;
-import com.extendedae_plus.util.uploadPattern.RecipeTypeNameConfig;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.chat.Component;
 import com.lhy.wcwt.compat.minecraft.network.codec.ByteBufCodecs;
@@ -105,19 +104,8 @@ public record PatternManagementActionPacket(Action action,
                             quickInsertEncodedPattern(player, packet.providerId, packet.cacheSlot);
                         }
                     }
-                    case ADD_MAPPING -> {
-                        boolean ok = ExtendedAePlusBridge.addOrUpdateAliasMapping(packet.searchText, packet.mappingText);
-                        player.displayClientMessage(Component.translatable(ok
-                                ? "gui.wcwt.pattern_management.mapping_added"
-                                : "gui.wcwt.pattern_management.mapping_failed"), true);
-                    }
-                    case RELOAD_MAPPING -> {
-                        ExtendedAePlusBridge.loadRecipeTypeNames();
-                        player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.mapping_reloaded"), true);
-                    }
-                    case DELETE_MAPPING -> {
-                        int removed = ExtendedAePlusBridge.removeMappingsByCnValue(packet.mappingText);
-                        player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.mapping_deleted", removed), true);
+                    case ADD_MAPPING, RELOAD_MAPPING, DELETE_MAPPING -> {
+                        return;
                     }
                 }
                 ModNetworking.sendToPlayer(player, PatternProviderListPacket.buildForPlayer(player));
@@ -606,27 +594,6 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static final class ExtendedAePlusBridge {
-        static boolean addOrUpdateAliasMapping(String aliasKey, String cnValue) {
-            return ModList.get().isLoaded("extendedae_plus")
-                    && RecipeTypeNameConfig.addOrUpdateAliasMapping(aliasKey, cnValue);
-        }
-
-        static void loadRecipeTypeNames() {
-            if (!ModList.get().isLoaded("extendedae_plus")) {
-                return;
-            }
-            try {
-                RecipeTypeNameConfig.loadRecipeTypeNames();
-            } catch (Exception ignored) {
-            }
-        }
-
-        static int removeMappingsByCnValue(String cnValue) {
-            return ModList.get().isLoaded("extendedae_plus")
-                    ? RecipeTypeNameConfig.removeMappingsByCnValue(cnValue)
-                    : 0;
-        }
-
         static String getProviderDisplayName(PatternContainer provider) {
             return ModList.get().isLoaded("extendedae_plus")
                     ? PatternProviderDataUtil.getProviderDisplayName(provider)

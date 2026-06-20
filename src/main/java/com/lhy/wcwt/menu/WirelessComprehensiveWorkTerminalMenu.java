@@ -1810,12 +1810,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
                 return findEcoUploadResult(uploadStack);
             }
-            if (ExtendedAePlusUploadBridge.matrixContainsPattern(grid, uploadStack)) {
-                serverPlayer.sendSystemMessage(Component.translatable("extendedae_plus.message.matrix.duplicate"));
-                return returnBlankPatternFromMatrixUpload(uploadStack.getCount())
-                        ? MatrixUploadResult.DUPLICATE_RETURNED
-                        : MatrixUploadResult.DUPLICATE_ABORTED;
-            }
             if (ExtendedAePlusUploadBridge.uploadPatternToMatrix(serverPlayer, uploadStack.copy(), grid)) {
                 return findMatrixUploadResult(uploadStack);
             }
@@ -1864,29 +1858,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
         return MatrixUploadResult.UPLOADED;
-    }
-
-    private boolean returnBlankPatternFromMatrixUpload(int count) {
-        if (count <= 0) {
-            return true;
-        }
-
-        ItemStack remainingBlanks = AEItems.BLANK_PATTERN.stack(count);
-        if (blankPatternSlot != null && blankPatternSlot.mayPlace(remainingBlanks)) {
-            remainingBlanks = blankPatternSlot.safeInsert(remainingBlanks);
-            if (remainingBlanks.isEmpty()) {
-                return true;
-            }
-        }
-
-        try {
-            var blankKey = AEItemKey.of(AEItems.BLANK_PATTERN.asItem());
-            long inserted = StorageHelper.poweredInsert(getWcwtEnergySource(), storage, blankKey,
-                    remainingBlanks.getCount(), getActionSource());
-            return inserted >= remainingBlanks.getCount();
-        } catch (Exception ignored) {
-            return false;
-        }
     }
 
     @Nullable
@@ -2076,10 +2047,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private record MatrixUploadResult(MatrixUploadState state, long providerId, int slot) {
         private static final MatrixUploadResult UPLOADED = new MatrixUploadResult(MatrixUploadState.UPLOADED, -1, -1);
-        private static final MatrixUploadResult DUPLICATE_RETURNED =
-                new MatrixUploadResult(MatrixUploadState.DUPLICATE_RETURNED, -1, -1);
-        private static final MatrixUploadResult DUPLICATE_ABORTED =
-                new MatrixUploadResult(MatrixUploadState.DUPLICATE_ABORTED, -1, -1);
         private static final MatrixUploadResult FAILURE = new MatrixUploadResult(MatrixUploadState.FAILURE, -1, -1);
 
         private static MatrixUploadResult uploaded(long providerId, int slot) {
@@ -2089,8 +2056,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private enum MatrixUploadState {
         UPLOADED,
-        DUPLICATE_RETURNED,
-        DUPLICATE_ABORTED,
         FAILURE
     }
 
@@ -2340,8 +2305,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         if (uploadEnabled && mode != EncodingMode.PROCESSING) {
             MatrixUploadResult matrixUploadResult = uploadEncodedPatternToMatrix(encodedPattern);
-            if (matrixUploadResult.state() == MatrixUploadState.UPLOADED
-                    || matrixUploadResult.state() == MatrixUploadState.DUPLICATE_RETURNED) {
+            if (matrixUploadResult.state() == MatrixUploadState.UPLOADED) {
                 consumePatternForUpload(consumeEditPattern);
                 patternEncodingLogic.setMode(mode);
                 syncedPatternEncodingMode = mode.ordinal();
@@ -2359,17 +2323,28 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 broadcastChanges();
                 return;
             }
-            if (matrixUploadResult.state() == MatrixUploadState.DUPLICATE_ABORTED) {
-                logEncode("matrix duplicate detected but blank return failed, mode={}, encoded={}",
-                        mode, encodedPattern);
-                return;
-            }
         }
 
         if (uploadEnabled && mode == EncodingMode.PROCESSING) {
             if (uploadAttempt == UploadAttemptResult.NO_TARGET) {
                 uploadAttempt = uploadEncodedPatternToMatchingProvider(encodedPattern, resolvedProviderSearchText, false);
             }
+            if (completeProviderUploadIfDone(mode, encodedPattern, consumeEditPattern, resolvedProviderSearchText,
+                    uploadAttempt)) {
+                return;
+            }
+        }
+        if (uploadEnabled && mode != EncodingMode.PROCESSING && preferredProviderId > 0
+                && uploadAttempt == UploadAttemptResult.NO_TARGET) {
+            uploadAttempt = uploadEncodedPatternToPreferredProvider(encodedPattern, preferredProviderId,
+                    preferredProviderName);
+            if (completeProviderUploadIfDone(mode, encodedPattern, consumeEditPattern, resolvedProviderSearchText,
+                    uploadAttempt)) {
+                return;
+            }
+        }
+        if (uploadEnabled && mode != EncodingMode.PROCESSING && uploadAttempt == UploadAttemptResult.NO_TARGET) {
+            uploadAttempt = uploadEncodedPatternToMatchingProvider(encodedPattern, resolvedProviderSearchText, true);
             if (completeProviderUploadIfDone(mode, encodedPattern, consumeEditPattern, resolvedProviderSearchText,
                     uploadAttempt)) {
                 return;
@@ -5203,37 +5178,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                                              appeng.api.networking.IGrid grid) {
             return ModList.get().isLoaded("extendedae_plus")
                     && MatrixUploadUtil.uploadPatternToMatrix(player, pattern, grid);
-        }
-
-        static boolean matrixContainsPattern(appeng.api.networking.IGrid grid, ItemStack pattern) {
-            if (!ModList.get().isLoaded("extendedae_plus") || grid == null || pattern.isEmpty()) {
-                return false;
-            }
-            var providers = new ArrayList<PatternContainer>();
-            for (var machineClass : grid.getMachineClasses()) {
-                if (!PatternContainer.class.isAssignableFrom(machineClass)) {
-                    continue;
-                }
-                @SuppressWarnings("unchecked")
-                Class<? extends PatternContainer> containerClass = (Class<? extends PatternContainer>) machineClass;
-                providers.addAll(grid.getActiveMachines(containerClass));
-            }
-            for (var provider : providers) {
-                if (provider == null || !provider.isVisibleInTerminal()) {
-                    continue;
-                }
-                InternalInventory inv = provider.getTerminalPatternInventory();
-                if (inv == null) {
-                    continue;
-                }
-                for (int slot = 0; slot < inv.size(); slot++) {
-                    ItemStack stack = inv.getStackInSlot(slot);
-                    if (!stack.isEmpty() && PatternUploadMetadata.isSamePatternIgnoringUploadData(stack, pattern)) {
-                        return true;
-                    }
-                }
-            }
-            return false;
         }
 
         @Nullable

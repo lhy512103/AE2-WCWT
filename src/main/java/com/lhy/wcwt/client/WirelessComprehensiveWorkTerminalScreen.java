@@ -1535,7 +1535,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         String query = searchKey.trim();
         Map<String, PreferredUploadProviderGroup> groups = new LinkedHashMap<>();
         for (var entry : patternProviders) {
-            String name = entry.group().name().getString();
+            String name = getPatternProviderSearchName(entry);
             if (name == null || name.isBlank()) {
                 continue;
             }
@@ -1596,6 +1596,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return ModList.get().isLoaded("extendedae_plus")
                 ? RecipeTypeNameConfig.resolveSearchKeyAlias(rawKey)
                 : rawKey;
+    }
+
+    private Component getPatternProviderDisplayName(PatternProviderListPacket.Entry entry) {
+        String mapped = getPatternProviderSearchName(entry);
+        return mapped.equals(entry.group().name().getString()) ? entry.group().name() : Component.literal(mapped);
+    }
+
+    private String getPatternProviderSearchName(PatternProviderListPacket.Entry entry) {
+        String rawName = entry.group().name().getString();
+        String mappedName = resolveEaepProviderSearchKey(rawName);
+        return mappedName != null && !mappedName.isBlank() ? mappedName : rawName;
     }
 
     private void setPatternEncodingMode(EncodingMode mode) {
@@ -2811,10 +2822,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         var matchingEntries = patternProviders.stream()
-                .filter(entry -> JecSearchCompat.contains(entry.group().name().getString(), normalizedQuery))
+                .filter(entry -> JecSearchCompat.contains(getPatternProviderSearchName(entry), normalizedQuery))
                 .toList();
         var distinctNames = matchingEntries.stream()
-                .map(entry -> entry.group().name().getString())
+                .map(this::getPatternProviderSearchName)
                 .distinct()
                 .toList();
         if (distinctNames.size() != 1 || matchingEntries.isEmpty()) {
@@ -3032,7 +3043,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         patternProviders.stream()
                 .filter(this::isPatternProviderVisibleInManagement)
                 .filter(entry -> filter.isEmpty() || patternProviderMatches(entry, filter))
-                .sorted(Comparator.comparing(entry -> entry.group().name().getString().toLowerCase()))
+                .sorted(Comparator.comparing(entry -> getPatternProviderSearchName(entry).toLowerCase()))
                 .forEach(entry -> {
                     patternManagementRows.add(new PatternManagementHeaderRow(entry));
                     if (patternManagementShowSlots) {
@@ -3067,7 +3078,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean patternProviderMatches(PatternProviderListPacket.Entry entry, String filter) {
-        if (JecSearchCompat.contains(entry.group().name().getString(), filter)) {
+        if (JecSearchCompat.contains(getPatternProviderSearchName(entry), filter)) {
             return true;
         }
         for (var stack : entry.slots().values()) {
@@ -4002,7 +4013,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     rowY + 1 + PATTERN_MANAGEMENT_HEADER_Y_OFFSET);
         }
         guiGraphics.drawString(font,
-                font.substrByWidth(entry.group().name(), 94).getString(),
+                font.substrByWidth(getPatternProviderDisplayName(entry), 94).getString(),
                 patternManagementPage.left() + 20, rowY + 5 + PATTERN_MANAGEMENT_HEADER_Y_OFFSET,
                 textColor, false);
 
@@ -4023,7 +4034,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int relMouseY = mouseY - topPos;
         String filter = getPatternManagementSearchFilter();
         boolean providerMatched = !filter.isEmpty()
-                && JecSearchCompat.contains(row.entry().group().name().getString(), filter);
+                && JecSearchCompat.contains(getPatternProviderSearchName(row.entry()), filter);
         for (int col = 0; col < row.slots(); col++) {
             int slot = row.offset() + col;
             ItemStack stack = row.entry().slots().getOrDefault(slot, ItemStack.EMPTY);
@@ -4863,10 +4874,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         if (inRect(relX, relY, patternManagementAddButton)) {
             playPatternManagementClickSound();
-            // 先在客户端本地更新 EAEP 映射，再发包同步服务端
-            updateClientMapping_Add();
+            boolean ok = updateClientMapping_Add();
+            displayPatternManagementMessage(Component.translatable(ok
+                    ? "gui.wcwt.pattern_management.mapping_added"
+                    : "gui.wcwt.pattern_management.mapping_failed"));
             refreshPatternProviders();
-            sendPatternManagementAction(PatternManagementActionPacket.Action.ADD_MAPPING, -1, -1);
             if (patternManageSearchField != null && patternManageMappingField != null
                     && !patternManageMappingField.getValue().trim().isEmpty()) {
                 patternManageSearchField.setValue(patternManageMappingField.getValue().trim());
@@ -4877,18 +4889,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (inRect(relX, relY, patternManagementReloadButton)) {
             playPatternManagementClickSound();
-            // 先在客户端本地重载 EAEP 映射，再发包同步服务端
             updateClientMapping_Reload();
+            displayPatternManagementMessage(Component.translatable("gui.wcwt.pattern_management.mapping_reloaded"));
             refreshPatternProviders();
-            sendPatternManagementAction(PatternManagementActionPacket.Action.RELOAD_MAPPING, -1, -1);
             return true;
         }
         if (inRect(relX, relY, patternManagementDeleteButton)) {
             playPatternManagementClickSound();
-            // 先在客户端本地删除 EAEP 映射，再发包同步服务端
-            updateClientMapping_Delete();
+            int removed = updateClientMapping_Delete();
+            displayPatternManagementMessage(Component.translatable("gui.wcwt.pattern_management.mapping_deleted", removed));
             refreshPatternProviders();
-            sendPatternManagementAction(PatternManagementActionPacket.Action.DELETE_MAPPING, -1, -1);
             clearPatternManagementMappingField();
             return true;
         }
@@ -5047,41 +5057,42 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return -1L;
     }
 
-    /**
-     * 客户端本地更新 EAEP 映射（增加/更新），确保独服下客户端也能立即使用新映射。
-     */
-    private void updateClientMapping_Add() {
-        if (!ModList.get().isLoaded("extendedae_plus")) return;
+    private boolean updateClientMapping_Add() {
+        if (!ModList.get().isLoaded("extendedae_plus")) return false;
         String search = patternManageSearchField != null ? patternManageSearchField.getValue().trim() : "";
         String mapping = patternManageMappingField != null ? patternManageMappingField.getValue().trim() : "";
-        if (search.isEmpty() || mapping.isEmpty()) return;
+        if (search.isEmpty() || mapping.isEmpty()) return false;
         try {
-            RecipeTypeNameConfig.addOrUpdateAliasMapping(search, mapping);
+            return RecipeTypeNameConfig.addOrUpdateAliasMapping(search, mapping);
         } catch (Exception ignored) {
+            return false;
         }
     }
 
-    /**
-     * 客户端本地重载 EAEP 映射，确保独服下客户端也能立即刷新。
-     */
     private void updateClientMapping_Reload() {
         if (!ModList.get().isLoaded("extendedae_plus")) return;
         try {
             RecipeTypeNameConfig.loadRecipeTypeNames();
         } catch (Exception ignored) {
         }
+        rebuildPatternManagementRows();
     }
 
-    /**
-     * 客户端本地删除 EAEP 映射，确保独服下客户端也能立即移除。
-     */
-    private void updateClientMapping_Delete() {
-        if (!ModList.get().isLoaded("extendedae_plus")) return;
+    private int updateClientMapping_Delete() {
+        if (!ModList.get().isLoaded("extendedae_plus")) return 0;
         String mapping = patternManageMappingField != null ? patternManageMappingField.getValue().trim() : "";
-        if (mapping.isEmpty()) return;
+        if (mapping.isEmpty()) return 0;
         try {
-            RecipeTypeNameConfig.removeMappingsByCnValue(mapping);
+            return RecipeTypeNameConfig.removeMappingsByCnValue(mapping);
         } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    private void displayPatternManagementMessage(Component message) {
+        var player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.displayClientMessage(message, true);
         }
     }
 
@@ -5705,7 +5716,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (hit == null) {
             return null;
         }
-        return hit.entry().group().name();
+        return getPatternProviderDisplayName(hit.entry());
     }
 
     private boolean shouldUseManagementToolkit() {

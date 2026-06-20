@@ -31,7 +31,6 @@ import de.mari_023.ae2wtlib.api.TextConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
@@ -381,17 +380,45 @@ public final class WcwtWirelessFeatures {
     private static void pickBlock(ServerPlayer player, AEItemKey what, int targetAmount, HotbarTarget hotbarTarget,
                                   Predicate<ItemStack> terminalPredicate) {
         ItemStack requestedStack = what.toStack(Math.max(1, targetAmount));
-        int existingSlot = requestedStack.isEmpty() ? -1 : player.getInventory().findSlotMatchingItem(requestedStack);
-        debugPickBlock(player, "server handling requested={}, existingSlot={}, terminals={}",
-                describeStack(requestedStack), existingSlot, describePickBlockTerminals(player));
         if (requestedStack.isEmpty()) {
             debugPickBlock(player, "skipped: requested stack empty");
             return;
         }
-        if (hotbarTarget == HotbarTarget.REPLACE_SELECTED && existingSlot != -1) {
-            debugPickBlock(player, "skipped: requested stack already in player inventory slot={}", existingSlot);
+
+        var inventory = player.getInventory();
+        int existingSlot = inventory.findSlotMatchingItem(requestedStack);
+        debugPickBlock(player, "server handling requested={}, existingSlot={}, terminals={}",
+                describeStack(requestedStack), existingSlot, describePickBlockTerminals(player));
+
+        // Decide where the picked item should land. Mirror EAEP's pick-from-wireless logic
+        // (PickFromWirelessC2SPacket): never push a currently-held item into the ME network.
+        // If the main hand already holds the same item and is not full, top that stack up;
+        // otherwise place the pick into the empty main hand or a free inventory slot, and
+        // abort if nothing is free instead of evicting a held stack into the terminal.
+        int targetSlot;
+        int amountToExtract = targetAmount;
+        boolean growHand = false;
+        if (hotbarTarget == HotbarTarget.FREE_SLOT) {
+            targetSlot = inventory.getFreeSlot();
+        } else {
+            ItemStack inHand = inventory.getItem(inventory.selected);
+            boolean handIsSameItem = !inHand.isEmpty() && what.equals(AEItemKey.of(inHand));
+            if (handIsSameItem && inHand.getCount() < inHand.getMaxStackSize()) {
+                targetSlot = inventory.selected;
+                amountToExtract = Math.min(targetAmount, inHand.getMaxStackSize() - inHand.getCount());
+                growHand = true;
+            } else if (existingSlot != -1) {
+                debugPickBlock(player, "skipped: requested stack already in player inventory slot={}", existingSlot);
+                return;
+            } else {
+                targetSlot = inHand.isEmpty() ? inventory.selected : inventory.getFreeSlot();
+            }
+        }
+        if (targetSlot < 0) {
+            debugPickBlock(player, "skipped: player inventory has no free slot");
             return;
         }
+
         var terminalTarget = findTerminalTarget(player,
                 terminalPredicate, true);
         if (terminalTarget == null) {
@@ -412,25 +439,9 @@ public final class WcwtWirelessFeatures {
         var networkInventory = grid.getStorageService().getInventory();
         var playerSource = new PlayerSource(player);
 
-        var inventory = player.getInventory();
-        int targetSlot = hotbarTarget == HotbarTarget.FREE_SLOT ? inventory.getFreeSlot() : inventory.getSuitableHotbarSlot();
-        if (targetSlot < 0) {
-            debugPickBlock(player, "skipped: player inventory has no target slot");
-            return;
-        }
-        var toReplace = hotbarTarget == HotbarTarget.FREE_SLOT ? ItemStack.EMPTY : inventory.getItem(targetSlot);
-
-        var insert = toReplace.isEmpty() ? 0 : networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(),
-                Actionable.SIMULATE, playerSource);
-        if (insert < toReplace.getCount()) {
-            debugPickBlock(player, "skipped: cannot store replaced stack={}, inserted={}, terminal={}",
-                    describeStack(toReplace), insert, describeStack(terminal));
-            return;
-        }
-
-        var extracted = networkInventory.extract(what, targetAmount, Actionable.SIMULATE, playerSource);
+        var extracted = networkInventory.extract(what, amountToExtract, Actionable.SIMULATE, playerSource);
         debugPickBlock(player, "network simulate extract requested={}, amount={}, extracted={}",
-                describeStack(requestedStack), targetAmount, extracted);
+                describeStack(requestedStack), amountToExtract, extracted);
         if (extracted == 0) {
             if (!getBoolean(terminal, "craft_if_missing")
                     || grid.getCraftingService().getCraftingFor(what).isEmpty()) {
@@ -445,33 +456,23 @@ public final class WcwtWirelessFeatures {
             return;
         }
 
-        insert = toReplace.isEmpty() ? 0 : networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(),
-                Actionable.MODULATE, playerSource);
-        if (insert < toReplace.getCount()) {
-            toReplace.setCount(toReplace.getCount() - (int) insert);
-            inventory.setItem(targetSlot, toReplace);
-            debugPickBlock(player, "partial replacement insert; targetSlot={}, remainingReplaced={}",
-                    targetSlot, describeStack(toReplace));
-            return;
-        }
-
-        extracted = networkInventory.extract(what, targetAmount, Actionable.MODULATE, playerSource);
+        extracted = networkInventory.extract(what, amountToExtract, Actionable.MODULATE, playerSource);
         if (extracted == 0) {
-            inventory.setItem(targetSlot, ItemStack.EMPTY);
-            debugPickBlock(player, "modulated extract returned 0 after replacement insert; cleared targetSlot={}",
-                    targetSlot);
+            debugPickBlock(player, "modulated extract returned 0; nothing placed");
             return;
         }
 
-        requestedStack.setCount((int) extracted);
-        inventory.setItem(targetSlot, requestedStack);
-        if (hotbarTarget == HotbarTarget.REPLACE_SELECTED) {
-            inventory.selected = targetSlot;
-            player.connection.send(new ClientboundSetCarriedItemPacket(inventory.selected));
+        if (growHand) {
+            ItemStack inHand = inventory.getItem(targetSlot);
+            inHand.grow((int) extracted);
+            inventory.setItem(targetSlot, inHand);
+        } else {
+            requestedStack.setCount((int) extracted);
+            inventory.setItem(targetSlot, requestedStack);
         }
         player.inventoryMenu.broadcastChanges();
-        debugPickBlock(player, "inserted into hotbar: requested={}, extracted={}, targetSlot={}, terminal={}",
-                describeStack(requestedStack), extracted, targetSlot, describeStack(terminal));
+        debugPickBlock(player, "placed pick: requested={}, extracted={}, targetSlot={}, growHand={}, terminal={}",
+                describeStack(requestedStack), extracted, targetSlot, growHand, describeStack(terminal));
     }
 
     private static void openCraftingAmountMenu(ServerPlayer player, AEKey what, boolean requireCraftable) {

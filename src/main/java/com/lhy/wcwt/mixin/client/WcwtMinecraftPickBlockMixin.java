@@ -1,5 +1,6 @@
 package com.lhy.wcwt.mixin.client;
 
+import appeng.api.stacks.AEItemKey;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import net.minecraft.client.Minecraft;
@@ -94,15 +95,16 @@ public abstract class WcwtMinecraftPickBlockMixin {
         if (wcwt$sentPickBlockThisCall) {
             return;
         }
+        boolean topUp = wcwt$shouldTopUpHeldStack(picked);
         if (WCWT_DEBUG_PICK_BLOCK) {
             WcwtMod.LOGGER.info(
-                    "WCWT pick-block debug: client after vanilla lookup picked={}, slot={}, willSend={}",
-                    wcwt$describeStack(picked), slot,
+                    "WCWT pick-block debug: client after vanilla lookup picked={}, slot={}, topUp={}, willSend={}",
+                    wcwt$describeStack(picked), slot, topUp,
                     player != null && !player.getAbilities().instabuild && !player.isSpectator()
-                            && !picked.isEmpty() && slot == -1);
+                            && !picked.isEmpty() && (slot == -1 || topUp));
         }
         if (player == null || player.getAbilities().instabuild || player.isSpectator()
-                || picked.isEmpty() || slot != -1) {
+                || picked.isEmpty() || (slot != -1 && !topUp)) {
             return;
         }
 
@@ -150,12 +152,13 @@ public abstract class WcwtMinecraftPickBlockMixin {
 
         ItemStack picked = state.getBlock().getCloneItemStack(state, blockHit, player.level(), pos, player);
         int slot = picked.isEmpty() ? -1 : player.getInventory().findSlotMatchingItem(picked);
+        boolean topUp = wcwt$shouldTopUpHeldStack(picked);
         if (WCWT_DEBUG_PICK_BLOCK) {
             WcwtMod.LOGGER.info(
-                    "WCWT pick-block debug: client early lookup picked={}, slot={}, willSend={}",
-                    wcwt$describeStack(picked), slot, !picked.isEmpty() && slot == -1);
+                    "WCWT pick-block debug: client early lookup picked={}, slot={}, topUp={}, willSend={}",
+                    wcwt$describeStack(picked), slot, topUp, !picked.isEmpty() && (slot == -1 || topUp));
         }
-        if (picked.isEmpty() || slot != -1) {
+        if (picked.isEmpty() || (slot != -1 && !topUp)) {
             return;
         }
 
@@ -166,6 +169,23 @@ public abstract class WcwtMinecraftPickBlockMixin {
                     wcwt$describeStack(picked), pos, BuiltInRegistries.BLOCK.getKey(state.getBlock()));
         }
         WcwtWirelessFeatures.pickBlock(picked.copy());
+    }
+
+    /**
+     * Matches EAEP's pick-from-wireless trigger: when the main hand already holds the same
+     * item and the stack is not full, the pick should still be sent so the server tops it up
+     * from the ME network instead of doing nothing because the item is "already in inventory".
+     */
+    private boolean wcwt$shouldTopUpHeldStack(ItemStack picked) {
+        if (player == null || picked == null || picked.isEmpty()) {
+            return false;
+        }
+        ItemStack hand = player.getMainHandItem();
+        if (hand.isEmpty() || hand.getCount() >= hand.getMaxStackSize()) {
+            return false;
+        }
+        AEItemKey handKey = AEItemKey.of(hand);
+        return handKey != null && handKey.equals(AEItemKey.of(picked));
     }
 
     private static void wcwt$debugEarlySkip(String reason) {
