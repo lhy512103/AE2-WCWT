@@ -43,6 +43,9 @@ dependencies {
     runtimeOnly fg.deobf("maven.modrinth:mekanism-generators:${v.mekanism.get()}")
     runtimeOnly fg.deobf("maven.modrinth:create:${v.create.get()}")
     runtimeOnly fg.deobf("maven.modrinth:applied-mekanistics:${v.applied.mek.get()}")
+    runtimeOnly fg.deobf(libs.cucumber)
+    runtimeOnly fg.deobf(libs.mystical.agriculture)
+    runtimeOnly fg.deobf(libs.mystical.agradditions)
 
     // ── Maven（需 fg.deobf）──────────────────────────────────
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${v.guideme.get()}")

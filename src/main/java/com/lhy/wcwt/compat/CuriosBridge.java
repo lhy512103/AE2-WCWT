@@ -1,7 +1,5 @@
 package com.lhy.wcwt.compat;
 
-import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import com.lhy.wcwt.network.ModNetworking;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.common.util.LazyOptional;
@@ -21,6 +19,8 @@ public final class CuriosBridge {
     private static final String MOD_ID = "curios";
     private static final String TOGGLE_RENDER_PACKET_CLASS =
             "top.theillusivec4.curios.common.network.client.CPacketToggleRender";
+    private static final String NETWORK_HANDLER_CLASS =
+            "top.theillusivec4.curios.common.network.NetworkHandler";
 
     private CuriosBridge() {
     }
@@ -91,14 +91,18 @@ public final class CuriosBridge {
             return;
         }
         try {
-            Class<?> payloadClass = Class.forName(TOGGLE_RENDER_PACKET_CLASS);
-            Constructor<?> constructor = payloadClass.getConstructor(String.class, int.class);
-            Object payload = constructor.newInstance(identifier, slotIndex);
-            if (payload instanceof CustomPacketPayload customPayload) {
-                ModNetworking.sendToServer(customPayload);
-            }
+            // Curios on Forge 1.20.1 routes client packets through its own SimpleChannel
+            // (NetworkHandler.INSTANCE), not through a NeoForge-style CustomPacketPayload.
+            // CPacketToggleRender lives in the implementation jar, so reach it reflectively.
+            Class<?> packetClass = Class.forName(TOGGLE_RENDER_PACKET_CLASS);
+            Constructor<?> constructor = packetClass.getConstructor(String.class, int.class);
+            Object packet = constructor.newInstance(identifier, slotIndex);
+
+            Class<?> networkHandlerClass = Class.forName(NETWORK_HANDLER_CLASS);
+            Object channel = networkHandlerClass.getField("INSTANCE").get(null);
+            channel.getClass().getMethod("sendToServer", Object.class).invoke(channel, packet);
         } catch (ReflectiveOperationException | RuntimeException ignored) {
-            // Curios 没有公开这个客户端包，保留为可选兼容能力。
+            // Curios 未提供该客户端包/通道时，保留为可选兼容能力。
         }
     }
 
