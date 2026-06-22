@@ -135,6 +135,10 @@
   "gui.wcwt.cycle_terminal.middle": "СКМ: вернуться к терминалу ME WCWT",
   "tooltip.wcwt.universal_terminals": "Встроенные терминалы",
   "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+ПКМ по воздуху: отделить встроенные терминалы",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.title": "Громовой терминал",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.description": "Получите комплексный рабочий терминал ME",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "Что? Даже громового терминала недостаточно?",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "Получите беспроводной комплексный неуниверсальный терминал ME",
 
   "gui.wcwt.filter.item.enabled": "Фильтр предметов: ВКЛ",
   "gui.wcwt.filter.item.enabled.desc": "Показывать только предметы",

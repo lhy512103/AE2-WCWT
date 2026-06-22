@@ -17,6 +17,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
 import com.lhy.wcwt.menu.locator.WcwtInventoryLocator;
 import com.lhy.wcwt.menu.locator.WcwtItemLocator;
+import com.lhy.wcwt.menu.locator.WcwtLocatorHost;
 import de.mari_023.ae2wtlib.terminal.IUniversalWirelessTerminalItem;
 import de.mari_023.ae2wtlib.terminal.ItemWT;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -307,6 +308,9 @@ public final class WcwtUniversalTerminals {
             }
         }
         Object target = menu.getTarget();
+        if (target instanceof WcwtLocatorHost locatorHost) {
+            return locatorHost.wcwtLocator();
+        }
         if (target instanceof WirelessComprehensiveWorkTerminalMenuHost host) {
             return inventoryLocatorOf(host);
         }
@@ -314,6 +318,10 @@ public final class WcwtUniversalTerminals {
             Integer slot = host.getSlot();
             if (slot != null && WcwtUniversalTerminals.isWcwt(host.getItemStack())) {
                 return new WcwtInventoryLocator(slot);
+            }
+            locator = embeddedLocatorFromHostSlot(host);
+            if (locator != null) {
+                return locator;
             }
         }
         return null;
@@ -324,6 +332,19 @@ public final class WcwtUniversalTerminals {
             return itemLocator;
         }
         return null;
+    }
+
+    private static @Nullable WcwtItemLocator embeddedLocatorFromHostSlot(ItemMenuHost host) {
+        Integer slot = host.getSlot();
+        if (slot == null) {
+            return null;
+        }
+        ItemStack parent = host.getPlayer().getInventory().getItem(slot);
+        int terminalIndex = getCurrentTerminalIndex(parent);
+        if (terminalIndex < 0) {
+            return null;
+        }
+        return new WcwtEmbeddedTerminalLocator(new WcwtInventoryLocator(slot), terminalIndex);
     }
 
     private static @Nullable WcwtItemLocator inventoryLocatorOf(@Nullable WirelessComprehensiveWorkTerminalMenuHost host) {

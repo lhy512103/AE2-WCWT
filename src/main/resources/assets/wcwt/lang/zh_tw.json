@@ -133,6 +133,8 @@
   "gui.wcwt.cycle_terminal.middle": "滑鼠中鍵返回：ME 綜合工作終端",
   "tooltip.wcwt.universal_terminals": "已合入終端",
   "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+右鍵空氣可拆出已合入終端",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.title": "雷霆大終端",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.description": "獲得 ME 綜合工作終端。",
 
   "gui.wcwt.filter.item.enabled": "物品過濾：開",
   "gui.wcwt.filter.item.enabled.desc": "只顯示物品",
@@ -173,6 +175,8 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "開：JEI/EMI 拉取配方時，會按已識別的配方類型自動切到工作台或鍛造台。",
   "wcwt.config.enableRecipePullTransfer": "啟用配方拉取/編碼處理",
   "wcwt.config.enableRecipePullTransfer.tooltip": "開：啟用 WCWT 的 JEI/EMI 配方拉取、編碼傳輸與預覽高亮。關：關閉這些處理。",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "什麼？雷霆大終端都沒法滿足你了嘛！",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "獲得無線綜合非通用終端。",
 
   "message.wcwt.pull_no_link": "WCWT：終端未連接到可用的 ME 網路。",
   "message.wcwt.pull_no_inputs": "WCWT：該 JEI 配方沒有可拉取的物品輸入。",

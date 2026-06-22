@@ -37,12 +37,12 @@ public record SwitchUniversalTerminalPacket(Action action) implements CustomPack
                     || !(player.containerMenu instanceof AEBaseMenu menu)) {
                 return;
             }
-            if (menu.getLocator() instanceof WcwtEmbeddedTerminalLocator embeddedLocator) {
-                embeddedLocator.flush(player);
-            }
             WcwtItemLocator locator = WcwtUniversalTerminals.currentLocatorOf(menu);
             if (locator == null) {
                 return;
+            }
+            if (locator instanceof WcwtEmbeddedTerminalLocator embeddedLocator) {
+                embeddedLocator.flush(player);
             }
             switch (packet.action()) {
                 case BASE -> WcwtUniversalTerminals.getBaseSwitchTarget(player, locator)

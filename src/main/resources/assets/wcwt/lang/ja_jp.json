@@ -133,6 +133,10 @@
   "gui.wcwt.cycle_terminal.middle": "中クリックで戻る: ME 総合作業端末",
   "tooltip.wcwt.universal_terminals": "内蔵端末",
   "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+空中右クリックで内蔵端末を分離",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.title": "雷鳴の大端末",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.description": "ME 総合作業端末を入手する",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "何？雷鳴の大端末でも満足できないの？",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "ME ワイヤレス総合非汎用端末を入手する",
 
   "gui.wcwt.filter.item.enabled": "物品フィルタ: ON",
   "gui.wcwt.filter.item.enabled.desc": "アイテムのみ表示",

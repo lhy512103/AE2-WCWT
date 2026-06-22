@@ -403,11 +403,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         ensureVerticalToolbarPosition();
         WcwtFavorites.ensureLoaded();
         hookRepoUpdateListener();
-        addToLeftToolbar(new WcwtUniversalTerminalButton(menu));
         favoriteItemsButton = addToLeftToolbar(new FavoriteItemsButton(WcwtFavorites::isEnabled,
                 btn -> toggleFavoritedItemsFirst()));
         viewCellsToggleButton = addToLeftToolbar(new ViewCellsToggleButton(this::isViewCellsPanelVisible,
                 btn -> toggleViewCellsPanel()));
+        addToLeftToolbar(new WcwtUniversalTerminalButton(menu));
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
         var viewCellSlots = new ArrayList<>(menu.getSlots(SlotSemantics.VIEW_CELL));
         if (!viewCellSlots.isEmpty()) {

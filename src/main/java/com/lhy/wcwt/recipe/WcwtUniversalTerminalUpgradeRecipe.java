@@ -97,6 +97,11 @@ public class WcwtUniversalTerminalUpgradeRecipe extends CustomRecipe {
     }
 
     @Override
+    public boolean isSpecial() {
+        return false;
+    }
+
+    @Override
     public NonNullList<Ingredient> getIngredients() {
         NonNullList<Ingredient> ingredients = NonNullList.create();
         ingredients.add(Ingredient.of(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()));

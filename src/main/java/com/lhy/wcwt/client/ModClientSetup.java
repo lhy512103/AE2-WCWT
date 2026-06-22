@@ -159,10 +159,11 @@ public class ModClientSetup {
         if (event.getScreen() instanceof WirelessComprehensiveWorkTerminalScreen) {
             return;
         }
-        if (event.getScreen() instanceof AEBaseScreen<?> aeScreen
-                && Minecraft.getInstance().player != null
-                && Minecraft.getInstance().player.containerMenu instanceof AEBaseMenu menu
-                && WcwtUniversalTerminals.currentLocatorOf(menu) instanceof WcwtEmbeddedTerminalLocator) {
+        if (event.getScreen() instanceof AEBaseScreen<?> aeScreen) {
+            AEBaseMenu menu = aeScreen.getMenu();
+            if (!(WcwtUniversalTerminals.currentLocatorOf(menu) instanceof WcwtEmbeddedTerminalLocator)) {
+                return;
+            }
             WcwtUniversalTerminalButton button = INJECTED_UNIVERSAL_TERMINAL_BUTTONS.get(aeScreen);
             if (button == null) {
                 button = new WcwtUniversalTerminalButton(menu);
@@ -186,9 +187,7 @@ public class ModClientSetup {
         WcwtUniversalTerminalButton button = INJECTED_UNIVERSAL_TERMINAL_BUTTONS.get(event.getScreen());
         if (button != null
                 && event.getScreen() instanceof AEBaseScreen<?> aeScreen
-                && Minecraft.getInstance().player != null
-                && Minecraft.getInstance().player.containerMenu instanceof AEBaseMenu menu
-                && WcwtUniversalTerminals.currentLocatorOf(menu) instanceof WcwtEmbeddedTerminalLocator) {
+                && WcwtUniversalTerminals.currentLocatorOf(aeScreen.getMenu()) instanceof WcwtEmbeddedTerminalLocator) {
             button.refresh();
         }
     }

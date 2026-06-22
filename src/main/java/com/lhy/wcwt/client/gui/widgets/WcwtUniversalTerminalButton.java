@@ -82,18 +82,29 @@ public class WcwtUniversalTerminalButton extends appeng.client.gui.widgets.IconB
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        Action action = switch (button) {
-            case 0 -> Action.NEXT;
-            case 1 -> Action.PREVIOUS;
-            case 2 -> Action.BASE;
-            default -> null;
-        };
+        Action action = clickAction(button);
         if (action != null && active && visible && clicked(mouseX, mouseY)) {
             ModNetworking.sendToServer(new SwitchUniversalTerminalPacket(action));
             playDownSound(Minecraft.getInstance().getSoundManager());
             return true;
         }
         return false;
+    }
+
+    private static Action clickAction(int button) {
+        if (button == 2) {
+            return Action.BASE;
+        }
+        if (button == 1) {
+            return Action.PREVIOUS;
+        }
+        if (button == 0) {
+            return Minecraft.getInstance().screen instanceof appeng.client.gui.AEBaseScreen<?> screen
+                            && screen.isHandlingRightClick()
+                    ? Action.PREVIOUS
+                    : Action.NEXT;
+        }
+        return null;
     }
 
     @Override

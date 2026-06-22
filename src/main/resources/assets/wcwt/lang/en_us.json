@@ -194,8 +194,10 @@
   "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+right-click air to split embedded terminals",
   "curios.identifier.wcwt_terminal": "ME WCWT",
   "itemGroup.wcwt": "WCWT",
-  "advancements.wcwt.wireless_comprehensive_work_terminal.title": "What a Thunder Terminal!",
+  "advancements.wcwt.wireless_comprehensive_work_terminal.title": "Thunder Terminal",
   "advancements.wcwt.wireless_comprehensive_work_terminal.description": "Obtain an ME Wireless Comprehensive Work Terminal.",
+  "advancements.wcwt.obtain_non_universal_terminal.title": "What? Even the Thunder Terminal Wasn't Enough?",
+  "advancements.wcwt.obtain_non_universal_terminal.description": "Obtain a ME Wireless Comprehensive Non-Universal Terminal.",
   
   "gui.wcwt.filter.item.enabled": "Item Filter: ON",
   "gui.wcwt.filter.item.enabled.desc": "Only showing items",

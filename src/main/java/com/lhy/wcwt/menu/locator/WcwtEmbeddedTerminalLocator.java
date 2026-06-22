@@ -121,7 +121,7 @@ public final class WcwtEmbeddedTerminalLocator implements WcwtItemLocator {
         return "wcwt embedded terminal " + terminalIndex + " in " + parentLocator;
     }
 
-    private static final class EmbeddedWirelessHost extends WirelessTerminalMenuHost {
+    private static final class EmbeddedWirelessHost extends WirelessTerminalMenuHost implements WcwtLocatorHost {
         private final WcwtEmbeddedTerminalLocator locator;
 
         private EmbeddedWirelessHost(Player player, WcwtEmbeddedTerminalLocator locator, ItemStack stack) {
@@ -135,9 +135,14 @@ public final class WcwtEmbeddedTerminalLocator implements WcwtItemLocator {
             locator.storeItem(getPlayer(), getItemStack());
             return result;
         }
+
+        @Override
+        public WcwtEmbeddedTerminalLocator wcwtLocator() {
+            return locator;
+        }
     }
 
-    private static final class EmbeddedCraftingHost extends WirelessCraftingTerminalMenuHost {
+    private static final class EmbeddedCraftingHost extends WirelessCraftingTerminalMenuHost implements WcwtLocatorHost {
         private final WcwtEmbeddedTerminalLocator locator;
 
         private EmbeddedCraftingHost(Player player, WcwtEmbeddedTerminalLocator locator, ItemStack stack) {
@@ -150,6 +155,11 @@ public final class WcwtEmbeddedTerminalLocator implements WcwtItemLocator {
             boolean result = super.onBroadcastChanges(menu);
             locator.storeItem(getPlayer(), getItemStack());
             return result;
+        }
+
+        @Override
+        public WcwtEmbeddedTerminalLocator wcwtLocator() {
+            return locator;
         }
     }
 

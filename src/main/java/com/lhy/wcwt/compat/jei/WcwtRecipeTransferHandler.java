@@ -2,7 +2,7 @@ package com.lhy.wcwt.compat.jei;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
-import appeng.menu.me.common.GridInventoryEntry;
+import appeng.menu.me.common.IClientRepo;
 import appeng.integration.modules.jeirei.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
@@ -43,7 +43,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 public class WcwtRecipeTransferHandler
         implements IUniversalRecipeTransferHandler<WirelessComprehensiveWorkTerminalMenu> {
@@ -132,21 +131,37 @@ public class WcwtRecipeTransferHandler
         if (repo == null) {
             return List.of();
         }
-        var craftableKeys = repo.getAllEntries().stream()
-                .filter(e -> e.getWhat() != null && e.isCraftable())
-                .map(GridInventoryEntry::getWhat)
-                .collect(Collectors.toSet());
-
         var stream = slotsView.getSlotViews(RecipeIngredientRole.INPUT).stream();
         if (maxInputSlots < Integer.MAX_VALUE) {
             stream = stream.limit(maxInputSlots);
         }
         return stream
-                .filter(slotView -> slotView.getAllIngredients().anyMatch(ingredient -> {
-                    GenericStack stack = toGenericStack(ingredient);
-                    return stack != null && craftableKeys.contains(stack.what());
-                }))
+                .filter(slotView -> hasCraftableEncodingCandidate(repo, slotView))
                 .toList();
+    }
+
+    private static boolean hasCraftableEncodingCandidate(IClientRepo repo, IRecipeSlotView slotView) {
+        List<ItemStack> candidates = slotView.getItemStacks()
+                .filter(stack -> !stack.isEmpty())
+                .map(ItemStack::copy)
+                .toList();
+        if (candidates.isEmpty()) {
+            ItemStack displayed = slotView.getDisplayedItemStack().orElse(ItemStack.EMPTY);
+            if (!displayed.isEmpty()) {
+                candidates = List.of(displayed.copy());
+            }
+        }
+        if (candidates.isEmpty()) {
+            return false;
+        }
+
+        Ingredient ingredient = Ingredient.of(candidates.stream());
+        for (var entry : repo.getByIngredient(ingredient)) {
+            if (entry.isCraftable()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
