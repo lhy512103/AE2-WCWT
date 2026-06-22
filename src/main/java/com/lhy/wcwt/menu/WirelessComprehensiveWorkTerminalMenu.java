@@ -226,6 +226,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private long patternProviderSyncSubscriptionUntilTick;
     private long lastPatternProviderRequestTick = Long.MIN_VALUE;
     private long lastInventorySyncTick = Long.MIN_VALUE;
+    private boolean initializingMenu = true;
     private final ManualSmithingMenuBridge manualSmithingBridge;
     private final ManualAnvilMenuBridge manualAnvilBridge;
     private int manualAnvilCost;
@@ -479,6 +480,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         applyManualWorkspaceSlotActivation(ManualWorkspaceMode.fromOrdinal(syncedManualWorkspaceMode));
         updateManualWorkspaceResults();
+        initializingMenu = false;
     }
 
     public void syncQuickMoveOptionsFromClient(int options) {
@@ -2685,6 +2687,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                         summarizeItem(current),
                         summarizeItem(blankPatternSlot.getItem()),
                         menuHost != null ? menuHost.getCurrentLinkStatusDescription() : null);
+            }
+            if (initializingMenu) {
+                if (DEBUG_BLANK_PATTERN_SYNC) {
+                    logBlankPatternSync("autofill.defer_broadcast",
+                            "initializingMenu=true, blankSlot={}, encodedSlot={}",
+                            summarizeItem(blankPatternSlot.getItem()),
+                            summarizeItem(encodedPatternSlot != null ? encodedPatternSlot.getItem() : ItemStack.EMPTY));
+                }
+                forceInventorySyncOnNextBroadcast();
+                return;
             }
             forceInventorySyncOnNextBroadcast();
             broadcastChanges();

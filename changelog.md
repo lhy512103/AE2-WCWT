@@ -4,11 +4,13 @@
 
 1. Optimized recipe transfer preview checks to reduce frame drops on JEI recipe pages with many animated renders.
 2. Fixed a dedicated-server crash caused by restock amount syncing encoding item holders through a client-unsafe registry codec.
+3. Fixed the terminal storage area appearing empty on the first reopen after blank patterns are consumed by pattern encoding.
 
 ## 中文
 
 1. 优化配方转移预览检测，降低打开包含大量动画渲染的 JEI 配方页时的帧率下降。
 2. 修复补货数量同步通过客户端不安全的注册表编码传输物品 Holder，导致专用服务器崩溃的问题。
+3. 修复样板编码消耗空白样板后，再次打开终端时主库存区首次显示为空、需要重开一次才恢复的问题。
 
 # 1.20.1.4
 
