@@ -162,7 +162,7 @@ public class ModClientSetup {
         if (event.getScreen() instanceof AEBaseScreen<?> aeScreen
                 && Minecraft.getInstance().player != null
                 && Minecraft.getInstance().player.containerMenu instanceof AEBaseMenu menu
-                && WcwtUniversalTerminals.parentLocatorOf(menu.getLocator()) instanceof WcwtEmbeddedTerminalLocator) {
+                && WcwtUniversalTerminals.currentLocatorOf(menu) instanceof WcwtEmbeddedTerminalLocator) {
             WcwtUniversalTerminalButton button = INJECTED_UNIVERSAL_TERMINAL_BUTTONS.get(aeScreen);
             if (button == null) {
                 button = new WcwtUniversalTerminalButton(menu);
@@ -188,7 +188,7 @@ public class ModClientSetup {
                 && event.getScreen() instanceof AEBaseScreen<?> aeScreen
                 && Minecraft.getInstance().player != null
                 && Minecraft.getInstance().player.containerMenu instanceof AEBaseMenu menu
-                && WcwtUniversalTerminals.parentLocatorOf(menu.getLocator()) instanceof WcwtEmbeddedTerminalLocator) {
+                && WcwtUniversalTerminals.currentLocatorOf(menu) instanceof WcwtEmbeddedTerminalLocator) {
             button.refresh();
         }
     }

@@ -6,6 +6,7 @@
 2. Fixed a dedicated-server crash caused by restock amount syncing encoding item holders through a client-unsafe registry codec.
 3. Fixed the terminal storage area appearing empty on the first reopen after blank patterns are consumed by pattern encoding.
 4. Ported the 1.21.1 Wireless Comprehensive Non-Universal Terminal feature: WCWT can now embed compatible wireless terminals, switch between them from the toolbar, and split embedded terminals with Ctrl+Shift+right-click air.
+5. Fixed the universal terminal switch button disappearing immediately after opening the base WCWT screen.
 
 ## 中文
 
@@ -13,6 +14,7 @@
 2. 修复补货数量同步通过客户端不安全的注册表编码传输物品 Holder，导致专用服务器崩溃的问题。
 3. 修复样板编码消耗空白样板后，再次打开终端时主库存区首次显示为空、需要重开一次才恢复的问题。
 4. 迁移 1.21.1 的无线综合非通用终端功能：WCWT 现在可以合入兼容无线终端，在工具栏中切换，并可通过 Ctrl+Shift+右键空气拆出已合入终端。
+5. 修复打开 WCWT 主终端界面后，通用终端切换按钮会立刻消失的问题。
 
 # 1.20.1.4
 

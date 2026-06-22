@@ -1,15 +1,21 @@
 package com.lhy.wcwt.universal;
 
 import appeng.api.config.Actionable;
+import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.api.implementations.items.IAEItemPowerStorage;
 import appeng.items.tools.powered.WirelessCraftingTerminalItem;
 import appeng.items.tools.powered.WirelessTerminalItem;
+import appeng.menu.AEBaseMenu;
 import appeng.menu.MenuOpener;
+import appeng.menu.locator.MenuLocator;
 import appeng.util.inv.AppEngInternalInventory;
 import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
+import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
+import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
+import com.lhy.wcwt.menu.locator.WcwtInventoryLocator;
 import com.lhy.wcwt.menu.locator.WcwtItemLocator;
 import de.mari_023.ae2wtlib.terminal.IUniversalWirelessTerminalItem;
 import de.mari_023.ae2wtlib.terminal.ItemWT;
@@ -279,12 +285,54 @@ public final class WcwtUniversalTerminals {
         return false;
     }
 
-    public static @Nullable WcwtItemLocator parentLocatorOf(appeng.menu.locator.MenuLocator locator) {
+    public static @Nullable WcwtItemLocator parentLocatorOf(MenuLocator locator) {
         if (locator instanceof WcwtEmbeddedTerminalLocator embeddedLocator) {
             return embeddedLocator.parentLocator();
         }
         if (locator instanceof WcwtItemLocator itemLocator) {
             return itemLocator;
+        }
+        return null;
+    }
+
+    public static @Nullable WcwtItemLocator currentLocatorOf(AEBaseMenu menu) {
+        WcwtItemLocator locator = currentLocatorOf(menu.getLocator());
+        if (locator != null) {
+            return locator;
+        }
+        if (menu instanceof WirelessComprehensiveWorkTerminalMenu wcwtMenu) {
+            locator = inventoryLocatorOf(wcwtMenu.getMenuHost());
+            if (locator != null) {
+                return locator;
+            }
+        }
+        Object target = menu.getTarget();
+        if (target instanceof WirelessComprehensiveWorkTerminalMenuHost host) {
+            return inventoryLocatorOf(host);
+        }
+        if (target instanceof ItemMenuHost host) {
+            Integer slot = host.getSlot();
+            if (slot != null && WcwtUniversalTerminals.isWcwt(host.getItemStack())) {
+                return new WcwtInventoryLocator(slot);
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable WcwtItemLocator currentLocatorOf(MenuLocator locator) {
+        if (locator instanceof WcwtItemLocator itemLocator) {
+            return itemLocator;
+        }
+        return null;
+    }
+
+    private static @Nullable WcwtItemLocator inventoryLocatorOf(@Nullable WirelessComprehensiveWorkTerminalMenuHost host) {
+        if (host == null) {
+            return null;
+        }
+        Integer slot = host.getSlot();
+        if (slot != null && isWcwt(host.getItemStack())) {
+            return new WcwtInventoryLocator(slot);
         }
         return null;
     }

@@ -40,7 +40,7 @@ public record SwitchUniversalTerminalPacket(Action action) implements CustomPack
             if (menu.getLocator() instanceof WcwtEmbeddedTerminalLocator embeddedLocator) {
                 embeddedLocator.flush(player);
             }
-            WcwtItemLocator locator = WcwtUniversalTerminals.parentLocatorOf(menu.getLocator());
+            WcwtItemLocator locator = WcwtUniversalTerminals.currentLocatorOf(menu);
             if (locator == null) {
                 return;
             }

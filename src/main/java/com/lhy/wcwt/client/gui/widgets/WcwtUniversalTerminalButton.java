@@ -38,7 +38,7 @@ public class WcwtUniversalTerminalButton extends appeng.client.gui.widgets.IconB
             previousTarget = null;
             return;
         }
-        var locator = WcwtUniversalTerminals.parentLocatorOf(menu.getLocator());
+        var locator = WcwtUniversalTerminals.currentLocatorOf(menu);
         if (locator == null) {
             setVisibility(false);
             nextTarget = null;
