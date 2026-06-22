@@ -20,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
  * while WCWT is an AE2 wireless terminal subclass. Using a WCWT-owned locator
  * keeps AE2 menu reopen/return flows pointed at the actual WCWT menu host.
  */
-public record WcwtCurioLocator(String identifier, int slotIndex) implements MenuLocator {
+public record WcwtCurioLocator(String identifier, int slotIndex) implements WcwtItemLocator {
     @Override
     @Nullable
     public <T> T locate(Player player, Class<T> hostInterface) {
@@ -52,7 +52,8 @@ public record WcwtCurioLocator(String identifier, int slotIndex) implements Menu
                 .orElse(ItemStack.EMPTY);
     }
 
-    private boolean storeItem(Player player, ItemStack stack) {
+    @Override
+    public boolean storeItem(Player player, ItemStack stack) {
         return CuriosBridge.getEquippedSlots(player).stream()
                 .filter(slot -> slot.identifier().equals(identifier) && slot.slotIndex() == slotIndex)
                 .findFirst()

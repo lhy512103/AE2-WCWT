@@ -1,19 +1,28 @@
 package com.lhy.wcwt.client;
 
+import appeng.client.gui.AEBaseScreen;
+import appeng.menu.AEBaseMenu;
 import appeng.init.client.InitScreens;
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.client.gui.widgets.WcwtUniversalTerminalButton;
 import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.OpenTerminalHotkeyPacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
+import com.lhy.wcwt.network.SplitUniversalTerminalPacket;
+import com.lhy.wcwt.universal.WcwtUniversalTerminals;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.client.event.ScreenEvent;
 import net.minecraftforge.event.TickEvent;
@@ -27,11 +36,16 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 @Mod.EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ModClientSetup {
     private static boolean ipnCompatInitialized;
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
+    private static final Map<Screen, WcwtUniversalTerminalButton> INJECTED_UNIVERSAL_TERMINAL_BUTTONS =
+            new WeakHashMap<>();
+    private static Method addToLeftToolbarMethod;
 
     public static void init(IEventBus modBus) {
         ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
@@ -141,10 +155,76 @@ public class ModClientSetup {
     }
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
+    public static void onWirelessTerminalScreenInitPre(ScreenEvent.Init.Pre event) {
+        if (event.getScreen() instanceof WirelessComprehensiveWorkTerminalScreen) {
+            return;
+        }
+        if (event.getScreen() instanceof AEBaseScreen<?> aeScreen
+                && Minecraft.getInstance().player != null
+                && Minecraft.getInstance().player.containerMenu instanceof AEBaseMenu menu
+                && WcwtUniversalTerminals.parentLocatorOf(menu.getLocator()) instanceof WcwtEmbeddedTerminalLocator) {
+            WcwtUniversalTerminalButton button = INJECTED_UNIVERSAL_TERMINAL_BUTTONS.get(aeScreen);
+            if (button == null) {
+                button = new WcwtUniversalTerminalButton(menu);
+                if (addToLeftToolbar(aeScreen, button)) {
+                    INJECTED_UNIVERSAL_TERMINAL_BUTTONS.put(aeScreen, button);
+                }
+            }
+            button.refresh();
+        }
+    }
+
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onWirelessTerminalScreenInitPost(ScreenEvent.Init.Post event) {
         if (event.getScreen() instanceof WirelessComprehensiveWorkTerminalScreen) {
             InventoryProfilesNextCompat.installRuntimeHints();
         }
+    }
+
+    @SubscribeEvent
+    public static void onScreenRenderPre(ScreenEvent.Render.Pre event) {
+        WcwtUniversalTerminalButton button = INJECTED_UNIVERSAL_TERMINAL_BUTTONS.get(event.getScreen());
+        if (button != null
+                && event.getScreen() instanceof AEBaseScreen<?> aeScreen
+                && Minecraft.getInstance().player != null
+                && Minecraft.getInstance().player.containerMenu instanceof AEBaseMenu menu
+                && WcwtUniversalTerminals.parentLocatorOf(menu.getLocator()) instanceof WcwtEmbeddedTerminalLocator) {
+            button.refresh();
+        }
+    }
+
+    private static boolean addToLeftToolbar(AEBaseScreen<?> screen, Button button) {
+        try {
+            Method method = addToLeftToolbarMethod;
+            if (method == null) {
+                method = AEBaseScreen.class.getDeclaredMethod("addToLeftToolbar", Button.class);
+                method.setAccessible(true);
+                addToLeftToolbarMethod = method;
+            }
+            method.invoke(screen, button);
+            return true;
+        } catch (ReflectiveOperationException e) {
+            WcwtMod.LOGGER.warn("Failed to add WCWT universal terminal button to AE2 toolbar", e);
+            return false;
+        }
+    }
+
+    @SubscribeEvent
+    public static void onInteractionKeyMappingTriggered(InputEvent.InteractionKeyMappingTriggered event) {
+        var minecraft = Minecraft.getInstance();
+        if (minecraft.screen != null || minecraft.player == null || !event.isUseItem()) {
+            return;
+        }
+        if (!Screen.hasControlDown() || !Screen.hasShiftDown()) {
+            return;
+        }
+        var stack = minecraft.player.getItemInHand(event.getHand());
+        if (!WcwtUniversalTerminals.isUniversal(stack)) {
+            return;
+        }
+        event.setCanceled(true);
+        event.setSwingHand(false);
+        ModNetworking.sendToServer(new SplitUniversalTerminalPacket(event.getHand()));
     }
 
     @SubscribeEvent

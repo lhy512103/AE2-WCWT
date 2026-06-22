@@ -17,10 +17,15 @@ import com.lhy.wcwt.hotkeys.WcwtRestockHotkeyAction;
 import com.lhy.wcwt.init.ModCreativeTabs;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.init.ModRecipeSerializers;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.locator.WcwtCurioLocator;
+import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
+import com.lhy.wcwt.menu.locator.WcwtInventoryLocator;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
+import com.lhy.wcwt.universal.WcwtItemIds;
+import com.lhy.wcwt.universal.WcwtUniversalTerminals;
 import com.lhy.wcwt.util.ResourceLocationCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -68,6 +73,7 @@ public class WcwtMod {
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
+        ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
 
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(WcwtPacketsBootstrap::register);
@@ -84,9 +90,17 @@ public class WcwtMod {
     private void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             MenuLocators.register(
+                    WcwtInventoryLocator.class,
+                    WcwtInventoryLocator::writeToPacket,
+                    WcwtInventoryLocator::readFromPacket);
+            MenuLocators.register(
                     WcwtCurioLocator.class,
                     WcwtCurioLocator::writeToPacket,
                     WcwtCurioLocator::readFromPacket);
+            MenuLocators.register(
+                    WcwtEmbeddedTerminalLocator.class,
+                    WcwtEmbeddedTerminalLocator::writeToPacket,
+                    WcwtEmbeddedTerminalLocator::readFromPacket);
             MenuLocators.register(
                     WcwtToolkitNetworkToolLocator.class,
                     WcwtToolkitNetworkToolLocator::writeToPacket,
@@ -163,9 +177,26 @@ public class WcwtMod {
         return charged;
     }
 
+    public static ItemStack chargedUniversalTerminalStack() {
+        var terminal = (WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
+        var charged = chargedTerminalStack();
+        for (var id : WcwtItemIds.MERGEABLE_TERMINALS) {
+            var item = BuiltInRegistries.ITEM.get(id);
+            if (item != null && item != Items.AIR) {
+                WcwtUniversalTerminals.addTerminal(charged, new ItemStack(item));
+            }
+        }
+        terminal.injectAEPower(charged, terminal.getAEMaxPower(charged), Actionable.MODULATE);
+        return charged;
+    }
+
     public static void acceptTerminalVariants(CreativeModeTab.Output output) {
         output.accept(new ItemStack(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()));
         output.accept(chargedTerminalStack());
+        ItemStack universal = chargedUniversalTerminalStack();
+        if (WcwtUniversalTerminals.isUniversal(universal)) {
+            output.accept(universal);
+        }
     }
 
     public static final class WcwtPacketsBootstrap {

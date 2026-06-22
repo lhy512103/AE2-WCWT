@@ -8,17 +8,28 @@ import appeng.core.localization.PlayerMessages;
 import appeng.items.tools.powered.WirelessCraftingTerminalItem;
 import appeng.menu.MenuOpener;
 import appeng.menu.locator.MenuLocator;
-import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
+import com.lhy.wcwt.menu.locator.WcwtInventoryLocator;
+import com.lhy.wcwt.menu.locator.WcwtItemLocator;
+import com.lhy.wcwt.universal.WcwtUniversalTerminals;
+import de.mari_023.ae2wtlib.api.TextConstants;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.List;
 
 public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTerminalItem {
 
@@ -48,13 +59,46 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
         // 父类 WirelessTerminalItem.onUpgradesChanged 是 private，子类访问不到，
         // 这里复制其能源卡倍率计算逻辑。
         return UpgradeInventories.forItem(stack, UPGRADE_INVENTORY_SIZE, (st, upgrades) -> {
-            setAEMaxPowerMultiplier(st, 1 + Upgrades.getEnergyCardMultiplier(upgrades));
+            updatePowerMultiplier(st);
         });
+    }
+
+    public void updatePowerMultiplier(ItemStack stack) {
+        setAEMaxPowerMultiplier(stack,
+                1 + WcwtUniversalTerminals.getInstalledTerminalCount(stack)
+                        + Upgrades.getEnergyCardMultiplier(getUpgrades(stack)));
+    }
+
+    @Override
+    public double getChargeRate(ItemStack stack) {
+        return super.getChargeRate(stack) * (1 + WcwtUniversalTerminals.getInstalledTerminalCount(stack));
     }
 
     @Override
     public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
         super.inventoryTick(stack, level, entity, slotId, isSelected);
+    }
+
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!level.isClientSide()) {
+            int slot = findHeldInventorySlot(player, stack);
+            if (slot >= 0 && openFromLocator(player, new WcwtInventoryLocator(slot), false)) {
+                return new InteractionResultHolder<>(InteractionResult.sidedSuccess(level.isClientSide()), stack);
+            }
+        }
+        return new InteractionResultHolder<>(InteractionResult.FAIL, stack);
+    }
+
+    private static int findHeldInventorySlot(Player player, ItemStack stack) {
+        int size = player.getInventory().getContainerSize();
+        for (int i = 0; i < size; i++) {
+            if (player.getInventory().getItem(i) == stack) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
@@ -99,7 +143,7 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
     @Override
     public ItemMenuHost getMenuHost(Player player, int inventorySlot, ItemStack stack, @Nullable BlockPos pos) {
         return new WirelessComprehensiveWorkTerminalMenuHost(player, inventorySlot, stack,
-                (p, sm) -> openFromInventory(p, inventorySlot, true));
+                (p, sm) -> openFromLocator(p, new WcwtInventoryLocator(inventorySlot, pos), true));
     }
 
     @Nullable
@@ -108,7 +152,27 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
                 (p, sm) -> openFromCurio(p, locator, stack, true));
     }
 
+    public boolean openFromLocator(Player player, WcwtItemLocator locator, boolean returningFromSubmenu) {
+        ItemStack stack = locator.locateItem(player);
+        int currentIndex = WcwtUniversalTerminals.getCurrentTerminalIndex(stack);
+        if (currentIndex >= 0) {
+            var embeddedLocator = new WcwtEmbeddedTerminalLocator(locator, currentIndex);
+            if (WcwtUniversalTerminals.openEmbedded(player, embeddedLocator, returningFromSubmenu)) {
+                return true;
+            }
+            WcwtUniversalTerminals.setCurrentTerminalIndex(stack, -1);
+            locator.storeItem(player, stack);
+        }
+        if (checkPreconditions(stack, player)) {
+            return MenuOpener.open(getMenuType(), player, locator, returningFromSubmenu);
+        }
+        return false;
+    }
+
     public boolean openFromCurio(Player player, MenuLocator locator, ItemStack stack, boolean returningFromSubmenu) {
+        if (locator instanceof WcwtItemLocator itemLocator) {
+            return openFromLocator(player, itemLocator, returningFromSubmenu);
+        }
         if (checkPreconditions(stack, player)) {
             return MenuOpener.open(getMenuType(), player, locator, returningFromSubmenu);
         }
@@ -117,11 +181,28 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
 
     @Override
     protected boolean openFromInventory(Player player, int inventorySlot, boolean returningFromSubmenu) {
-        ItemStack stack = player.getInventory().getItem(inventorySlot);
-        if (checkPreconditions(stack, player)) {
-            return MenuOpener.open(getMenuType(), player, MenuLocators.forInventorySlot(inventorySlot),
-                    returningFromSubmenu);
+        return openFromLocator(player, new WcwtInventoryLocator(inventorySlot), returningFromSubmenu);
+    }
+
+    @Override
+    public void appendHoverText(ItemStack stack, Level level, List<Component> lines, TooltipFlag advancedTooltips) {
+        var terminals = WcwtUniversalTerminals.getInstalledTerminals(stack);
+        if (!terminals.isEmpty()) {
+            lines.add(Component.translatable("tooltip.wcwt.universal_terminals").withStyle(TextConstants.STYLE_GRAY));
+            for (ItemStack terminal : terminals) {
+                lines.add(Component.literal(" - ").append(terminal.getHoverName()).withStyle(TextConstants.STYLE_GRAY));
+            }
+            lines.add(Component.translatable("tooltip.wcwt.universal_terminals.split")
+                    .withStyle(TextConstants.STYLE_GRAY));
         }
-        return false;
+        super.appendHoverText(stack, level, lines, advancedTooltips);
+    }
+
+    @Override
+    public Component getName(ItemStack stack) {
+        if (WcwtUniversalTerminals.isUniversal(stack)) {
+            return Component.translatable("item.wcwt.wireless_universal_comprehensive_work_terminal");
+        }
+        return super.getName(stack);
     }
 }

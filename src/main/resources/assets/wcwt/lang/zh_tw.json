@@ -125,6 +125,14 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
 
   "item.wcwt.wireless_comprehensive_work_terminal": "ME 綜合工作終端",
+  "item.wcwt.wireless_universal_comprehensive_work_terminal": "無線綜合非通用終端",
+  "gui.wcwt.universal_terminal.next": "切換到下一個終端",
+  "gui.wcwt.universal_terminal.empty": "未合入其它終端",
+  "gui.wcwt.cycle_terminal.desc": "左鍵切換到：%s",
+  "gui.wcwt.cycle_terminal.desc1": "右鍵切換到：%s",
+  "gui.wcwt.cycle_terminal.middle": "滑鼠中鍵返回：ME 綜合工作終端",
+  "tooltip.wcwt.universal_terminals": "已合入終端",
+  "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+右鍵空氣可拆出已合入終端",
 
   "gui.wcwt.filter.item.enabled": "物品過濾：開",
   "gui.wcwt.filter.item.enabled.desc": "只顯示物品",

@@ -127,6 +127,14 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
 
   "item.wcwt.wireless_comprehensive_work_terminal": "ME комп. терминал",
+  "item.wcwt.wireless_universal_comprehensive_work_terminal": "Беспроводной комплексный неуниверсальный терминал ME",
+  "gui.wcwt.universal_terminal.next": "Переключить на следующий терминал",
+  "gui.wcwt.universal_terminal.empty": "Встроенных терминалов нет",
+  "gui.wcwt.cycle_terminal.desc": "ЛКМ: переключить на %s",
+  "gui.wcwt.cycle_terminal.desc1": "ПКМ: переключить на %s",
+  "gui.wcwt.cycle_terminal.middle": "СКМ: вернуться к терминалу ME WCWT",
+  "tooltip.wcwt.universal_terminals": "Встроенные терминалы",
+  "tooltip.wcwt.universal_terminals.split": "Ctrl+Shift+ПКМ по воздуху: отделить встроенные терминалы",
 
   "gui.wcwt.filter.item.enabled": "Фильтр предметов: ВКЛ",
   "gui.wcwt.filter.item.enabled.desc": "Показывать только предметы",

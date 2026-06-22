@@ -403,6 +403,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         ensureVerticalToolbarPosition();
         WcwtFavorites.ensureLoaded();
         hookRepoUpdateListener();
+        addToLeftToolbar(new WcwtUniversalTerminalButton(menu));
         favoriteItemsButton = addToLeftToolbar(new FavoriteItemsButton(WcwtFavorites::isEnabled,
                 btn -> toggleFavoritedItemsFirst()));
         viewCellsToggleButton = addToLeftToolbar(new ViewCellsToggleButton(this::isViewCellsPanelVisible,
