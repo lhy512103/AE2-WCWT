@@ -1,4 +1,16 @@
-# AE2 WCWT 1.20.1.0-1.20.1.4 Changelog
+# 1.20.1.6
+
+## English
+
+1. Optimized recipe transfer preview checks to reduce frame drops on JEI recipe pages with many animated renders.
+2. Fixed a dedicated-server crash caused by restock amount syncing encoding item holders through a client-unsafe registry codec.
+
+## 中文
+
+1. 优化配方转移预览检测，降低打开包含大量动画渲染的 JEI 配方页时的帧率下降。
+2. 修复补货数量同步通过客户端不安全的注册表编码传输物品 Holder，导致专用服务器崩溃的问题。
+
+# 1.20.1.4
 
 ## English
 

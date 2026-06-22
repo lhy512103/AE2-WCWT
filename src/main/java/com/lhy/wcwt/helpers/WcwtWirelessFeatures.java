@@ -15,7 +15,6 @@ import appeng.menu.locator.MenuLocators;
 import appeng.menu.me.crafting.CraftAmountMenu;
 import appeng.util.ConfigInventory;
 import appeng.util.prioritylist.IPartitionList;
-import com.google.common.collect.Maps;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.init.ModComponents;
@@ -29,7 +28,6 @@ import com.lhy.wcwt.network.WcwtUpdateRestockPacket;
 import de.mari_023.ae2wtlib.api.AE2wtlibTags;
 import de.mari_023.ae2wtlib.api.TextConstants;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -135,16 +133,19 @@ public final class WcwtWirelessFeatures {
             return;
         }
 
-        HashMap<Holder<Item>, Long> items = Maps.newHashMap();
+        HashMap<ResourceLocation, Long> items = new HashMap<>();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
-            if (stack.isEmpty() || stack.is(AE2wtlibTags.NO_RESTOCK) || stack.getMaxStackSize() == 1
-                    || items.containsKey(stack.getItem().builtInRegistryHolder())) {
+            if (stack.isEmpty() || stack.is(AE2wtlibTags.NO_RESTOCK) || stack.getMaxStackSize() == 1) {
+                continue;
+            }
+            ResourceLocation itemId = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            if (itemId == null || items.containsKey(itemId)) {
                 continue;
             }
             AEItemKey key = AEItemKey.of(stack);
             long amount = key == null ? 0 : grid.getStorageService().getCachedInventory().get(key);
-            items.put(stack.getItem().builtInRegistryHolder(), amount);
+            items.put(itemId, amount);
         }
         ModNetworking.sendToPlayer(player, new WcwtRestockAmountsPacket(true, items));
     }

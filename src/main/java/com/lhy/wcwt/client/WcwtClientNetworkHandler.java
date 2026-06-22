@@ -8,6 +8,7 @@ import com.lhy.wcwt.network.PatternProviderListPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
 import com.lhy.wcwt.network.WcwtUpdateRestockPacket;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
@@ -32,7 +33,8 @@ public final class WcwtClientNetworkHandler {
 
     public static void handleRestockAmounts(WcwtRestockAmountsPacket packet) {
         HashMap<Item, Long> map = Maps.newHashMapWithExpectedSize(packet.items().size());
-        packet.items().forEach((item, count) -> map.put(item.value(), count));
+        packet.items().forEach((itemId, count) ->
+                BuiltInRegistries.ITEM.getOptional(itemId).ifPresent(item -> map.put(item, count)));
         WcwtRestockState.update(packet.enabled(), map);
     }
 
