@@ -39,6 +39,10 @@
   "gui.wcwt.toolkit.slot.memory_card": "Карта памяти AE",
   "gui.wcwt.toolkit.slot.mek_configuration_card": "Карта настройки Mekanism",
   "gui.wcwt.toolkit.slot.mek_configurator": "Конфигуратор Mekanism",
+  "gui.wcwt.toolkit.memory_mode.enabled": "Память слотов набора: ВКЛ",
+  "gui.wcwt.toolkit.memory_mode.disabled": "Память слотов набора: ВЫКЛ",
+  "gui.wcwt.toolkit.memory_slot.set": "ЛКМ запомнить предмет. ПКМ очистить память.",
+  "gui.wcwt.toolkit.memory_slot.empty": "ПКМ очистить память этого слота.",
 
   "gui.wcwt.return": "Назад",
 

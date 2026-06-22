@@ -127,6 +127,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     /** 元件可装升级卡的最大格数（与 AE2 CellWorkbenchMenu 保持一致：8）。*/
     public static final int CELL_UPGRADE_SLOTS = 8;
+    private static final int TOOLKIT_MEMORY_ITEM_MATCH_LIMIT = 256;
     private static final int OPTIONAL_SLOT_GROUP_RESONATING_STORAGE_BASE = CELL_UPGRADE_SLOTS;
     private static final EquipmentSlot[] ARMOR_EQUIPMENT_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
@@ -745,11 +746,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         @Override
-        public int getMaxStackSize() {
-            return 1;
-        }
-
-        @Override
         public boolean isActive() {
             return active && super.isActive();
         }
@@ -1179,6 +1175,66 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     
     public WirelessComprehensiveWorkTerminalMenuHost getMenuHost() {
         return menuHost;
+    }
+
+    public ItemStack getToolkitMemoryStack(int toolkitIndex) {
+        if (!isToolkitMemorySlot(toolkitIndex)) {
+            return ItemStack.EMPTY;
+        }
+        var memory = toolkitMemoryInventory();
+        if (memory == null || toolkitIndex < 0 || toolkitIndex >= memory.size()) {
+            return ItemStack.EMPTY;
+        }
+        return memory.getStackInSlot(toolkitIndex);
+    }
+
+    public boolean hasToolkitMemory(int toolkitIndex) {
+        return !getToolkitMemoryStack(toolkitIndex).isEmpty();
+    }
+
+    public void setToolkitMemorySlot(int toolkitIndex, boolean rememberFromSlot) {
+        if (!isToolkitMemorySlot(toolkitIndex)) {
+            return;
+        }
+        var memory = toolkitMemoryInventory();
+        var toolkit = toolkitInventory();
+        if (memory == null || toolkit == null || toolkitIndex < 0 || toolkitIndex >= memory.size()
+                || toolkitIndex >= toolkit.size()) {
+            return;
+        }
+        if (!rememberFromSlot) {
+            memory.setItemDirect(toolkitIndex, ItemStack.EMPTY);
+            broadcastChanges();
+            return;
+        }
+        ItemStack stack = toolkit.getStackInSlot(toolkitIndex);
+        if (stack.isEmpty()) {
+            return;
+        }
+        memory.setItemDirect(toolkitIndex, stack.copyWithCount(1));
+        broadcastChanges();
+    }
+
+    private boolean toolkitMemoryMatches(int toolkitIndex, ItemStack stack) {
+        if (!isToolkitMemorySlot(toolkitIndex)) {
+            return true;
+        }
+        ItemStack memory = getToolkitMemoryStack(toolkitIndex);
+        return memory.isEmpty() || (!stack.isEmpty() && memory.is(stack.getItem()));
+    }
+
+    private boolean isToolkitMemorySlot(int toolkitIndex) {
+        return toolkitIndex >= ToolkitItemRules.DEDICATED_SLOT_COUNT;
+    }
+
+    @Nullable
+    private InternalInventory toolkitInventory() {
+        return menuHost == null ? null : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
+    }
+
+    @Nullable
+    private InternalInventory toolkitMemoryInventory() {
+        return menuHost == null ? null : menuHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT_MEMORY);
     }
 
     public void setPatternProviderSlotSync(List<PatternProviderSlotSyncPacket.Mapping> mappings) {
@@ -3691,8 +3747,28 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var toolkitSlotsOrdered = getSlots(WcwtSlotSemantics.WCWT_TOOLKIT);
         Slot[] lookup = buildToolkitLogicalSlotLookup(toolkitSlotsOrdered);
         ItemStack original = sourceStack.copy();
-        for (int logicalIndex : ToolkitItemRules.insertionIndexOrder(sourceStack)) {
+        if (tryMoveStackIntoToolkitLogicalSlots(sourceSlot, sourceStack, original, lookup,
+                toolkitMemoryInsertionOrder(sourceStack), true) != ItemStack.EMPTY) {
+            return original;
+        }
+        if (tryMoveStackIntoToolkitLogicalSlots(sourceSlot, sourceStack, original, lookup,
+                ToolkitItemRules.insertionIndexOrder(sourceStack), false) != ItemStack.EMPTY) {
+            return original;
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private ItemStack tryMoveStackIntoToolkitLogicalSlots(Slot sourceSlot, ItemStack sourceStack, ItemStack original,
+                                                          Slot[] lookup, int[] logicalIndexes,
+                                                          boolean requireMemoryMatch) {
+        for (int logicalIndex : logicalIndexes) {
             if (logicalIndex < 0 || logicalIndex >= lookup.length) {
+                continue;
+            }
+            if (!toolkitMemoryMatches(logicalIndex, sourceStack)) {
+                continue;
+            }
+            if (!requireMemoryMatch && hasToolkitMemory(logicalIndex)) {
                 continue;
             }
             Slot targetSlot = lookup[logicalIndex];
@@ -3709,6 +3785,24 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
         return ItemStack.EMPTY;
+    }
+
+    private int[] toolkitMemoryInsertionOrder(ItemStack stack) {
+        var memory = toolkitMemoryInventory();
+        if (memory == null || stack.isEmpty()) {
+            return new int[0];
+        }
+        int limit = Math.min(memory.size(), TOOLKIT_MEMORY_ITEM_MATCH_LIMIT);
+        int[] tmp = new int[limit];
+        int count = 0;
+        for (int slot = ToolkitItemRules.DEDICATED_SLOT_COUNT; slot < limit; slot++) {
+            if (!memory.getStackInSlot(slot).isEmpty() && toolkitMemoryMatches(slot, stack)) {
+                tmp[count++] = slot;
+            }
+        }
+        int[] out = new int[count];
+        System.arraycopy(tmp, 0, out, 0, count);
+        return out;
     }
 
     private Slot[] buildToolkitLogicalSlotLookup(List<Slot> toolkitSlotsOrdered) {

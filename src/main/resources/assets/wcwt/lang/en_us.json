@@ -48,6 +48,10 @@
   "gui.wcwt.toolkit.slot.memory_card": "AE memory card",
   "gui.wcwt.toolkit.slot.mek_configuration_card": "Mekanism configuration card",
   "gui.wcwt.toolkit.slot.mek_configurator": "Mekanism configurator",
+  "gui.wcwt.toolkit.memory_mode.enabled": "Toolkit memory slots: ON",
+  "gui.wcwt.toolkit.memory_mode.disabled": "Toolkit memory slots: OFF",
+  "gui.wcwt.toolkit.memory_slot.set": "Left-click to remember this item. Right-click to clear memory.",
+  "gui.wcwt.toolkit.memory_slot.empty": "Right-click to clear this remembered slot.",
   
   "gui.wcwt.return": "Return",
 

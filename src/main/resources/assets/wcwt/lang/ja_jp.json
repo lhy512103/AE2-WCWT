@@ -39,6 +39,10 @@
   "gui.wcwt.toolkit.slot.memory_card": "AE メモリーカード",
   "gui.wcwt.toolkit.slot.mek_configuration_card": "Mekanism 設定カード",
   "gui.wcwt.toolkit.slot.mek_configurator": "Mekanism コンフィグレータ",
+  "gui.wcwt.toolkit.memory_mode.enabled": "ツールキット記憶スロット: ON",
+  "gui.wcwt.toolkit.memory_mode.disabled": "ツールキット記憶スロット: OFF",
+  "gui.wcwt.toolkit.memory_slot.set": "左クリックでこのアイテムを記憶。右クリックで解除。",
+  "gui.wcwt.toolkit.memory_slot.empty": "右クリックでこのスロットの記憶を解除。",
 
   "gui.wcwt.return": "戻る",
 

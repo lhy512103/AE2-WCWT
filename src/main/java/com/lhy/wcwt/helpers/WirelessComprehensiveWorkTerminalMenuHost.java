@@ -81,6 +81,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private static final String PLAYER_PENDING_EXTENDED_UI_TAG = "pending_extended_ui";
     private static final String TOOLKIT_SIZE_TAG = "size";
     private static final String TOOLKIT_ITEMS_TAG = "items";
+    private static final String TOOLKIT_MEMORY_TAG = "memory";
     private static final String TOOLKIT_SLOT_TAG = "slot";
     private static final String TOOLKIT_STACK_TAG = "stack";
     
@@ -91,6 +92,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     public static final ResourceLocation INV_ADVANCED_PATTERN = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "advanced_pattern");
     public static final ResourceLocation INV_PATTERN_CACHE = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_cache");
     public static final ResourceLocation INV_TOOLKIT = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit");
+    public static final ResourceLocation INV_TOOLKIT_MEMORY = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_memory");
     public static final ResourceLocation INV_VIEW_CELL = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "view_cell");
     public static final ResourceLocation INV_STORAGE_CELL = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "storage_cell");
     public static final ResourceLocation INV_RESONATING_PATTERN_CACHE = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "resonating_pattern_cache");
@@ -129,6 +131,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private final SupplierInternalInventory<InternalInventory> patternCacheInv;
     // 工具包 - 默认64个槽位，实际数量由服务端配置控制
     private final SupplierInternalInventory<InternalInventory> toolkitInv;
+    private final SupplierInternalInventory<InternalInventory> toolkitMemoryInv;
     // AE2 原版显示元件槽位 - 5个槽位
     private final SupplierInternalInventory<InternalInventory> viewCellInv;
     // 元件工作台 - 存储元件槽（1个槽位）
@@ -227,6 +230,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 new StackDependentSupplier<>(
                         this::getItemStack,
                         stack -> createToolkitInventory(player, stack)));
+        this.toolkitMemoryInv = new SupplierInternalInventory<>(
+                new StackDependentSupplier<>(
+                        this::getItemStack,
+                        stack -> createToolkitMemoryInventory(player, stack)));
 
         this.viewCellInv = new SupplierInternalInventory<>(
                 new StackDependentSupplier<>(
@@ -913,6 +920,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             return patternCacheInv;
         } else if (id.equals(INV_TOOLKIT)) {
             return toolkitInv;
+        } else if (id.equals(INV_TOOLKIT_MEMORY)) {
+            return toolkitMemoryInv;
         } else if (id.equals(INV_VIEW_CELL)) {
             return viewCellInv;
         } else if (id.equals(INV_STORAGE_CELL)) {
@@ -1200,6 +1209,23 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return inventory;
     }
 
+    private InternalInventory createToolkitMemoryInventory(Player player, ItemStack stack) {
+        int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
+        var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
+            @Override
+            public void saveChangedInventory(AppEngInternalInventory inv) {
+                saveSharedToolkitMemory(player, stack, inv);
+            }
+
+            @Override
+            public boolean isClientSide() {
+                return player.level().isClientSide();
+            }
+        }, toolkitSlots);
+        loadSharedToolkitMemory(player, stack, inventory);
+        return inventory;
+    }
+
     private static InternalInventory createInventory(Player player, ItemStack stack, String inventoryName, int size) {
         var componentType = switch (inventoryName) {
             case "ae2wtlib_armor" -> ModComponents.AE2WTLIB_ARMOR_INV.get();
@@ -1284,6 +1310,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     private static void saveSharedToolkitInventory(Player player, ItemStack terminalStack, AppEngInternalInventory inventory) {
         var persisted = getOrCreateWcwtPlayerData(player);
+        var existingSharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
         CompoundTag serialized = new CompoundTag();
         serialized.putInt(TOOLKIT_SIZE_TAG, inventory.size());
         ListTag items = new ListTag();
@@ -1298,12 +1325,61 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
             items.add(entry);
         }
         serialized.put(TOOLKIT_ITEMS_TAG, items);
+        if (existingSharedToolkitTag.contains(TOOLKIT_MEMORY_TAG, Tag.TAG_COMPOUND)) {
+            serialized.put(TOOLKIT_MEMORY_TAG, existingSharedToolkitTag.getCompound(TOOLKIT_MEMORY_TAG));
+        }
         persisted.put(PLAYER_TOOLKIT_DATA_TAG, serialized);
         saveToolkitInventoryMirror(terminalStack, inventory);
         if (DEBUG_TOOLKIT) {
             WcwtMod.LOGGER.info("WCWT toolkit debug: saved shared toolkit for player={}, slotCount={}, nonEmptySlots={}",
                     player.getScoreboardName(), inventory.size(), countNonEmptySlots(inventory));
         }
+    }
+
+    private static void loadSharedToolkitMemory(Player player, ItemStack terminalStack, AppEngInternalInventory inventory) {
+        if (player.level().isClientSide()) {
+            loadToolkitMemoryMirror(terminalStack, inventory);
+            return;
+        }
+        var persisted = getOrCreateWcwtPlayerData(player);
+        var sharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        var memoryTag = sharedToolkitTag.getCompound(TOOLKIT_MEMORY_TAG);
+        if (!memoryTag.isEmpty()) {
+            readSharedToolkitSlots(player, memoryTag, inventory);
+        } else {
+            loadToolkitMemoryMirror(terminalStack, inventory);
+            if (!terminalStack.getOrDefault(ModComponents.TOOLKIT_MEMORY.get(), ItemContainerContents.EMPTY)
+                    .equals(ItemContainerContents.EMPTY)) {
+                saveSharedToolkitMemory(player, terminalStack, inventory);
+            }
+        }
+        saveToolkitMemoryMirror(terminalStack, inventory);
+    }
+
+    private static void saveSharedToolkitMemory(Player player, ItemStack terminalStack, AppEngInternalInventory memory) {
+        var persisted = getOrCreateWcwtPlayerData(player);
+        var sharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        sharedToolkitTag.put(TOOLKIT_MEMORY_TAG, serializeToolkitSlots(player, memory));
+        persisted.put(PLAYER_TOOLKIT_DATA_TAG, sharedToolkitTag);
+        saveToolkitMemoryMirror(terminalStack, memory);
+    }
+
+    private static CompoundTag serializeToolkitSlots(Player player, AppEngInternalInventory inventory) {
+        CompoundTag serialized = new CompoundTag();
+        serialized.putInt(TOOLKIT_SIZE_TAG, inventory.size());
+        ListTag items = new ListTag();
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            ItemStack stack = inventory.getStackInSlot(slot);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            CompoundTag entry = new CompoundTag();
+            entry.putInt(TOOLKIT_SLOT_TAG, slot);
+            entry.put(TOOLKIT_STACK_TAG, stack.saveOptional(player.registryAccess()));
+            items.add(entry);
+        }
+        serialized.put(TOOLKIT_ITEMS_TAG, items);
+        return serialized;
     }
 
     private static void readSharedToolkitSlots(Player player, CompoundTag sharedToolkitTag,
@@ -1346,6 +1422,15 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
     private static void saveToolkitInventoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
         terminalStack.set(ModComponents.TOOLKIT_INV.get(), inventory.toItemContainerContents());
+    }
+
+    private static void loadToolkitMemoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
+        var component = ModComponents.TOOLKIT_MEMORY.get();
+        inventory.fromItemContainerContents(terminalStack.getOrDefault(component, ItemContainerContents.EMPTY));
+    }
+
+    private static void saveToolkitMemoryMirror(ItemStack terminalStack, AppEngInternalInventory memory) {
+        terminalStack.set(ModComponents.TOOLKIT_MEMORY.get(), memory.toItemContainerContents());
     }
 
     private static int countNonEmptySlots(AppEngInternalInventory inventory) {

@@ -1,4 +1,5 @@
 {
+  "parent": "wcwt:obtain_wireless_comprehensive_work_terminal",
   "display": {
     "icon": {
       "id": "wcwt:wireless_comprehensive_work_terminal"
@@ -18,7 +19,7 @@
     "has_non_universal_terminal": {
       "trigger": "minecraft:recipe_crafted",
       "conditions": {
-        "recipe_id": "wcwt:wireless_comprehensive_work_terminal"
+        "recipe_id": "wcwt:wireless_comprehensive_non_universal_terminal"
       }
     }
   },

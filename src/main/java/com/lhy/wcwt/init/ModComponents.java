@@ -64,6 +64,14 @@ public class ModComponents {
                     .networkSynchronized(ItemContainerContents.STREAM_CODEC));
 
     /**
+     * 工具包记忆槽位过滤模板。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemContainerContents>> TOOLKIT_MEMORY =
+            register("toolkit_memory", builder -> builder
+                    .persistent(ItemContainerContents.CODEC)
+                    .networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
+    /**
      * AE2 原版显示元件槽库存 (5个槽位)
      */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemContainerContents>> VIEW_CELL_INV =

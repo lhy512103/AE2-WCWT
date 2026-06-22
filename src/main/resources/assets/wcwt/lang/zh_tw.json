@@ -37,6 +37,10 @@
   "gui.wcwt.toolkit.slot.memory_card": "AE 記憶卡",
   "gui.wcwt.toolkit.slot.mek_configuration_card": "Mekanism 配置卡",
   "gui.wcwt.toolkit.slot.mek_configurator": "Mekanism 配置器",
+  "gui.wcwt.toolkit.memory_mode.enabled": "工具包記憶槽位：開",
+  "gui.wcwt.toolkit.memory_mode.disabled": "工具包記憶槽位：關",
+  "gui.wcwt.toolkit.memory_slot.set": "左鍵記住目前物品，右鍵清除記憶。",
+  "gui.wcwt.toolkit.memory_slot.empty": "右鍵清除這個槽位的記憶。",
 
   "gui.wcwt.return": "返回",
 

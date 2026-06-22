@@ -9,6 +9,7 @@
     "description": {
       "translate": "advancements.wcwt.obtain_terminal.description"
     },
+    "background": "ae2:textures/block/sky_stone_brick.png",
     "frame": "task",
     "show_toast": true,
     "announce_to_chat": true,

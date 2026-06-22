@@ -1,4 +1,21 @@
 # Changelog
+## v1.3.1
+
+### English
+
+1. Fixed JEI recipe transfer into the pattern encoding area replacing item variants with the same item ID but different data components/NBT, such as Productive Bees bee spawn eggs.
+2. Fixed the comprehensive terminal offhand slot only accepting one item when placing a stackable item stack.
+3. Restored the shapeless recipe for crafting the ME Comprehensive Work Terminal and moved the non-universal terminal upgrade recipe to a separate recipe ID.
+4. Added toolkit memory slots for general toolkit slots: remembered empty toolkit slots are preferred when shift-moving matching tools into the toolkit, while the first 11 dedicated toolkit slots stay out of memory-slot mode.
+5. Merged the two WCWT advancements into the same advancement tab and reused AE2's vanilla advancement background.
+
+### 中文
+
+1. 修复从JEI将配方拉取到样板编码区时，带数据组件/NBT的同ID物品变体可能被替换成其它变体的问题，例如Productive Bees不同蜂种刷怪蛋；
+2. 修复在综合终端页面将可堆叠的一组物品放入副手栏时只会放入1个的问题；
+3. 恢复ME综合工作终端的无序合成配方，并将无线综合非通用终端升级配方拆分为独立配方ID；
+4. 新增工具包通用槽位记忆功能：Shift 左键将工具移入工具包时会优先进入已记忆且匹配的空槽位，并保持前11个工具包专用槽不参与记忆槽位模式；
+5. 将 WCWT 的两个成就合并到同一标签下，并复用 AE2 原版成就背景图。
 
 ## v1.3.0
 
@@ -41,7 +58,7 @@
 16. Fixed the favorited item icon being offset by 1px.
 17. Fixed inaccurate focusing after uploading patterns.
 18. Fixed the quantum bridge card tooltip not showing compatibility with the comprehensive work terminal.
-19. Fixed JEI recipe transfer into the pattern encoding area replacing item variants with the same item ID but different data components/NBT, such as Productive Bees bee spawn eggs.
+
 
 #### Improvements
 
@@ -87,7 +104,7 @@
 16. 修复收藏物品图标偏移1px的问题；
 17. 修复上传样板时无法精准聚焦到上传样板位置的问题；
 18. 修复量子桥卡tooltip不显示可用于综合工作终端的问题；
-19. 修复从JEI将配方拉取到样板编码区时，带数据组件/NBT的同ID物品变体可能被替换成其它变体的问题，例如Productive Bees不同蜂种刷怪蛋；
+
 
 #### 优化
 
