@@ -1,6 +1,5 @@
 package com.lhy.wcwt.compat.emi;
 
-import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ItemModText;
@@ -293,12 +292,12 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                     }
                 }
 
-                if (!found && hasStoredAlternative(menu, alternatives, ingredient, reservedTerminalAmounts)) {
+                if (!found && menu.hasIngredient(ingredient, reservedTerminalAmounts)) {
                     found = true;
                     anyResolved = true;
                 }
 
-                if (!found && hasCraftableAlternative(menu, alternatives, ingredient)) {
+                if (!found && hasCraftableAlternative(menu, ingredient)) {
                     craftable = true;
                     found = true;
                     anyResolved = true;
@@ -380,56 +379,20 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return availableKeys;
     }
 
-    private static boolean hasStoredAlternative(WirelessComprehensiveWorkTerminalMenu menu, List<ItemStack> alternatives,
-                                                Ingredient ingredient,
-                                                Object2IntOpenHashMap<Object> reservedAmounts) {
-        var clientRepo = menu.getClientRepo();
-        if (clientRepo == null) {
-            return false;
-        }
-
-        for (var entry : clientRepo.getAllEntries()) {
-            if (entry.getStoredAmount() <= 0 || !(entry.getWhat() instanceof AEItemKey itemKey)) {
-                continue;
-            }
-            if (!matchesAnyAlternative(itemKey, alternatives, ingredient)) {
-                continue;
-            }
-
-            int reservedAmount = reservedAmounts.getOrDefault(entry, 0);
-            if (entry.getStoredAmount() - reservedAmount >= 1) {
-                reservedAmounts.mergeInt(entry, 1, Integer::sum);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     private static boolean hasCraftableAlternative(WirelessComprehensiveWorkTerminalMenu menu,
-                                                   List<ItemStack> alternatives,
                                                    Ingredient ingredient) {
         var clientRepo = menu.getClientRepo();
-        if (clientRepo == null) {
+        if (clientRepo == null || ingredient.isEmpty()) {
             return false;
         }
 
-        for (var entry : clientRepo.getAllEntries()) {
-            if (!entry.isCraftable() || !(entry.getWhat() instanceof AEItemKey itemKey)) {
-                continue;
-            }
-
-            if (matchesAnyAlternative(itemKey, alternatives, ingredient)) {
+        for (var entry : clientRepo.getByIngredient(ingredient)) {
+            if (entry.isCraftable()) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    private static boolean matchesAnyAlternative(AEItemKey itemKey, List<ItemStack> alternatives,
-                                                 Ingredient ingredient) {
-        return matchesAnyAlternative(itemKey.toStack(), alternatives, ingredient);
     }
 
     private static boolean matchesAnyAlternative(ItemStack stack, List<ItemStack> alternatives,

@@ -2,8 +2,11 @@ package com.lhy.wcwt.compat.jei;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -15,7 +18,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
-import appeng.api.stacks.AEItemKey;
 import appeng.core.localization.ItemModText;
 import appeng.menu.me.common.MEStorageMenu;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
@@ -29,7 +31,6 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
-import com.lhy.wcwt.pull.WcwtPullIngredientOrdering;
 
 /** JEI「+」从 ME 拉配方原料：锁定合成网格时生效；编码逻辑见 {@link WcwtRecipeTransferHandler}。 */
 public final class WcwtPullRecipeTransfer {
@@ -78,20 +79,45 @@ public final class WcwtPullRecipeTransfer {
         return result;
     }
 
+    private static final byte MISSING = 1;
+    private static final byte CRAFTABLE = 2;
+    private static final long PREVIEW_TTL_TICKS = 10L;
+    private static final Map<IRecipeSlotsView, CachedPreview> PREVIEW_CACHE = new WeakHashMap<>();
+
+    private record CachedPreview(byte[] flags, boolean anyResolved, int invHash, long computedAtTick) {
+    }
+
     private static PreviewSlots findTransferPreview(MEStorageMenu container, IRecipeSlotsView recipeSlots) {
+        List<IRecipeSlotView> inputSlots = collectInputSlots(recipeSlots);
+        int invHash = playerInventoryHash(container);
+        long tick = currentClientTick();
+
+        CachedPreview cached = PREVIEW_CACHE.get(recipeSlots);
+        if (cached != null
+                && cached.flags.length == inputSlots.size()
+                && cached.invHash == invHash
+                && tick - cached.computedAtTick < PREVIEW_TTL_TICKS) {
+            return assemblePreview(inputSlots, cached.flags, cached.anyResolved);
+        }
+
+        byte[] flags = new byte[inputSlots.size()];
+        boolean anyResolved = computePreviewFlags(container, inputSlots, flags);
+        PREVIEW_CACHE.put(recipeSlots, new CachedPreview(flags, anyResolved, invHash, tick));
+        return assemblePreview(inputSlots, flags, anyResolved);
+    }
+
+    private static boolean computePreviewFlags(MEStorageMenu container, List<IRecipeSlotView> inputSlots, byte[] flags) {
         var reservedTerminalAmounts = new Object2IntOpenHashMap<>();
         var playerItems = container.getPlayerInventory().items;
         var reservedPlayerItems = new int[playerItems.size()];
-        List<IRecipeSlotView> missingSlots = new ArrayList<>();
-        List<IRecipeSlotView> craftableSlots = new ArrayList<>();
         boolean anyResolved = false;
 
-        for (IRecipeSlotView slotView : collectInputSlots(recipeSlots)) {
-            List<ItemStack> alternatives = getAlternativeStacks(slotView);
-            if (alternatives.isEmpty()) {
+        for (int idx = 0; idx < inputSlots.size(); idx++) {
+            IRecipeSlotView slotView = inputSlots.get(idx);
+            var ingredient = toIngredient(slotView);
+            if (ingredient.isEmpty()) {
                 continue;
             }
-            var ingredient = Ingredient.of(alternatives.stream().map(ItemStack::copy));
 
             int requiredCount = getDisplayedStack(slotView).getCount();
             requiredCount = Math.max(requiredCount, 1);
@@ -107,7 +133,7 @@ public final class WcwtPullRecipeTransfer {
 
                     var stack = playerItems.get(slot);
                     if (stack.getCount() - reservedPlayerItems[slot] > 0
-                            && matchesAnyAlternative(stack, alternatives, ingredient)) {
+                            && ingredient.test(stack)) {
                         reservedPlayerItems[slot]++;
                         found = true;
                         anyResolved = true;
@@ -115,12 +141,12 @@ public final class WcwtPullRecipeTransfer {
                     }
                 }
 
-                if (!found && hasStoredAlternative(container, alternatives, ingredient, reservedTerminalAmounts)) {
+                if (!found && container.hasIngredient(ingredient, reservedTerminalAmounts)) {
                     found = true;
                     anyResolved = true;
                 }
 
-                if (!found && hasCraftableAlternative(container, alternatives, ingredient)) {
+                if (!found && hasCraftableAlternative(container, ingredient)) {
                     craftable = true;
                     found = true;
                     anyResolved = true;
@@ -131,15 +157,50 @@ public final class WcwtPullRecipeTransfer {
                 }
             }
 
+            byte flag = 0;
             if (missing) {
-                missingSlots.add(slotView);
+                flag |= MISSING;
             }
             if (craftable) {
-                craftableSlots.add(slotView);
+                flag |= CRAFTABLE;
             }
+            flags[idx] = flag;
         }
 
+        return anyResolved;
+    }
+
+    private static PreviewSlots assemblePreview(List<IRecipeSlotView> inputSlots, byte[] flags, boolean anyResolved) {
+        List<IRecipeSlotView> missingSlots = new ArrayList<>();
+        List<IRecipeSlotView> craftableSlots = new ArrayList<>();
+        for (int i = 0; i < inputSlots.size(); i++) {
+            byte flag = flags[i];
+            if ((flag & MISSING) != 0) {
+                missingSlots.add(inputSlots.get(i));
+            }
+            if ((flag & CRAFTABLE) != 0) {
+                craftableSlots.add(inputSlots.get(i));
+            }
+        }
         return new PreviewSlots(missingSlots, craftableSlots, anyResolved);
+    }
+
+    private static int playerInventoryHash(MEStorageMenu container) {
+        var items = container.getPlayerInventory().items;
+        int hash = 1;
+        for (int slot = 0; slot < items.size(); slot++) {
+            var stack = items.get(slot);
+            hash = 31 * hash + stack.getCount();
+            hash = 31 * hash + (stack.isEmpty() ? 0 : stack.getItem().hashCode());
+            hash = 31 * hash + java.util.Objects.hashCode(stack.getTag());
+            hash = 31 * hash + (container.isPlayerInventorySlotLocked(slot) ? 1 : 0);
+        }
+        return hash;
+    }
+
+    private static long currentClientTick() {
+        var level = Minecraft.getInstance().level;
+        return level != null ? level.getGameTime() : 0L;
     }
 
     private static List<IRecipeSlotView> collectInputSlots(IRecipeSlotsView recipeSlots) {
@@ -153,73 +214,13 @@ public final class WcwtPullRecipeTransfer {
                 .anyMatch(WcwtPullRecipeTransfer::hasItemStack);
     }
 
-    private static boolean hasStoredAlternative(MEStorageMenu container, List<ItemStack> alternatives,
-                                                Ingredient ingredient,
-                                                Object2IntOpenHashMap<Object> reservedAmounts) {
+    private static boolean hasCraftableAlternative(MEStorageMenu container, Ingredient ingredient) {
         var clientRepo = container.getClientRepo();
-        if (clientRepo == null) {
+        if (clientRepo == null || ingredient.isEmpty()) {
             return false;
         }
-
-        for (var entry : clientRepo.getAllEntries()) {
-            if (entry.getStoredAmount() <= 0 || !(entry.getWhat() instanceof AEItemKey what)) {
-                continue;
-            }
-            if (!matchesAnyAlternative(what, alternatives, ingredient)) {
-                continue;
-            }
-
-            int reservedAmount = reservedAmounts.getOrDefault(entry, 0);
-            if (entry.getStoredAmount() - reservedAmount >= 1) {
-                reservedAmounts.merge(entry, 1, Integer::sum);
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static boolean hasCraftableAlternative(MEStorageMenu container, List<ItemStack> alternatives,
-                                                   Ingredient ingredient) {
-        var clientRepo = container.getClientRepo();
-        if (clientRepo == null) {
-            return false;
-        }
-
-        for (var entry : clientRepo.getAllEntries()) {
-            if (!entry.isCraftable() || !(entry.getWhat() instanceof AEItemKey what)) {
-                continue;
-            }
-
-            if (matchesAnyAlternative(what, alternatives, ingredient)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static boolean matchesAnyAlternative(AEItemKey itemKey, List<ItemStack> alternatives,
-                                                 Ingredient ingredient) {
-        return matchesAnyAlternative(itemKey.toStack(), alternatives, ingredient);
-    }
-
-    private static boolean matchesAnyAlternative(ItemStack stack, List<ItemStack> alternatives,
-                                                 Ingredient ingredient) {
-        if (stack.isEmpty()) {
-            return false;
-        }
-        for (ItemStack alternative : alternatives) {
-            if (ItemStack.isSameItem(stack, alternative)
-                    && java.util.Objects.equals(stack.getTag(), alternative.getTag())) {
-                return true;
-            }
-        }
-        if (ingredient != null && ingredient.test(stack)) {
-            return true;
-        }
-        for (ItemStack alternative : alternatives) {
-            if (!alternative.isEmpty() && ItemStack.isSameItem(stack, alternative)) {
+        for (var entry : clientRepo.getByIngredient(ingredient)) {
+            if (entry.isCraftable()) {
                 return true;
             }
         }
@@ -228,6 +229,20 @@ public final class WcwtPullRecipeTransfer {
 
     private static boolean hasItemStack(IRecipeSlotView slotView) {
         return slotView.getDisplayedItemStack().isPresent() || slotView.getItemStacks().findAny().isPresent();
+    }
+
+    private static Ingredient toIngredient(IRecipeSlotView slotView) {
+        List<ItemStack> stacks = new ArrayList<>();
+        slotView.getItemStacks()
+                .filter(stack -> !stack.isEmpty())
+                .forEach(stack -> stacks.add(stack.copy()));
+        if (stacks.isEmpty()) {
+            ItemStack displayed = getDisplayedStack(slotView);
+            if (!displayed.isEmpty()) {
+                stacks.add(displayed.copy());
+            }
+        }
+        return Ingredient.of(stacks.stream());
     }
 
     private static RequestedIngredient toRequestedIngredient(WirelessComprehensiveWorkTerminalMenu menu,
