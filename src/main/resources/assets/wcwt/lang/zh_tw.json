@@ -175,6 +175,10 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "開：JEI/EMI 拉取配方時，會按已識別的配方類型自動切到工作台或鍛造台。",
   "wcwt.config.enableRecipePullTransfer": "啟用配方拉取/編碼處理",
   "wcwt.config.enableRecipePullTransfer.tooltip": "開：啟用 WCWT 的 JEI/EMI 配方拉取、編碼傳輸與預覽高亮。關：關閉這些處理。",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs": "剔除 GTCEu 不消耗輸入",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "開：JEI/EMI 拉取 GTCEu 加工配方到樣板編碼區時，自動移除催化劑等不會被消耗的物品輸入。默認開啟。",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables": "剔除時保留 GTCEu 編程電路",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "開：啟用 GTCEu 不消耗輸入剔除時，保留處理樣板中的編程電路。默認開啟。",
   "advancements.wcwt.obtain_non_universal_terminal.title": "什麼？雷霆大終端都沒法滿足你了嘛！",
   "advancements.wcwt.obtain_non_universal_terminal.description": "獲得無線綜合非通用終端。",
 

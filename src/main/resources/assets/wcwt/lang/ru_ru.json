@@ -179,6 +179,10 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "ВКЛ: переносы JEI/EMI переключают ручую зону на верстак или кузницу, если тип рецепта распознан.",
   "wcwt.config.enableRecipePullTransfer": "Включить получение/кодирование рецептов",
   "wcwt.config.enableRecipePullTransfer.tooltip": "ВКЛ: включает получение рецептов JEI/EMI, перенос кодирования и подсветку предпросмотра WCWT. ВЫКЛ: отключает это.",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs": "Удалять нерасходуемые входы GTCEu",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "ВКЛ: при переносе рецептов обработки GTCEu через JEI/EMI в область кодирования шаблонов автоматически удаляются нерасходуемые предметные входы, например катализаторы. По умолчанию включено.",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables": "Сохранять программируемые схемы GTCEu при фильтрации",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "ВКЛ: когда включено удаление нерасходуемых входов GTCEu, программируемые схемы в шаблонах обработки сохраняются. По умолчанию включено.",
 
   "message.wcwt.pull_no_link": "WCWT: терминал не подключен к доступной ME-сети.",
   "message.wcwt.pull_no_inputs": "WCWT: у этого рецепта JEI нет входных предметов для получения.",

@@ -177,6 +177,10 @@
   "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer.tooltip": "ON: JEI/EMI 転送時、判定できたレシピ種別に応じて作業台または鍛冶台へ切り替えます。",
   "wcwt.config.enableRecipePullTransfer": "レシピ取得/エンコード処理を有効化",
   "wcwt.config.enableRecipePullTransfer.tooltip": "ON: WCWT の JEI/EMI レシピ取得、エンコード転送、プレビュー強調を有効化します。OFF: これらを無効化します。",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs": "GTCEu の非消費入力を除去",
+  "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "ON: JEI/EMI で GTCEu の処理レシピをパターンエンコードエリアへ転送する際、消費されない触媒などのアイテム入力を自動で除去します。デフォルトは ON です。",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables": "除去時に GTCEu プログラム回路を保持",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "ON: GTCEu の非消費入力除去が有効な場合、処理パターン内のプログラム回路を保持します。デフォルトは ON です。",
 
   "message.wcwt.pull_no_link": "WCWT: 端末は利用可能な ME ネットワークに接続されていません。",
   "message.wcwt.pull_no_inputs": "WCWT: この JEI レシピには取得できるアイテム入力がありません。",

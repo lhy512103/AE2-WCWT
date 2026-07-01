@@ -8,6 +8,8 @@
 4. Added the Wireless Comprehensive Non-Universal Terminal: WCWT can now embed compatible wireless terminals, switch between them from the toolbar, and split embedded terminals with Ctrl+Shift+right-click air.
 5. Reduced JEI recipe page stalls in unlocked encoding mode by avoiding full terminal inventory scans during encoding preview highlights.
 6. Merged WCWT's two advancements under the "Thunder Terminal" tab and reused AE2's original advancement background.
+7. Added a client option to keep GTCEu Programmed Circuits when filtering non-consumable inputs from transferred processing patterns.
+7. Added a client option to keep GTCEu Programmed Circuits when filtering non-consumable inputs from transferred processing patterns.
 
 ## 中文
 
@@ -17,6 +19,8 @@
 4. 新增无线综合非通用终端：WCWT 现在可以合入兼容无线终端，在工具栏中切换，并可通过 Ctrl+Shift+右键空气拆出已合入终端。
 5. 优化未锁定编码模式下的 JEI 配方预览高亮，避免每次切换配方页都全量扫描终端库存导致卡顿。
 6. 将 WCWT 的两个成就合并到“雷霆大终端”标签下，并复用 AE2 原版成就背景图。
+7. 新增客户端选项：剔除 GTCEu 不消耗输入时可保留处理样板中的编程电路。
+7. 新增客户端选项：剔除 GTCEu 不消耗输入时可保留处理样板中的编程电路。
 
 # 1.20.1.4
 
