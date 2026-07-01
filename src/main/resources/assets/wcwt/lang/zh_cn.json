@@ -250,6 +250,8 @@
   "wcwt.config.enableRecipePullTransfer.tooltip": "开：启用 WCWT 的 JEI/EMI 配方拉取、编码传输与预览高亮。关：关闭这些处理。",
   "wcwt.config.filterGtceuNonConsumablePatternInputs": "剔除 GTCEu 不消耗输入",
   "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "开：JEI/EMI 拉取 GTCEu 加工配方到样板编码区时，自动移除催化剂等不会被消耗的物品输入。默认开启。",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables": "剔除时保留 GTCEu 编程电路",
+  "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "开：启用 GTCEu 不消耗输入剔除时，保留处理样板中的编程电路。默认开启。",
   "wcwt.config.expandToolkitInManagementArea": "工具包在管理区位置展开",
   "wcwt.config.expandToolkitInManagementArea.tooltip": "开：打开工具包时，改在样板管理区位置展开显示，并隐藏供应器列表；关闭时保持原来的右侧工具包面板。",
   "wcwt.config.priorityShiftMoveToCosmeticArmor": "装饰盔甲优先 Shift 移动",

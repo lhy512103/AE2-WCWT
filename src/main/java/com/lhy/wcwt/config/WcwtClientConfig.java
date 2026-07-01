@@ -13,6 +13,7 @@ public final class WcwtClientConfig {
     public static final ForgeConfigSpec.BooleanValue PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR;
     public static final ForgeConfigSpec.BooleanValue ENABLE_RECIPE_PULL_TRANSFER;
     public static final ForgeConfigSpec.BooleanValue FILTER_GTCEU_NON_CONSUMABLE_PATTERN_INPUTS;
+    public static final ForgeConfigSpec.BooleanValue KEEP_GTCEU_PROGRAMMED_CIRCUIT_WHEN_FILTERING_NON_CONSUMABLES;
     public static final ForgeConfigSpec.BooleanValue AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER;
     public static final ForgeConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
     public static final ForgeConfigSpec.BooleanValue PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING;
@@ -42,6 +43,10 @@ public final class WcwtClientConfig {
                 .comment("If true: GTCEu non-consumable item inputs, such as catalysts, are removed when JEI/EMI transfers processing recipes into the pattern encoding area.")
                 .translation("wcwt.config.filterGtceuNonConsumablePatternInputs")
                 .define("filterGtceuNonConsumablePatternInputs", true);
+        KEEP_GTCEU_PROGRAMMED_CIRCUIT_WHEN_FILTERING_NON_CONSUMABLES = BUILDER
+                .comment("If true: when GTCEu non-consumable input filtering is enabled, keep Programmed Circuit inputs in encoded processing patterns.")
+                .translation("wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables")
+                .define("keepGtceuProgrammedCircuitWhenFilteringNonConsumables", true);
         AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER = BUILDER
                 .comment("If true: JEI/EMI recipe transfers switch the manual workspace to crafting or smithing when the recipe type is known.")
                 .translation("wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer")
@@ -122,6 +127,10 @@ public final class WcwtClientConfig {
 
     public static boolean filterGtceuNonConsumablePatternInputs() {
         return FILTER_GTCEU_NON_CONSUMABLE_PATTERN_INPUTS.get();
+    }
+
+    public static boolean keepGtceuProgrammedCircuitWhenFilteringNonConsumables() {
+        return KEEP_GTCEU_PROGRAMMED_CIRCUIT_WHEN_FILTERING_NON_CONSUMABLES.get();
     }
 
     public static boolean patternMultiplierApplyToEditorProcessing() {

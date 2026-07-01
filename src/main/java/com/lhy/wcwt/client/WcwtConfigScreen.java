@@ -53,6 +53,13 @@ public class WcwtConfigScreen extends Screen {
                         saveClientConfig();
                     });
             y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables",
+                    () -> WcwtClientConfig.KEEP_GTCEU_PROGRAMMED_CIRCUIT_WHEN_FILTERING_NON_CONSUMABLES.get(),
+                    value -> {
+                        WcwtClientConfig.KEEP_GTCEU_PROGRAMMED_CIRCUIT_WHEN_FILTERING_NON_CONSUMABLES.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
             addBooleanRow(y, "wcwt.config.autoSwitchManualWorkspaceOnRecipeTransfer",
                     () -> WcwtClientConfig.AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER.get(),
                     value -> {
