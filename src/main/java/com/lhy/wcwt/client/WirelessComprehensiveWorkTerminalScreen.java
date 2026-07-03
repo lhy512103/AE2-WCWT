@@ -70,6 +70,7 @@ import com.lhy.wcwt.network.PatternSelectionPacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
 import com.lhy.wcwt.network.StonecuttingRecipeSelectionPacket;
 import com.lhy.wcwt.network.ToolkitNetworkToolDepositPacket;
+import com.lhy.wcwt.network.ToolkitMemorySlotPacket;
 import com.lhy.wcwt.network.CycleProcessingOutputPacket;
 import com.lhy.wcwt.network.WirelessSettingsPacket;
 import com.lhy.wcwt.util.PatternUploadMetadata;
@@ -81,6 +82,7 @@ import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.language.I18n;
 import net.minecraft.ChatFormatting;
@@ -154,6 +156,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedUIButton resonatingLightningPatternCodingButton;
     private FavoriteItemsButton favoriteItemsButton;
     private ViewCellsToggleButton viewCellsToggleButton;
+    private @Nullable Renderable toolkitMemoryOverlayRenderable;
 
     /** 4 个样板模式 tab 按钮中**最顶**的那个（modeTabButton3）。扩展按钮 Y 锚到它的顶部。*/
     private TabButton topModeTabButton;
@@ -245,7 +248,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedPanelLayout.Rect managementToolkitSlotRect =
             new ExtendedPanelLayout.Rect(177, 211, 16, 16);
     private ExtendedPanelLayout.Rect managementToolkitScrollbarRect =
-            new ExtendedPanelLayout.Rect(343, 209, 12, 72);
+            new ExtendedPanelLayout.Rect(343, 221, 12, 60);
+    private ExtendedPanelLayout.Rect managementToolkitMemoryButton =
+            new ExtendedPanelLayout.Rect(343, 209, 12, 12);
+    private ExtendedPanelLayout.Rect toolkitMemoryButton =
+            new ExtendedPanelLayout.Rect(0, 0, 12, 12);
     private ExtendedPanelLayout.Rect patternManagementAddButton =
             new ExtendedPanelLayout.Rect(291, 185, 30, 11);
     private ExtendedPanelLayout.Rect patternManagementReloadButton =
@@ -310,7 +317,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SEARCH_MATCH_BG_ALPHA = 0x3C;
     private static final int PATTERN_MANAGEMENT_SEARCH_PROVIDER_ALPHA = 0x30;
     private static final int PATTERN_MANAGEMENT_SEARCH_PROVIDER_BG_ALPHA = 0x14;
-    private static final int BUTTON_PRESS_OFFSET_Y = 1;
+    private static final int TOOLKIT_MEMORY_TOGGLE_OFF_U = 0;
+    private static final int TOOLKIT_MEMORY_TOGGLE_ON_U = 16;
+    private static final int TOOLKIT_MEMORY_TOGGLE_V = 48;
+    private static final int TOOLKIT_MEMORY_TOGGLE_SOURCE_SIZE = 16;
+    private static final float TOOLKIT_MEMORY_GHOST_ALPHA = 0.38F;
     private static final int ANVIL_TOO_EXPENSIVE_COST = 40;
     private static final long FOCUSED_PATTERN_FLASH_PERIOD_MS = 480L;
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
@@ -318,8 +329,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final Point HIDDEN_SLOT_POS = new Point(-9999, -9999);
     private static final ResourceLocation CURIOS_INVENTORY_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("curios", "textures/gui/inventory.png");
-    private static final ResourceLocation EAE_ICONS_TEXTURE =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("extendedae", "textures/guis/nicons.png");
     private static final ResourceLocation AE2_STATES_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/states.png");
     private static final ResourceLocation AAE_STATES_TEXTURE =
@@ -369,6 +378,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     // 样板选择状态（保留以备后续功能使用）
     private boolean advancedCodingMode = false; // 是否处于高级编码模式
     private boolean patternSelectionLockedMode = false;
+    private boolean toolkitMemoryMode;
+    private boolean toolkitMemoryButtonFocused;
     private int selectedPatternCacheIndex = -1;
     private int lastDebugRepoColumns = -1;
     private int lastDebugRepoSlots = -1;
@@ -469,6 +480,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 imageWidth, imageHeight);
         managementToolkitScrollbarRect = managementToolkitLayout.widget("management_toolkit_scrollbar",
                 managementToolkitScrollbarRect, imageWidth, imageHeight);
+        managementToolkitMemoryButton = managementToolkitLayout.widget("management_toolkit_memory",
+                managementToolkitMemoryButton, imageWidth, imageHeight);
         patternManagementAddButton = mainLayout.widget("increase_mapping", patternManagementAddButton, imageWidth, imageHeight);
         patternManagementReloadButton = mainLayout.widget("heavy_load_mapping", patternManagementReloadButton, imageWidth, imageHeight);
         patternManagementDeleteButton = mainLayout.widget("delete_mapping", patternManagementDeleteButton, imageWidth, imageHeight);
@@ -859,7 +872,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         // 扩展按钮位置依赖升级槽实际高度，必须在 setMaxRows 之后调用。
         initExtendedUIButtons();
         initializePanels();
+        installToolkitMemoryOverlayRenderable();
         updateManualWorkspaceUi();
+    }
+
+    private void installToolkitMemoryOverlayRenderable() {
+        if (toolkitMemoryOverlayRenderable != null) {
+            renderables.remove(toolkitMemoryOverlayRenderable);
+        }
+        toolkitMemoryOverlayRenderable = this::renderToolkitMemoryOverlay;
+        renderables.add(toolkitMemoryOverlayRenderable);
     }
 
     private void syncQuickMoveOptionsToMenu() {
@@ -3160,6 +3182,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 imageWidth, imageHeight);
         managementToolkitScrollbarRect = managementToolkitLayout.widget("management_toolkit_scrollbar",
                 managementToolkitScrollbarRect, imageWidth, imageHeight);
+        managementToolkitMemoryButton = managementToolkitLayout.widget("management_toolkit_memory",
+                managementToolkitMemoryButton, imageWidth, imageHeight);
         patternManagementAddButton = mainLayout.widget("increase_mapping", patternManagementAddButton, imageWidth, imageHeight);
         patternManagementReloadButton = mainLayout.widget("heavy_load_mapping", patternManagementReloadButton, imageWidth, imageHeight);
         patternManagementDeleteButton = mainLayout.widget("delete_mapping", patternManagementDeleteButton, imageWidth, imageHeight);
@@ -3454,6 +3478,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 && ((toolkitPanel == null || !toolkitPanel.isVisible()) && !isToolkitExpandedInManagementArea())) {
             return;
         }
+        var semantic = menu.getSlotSemantic(slot);
         int cacheIndex = getPatternCacheSlotIndex(slot);
         if (patternSelectionLockedMode && cacheIndex >= 0 && slot.hasItem() && cacheIndex == selectedPatternCacheIndex) {
             guiGraphics.blit(WCWT_STATES_TEXTURE,
@@ -3462,7 +3487,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     SELECTED_PATTERN_BG_SIZE, SELECTED_PATTERN_BG_SIZE,
                     256, 256);
         }
-        super.renderSlot(guiGraphics, slot);
+        if (shouldRenderToolkitMemoryInsteadOfSlot(semantic, slot)) {
+            renderToolkitMemoryGhost(guiGraphics, slot);
+        } else {
+            super.renderSlot(guiGraphics, slot);
+            if (semantic == WcwtSlotSemantics.WCWT_TOOLKIT) {
+                renderToolkitMemoryGhost(guiGraphics, slot);
+            }
+        }
         renderCraftablePatternIndicator(guiGraphics, slot);
     }
 
@@ -4179,10 +4211,79 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
             int x = managementToolkitSlotRect.left() + (visibleIndex % columns) * ToolkitPanel.SLOT_SIZE;
             int y = managementToolkitSlotRect.top() + (visibleIndex / columns) * ToolkitPanel.SLOT_SIZE;
-            if (slotIndex < ToolkitItemRules.DEDICATED_SLOT_COUNT) {
+            Slot slot = getToolkitSlots().get(slotIndex);
+            if (slotIndex < ToolkitItemRules.DEDICATED_SLOT_COUNT && (slot == null || slot.getItem().isEmpty())) {
                 guiGraphics.blit(WCWT_STATES_TEXTURE, x, y, 48 + slotIndex * 16, 16, 16, 16, 256, 256);
             }
         }
+    }
+
+    private void renderToolkitMemoryOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        var rect = getActiveToolkitMemoryButtonRect();
+        if (rect == null) {
+            return;
+        }
+        renderToolkitMemoryButtonAbsolute(guiGraphics, rect, mouseX, mouseY);
+    }
+
+    private void renderToolkitMemoryButtonAbsolute(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
+                                                   int mouseX, int mouseY) {
+        int x = leftPos + rect.left();
+        int y = topPos + rect.top();
+        if (toolkitMemoryButtonFocused) {
+            renderWhiteButtonBorder(guiGraphics, x, y, rect.width(), rect.height());
+        }
+        int sourceU = toolkitMemoryMode ? TOOLKIT_MEMORY_TOGGLE_ON_U : TOOLKIT_MEMORY_TOGGLE_OFF_U;
+        guiGraphics.blit(WCWT_STATES_TEXTURE, x, y, rect.width(), rect.height(),
+                sourceU, TOOLKIT_MEMORY_TOGGLE_V,
+                TOOLKIT_MEMORY_TOGGLE_SOURCE_SIZE, TOOLKIT_MEMORY_TOGGLE_SOURCE_SIZE, 256, 256);
+    }
+
+    private static void renderWhiteButtonBorder(GuiGraphics guiGraphics, int x, int y, int width, int height) {
+        guiGraphics.fill(x - 1, y - 1, x + width + 1, y, 0xFFFFFFFF);
+        guiGraphics.fill(x - 1, y, x, y + height, 0xFFFFFFFF);
+        guiGraphics.fill(x + width, y, x + width + 1, y + height, 0xFFFFFFFF);
+        guiGraphics.fill(x - 1, y + height, x + width + 1, y + height + 1, 0xFFFFFFFF);
+    }
+
+    @Nullable
+    private ExtendedPanelLayout.Rect getActiveToolkitMemoryButtonRect() {
+        if (isToolkitExpandedInManagementArea()) {
+            return managementToolkitMemoryButton;
+        }
+        if (toolkitPanel == null || !toolkitPanel.isVisible()) {
+            return null;
+        }
+        var bounds = toolkitPanel.getBounds();
+        var rect = toolkitPanel.getMemoryButton();
+        toolkitMemoryButton = new ExtendedPanelLayout.Rect(
+                bounds.getX() - leftPos + rect.left(),
+                bounds.getY() - topPos + rect.top(),
+                rect.width(),
+                rect.height());
+        return toolkitMemoryButton;
+    }
+
+    private void renderToolkitMemoryGhost(GuiGraphics guiGraphics, Slot slot) {
+        if (!(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot)
+                || !menu.hasToolkitMemory(toolkitSlot.toolkitLogicalIndex())) {
+            return;
+        }
+        ItemStack memory = menu.getToolkitMemoryStack(toolkitSlot.toolkitLogicalIndex());
+        if (memory.isEmpty()) {
+            return;
+        }
+        guiGraphics.setColor(1.0F, 1.0F, 1.0F, TOOLKIT_MEMORY_GHOST_ALPHA);
+        guiGraphics.renderItem(memory, slot.x, slot.y);
+        guiGraphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    private boolean shouldRenderToolkitMemoryInsteadOfSlot(@Nullable appeng.menu.SlotSemantic semantic, Slot slot) {
+        return toolkitMemoryMode
+                && semantic == WcwtSlotSemantics.WCWT_TOOLKIT
+                && menu.hasToolkitMemory(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot
+                ? toolkitSlot.toolkitLogicalIndex()
+                : -1);
     }
 
     private ItemStack getPatternDisplayStack(ItemStack patternStack) {
@@ -4544,6 +4645,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         int relX = (int) Math.round(mouseX - leftPos);
         int relY = (int) Math.round(mouseY - topPos);
+        if (button == 0) {
+            var toolkitMemoryRect = getActiveToolkitMemoryButtonRect();
+            toolkitMemoryButtonFocused = toolkitMemoryRect != null && inRect(relX, relY, toolkitMemoryRect);
+        }
         if (button == 1) {
             // AETextField 使用屏幕绝对坐标，须与 MEStorageScreen 一致使用 isMouseOver（而非 GUI 相对坐标）
             if (patternManageSearchField != null && patternManageSearchField.isMouseOver(mouseX, mouseY)) {
@@ -4595,6 +4700,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
         }
         if ((toolkitPanel != null && toolkitPanel.isVisible()) || isToolkitExpandedInManagementArea()) {
+            if (handleToolkitMemoryClick(mouseX, mouseY, button)) {
+                return true;
+            }
             if (toolkitPanel != null && toolkitPanel.isVisible() && toolkitPanel.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
@@ -5292,6 +5400,51 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return false;
     }
 
+    private boolean handleToolkitMemoryClick(double mouseX, double mouseY, int button) {
+        int relX = (int) Math.round(mouseX - leftPos);
+        int relY = (int) Math.round(mouseY - topPos);
+        ExtendedPanelLayout.Rect buttonRect = getActiveToolkitMemoryButtonRect();
+        if (button == 0 && buttonRect != null && inRect(relX, relY, buttonRect)) {
+            toolkitMemoryMode = !toolkitMemoryMode;
+            playPatternManagementClickSound();
+            return true;
+        }
+        if (!toolkitMemoryMode || (button != 0 && button != 1)) {
+            return false;
+        }
+        Slot toolkitSlot = getToolkitSlotAt(mouseX, mouseY);
+        if (!(toolkitSlot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot logicalSlot)) {
+            return false;
+        }
+        int slotIndex = logicalSlot.toolkitLogicalIndex();
+        if (slotIndex < ToolkitItemRules.DEDICATED_SLOT_COUNT) {
+            return false;
+        }
+        if (button == 0 && toolkitSlot.getItem().isEmpty()) {
+            return true;
+        }
+        ModNetworking.sendToServer(new ToolkitMemorySlotPacket(slotIndex, button == 0));
+        menu.setToolkitMemorySlot(slotIndex, button == 0);
+        playPatternManagementClickSound();
+        return true;
+    }
+
+    @Nullable
+    private Slot getToolkitSlotAt(double mouseX, double mouseY) {
+        int relX = (int) Math.round(mouseX - leftPos);
+        int relY = (int) Math.round(mouseY - topPos);
+        for (Slot slot : getToolkitSlots()) {
+            if (!slot.isActive()) {
+                continue;
+            }
+            if (relX >= slot.x && relX < slot.x + PLAYER_INVENTORY_SLOT_HIT_SIZE
+                    && relY >= slot.y && relY < slot.y + PLAYER_INVENTORY_SLOT_HIT_SIZE) {
+                return slot;
+            }
+        }
+        return null;
+    }
+
     private boolean isPlayerInventorySlot(Slot slot) {
         return slot.container == minecraft.player.getInventory();
     }
@@ -5605,6 +5758,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
 
+        var toolkitMemoryTooltip = getToolkitMemoryTooltip(mouseX, mouseY);
+        if (toolkitMemoryTooltip != null) {
+            guiGraphics.renderTooltip(font, toolkitMemoryTooltip, mouseX, mouseY);
+            return;
+        }
+
         ItemStack patternManagementStack = getPatternManagementStackUnderMouse(mouseX, mouseY);
         if (!patternManagementStack.isEmpty()) {
             guiGraphics.renderTooltip(font, patternManagementStack, mouseX, mouseY);
@@ -5633,6 +5792,29 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         super.renderTooltip(guiGraphics, mouseX, mouseY);
+    }
+
+    @Nullable
+    private Component getToolkitMemoryTooltip(int mouseX, int mouseY) {
+        int relX = mouseX - leftPos;
+        int relY = mouseY - topPos;
+        var buttonRect = getActiveToolkitMemoryButtonRect();
+        if (buttonRect != null && inRect(relX, relY, buttonRect)) {
+            return Component.translatable(toolkitMemoryMode
+                    ? "gui.wcwt.toolkit.memory_mode.enabled"
+                    : "gui.wcwt.toolkit.memory_mode.disabled");
+        }
+        if (!toolkitMemoryMode) {
+            return null;
+        }
+        Slot toolkitSlot = getToolkitSlotAt(mouseX, mouseY);
+        if (!(toolkitSlot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot logicalSlot)
+                || logicalSlot.toolkitLogicalIndex() < ToolkitItemRules.DEDICATED_SLOT_COUNT) {
+            return null;
+        }
+        return toolkitSlot.getItem().isEmpty()
+                ? Component.translatable("gui.wcwt.toolkit.memory_slot.empty")
+                : Component.translatable("gui.wcwt.toolkit.memory_slot.set");
     }
 
     private ItemStack getStonecuttingResultUnderMouse(int mouseX, int mouseY) {

@@ -6,15 +6,22 @@
       "$comment": "管理区内嵌工具包背景区域。wcwt_tools.png 有效尺寸为 162x72。",
       "left": 175,
       "bottom": 83,
-      "width": 162,
-      "height": 72
+      "width": 180,
+      "height": 73
     },
     "management_toolkit_scrollbar": {
-      "$comment": "管理区内嵌工具包的滑块位置与高度。",
+      "$comment": "管理区内嵌工具包的滑块位置与高度；顶部预留 12px 给记忆槽位按钮。",
       "left": 341,
-      "bottom": 82,
+      "bottom": 72,
       "width": 12,
-      "height": 72
+      "height": 62
+    },
+    "management_toolkit_memory": {
+      "$comment": "管理区内嵌工具包记忆槽位模式按钮；位于原工具包滑块起点，使用 wcwt_states.png 的 16x16 开关图标缩放到 12x12。",
+      "left": 339,
+      "bottom": 83,
+      "width": 10,
+      "height": 10
     }
   },
   "slots": {

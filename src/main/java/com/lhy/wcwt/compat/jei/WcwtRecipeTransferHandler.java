@@ -46,6 +46,9 @@ import java.util.Optional;
 
 public class WcwtRecipeTransferHandler
         implements IUniversalRecipeTransferHandler<WirelessComprehensiveWorkTerminalMenu> {
+    private static final String GTCEU_MULTIBLOCK_INFO_WRAPPER_CLASS =
+            "com.gregtechceu.gtceu.integration.jei.multipage.MultiblockInfoWrapper";
+
     private final IRecipeTransferHandlerHelper transferHelper;
 
     public WcwtRecipeTransferHandler(IRecipeTransferHandlerHelper transferHelper) {
@@ -324,7 +327,13 @@ public class WcwtRecipeTransferHandler
     }
 
     private static boolean shouldSkipTransferAnalysis(Object recipe) {
-        return recipe instanceof ITagInfoRecipe || recipe instanceof IngredientInfoRecipe;
+        return recipe instanceof ITagInfoRecipe
+                || recipe instanceof IngredientInfoRecipe
+                || isClassNamed(recipe, GTCEU_MULTIBLOCK_INFO_WRAPPER_CLASS);
+    }
+
+    private static boolean isClassNamed(@Nullable Object instance, String className) {
+        return instance != null && className.equals(instance.getClass().getName());
     }
 
     @Nullable

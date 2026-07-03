@@ -29,6 +29,8 @@ public class ToolkitPanel extends ExtendedUIPanel {
             new ExtendedPanelLayout.Rect(DEFAULT_SLOTS_ANCHOR_X, DEFAULT_SLOTS_ANCHOR_Y, 0, 0);
     private ExtendedPanelLayout.Rect scrollbar =
             new ExtendedPanelLayout.Rect(DEFAULT_SCROLLBAR_X, DEFAULT_SCROLLBAR_Y, 0, DEFAULT_SCROLLBAR_HEIGHT);
+    private ExtendedPanelLayout.Rect memoryButton =
+            new ExtendedPanelLayout.Rect(110, 2, 12, 12);
     private int columns = DEFAULT_COLUMNS;
     private int firstVisibleSlot;
     private int slotIconCount = 11;
@@ -53,6 +55,7 @@ public class ToolkitPanel extends ExtendedUIPanel {
         configureReturnButton(width - returnButton.left(), returnButton.top(), returnButton.width(), returnButton.height());
         toolkitSlot = layout.slot("WCWT_TOOLKIT", toolkitSlot);
         scrollbar = layout.widget("toolkit_scrollbar", scrollbar);
+        memoryButton = layout.widget("toolkit_memory", memoryButton);
         columns = layout.slotColumns("WCWT_TOOLKIT", DEFAULT_COLUMNS);
         slotIconCount = layout.widgetInt("toolkit_slot_icons", "count", slotIconCount);
         slotIconOffsetX = layout.widgetInt("toolkit_slot_icons", "offsetX", slotIconOffsetX);
@@ -122,5 +125,8 @@ public class ToolkitPanel extends ExtendedUIPanel {
     public int getScrollbarHeight() {
         return scrollbar.height();
     }
-}
 
+    public ExtendedPanelLayout.Rect getMemoryButton() {
+        return memoryButton;
+    }
+}

@@ -78,6 +78,9 @@ public class WcwtPackets {
         ModNetworking.registerServerbound(id++, ToolkitNetworkToolDepositPacket.class,
                 ToolkitNetworkToolDepositPacket.TYPE, ToolkitNetworkToolDepositPacket.STREAM_CODEC,
                 ToolkitNetworkToolDepositPacket::handle);
+        ModNetworking.registerServerbound(id++, ToolkitMemorySlotPacket.class,
+                ToolkitMemorySlotPacket.TYPE, ToolkitMemorySlotPacket.STREAM_CODEC,
+                ToolkitMemorySlotPacket::handle);
         ModNetworking.registerServerbound(id++, OpenTerminalHotkeyPacket.class, OpenTerminalHotkeyPacket.TYPE,
                 OpenTerminalHotkeyPacket.STREAM_CODEC, OpenTerminalHotkeyPacket::handle);
         ModNetworking.registerServerbound(id++, OpenToolkitHotkeyPacket.class, OpenToolkitHotkeyPacket.TYPE,
