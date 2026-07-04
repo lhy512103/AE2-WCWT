@@ -39,6 +39,7 @@ import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.config.WcwtServerConfig;
+import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
@@ -175,6 +176,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      */
     public CopyMode cellCopyMode = CopyMode.CLEAR_ON_REMOVE;
     private int syncedExtendedUiOrdinal = IExtendedUIHost.ExtendedUIType.NONE.ordinal();
+    private int syncedExtendedUiAvailabilityMask;
+    private boolean syncedExtendedUiAvailabilityKnown;
     private boolean syncedPatternManagementUploadEnabled = true;
     private int syncedPatternManagementDisplayMode = 1;
     private boolean syncedPatternManagementShowSlots = true;
@@ -403,6 +406,19 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
             @Override
             public int get() {
+                return menuHost == null ? syncedExtendedUiAvailabilityMask
+                        : ExtendedUiUpgradeCards.maskFor(menuHost.getUpgrades());
+            }
+
+            @Override
+            public void set(int value) {
+                syncedExtendedUiAvailabilityMask = value;
+                syncedExtendedUiAvailabilityKnown = true;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
                 return menuHost != null && menuHost.isPatternManagementUploadEnabled() ? 1 : 0;
             }
 
@@ -564,6 +580,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return isValidExtendedUiOrdinal(syncedExtendedUiOrdinal)
                 ? IExtendedUIHost.ExtendedUIType.values()[syncedExtendedUiOrdinal]
                 : IExtendedUIHost.ExtendedUIType.NONE;
+    }
+
+    public int getExtendedUiAvailabilityMask() {
+        return isServerSide() && menuHost != null
+                ? ExtendedUiUpgradeCards.maskFor(menuHost.getUpgrades())
+                : syncedExtendedUiAvailabilityMask;
+    }
+
+    public boolean isExtendedUiAvailabilityKnown() {
+        return isServerSide() || syncedExtendedUiAvailabilityKnown;
     }
 
     public boolean isPatternManagementUploadEnabled() {
@@ -1700,6 +1726,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (isServerSide() && menuHost != null) {
             long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
             menuHost.refreshMenuSyncState();
+            if (!ExtendedUiUpgradeCards.canOpen(menuHost.getUpgrades(), menuHost.getCurrentExtendedUI())) {
+                menuHost.setCurrentExtendedUI(IExtendedUIHost.ExtendedUIType.NONE);
+            }
             if (DEBUG_PERF) {
                 refreshNs = System.nanoTime() - stageStartNs;
             }

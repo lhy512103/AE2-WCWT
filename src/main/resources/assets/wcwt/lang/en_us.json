@@ -188,6 +188,12 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
   
   "item.wcwt.wireless_comprehensive_work_terminal": "ME WCWT",
+  "item.wcwt.advanced_coding_card": "Advanced Coding Card",
+  "item.wcwt.cosmetic_armor_card": "Cosmetic Armor Card",
+  "item.wcwt.curios_card": "Curios Card",
+  "item.wcwt.tool_slots_box_card": "Network Tool Slot Box Card",
+  "item.wcwt.toolkit_card": "Toolkit Card",
+  "item.wcwt.resonating_lightning_pattern_coding_card": "Resonating Overload Encoder Card",
   "item.wcwt.wireless_universal_comprehensive_work_terminal": "ME Wireless Comprehensive Non-Universal Terminal",
   "gui.wcwt.universal_terminal.next": "Switch to next terminal",
   "gui.wcwt.universal_terminal.empty": "No embedded terminals",

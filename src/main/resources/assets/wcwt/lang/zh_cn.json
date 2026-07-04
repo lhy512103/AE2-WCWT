@@ -186,6 +186,12 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
   
   "item.wcwt.wireless_comprehensive_work_terminal": "ME综合工作终端",
+  "item.wcwt.advanced_coding_card": "高级编码卡",
+  "item.wcwt.cosmetic_armor_card": "装饰盔甲卡",
+  "item.wcwt.curios_card": "饰品栏卡",
+  "item.wcwt.tool_slots_box_card": "网络工具卡槽包卡",
+  "item.wcwt.toolkit_card": "工具包卡",
+  "item.wcwt.resonating_lightning_pattern_coding_card": "谐振过载编码器卡",
   "item.wcwt.wireless_universal_comprehensive_work_terminal": "无线综合非通用终端",
   "gui.wcwt.universal_terminal.next": "切换到下一个终端",
   "gui.wcwt.universal_terminal.empty": "未合入其它终端",

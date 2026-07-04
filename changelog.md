@@ -5,6 +5,9 @@
 1. Added a client option to keep GTCEu Programmed Circuits when filtering non-consumable inputs from transferred processing patterns.
 2. Skipped WCWT JEI transfer analysis for GTCEu multiblock info pages to reduce extra stalls when opening their structure previews from the terminal.
 3. Updated the toolkit memory-slot toggle to use the dedicated WCWT state icon, added AE2-style click focus highlighting, and adjusted its position in both standalone and embedded toolkit layouts.
+4. Added dedicated upgrade cards for extended UI panels; each panel button now appears only when its matching card is installed in the terminal upgrade slots.
+5. Added crafting recipes for the extended UI upgrade cards and hid mod-dependent cards unless their required integrations are loaded.
+6. Added Spark 1.10.53 Forge as a runtime dependency for profiling test runs.
 
 
 ## 中文
@@ -12,6 +15,9 @@
 1. 新增客户端选项：剔除 GTCEu 不消耗输入时可保留处理样板中的编程电路。
 2. 跳过 GTCEu 多方块信息页的 WCWT JEI 转移分析，降低从终端打开结构预览时的额外卡顿。
 3. 将工具包记忆槽位开关改为专用 WCWT 状态图标，补上 AE2 风格点击焦点白边，并调整独立/内嵌工具包布局中的位置。
+4. 新增扩展 UI 专用升级卡；终端升级槽插入对应升级卡后，才会显示对应扩展 UI 按钮。
+5. 新增扩展 UI 升级卡合成配方；需要额外模组支持的升级卡会在对应模组加载后才显示。
+6. 将 Spark 1.10.53 Forge 加入运行时依赖，用于性能分析测试环境。
 
 
 # 1.20.1.6

@@ -331,7 +331,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         this.patternManagementSearchMode = getDataInt(ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE, 2);
         this.manualWorkspaceMode = getDataInt(ModComponents.MANUAL_WORKSPACE_MODE, 0);
         this.manualAnvilName = getDataString(ModComponents.MANUAL_ANVIL_NAME, "");
-        this.currentExtendedUI = consumePendingExtendedUi(player);
+        this.currentExtendedUI = normalizeExtendedUI(consumePendingExtendedUi(player));
         if (DEBUG_TOOLKIT) {
             WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, consumedPendingUi={}, locator={}",
                     player.getScoreboardName(), this.currentExtendedUI, inventorySlot);
@@ -978,11 +978,15 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     
     @Override
     public void setCurrentExtendedUI(ExtendedUIType type) {
-        this.currentExtendedUI = type;
+        this.currentExtendedUI = normalizeExtendedUI(type);
         // 当关闭扩展UI时，清除样板选中状态
-        if (type == ExtendedUIType.NONE) {
+        if (this.currentExtendedUI == ExtendedUIType.NONE) {
             clearSelection();
         }
+    }
+
+    private ExtendedUIType normalizeExtendedUI(ExtendedUIType type) {
+        return ExtendedUiUpgradeCards.canOpen(getUpgrades(), type) ? type : ExtendedUIType.NONE;
     }
     
     // 实现IPatternCachingHost接口

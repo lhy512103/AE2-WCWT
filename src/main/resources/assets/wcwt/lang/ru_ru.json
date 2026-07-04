@@ -127,6 +127,12 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
 
   "item.wcwt.wireless_comprehensive_work_terminal": "ME комп. терминал",
+  "item.wcwt.advanced_coding_card": "Карта расширенного кодирования",
+  "item.wcwt.cosmetic_armor_card": "Карта косметической брони",
+  "item.wcwt.curios_card": "Карта Curios",
+  "item.wcwt.tool_slots_box_card": "Карта бокса сетевых инструментов",
+  "item.wcwt.toolkit_card": "Карта набора инструментов",
+  "item.wcwt.resonating_lightning_pattern_coding_card": "Карта кодировщика резонансной перегрузки",
   "item.wcwt.wireless_universal_comprehensive_work_terminal": "Беспроводной комплексный неуниверсальный терминал ME",
   "gui.wcwt.universal_terminal.next": "Переключить на следующий терминал",
   "gui.wcwt.universal_terminal.empty": "Встроенных терминалов нет",

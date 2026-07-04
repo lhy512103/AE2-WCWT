@@ -23,6 +23,7 @@ cucumber        = "7.0.16"              # Modrinth slug: cucumber
 mystical-agradditions = "7.0.12"        # Modrinth slug: mystical-agradditions
 cosmetic-armor  = "1.20.1-1a"           # 本地 flatDir: libs/cosmetic-armor-reworked-1.20.1-1a.jar
 sound-muffler   = "3.51-1.20.1"         # Modrinth slug: extreme_sound_muffler
+spark           = "1.10.53-forge"       # Modrinth slug: spark
 caramel-chat    = "1.2.0"               # 本地 flatDir: libs/caramelChat-mc1.20.1-forge-1.2.0.jar
 modern-ui       = "3.12.0.1"            # Modrinth slug: modern-ui
 mouse-tweaks    = "1.20.1-2.25.1-forge" # Modrinth slug: mouse-tweaks
@@ -64,6 +65,7 @@ cucumber           = { module = "maven.modrinth:cucumber", version.ref = "cucumb
 mystical-agradditions = { module = "maven.modrinth:mystical-agradditions", version.ref = "mystical-agradditions" }
 cosmetic-armor     = { module = "lain.mods:cosmetic-armor-reworked", version.ref = "cosmetic-armor" }
 sound-muffler      = { module = "maven.modrinth:extreme_sound_muffler", version.ref = "sound-muffler" }
+spark              = { module = "maven.modrinth:spark", version.ref = "spark" }
 caramel-chat       = { module = "caramelChat-mc1.20.1-forge:caramelChat-mc1.20.1-forge", version.ref = "caramel-chat" }
 modern-ui          = { module = "maven.modrinth:modern-ui", version.ref = "modern-ui" }
 mouse-tweaks       = { module = "maven.modrinth:mouse-tweaks", version.ref = "mouse-tweaks" }

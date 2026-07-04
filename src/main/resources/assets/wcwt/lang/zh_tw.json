@@ -125,6 +125,12 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
 
   "item.wcwt.wireless_comprehensive_work_terminal": "ME 綜合工作終端",
+  "item.wcwt.advanced_coding_card": "高級編碼卡",
+  "item.wcwt.cosmetic_armor_card": "裝飾盔甲卡",
+  "item.wcwt.curios_card": "飾品欄卡",
+  "item.wcwt.tool_slots_box_card": "網路工具卡槽包卡",
+  "item.wcwt.toolkit_card": "工具包卡",
+  "item.wcwt.resonating_lightning_pattern_coding_card": "諧振過載編碼器卡",
   "item.wcwt.wireless_universal_comprehensive_work_terminal": "無線綜合非通用終端",
   "gui.wcwt.universal_terminal.next": "切換到下一個終端",
   "gui.wcwt.universal_terminal.empty": "未合入其它終端",

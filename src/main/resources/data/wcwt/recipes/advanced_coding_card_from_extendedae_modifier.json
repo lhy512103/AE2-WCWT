@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "forge:conditions": [
+    {
+      "type": "forge:item_exists",
+      "item": "extendedae:pattern_modifier"
+    }
+  ],
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:advanced_card"
+    },
+    {
+      "item": "extendedae:pattern_modifier"
+    }
+  ],
+  "result": {
+    "item": "wcwt:advanced_coding_card",
+    "count": 1
+  }
+}

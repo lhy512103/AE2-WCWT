@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "forge:conditions": [
+    {
+      "type": "forge:mod_loaded",
+      "modid": "cosmeticarmorreworked"
+    }
+  ],
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:advanced_card"
+    },
+    {
+      "item": "minecraft:diamond_chestplate"
+    }
+  ],
+  "result": {
+    "item": "wcwt:cosmetic_armor_card",
+    "count": 1
+  }
+}

@@ -45,6 +45,7 @@ import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
+import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.client.gui.panels.*;
@@ -157,6 +158,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private FavoriteItemsButton favoriteItemsButton;
     private ViewCellsToggleButton viewCellsToggleButton;
     private @Nullable Renderable toolkitMemoryOverlayRenderable;
+    private int lastExtendedUiButtonMask = Integer.MIN_VALUE;
+    private int lastExtendedUiButtonFallbackX = Integer.MIN_VALUE;
+    private int lastExtendedUiButtonSpacing = Integer.MIN_VALUE;
+    private boolean extendedUiLayoutDirty = true;
 
     /** 4 个样板模式 tab 按钮中**最顶**的那个（modeTabButton3）。扩展按钮 Y 锚到它的顶部。*/
     private TabButton topModeTabButton;
@@ -1102,20 +1107,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 host, IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING,
                 btn -> toggleExtendedUI(IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING));
 
-        int visibleIndex = 0;
-        visibleIndex = placeExtendedButton(advancedCodingButton, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING,
-                visibleIndex, fallbackX, extBtnSpacing);
-        visibleIndex = placeExtendedButton(cosmeticArmorButton, IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR,
-                visibleIndex, fallbackX, extBtnSpacing);
-        visibleIndex = placeExtendedButton(curiosButton, IExtendedUIHost.ExtendedUIType.CURIOS,
-                visibleIndex, fallbackX, extBtnSpacing);
-        visibleIndex = placeExtendedButton(toolboxButton, IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX,
-                visibleIndex, fallbackX, extBtnSpacing);
-        visibleIndex = placeExtendedButton(toolkitButton, IExtendedUIHost.ExtendedUIType.TOOLKIT,
-                visibleIndex, fallbackX, extBtnSpacing);
-        placeExtendedButton(resonatingLightningPatternCodingButton,
-                IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING,
-                visibleIndex, fallbackX, extBtnSpacing);
+        addRenderableWidget(advancedCodingButton);
+        addRenderableWidget(cosmeticArmorButton);
+        addRenderableWidget(curiosButton);
+        addRenderableWidget(toolboxButton);
+        addRenderableWidget(toolkitButton);
+        addRenderableWidget(resonatingLightningPatternCodingButton);
+
+        markExtendedUiLayoutDirty();
+        layoutExtendedUIButtons(fallbackX, extBtnSpacing);
 
         // 调整渲染图层：将它们在 renderables 列表中移到最前面，
         // 从而被后渲染的四个样板按钮遮挡（图层放在下面）。
@@ -1132,6 +1132,57 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderables.add(0, curiosButton);
         renderables.add(0, cosmeticArmorButton);
         renderables.add(0, advancedCodingButton);
+    }
+
+    private void layoutExtendedUIButtons() {
+        final int EXT_BTN_GAP_LEFT = 1;
+        int fallbackX;
+        if (topModeTabButton != null && topModeTabButton.getWidth() > 0) {
+            int tabRight = topModeTabButton.getX() + topModeTabButton.getWidth();
+            fallbackX = tabRight + EXT_BTN_GAP_LEFT + 4;
+        } else {
+            fallbackX = leftPos + 331 + 22 + EXT_BTN_GAP_LEFT + 4;
+        }
+        layoutExtendedUIButtons(fallbackX, 21);
+    }
+
+    private void layoutExtendedUIButtons(int fallbackX, int extBtnSpacing) {
+        if (advancedCodingButton == null || cosmeticArmorButton == null || curiosButton == null
+                || toolboxButton == null || toolkitButton == null
+                || resonatingLightningPatternCodingButton == null) {
+            return;
+        }
+        int availableMask = menu.getExtendedUiAvailabilityMask();
+        if (!extendedUiLayoutDirty
+                && availableMask == lastExtendedUiButtonMask
+                && fallbackX == lastExtendedUiButtonFallbackX
+                && extBtnSpacing == lastExtendedUiButtonSpacing) {
+            return;
+        }
+
+        int visibleIndex = 0;
+        visibleIndex = placeExtendedButton(advancedCodingButton, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING,
+                visibleIndex, fallbackX, extBtnSpacing);
+        visibleIndex = placeExtendedButton(cosmeticArmorButton, IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR,
+                visibleIndex, fallbackX, extBtnSpacing);
+        visibleIndex = placeExtendedButton(curiosButton, IExtendedUIHost.ExtendedUIType.CURIOS,
+                visibleIndex, fallbackX, extBtnSpacing);
+        visibleIndex = placeExtendedButton(toolboxButton, IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX,
+                visibleIndex, fallbackX, extBtnSpacing);
+        visibleIndex = placeExtendedButton(toolkitButton, IExtendedUIHost.ExtendedUIType.TOOLKIT,
+                visibleIndex, fallbackX, extBtnSpacing);
+        placeExtendedButton(resonatingLightningPatternCodingButton,
+                IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING,
+                visibleIndex, fallbackX, extBtnSpacing);
+
+        lastExtendedUiButtonMask = availableMask;
+        lastExtendedUiButtonFallbackX = fallbackX;
+        lastExtendedUiButtonSpacing = extBtnSpacing;
+        extendedUiLayoutDirty = false;
+    }
+
+    private void markExtendedUiLayoutDirty() {
+        extendedUiLayoutDirty = true;
     }
 
     private void hideExistingExtendedButtons() {
@@ -1178,7 +1229,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 rect.height());
         button.setX(leftPos + rect.left());
         button.setY(topPos + rect.top());
-        addRenderableWidget(button);
         return visibleIndex + 1;
     }
 
@@ -1196,6 +1246,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isExtendedUIAvailable(IExtendedUIHost.ExtendedUIType type) {
+        if (!menu.isExtendedUiAvailabilityKnown()) {
+            return false;
+        }
+        if ((menu.getExtendedUiAvailabilityMask() & ExtendedUiUpgradeCards.mask(type)) == 0) {
+            return false;
+        }
         return switch (type) {
             case ADVANCED_CODING -> true;
             case COSMETIC_ARMOR -> ModList.get().isLoaded("cosmeticarmorreworked");
@@ -1337,6 +1393,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
     
     private void toggleExtendedUI(IExtendedUIHost.ExtendedUIType type) {
+        if (!isExtendedUIAvailable(type)) {
+            return;
+        }
         Minecraft.getInstance().getSoundManager().play(
                 SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
 
@@ -1363,9 +1422,23 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var host = menu.getMenuHost();
         if (host == null) return;
 
+        int availableMask = menu.getExtendedUiAvailabilityMask();
+        if (availableMask != lastExtendedUiButtonMask) {
+            markExtendedUiLayoutDirty();
+        }
+        layoutExtendedUIButtons();
+
         host.setCurrentExtendedUI(menu.getSyncedExtendedUIType());
         
         var currentUI = host.getCurrentExtendedUI();
+        if (menu.isExtendedUiAvailabilityKnown()
+                && currentUI != IExtendedUIHost.ExtendedUIType.NONE
+                && !isExtendedUIAvailable(currentUI)) {
+            currentUI = IExtendedUIHost.ExtendedUIType.NONE;
+            host.closeExtendedUI();
+            rememberManagementToolkitOpenState(false);
+            ModNetworking.sendToServer(new ExtendedUIPacket(currentUI));
+        }
         boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
         boolean hideExtendedButtons = currentUI == IExtendedUIHost.ExtendedUIType.ADVANCED_CODING
                 || currentUI == IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR
@@ -5928,9 +6001,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (attemptedRestoreManagementToolkitOpenState || !shouldUseManagementToolkit()) {
             return;
         }
+        if (!menu.isExtendedUiAvailabilityKnown()) {
+            return;
+        }
         attemptedRestoreManagementToolkitOpenState = true;
         var host = menu.getMenuHost();
         if (host == null || !WcwtClientConfig.lastManagementToolkitOpen()) {
+            return;
+        }
+        if (!isExtendedUIAvailable(IExtendedUIHost.ExtendedUIType.TOOLKIT)) {
             return;
         }
         if (menu.getSyncedExtendedUIType() != IExtendedUIHost.ExtendedUIType.NONE) {

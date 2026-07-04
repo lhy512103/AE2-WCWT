@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "forge:conditions": [
+    {
+      "type": "forge:item_exists",
+      "item": "ae2lt:overload_pattern_encoder"
+    }
+  ],
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:advanced_card"
+    },
+    {
+      "item": "ae2lt:overload_pattern_encoder"
+    }
+  ],
+  "result": {
+    "item": "wcwt:resonating_lightning_pattern_coding_card",
+    "count": 1
+  }
+}

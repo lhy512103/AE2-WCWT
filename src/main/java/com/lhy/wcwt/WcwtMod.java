@@ -12,6 +12,8 @@ import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.client.ModClientSetup;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.config.WcwtServerConfig;
+import com.lhy.wcwt.api.IExtendedUIHost;
+import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtRestockHotkeyAction;
 import com.lhy.wcwt.init.ModCreativeTabs;
@@ -119,6 +121,12 @@ public class WcwtMod {
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "magnet_card", 1, groupKey, false);
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true);
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true);
+            Upgrades.add(ModItems.ADVANCED_CODING_CARD.get(), wcwt, 1, groupKey);
+            Upgrades.add(ModItems.COSMETIC_ARMOR_CARD.get(), wcwt, 1, groupKey);
+            Upgrades.add(ModItems.CURIOS_CARD.get(), wcwt, 1, groupKey);
+            Upgrades.add(ModItems.TOOL_SLOTS_BOX_CARD.get(), wcwt, 1, groupKey);
+            Upgrades.add(ModItems.TOOLKIT_CARD.get(), wcwt, 1, groupKey);
+            Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD.get(), wcwt, 1, groupKey);
         });
     }
 
@@ -196,6 +204,20 @@ public class WcwtMod {
         ItemStack universal = chargedUniversalTerminalStack();
         if (WcwtUniversalTerminals.isUniversal(universal)) {
             output.accept(universal);
+        }
+        acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING);
+        acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR);
+        acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.CURIOS);
+        acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX);
+        acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.TOOLKIT);
+        acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING);
+    }
+
+    private static void acceptExtendedUiUpgradeCard(CreativeModeTab.Output output,
+            IExtendedUIHost.ExtendedUIType type) {
+        var card = ExtendedUiUpgradeCards.cardFor(type);
+        if (card != null && ExtendedUiUpgradeCards.isEnvironmentAvailable(type)) {
+            output.accept(card);
         }
     }
 

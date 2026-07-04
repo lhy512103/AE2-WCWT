@@ -46,6 +46,7 @@ dependencies {
     runtimeOnly fg.deobf(libs.cucumber)
     runtimeOnly fg.deobf(libs.mystical.agriculture)
     runtimeOnly fg.deobf(libs.mystical.agradditions)
+    runtimeOnly fg.deobf(libs.spark)
 
     // ── Maven（需 fg.deobf）──────────────────────────────────
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${v.guideme.get()}")

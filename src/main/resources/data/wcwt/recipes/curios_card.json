@@ -1,0 +1,36 @@
+{
+  "type": "forge:conditional",
+  "recipes": [
+    {
+      "conditions": [
+        {
+          "type": "forge:mod_loaded",
+          "modid": "curios"
+        },
+        {
+          "type": "forge:not",
+          "value": {
+            "type": "forge:tag_empty",
+            "tag": "wcwt:curios_card_ingredients"
+          }
+        }
+      ],
+      "recipe": {
+        "type": "minecraft:crafting_shapeless",
+        "category": "misc",
+        "ingredients": [
+          {
+            "item": "ae2:advanced_card"
+          },
+          {
+            "tag": "wcwt:curios_card_ingredients"
+          }
+        ],
+        "result": {
+          "item": "wcwt:curios_card",
+          "count": 1
+        }
+      }
+    }
+  ]
+}

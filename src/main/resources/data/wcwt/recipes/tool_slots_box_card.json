@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:advanced_card"
+    },
+    {
+      "item": "ae2:network_tool"
+    }
+  ],
+  "result": {
+    "item": "wcwt:tool_slots_box_card",
+    "count": 1
+  }
+}

@@ -125,6 +125,12 @@
   "gui.wcwt.multiplier.divide_5": "÷5",
 
   "item.wcwt.wireless_comprehensive_work_terminal": "ME 総合作業端末",
+  "item.wcwt.advanced_coding_card": "高度エンコードカード",
+  "item.wcwt.cosmetic_armor_card": "装飾防具カード",
+  "item.wcwt.curios_card": "Curios カード",
+  "item.wcwt.tool_slots_box_card": "ネットワークツールカードボックスカード",
+  "item.wcwt.toolkit_card": "ツールキットカード",
+  "item.wcwt.resonating_lightning_pattern_coding_card": "共鳴過負荷エンコーダカード",
   "item.wcwt.wireless_universal_comprehensive_work_terminal": "ME ワイヤレス総合非汎用端末",
   "gui.wcwt.universal_terminal.next": "次の端末へ切り替え",
   "gui.wcwt.universal_terminal.empty": "内蔵端末なし",

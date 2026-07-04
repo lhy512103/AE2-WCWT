@@ -3,6 +3,7 @@ package com.lhy.wcwt.network;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.compat.CuriosBridge;
+import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -57,6 +58,10 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
             if (!(stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
                 continue;
             }
+            if (!ExtendedUiUpgradeCards.canOpen(terminalItem.getUpgrades(stack),
+                    IExtendedUIHost.ExtendedUIType.TOOLKIT)) {
+                continue;
+            }
             WirelessComprehensiveWorkTerminalMenuHost.setPendingExtendedUi(player, IExtendedUIHost.ExtendedUIType.TOOLKIT);
             if (DEBUG_TOOLKIT) {
                 WcwtMod.LOGGER.info("WCWT toolkit debug: trying inventory terminal slot={} for player={}",
@@ -82,6 +87,10 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
         for (int slot = 0; slot < curios.size(); slot++) {
             ItemStack stack = curios.get(slot).handler().getStackInSlot(curios.get(slot).slotIndex());
             if (!(stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
+                continue;
+            }
+            if (!ExtendedUiUpgradeCards.canOpen(terminalItem.getUpgrades(stack),
+                    IExtendedUIHost.ExtendedUIType.TOOLKIT)) {
                 continue;
             }
             WirelessComprehensiveWorkTerminalMenuHost.setPendingExtendedUi(player, IExtendedUIHost.ExtendedUIType.TOOLKIT);

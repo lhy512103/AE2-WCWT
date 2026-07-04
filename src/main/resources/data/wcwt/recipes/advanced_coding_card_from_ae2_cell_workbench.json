@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "ae2:advanced_card"
+    },
+    {
+      "item": "ae2:cell_workbench"
+    }
+  ],
+  "result": {
+    "item": "wcwt:advanced_coding_card",
+    "count": 1
+  }
+}

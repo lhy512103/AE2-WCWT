@@ -41,9 +41,10 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
      * 第三参数 {@code max} 之和。
      * 想加更多升级卡时，先在 {@code WcwtMod} 里加 {@code Upgrades.add(...)}，再把这里的总数同步加大。
      *
-     * <p>当前注册：能源卡(10) + 量子桥卡(1) + 磁力卡(1) + 导入卡(1) + 导出卡(1) = 14。
+     * <p>当前注册：能源卡(10) + 量子桥卡(1) + 磁力卡(1) + 导入卡(1) + 导出卡(1)
+     * + 六张扩展 UI 卡(6) = 20。
      */
-    private static final int UPGRADE_INVENTORY_SIZE = 14;
+    private static final int UPGRADE_INVENTORY_SIZE = 20;
 
     public WirelessComprehensiveWorkTerminalItem(Item.Properties properties) {
         super(() -> 1600000.0, properties);
