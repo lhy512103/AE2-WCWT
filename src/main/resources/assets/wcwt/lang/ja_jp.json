@@ -199,7 +199,7 @@
   "message.wcwt.pull_filtered": "WCWT: 次のアイテムはビューセルにより除外され、要求されませんでした: %1$s",
   "message.wcwt.pull_missing": "WCWT: ME ネットワーク内に不足しています: %1$s",
   "message.wcwt.pull_full": "WCWT: インベントリ/保存先が満杯のためスキップ: %1$s",
-  "message.wcwt.pull_shift_hint": "Shift を押すと 1 バッチ分の材料を取得",
+  "message.wcwt.pull_shift_hint": "Shift: 非クラフトレシピ 1 バッチ分を取得",
   "message.wcwt.eco_pattern_duplicate": "ECO クラフトサブシステムには既に同じパターンがあります。",
   "message.wcwt.eco_pattern_uploaded": "パターンを ECO クラフトサブシステムへアップロードしました。",
   "message.wcwt.toolkit_network_slot_occupied": "ツールキットの AE ネットワークツール用スロットは既に埋まっています。",

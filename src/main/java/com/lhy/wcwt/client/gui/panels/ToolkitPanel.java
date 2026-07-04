@@ -30,7 +30,7 @@ public class ToolkitPanel extends ExtendedUIPanel {
     private ExtendedPanelLayout.Rect scrollbar =
             new ExtendedPanelLayout.Rect(DEFAULT_SCROLLBAR_X, DEFAULT_SCROLLBAR_Y, 0, DEFAULT_SCROLLBAR_HEIGHT);
     private ExtendedPanelLayout.Rect memoryButton =
-            new ExtendedPanelLayout.Rect(104, 3, 6, 11);
+            new ExtendedPanelLayout.Rect(110, 2, 12, 12);
     private int columns = DEFAULT_COLUMNS;
     private int firstVisibleSlot;
     private int slotIconCount = 11;

@@ -46,10 +46,12 @@ public final class WcwtMeIngredientExtraction {
                 .toList();
         Ingredient wide = ingredientFromItemStacks(alternativeStacks);
         List<ItemStack> orderedAlts = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks);
+        boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
 
         Map<AEItemKey, Integer> extractedByKey = new LinkedHashMap<>();
         for (int i = 0; i < amount; i++) {
-            AEItemKey used = tryExtractOneUnit(storage, energy, actionSource, filter, preferredKeys, wide, orderedAlts);
+            AEItemKey used = tryExtractOneUnit(storage, energy, actionSource, filter, preferredKeys, wide, orderedAlts,
+                    exactOnly);
             if (used == null) {
                 break;
             }
@@ -63,12 +65,15 @@ public final class WcwtMeIngredientExtraction {
     @Nullable
     private static AEItemKey tryExtractOneUnit(MEStorage storage, IEnergySource energy, IActionSource actionSource,
             @Nullable IPartitionList filter, List<AEItemKey> preferredKeys, @Nullable Ingredient wide,
-            List<ItemStack> orderedAlts) {
+            List<ItemStack> orderedAlts, boolean exactOnly) {
         for (AEItemKey candidate : preferredKeys) {
             long extracted = StorageHelper.poweredExtraction(energy, storage, candidate, 1, actionSource);
             if (extracted > 0) {
                 return candidate;
             }
+        }
+        if (exactOnly) {
+            return null;
         }
         if (wide != null) {
             for (var entry : storage.getAvailableStacks()) {
@@ -119,6 +124,7 @@ public final class WcwtMeIngredientExtraction {
                 .distinct()
                 .toList();
         List<ItemStack> orderedAlts = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks);
+        boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
 
         for (AEItemKey candidate : preferredKeys) {
             long available = remaining.getOrDefault(candidate, 0L);
@@ -126,6 +132,9 @@ public final class WcwtMeIngredientExtraction {
                 remaining.put(candidate, available - 1);
                 return true;
             }
+        }
+        if (exactOnly) {
+            return false;
         }
         if (wideIngredient != null) {
             AEItemKey pick = null;

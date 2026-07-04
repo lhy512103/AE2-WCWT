@@ -210,7 +210,7 @@
   "message.wcwt.pull_filtered": "WCWT: these items were filtered by view cells and were not requested: %1$s",
   "message.wcwt.pull_missing": "WCWT: missing from the ME network: %1$s",
   "message.wcwt.pull_full": "WCWT: skipped because inventory/storage are full: %1$s",
-  "message.wcwt.pull_shift_hint": "Hold Shift: pull ingredients for one recipe batch",
+  "message.wcwt.pull_shift_hint": "Hold Shift: pull one batch for non-crafting recipes",
   "message.wcwt.eco_pattern_duplicate": "ECO crafting subsystem already contains this pattern.",
   "message.wcwt.eco_pattern_uploaded": "Pattern uploaded to the ECO crafting subsystem.",
   "message.wcwt.toolkit_network_slot_occupied": "The toolkit AE Network Tool slot is already occupied.",

@@ -23,6 +23,7 @@ import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.universal.WcwtItemIds;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.compat.WcwtCuriosCompat;
+import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -104,11 +105,17 @@ public class WcwtMod {
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true); // 输入卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true); // 输出卡 ×1
             Upgrades.add(ModItems.ADVANCED_CODING_CARD, wcwt, 1, groupKey);
-            Upgrades.add(ModItems.COSMETIC_ARMOR_CARD, wcwt, 1, groupKey);
-            Upgrades.add(ModItems.CURIOS_CARD, wcwt, 1, groupKey);
+            if (WcwtOptionalFeatureGates.isCosmeticArmorAvailable()) {
+                Upgrades.add(ModItems.COSMETIC_ARMOR_CARD, wcwt, 1, groupKey);
+            }
+            if (WcwtOptionalFeatureGates.isCuriosAvailable()) {
+                Upgrades.add(ModItems.CURIOS_CARD, wcwt, 1, groupKey);
+            }
             Upgrades.add(ModItems.TOOL_SLOTS_BOX_CARD, wcwt, 1, groupKey);
             Upgrades.add(ModItems.TOOLKIT_CARD, wcwt, 1, groupKey);
-            Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD, wcwt, 1, groupKey);
+            if (WcwtOptionalFeatureGates.isResonatingLightningPatternCodingAvailable()) {
+                Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD, wcwt, 1, groupKey);
+            }
         });
     }
 

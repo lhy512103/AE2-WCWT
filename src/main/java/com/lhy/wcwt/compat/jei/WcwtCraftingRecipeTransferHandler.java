@@ -118,7 +118,7 @@ public class WcwtCraftingRecipeTransferHandler
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
             if (menu.getManualWorkspaceMode() != WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
                 return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, true,
-                        transferHelper);
+                        transferHelper, false);
             }
             ResourceLocation recipeId = recipeHolder.id();
             CraftingHelper.performTransfer(menu, recipeId, recipe, craftMissing);

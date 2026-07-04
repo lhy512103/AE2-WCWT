@@ -24,3 +24,6 @@ bin/
 Thumbs.db
 Desktop.ini
 *.log
+
+# Local scratch assets
+临时文件/

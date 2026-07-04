@@ -208,7 +208,7 @@
   "message.wcwt.pull_filtered": "WCWT：以下物品被视图单元过滤，未尝试拉取：%1$s",
   "message.wcwt.pull_missing": "WCWT：ME 网络中缺少：%1$s",
   "message.wcwt.pull_full": "WCWT：背包或存储空间不足，已跳过：%1$s",
-  "message.wcwt.pull_shift_hint": "按住 Shift：拉取一组配方用量",
+  "message.wcwt.pull_shift_hint": "按住 Shift：为非合成配方拉取一组用量",
   "message.wcwt.eco_pattern_duplicate": "ECO合成子系统已存在相同样板。",
   "message.wcwt.eco_pattern_uploaded": "样板已上传至ECO合成子系统。",
   "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 网络工具槽已满。",

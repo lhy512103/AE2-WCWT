@@ -1,6 +1,7 @@
 {
   "replace": false,
   "values": [
+    "minecraft:ender_pearl",
     {
       "id": "#curios:curio",
       "required": false

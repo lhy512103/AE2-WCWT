@@ -2,6 +2,7 @@ package com.lhy.wcwt.init;
 
 import appeng.api.config.Actionable;
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.universal.WcwtItemIds;
 import com.lhy.wcwt.universal.WcwtUniversalTerminals;
@@ -44,11 +45,17 @@ public final class ModCreativeTabs {
         }
 
         output.accept(ModItems.ADVANCED_CODING_CARD);
-        output.accept(ModItems.COSMETIC_ARMOR_CARD);
-        output.accept(ModItems.CURIOS_CARD);
+        acceptIfVisible(output, ModItems.COSMETIC_ARMOR_CARD.get());
+        acceptIfVisible(output, ModItems.CURIOS_CARD.get());
         output.accept(ModItems.TOOL_SLOTS_BOX_CARD);
         output.accept(ModItems.TOOLKIT_CARD);
-        output.accept(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD);
+        acceptIfVisible(output, ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD.get());
+    }
+
+    private static void acceptIfVisible(CreativeModeTab.Output output, net.minecraft.world.level.ItemLike item) {
+        if (WcwtOptionalFeatureGates.isUpgradeCardVisible(item.asItem())) {
+            output.accept(item);
+        }
     }
 
     private static ItemStack chargedTerminalStack() {

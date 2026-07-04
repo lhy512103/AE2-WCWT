@@ -27,7 +27,7 @@ dependencies {
     localRuntime "de.mari_023:ae2wtlib:${ae2wtlib_version}"
     localRuntime "curse.maven:spark-361579:${spark_file}"
     localRuntime "maven.modrinth:modernfix:${modernfix_version}"
-    localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
+    localRuntime "curse.maven:curios-309927:6529130"
 
     // Local runtime recipe viewers
     localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
@@ -36,6 +36,7 @@ dependencies {
     // Local runtime AE2 addons
     localRuntime "curse.maven:advancedae-1084104:${advancedae_file}"
     localRuntime "curse.maven:ae2-crystal-science-1435174:8112039"
+    localRuntime "curse.maven:ae2-lightning-tech-1527395:8327576"
     localRuntime "curse.maven:ex-pattern-provider-892005:${extendedae_file}"
     localRuntime "curse.maven:extendedae-plus-1337639:${extendedae_plus_file}"
     localRuntime "curse.maven:applied-energistics-2-wireless-terminals-459929:${ae2wt_terminals_file}"

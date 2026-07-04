@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    {
+      "id": "ae2cs:resonating_pattern_converter",
+      "required": false
+    },
+    {
+      "id": "ae2lt:overload_pattern_encoder",
+      "required": false
+    }
+  ]
+}

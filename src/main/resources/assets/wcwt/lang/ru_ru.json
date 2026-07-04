@@ -201,7 +201,7 @@
   "message.wcwt.pull_filtered": "WCWT: эти предметы были отфильтрованы ячейками просмотра и не были запрошены: %1$s",
   "message.wcwt.pull_missing": "WCWT: отсутствуют в ME-сети: %1$s",
   "message.wcwt.pull_full": "WCWT: пропущено, потому что инвентарь/хранилище заполнены: %1$s",
-  "message.wcwt.pull_shift_hint": "Удерживайте Shift: получить ингредиенты на одну партию рецепта",
+  "message.wcwt.pull_shift_hint": "Shift: получить одну партию для некрафтовых рецептов",
   "message.wcwt.eco_pattern_duplicate": "Подсистема крафта ECO уже содержит этот шаблон.",
   "message.wcwt.eco_pattern_uploaded": "Шаблон загружен в подсистему крафта ECO.",
   "message.wcwt.toolkit_network_slot_occupied": "Слот сетевого инструмента AE в наборе уже занят.",

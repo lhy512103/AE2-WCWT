@@ -5,9 +5,11 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
+import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.constants.RecipeTypes;
+import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -58,6 +60,10 @@ public class WcwtJeiPlugin implements IModPlugin {
     @Override
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         WcwtJeiBookmarkKeys.setRuntime(jeiRuntime);
+        var hiddenStacks = WcwtOptionalFeatureGates.hiddenUpgradeCardStacks();
+        if (!hiddenStacks.isEmpty()) {
+            jeiRuntime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, hiddenStacks);
+        }
     }
 
     @Override

@@ -38,6 +38,7 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -269,11 +270,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedPanelLayout.Rect managementToolkitSlotRect =
             new ExtendedPanelLayout.Rect(177, 211, 16, 16);
     private ExtendedPanelLayout.Rect managementToolkitScrollbarRect =
-            new ExtendedPanelLayout.Rect(343, 209, 12, 72);
+            new ExtendedPanelLayout.Rect(343, 221, 12, 60);
     private ExtendedPanelLayout.Rect toolkitMemoryButton =
-            new ExtendedPanelLayout.Rect(104, 3, 6, 11);
+            new ExtendedPanelLayout.Rect(0, 0, 12, 12);
     private ExtendedPanelLayout.Rect managementToolkitMemoryButton =
-            new ExtendedPanelLayout.Rect(337, 194, 6, 11);
+            new ExtendedPanelLayout.Rect(343, 209, 12, 12);
     private ExtendedPanelLayout.Rect patternManagementAddButton =
             new ExtendedPanelLayout.Rect(291, 185, 30, 11);
     private ExtendedPanelLayout.Rect patternManagementReloadButton =
@@ -336,6 +337,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SLOT_Y_OFFSET = 0;
     private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET = 4;
     private static final int BUTTON_PRESS_OFFSET_Y = 1;
+    private static final int TOOLKIT_MEMORY_TOGGLE_OFF_U = 0;
+    private static final int TOOLKIT_MEMORY_TOGGLE_ON_U = 16;
+    private static final int TOOLKIT_MEMORY_TOGGLE_V = 48;
+    private static final int TOOLKIT_MEMORY_TOGGLE_SOURCE_SIZE = 16;
     private static final int ANVIL_TOO_EXPENSIVE_COST = 40;
     private static final long FOCUSED_PATTERN_FLASH_PERIOD_MS = 480L;
     private static final long PATTERN_MANAGEMENT_SEARCH_HIGHLIGHT_PERIOD_MS = 4000L;
@@ -1277,12 +1282,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         return switch (type) {
             case ADVANCED_CODING -> true;
-            case COSMETIC_ARMOR -> ModList.get().isLoaded("cosmeticarmorreworked");
-            case CURIOS -> true;
+            case COSMETIC_ARMOR -> WcwtOptionalFeatureGates.isCosmeticArmorAvailable();
+            case CURIOS -> WcwtOptionalFeatureGates.isCuriosAvailable();
             case TOOL_SLOTS_BOX -> menu.getToolbox().isPresent();
             case TOOLKIT -> true;
-            case RESONATING_LIGHTNING_PATTERN_CODING ->
-                    ModList.get().isLoaded("ae2cs") || ModList.get().isLoaded("ae2lt");
+            case RESONATING_LIGHTNING_PATTERN_CODING -> WcwtOptionalFeatureGates
+                    .isResonatingLightningPatternCodingAvailable();
             case NONE -> false;
         };
     }
@@ -4130,15 +4135,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int y = topPos + rect.top();
         boolean hover = mouseX >= x && mouseX < x + rect.width()
                 && mouseY >= y && mouseY < y + rect.height();
-        int pressOffsetY = hover ? BUTTON_PRESS_OFFSET_Y : 0;
-        guiGraphics.blit(WCWT_STATES_TEXTURE, x, y,
-                hover || toolkitMemoryMode ? 224 : 192, 160,
-                Math.min(rect.width(), 23), Math.min(rect.height(), 16), 256, 256);
-        int iconW = 12;
-        int iconH = 12;
-        int iconX = x + (rect.width() - iconW) / 2 + PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET;
-        int iconY = y + (rect.height() - iconH) / 2 + pressOffsetY;
-        guiGraphics.blit(EAE_ICONS_TEXTURE, iconX, iconY, 48, 32, iconW, iconH, 64, 64);
+        int sourceU = toolkitMemoryMode || hover ? TOOLKIT_MEMORY_TOGGLE_ON_U : TOOLKIT_MEMORY_TOGGLE_OFF_U;
+        guiGraphics.blit(WCWT_STATES_TEXTURE, x, y, rect.width(), rect.height(),
+                sourceU, TOOLKIT_MEMORY_TOGGLE_V,
+                TOOLKIT_MEMORY_TOGGLE_SOURCE_SIZE, TOOLKIT_MEMORY_TOGGLE_SOURCE_SIZE, 256, 256);
     }
 
     @Nullable

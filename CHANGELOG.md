@@ -1,4 +1,27 @@
 # Changelog
+
+## v1.3.2
+
+### English
+1. Aligned the toolkit memory-slot button with the 1.20.1 layout and state styling, including separate off, hover, and on states where hover and on share the same style.
+2. Ignored local scratch assets under `临时文件/`.
+3. Fixed JEI/EMI recipe pull and preview matching so item data components/NBT are respected, preventing same-item-ID variants such as Productive Bees bee spawn eggs from being treated as interchangeable.
+4. Limited Shift one-batch recipe pull to non-crafting recipes and updated the tooltip.
+5. Added a fallback Curios-card recipe input so the card recipe appears in JEI/EMI when Curios is loaded.
+6. Hid optional integration upgrade cards until their supporting mods are loaded, including Curios, Cosmetic Armor Reworked, AE2 Crystal Science, and AE2 Lightning Tech integrations.
+7. Added AE2 Lightning Tech to the local runtime dependency set.
+8. Switched the local runtime Curios dependency to CurseMaven file `curse.maven:curios-309927:6529130`.
+
+### 中文
+1. 将工具包记忆槽位按钮的位置与状态样式对齐到 1.20.1 版本，支持关闭、悬停、开启三种状态，其中悬停与开启使用相同样式。
+2. 忽略本地临时素材目录 `临时文件/`。
+3. 修复 JEI/EMI 配方拉取与预览匹配未正确区分物品数据组件/NBT 的问题，避免 Productive Bees 蜜蜂刷怪蛋等同 ID 不同数据的物品变体被当成同一种物品。
+4. 将按住 Shift 拉取一组配方用量限制为仅非合成配方生效，并同步更新 tooltip。
+5. 为饰品栏卡补充稳定的配方输入，使 Curios 加载时该卡配方可在 JEI/EMI 中显示。
+6. 需要额外模组支持的扩展升级卡现在只会在对应模组加载后显示，包括 Curios、Cosmetic Armor Reworked、AE2 Crystal Science 与 AE2 Lightning Tech 相关卡。
+7. 将 AE2 Lightning Tech 加入本地运行时依赖。
+8. 将本地运行时 Curios 依赖切换为 CurseMaven 文件 `curse.maven:curios-309927:6529130`。
+
 ## v1.3.1
 
 ### English

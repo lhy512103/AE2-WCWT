@@ -2,8 +2,11 @@
   "type": "minecraft:crafting_shapeless",
   "neoforge:conditions": [
     {
-      "type": "neoforge:item_exists",
-      "item": "ae2cs:resonating_pattern_converter"
+      "type": "neoforge:not",
+      "value": {
+        "type": "neoforge:tag_empty",
+        "tag": "wcwt:resonating_lightning_pattern_coding_card_ingredients"
+      }
     }
   ],
   "category": "misc",
@@ -12,7 +15,7 @@
       "item": "ae2:advanced_card"
     },
     {
-      "item": "ae2cs:resonating_pattern_converter"
+      "tag": "wcwt:resonating_lightning_pattern_coding_card_ingredients"
     }
   ],
   "result": {
