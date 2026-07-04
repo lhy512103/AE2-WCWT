@@ -12,6 +12,7 @@
 7. Added AE2 Lightning Tech to the local runtime dependency set.
 8. Switched the local runtime Curios dependency to CurseMaven file `curse.maven:curios-309927:6529130`.
 9. Kept pattern-provider mapping edits client-local like ExtendedAE Plus, so dedicated servers no longer write `config/extendedae_plus/recipe_type_names.json` for those UI buttons and upload/search paths use the client-resolved mapping text.
+10. Fixed a dedicated-server disconnect when putting an encoded pattern back into the pattern encoding output slot by updating derived pattern UI slots before broadcasting container contents.
 
 ### 中文
 1. 将工具包记忆槽位按钮的位置与状态样式对齐到 1.20.1 版本，支持关闭、悬停、开启三种状态，其中悬停与开启使用相同样式。
@@ -23,6 +24,7 @@
 7. 将 AE2 Lightning Tech 加入本地运行时依赖。
 8. 将本地运行时 Curios 依赖切换为 CurseMaven 文件 `curse.maven:curios-309927:6529130`。
 9. 将样板供应器映射编辑对齐 ExtendedAE Plus 的客户端本地行为，专用服务器不再因这些 UI 按钮写入 `config/extendedae_plus/recipe_type_names.json`，上传与搜索路径改用客户端解析后的映射文本。
+10. 修复专用服务器环境下，将已编码样板放回样板编码区默认输出槽时，容器内容包编码失败并断开连接的问题；现在会先更新样板相关派生 UI 槽，再广播容器内容。
 
 ## v1.3.1
 

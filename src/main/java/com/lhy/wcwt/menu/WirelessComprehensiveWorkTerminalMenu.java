@@ -1411,9 +1411,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     @Override
     public void slotsChanged(Container inventory) {
-        super.slotsChanged(inventory);
         updateManualWorkspaceResults();
         updatePatternPreview(getPatternEncodingMode());
+        super.slotsChanged(inventory);
     }
 
     private void updateManualWorkspaceResults() {
