@@ -5,7 +5,6 @@ import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
-import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
@@ -148,7 +147,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
 
     public static PatternProviderListPacket buildForPlayer(ServerPlayer player, String searchText) {
         long totalStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
-        String resolvedSearchText = ExtendedAePlusBridge.resolveSearchKeyAlias(searchText);
+        String resolvedSearchText = normalizeSearchText(searchText);
         var entries = new ArrayList<Entry>();
         var menu = player.containerMenu;
         if (!(menu instanceof appeng.menu.AEBaseMenu baseMenu)) {
@@ -237,11 +236,12 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         return "";
     }
 
-    private static final class ExtendedAePlusBridge {
-        static String resolveSearchKeyAlias(String rawKey) {
-            String resolved = ExtendedAePlusUploadCompat.resolveSearchKeyAlias(rawKey);
-            return resolved == null ? "" : resolved;
+    private static String normalizeSearchText(String searchText) {
+        if (searchText == null) {
+            return "";
         }
+        String trimmed = searchText.trim();
+        return trimmed.isEmpty() ? "" : trimmed;
     }
 
     private record Location(@Nullable BlockPos pos, @Nullable ResourceKey<Level> dimension, @Nullable Direction face) {

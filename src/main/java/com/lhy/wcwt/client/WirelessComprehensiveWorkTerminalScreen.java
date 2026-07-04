@@ -1791,6 +1791,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             searchKey = "crafting";
             generatedFallbackSearchKey = true;
         }
+        String resolvedSearchKey = searchKey == null || searchKey.isBlank()
+                ? ""
+                : resolveClientProviderSearchText(searchKey);
+        if (!resolvedSearchKey.isBlank()) {
+            resolvedPatternManagementSearchText = resolvedSearchKey;
+        }
         long preferredProviderId = preferredPatternProviderIdForUpload(searchKey);
         String uploadProviderName = uploadProviderNameForStatus(preferredProviderId, searchKey);
         if (searchKey != null && !searchKey.isBlank() && patternManageSearchField != null && !generatedFallbackSearchKey) {
@@ -1800,11 +1806,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             encodePatternButton.setFocused(false);
         }
         setFocused(null);
-        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, preferredProviderId={}, uploadProviderName={}, field={}, resolvedField={}",
-                patternEncodingMode, patternManagementUploadEnabled, searchKey, preferredProviderId, uploadProviderName,
-                currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
+        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, preferredProviderId={}, uploadProviderName={}, field={}, resolvedField={}",
+                patternEncodingMode, patternManagementUploadEnabled, searchKey, resolvedSearchKey, preferredProviderId,
+                uploadProviderName, currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
         PacketDistributor.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
-                searchKey == null ? "" : searchKey,
+                resolvedSearchKey,
                 preferredProviderId,
                 uploadProviderName,
                 WcwtClientConfig.patternUploadFailFallbackToEditor()));
@@ -1817,8 +1823,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Nullable
     private String resolveEaepProviderSearchKey(String rawKey) {
-        String resolved = ExtendedAePlusUploadCompat.resolveSearchKeyAlias(rawKey);
-        return resolved == null ? rawKey : resolved;
+        return resolveClientProviderSearchText(rawKey);
+    }
+
+    private String resolveClientProviderSearchText(@Nullable String rawKey) {
+        if (rawKey == null) {
+            return "";
+        }
+        String normalized = rawKey.trim();
+        if (normalized.isEmpty()) {
+            return "";
+        }
+        String resolved = ExtendedAePlusUploadCompat.resolveSearchKeyAlias(normalized);
+        return resolved == null || resolved.isBlank() ? normalized : resolved.trim();
     }
 
     private void setPatternEncodingMode(EncodingMode mode) {
@@ -2475,7 +2492,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void onPatternManagementSearchChanged() {
-        resolvedPatternManagementSearchText = "";
+        resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
         rebuildPatternManagementRows();
         patternProviderSlotLayoutDirty = true;
         refreshPatternProviders();
@@ -2485,11 +2502,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (DEBUG_FRAME_SYNC) {
             frameSyncProviderListRequests++;
         }
-        PacketDistributor.sendToServer(new PatternProviderListPacket.Request(subscribe, currentPatternManagementSearchText()));
+        PacketDistributor.sendToServer(new PatternProviderListPacket.Request(
+                subscribe, resolvedPatternManagementSearchTextForRequest()));
     }
 
     private String currentPatternManagementSearchText() {
         return patternManageSearchField != null ? patternManageSearchField.getValue() : "";
+    }
+
+    private String resolvedPatternManagementSearchTextForRequest() {
+        String resolved = resolveClientProviderSearchText(currentPatternManagementSearchText());
+        resolvedPatternManagementSearchText = resolved;
+        return resolved;
     }
 
     public void updatePatternProviders(List<PatternProviderListPacket.Entry> entries, String resolvedSearchText) {
@@ -5065,12 +5089,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             playPatternManagementClickSound();
             String searchText = patternManageSearchField != null ? patternManageSearchField.getValue() : "";
             String mappingText = patternManageMappingField != null ? patternManageMappingField.getValue() : "";
-            boolean localMappingAdded = ExtendedAePlusUploadCompat.addOrUpdateAliasMapping(searchText, mappingText);
-            sendPatternManagementAction(PatternManagementActionPacket.Action.ADD_MAPPING, -1, -1,
-                    searchText, mappingText);
+            boolean localMappingAdded = updateClientMappingAdd(searchText, mappingText);
+            displayPatternManagementMessage(Component.translatable(localMappingAdded
+                    ? "gui.wcwt.pattern_management.mapping_added"
+                    : "gui.wcwt.pattern_management.mapping_failed"));
             if (localMappingAdded && patternManageSearchField != null) {
                 patternManageSearchField.setValue(mappingText.trim());
-                resolvedPatternManagementSearchText = "";
+                resolvedPatternManagementSearchText = resolveClientProviderSearchText(mappingText);
             }
             refreshPatternProviders();
             clearPatternManagementMappingField();
@@ -5079,20 +5104,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (inRect(relX, relY, patternManagementReloadButton)) {
             playPatternManagementClickSound();
             ExtendedAePlusUploadCompat.loadRecipeTypeNames();
-            sendPatternManagementAction(PatternManagementActionPacket.Action.RELOAD_MAPPING, -1, -1);
+            resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
+            displayPatternManagementMessage(Component.translatable("gui.wcwt.pattern_management.mapping_reloaded"));
             refreshPatternProviders();
             return true;
         }
         if (inRect(relX, relY, patternManagementDeleteButton)) {
             playPatternManagementClickSound();
-            String searchText = patternManageSearchField != null ? patternManageSearchField.getValue() : "";
             String mappingText = patternManageMappingField != null ? patternManageMappingField.getValue() : "";
             int removed = ExtendedAePlusUploadCompat.removeMappingsByCnValue(mappingText);
-            sendPatternManagementAction(PatternManagementActionPacket.Action.DELETE_MAPPING, -1, removed,
-                    searchText, mappingText);
-            if (removed > 0) {
-                resolvedPatternManagementSearchText = "";
-            }
+            resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
+            displayPatternManagementMessage(Component.translatable(
+                    "gui.wcwt.pattern_management.mapping_deleted", removed));
             refreshPatternProviders();
             clearPatternManagementMappingField();
             return true;
@@ -5196,6 +5219,22 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
+    private boolean updateClientMappingAdd(String searchText, String mappingText) {
+        String search = searchText == null ? "" : searchText.trim();
+        String mapping = mappingText == null ? "" : mappingText.trim();
+        if (search.isEmpty() || mapping.isEmpty()) {
+            return false;
+        }
+        return ExtendedAePlusUploadCompat.addOrUpdateAliasMapping(search, mapping);
+    }
+
+    private void displayPatternManagementMessage(Component message) {
+        var player = Minecraft.getInstance().player;
+        if (player != null) {
+            player.displayClientMessage(message, true);
+        }
+    }
+
     private void playPatternManagementClickSound() {
         Minecraft.getInstance().getSoundManager().play(
                 net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
@@ -5259,17 +5298,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 action,
                 providerId,
                 cacheSlot,
-                patternManageSearchField != null ? patternManageSearchField.getValue() : "",
+                resolvedPatternManagementSearchTextForRequest(),
                 patternManageMappingField != null ? patternManageMappingField.getValue() : "");
     }
 
     private void sendPatternManagementAction(PatternManagementActionPacket.Action action, long providerId, int cacheSlot,
                                              String searchText, String mappingText) {
+        String resolvedSearchText = resolveClientProviderSearchText(searchText);
         PacketDistributor.sendToServer(new PatternManagementActionPacket(
                 action,
                 providerId,
                 cacheSlot,
-                searchText == null ? "" : searchText,
+                resolvedSearchText,
                 mappingText == null ? "" : mappingText,
                 WcwtClientConfig.patternManagementShiftQuickEnabled()));
     }
@@ -5419,10 +5459,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     "WCWT repo debug: quick insert trigger menuSlot={} rawSlotIndex={} item={}",
                     menu.slots.indexOf(slot), slot.index, slot.getItem());
         }
+        String uploadSearchText = PatternUploadMetadata.getProviderSearchText(slot.getItem());
+        if (uploadSearchText == null || uploadSearchText.isBlank()) {
+            uploadSearchText = currentPatternManagementSearchText();
+        }
         sendPatternManagementAction(
                 PatternManagementActionPacket.Action.QUICK_INSERT_FIRST_PROVIDER,
                 quickInsertTargetProviderId(),
-                menu.slots.indexOf(slot));
+                menu.slots.indexOf(slot),
+                uploadSearchText,
+                "");
         playPatternManagementItemTransferSound(true);
         return true;
     }

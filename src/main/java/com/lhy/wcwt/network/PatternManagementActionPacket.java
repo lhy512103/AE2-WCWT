@@ -5,7 +5,6 @@ import appeng.helpers.patternprovider.PatternContainer;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternUploadMetadata;
@@ -27,7 +26,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public record PatternManagementActionPacket(Action action,
@@ -73,79 +71,16 @@ public record PatternManagementActionPacket(Action action,
                     case QUICK_EXTRACT_PROVIDER_SLOT -> quickExtractProviderSlot(player, packet.providerId, packet.cacheSlot);
                     case QUICK_INSERT_FIRST_PROVIDER -> {
                         if (packet.shiftQuickEnabled()) {
-                            quickInsertEncodedPattern(player, packet.providerId, packet.cacheSlot);
+                            quickInsertEncodedPattern(player, packet.providerId, packet.cacheSlot, packet.searchText);
                         }
                     }
-                    case ADD_MAPPING -> {
-                        String oldResolvedMapping = ExtendedAePlusBridge.resolveSearchKeyAlias(packet.searchText);
-                        boolean ok = ExtendedAePlusBridge.addOrUpdateAliasMapping(packet.searchText, packet.mappingText);
-                        String newResolvedMapping = ExtendedAePlusBridge.resolveSearchKeyAlias(packet.searchText);
-                        logDebug("server add mapping player={}, searchText={}, mappingText={}, oldResolved={}, newResolved={}, ok={}",
-                                player.getScoreboardName(), packet.searchText, packet.mappingText, oldResolvedMapping,
-                                newResolvedMapping, ok);
-                        if (ok) {
-                            rewritePatternCacheUploadSearchText(menu, packet.searchText,
-                                    oldResolvedMapping, packet.mappingText);
-                        }
-                        player.displayClientMessage(Component.translatable(ok
-                                ? "gui.wcwt.pattern_management.mapping_added"
-                                : "gui.wcwt.pattern_management.mapping_failed"), true);
-                    }
-                    case RELOAD_MAPPING -> {
-                        ExtendedAePlusBridge.loadRecipeTypeNames();
-                        logDebug("server reload mapping player={}, searchText={}, mappingText={}",
-                                player.getScoreboardName(), packet.searchText, packet.mappingText);
-                        player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.mapping_reloaded"), true);
-                    }
-                    case DELETE_MAPPING -> {
-                        int removed = ExtendedAePlusBridge.removeMappingsByCnValue(packet.mappingText);
-                        int clientRemoved = Math.max(0, packet.cacheSlot);
-                        int displayRemoved = Math.max(removed, clientRemoved);
-                        logDebug("server delete mapping player={}, mappingText={}, serverRemoved={}, clientRemoved={}, displayRemoved={}",
-                                player.getScoreboardName(), packet.mappingText, removed,
-                                clientRemoved, displayRemoved);
-                        player.displayClientMessage(Component.translatable(
-                                "gui.wcwt.pattern_management.mapping_deleted", displayRemoved), true);
+                    case ADD_MAPPING, RELOAD_MAPPING, DELETE_MAPPING -> {
+                        return;
                     }
                 }
                 PacketDistributor.sendToPlayer(player, PatternProviderListPacket.buildForPlayer(player, packet.searchText));
             }
         });
-    }
-
-    private static void rewritePatternCacheUploadSearchText(WirelessComprehensiveWorkTerminalMenu menu,
-                                                            String aliasKey,
-                                                            String oldResolvedMapping,
-                                                            String newResolvedMapping) {
-        String normalizedAlias = normalizeSearchText(aliasKey);
-        if (normalizedAlias == null) {
-            return;
-        }
-        var host = menu.getMenuHost();
-        if (host == null || host.getPatternCacheInventory() == null) {
-            return;
-        }
-        String normalizedOld = normalizeSearchText(oldResolvedMapping);
-        String normalizedNew = normalizeSearchText(newResolvedMapping);
-        String replacement = normalizedNew != null ? normalizedNew : normalizedAlias;
-        var patternCache = host.getPatternCacheInventory();
-        int rewritten = 0;
-        for (int slot = 0; slot < patternCache.size(); slot++) {
-            ItemStack stack = patternCache.getStackInSlot(slot);
-            String current = normalizeSearchText(PatternUploadMetadata.getProviderSearchText(stack));
-            if (current == null) {
-                continue;
-            }
-            if (current.equalsIgnoreCase(normalizedAlias)
-                    || current.equals(normalizedOld)
-                    || current.equals(normalizedNew)) {
-                PatternUploadMetadata.write(stack, replacement);
-                patternCache.setItemDirect(slot, stack);
-                rewritten++;
-            }
-        }
-        logDebug("rewrite cache metadata aliasKey={}, oldResolved={}, newResolved={}, replacement={}, rewritten={}",
-                normalizedAlias, normalizedOld, normalizedNew, replacement, rewritten);
     }
 
     private static String normalizeSearchText(String text) {
@@ -219,7 +154,8 @@ public record PatternManagementActionPacket(Action action,
      * Shift 从背包快捷塞入编码样板；{@code preferredProviderId} 为客户端当前选中的供应器（与列表 1-based id 一致），
      * 无效时回退为排序后的第一个供应器。
      */
-    private static void quickInsertEncodedPattern(ServerPlayer player, long preferredProviderId, int playerSlotIndex) {
+    private static void quickInsertEncodedPattern(ServerPlayer player, long preferredProviderId, int playerSlotIndex,
+                                                  String clientResolvedSearchText) {
         if (playerSlotIndex < 0 || playerSlotIndex >= player.containerMenu.slots.size()) {
             return;
         }
@@ -242,8 +178,10 @@ public record PatternManagementActionPacket(Action action,
         if (preferredProviderId > 0) {
             provider = getProviderByOrdinal(providers, preferredProviderId);
         }
-        String patternSearchText = ExtendedAePlusBridge.resolveSearchKeyAlias(
-                PatternUploadMetadata.getProviderSearchText(sourceStack));
+        String patternSearchText = normalizeSearchText(clientResolvedSearchText);
+        if (patternSearchText == null) {
+            patternSearchText = normalizeSearchText(PatternUploadMetadata.getProviderSearchText(sourceStack));
+        }
         if (provider == null && patternSearchText != null) {
             provider = findMatchingProviderBySearchText(providers, patternSearchText);
         }
@@ -468,7 +406,7 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static PatternContainer findMatchingProviderBySearchText(List<PatternContainer> providers, String searchText) {
-        String resolvedSearchText = ExtendedAePlusBridge.resolveSearchKeyAlias(searchText);
+        String resolvedSearchText = normalizeSearchText(searchText);
         logDebug("find matching provider searchText={}, resolvedSearchText={}", searchText, resolvedSearchText);
         if (resolvedSearchText == null || resolvedSearchText.isBlank()) {
             return null;
@@ -501,10 +439,6 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static String getProviderDisplayName(PatternContainer provider) {
-        String bridgeName = ExtendedAePlusBridge.getProviderDisplayName(provider);
-        if (bridgeName != null && !bridgeName.isBlank()) {
-            return bridgeName;
-        }
         return provider.getTerminalGroup().name().getString();
     }
 
@@ -547,25 +481,4 @@ public record PatternManagementActionPacket(Action action,
         }
     }
 
-    private static final class ExtendedAePlusBridge {
-        static boolean addOrUpdateAliasMapping(String aliasKey, String cnValue) {
-            return ExtendedAePlusUploadCompat.addOrUpdateAliasMapping(aliasKey, cnValue);
-        }
-
-        static void loadRecipeTypeNames() {
-            ExtendedAePlusUploadCompat.loadRecipeTypeNames();
-        }
-
-        static int removeMappingsByCnValue(String cnValue) {
-            return ExtendedAePlusUploadCompat.removeMappingsByCnValue(cnValue);
-        }
-
-        static String getProviderDisplayName(PatternContainer provider) {
-            return null;
-        }
-
-        static String resolveSearchKeyAlias(String rawKey) {
-            return ExtendedAePlusUploadCompat.resolveSearchKeyAlias(rawKey);
-        }
-    }
 }

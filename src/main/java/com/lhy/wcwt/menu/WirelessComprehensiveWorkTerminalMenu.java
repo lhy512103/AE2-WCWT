@@ -37,7 +37,6 @@ import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
-import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
@@ -95,7 +94,6 @@ import com.google.common.math.LongMath;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -2393,10 +2391,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         ResourceLocation recipeId = resolveEncodedPatternRecipeId(mode);
         String rawProviderSearchText = resolvePatternUploadSearchText(mode, providerSearchText, recipeId);
-        String resolvedProviderSearchText = resolveEaepProviderSearchKey(rawProviderSearchText);
-        if (resolvedProviderSearchText == null) {
-            resolvedProviderSearchText = rawProviderSearchText;
-        }
+        String resolvedProviderSearchText = normalizeProviderSearchText(rawProviderSearchText);
         logPatternUploadDebug(
                 "server encode resolved player={}, mode={}, uploadEnabled={}, preferredProviderId={}, uploadProviderName={}, fallbackToEditSlot={}, packetSearchText={}, recipeId={}, rawSearchText={}, resolvedSearchText={}",
                 getPlayer().getScoreboardName(), mode, uploadEnabled, preferredProviderId, uploadProviderName,
@@ -2570,11 +2565,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         String trimmed = text.trim();
         return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    @Nullable
-    private static String resolveEaepProviderSearchKey(@Nullable String rawKey) {
-        return ExtendedAePlusUploadCompat.resolveSearchKeyAlias(rawKey);
     }
 
     private void consumeBlankPatternForEncoding() {
