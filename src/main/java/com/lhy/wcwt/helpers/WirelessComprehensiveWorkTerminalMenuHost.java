@@ -179,6 +179,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private int patternManagementSearchMode;
     /** 左上手动工作区模式。 */
     private int manualWorkspaceMode;
+    /** 手动合成区物品替换开关，持久化到终端物品自身。 */
+    private boolean manualCraftingItemSubstitution;
+    /** 手动合成区流体替换开关，持久化到终端物品自身。 */
+    private boolean manualCraftingFluidSubstitution;
     /** 左上铁砧工作区当前命名文本。 */
     private String manualAnvilName;
     
@@ -276,6 +280,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         this.patternManagementSearchMode = getItemStack().getOrDefault(
                 ModComponents.PATTERN_MANAGEMENT_SEARCH_MODE.get(), 2);
         this.manualWorkspaceMode = getItemStack().getOrDefault(ModComponents.MANUAL_WORKSPACE_MODE.get(), 0);
+        this.manualCraftingItemSubstitution = getItemStack().getOrDefault(
+                ModComponents.MANUAL_CRAFTING_ITEM_SUBSTITUTION.get(), false);
+        this.manualCraftingFluidSubstitution = getItemStack().getOrDefault(
+                ModComponents.MANUAL_CRAFTING_FLUID_SUBSTITUTION.get(), false);
         this.manualAnvilName = getItemStack().getOrDefault(ModComponents.MANUAL_ANVIL_NAME.get(), "");
         this.currentExtendedUI = consumePendingExtendedUi(player);
         if (DEBUG_TOOLKIT) {
@@ -892,6 +900,24 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     public void setManualWorkspaceMode(int mode) {
         this.manualWorkspaceMode = mode;
         getItemStack().set(ModComponents.MANUAL_WORKSPACE_MODE.get(), mode);
+    }
+
+    public boolean isManualCraftingItemSubstitution() {
+        return manualCraftingItemSubstitution;
+    }
+
+    public void setManualCraftingItemSubstitution(boolean substitute) {
+        this.manualCraftingItemSubstitution = substitute;
+        getItemStack().set(ModComponents.MANUAL_CRAFTING_ITEM_SUBSTITUTION.get(), substitute);
+    }
+
+    public boolean isManualCraftingFluidSubstitution() {
+        return manualCraftingFluidSubstitution;
+    }
+
+    public void setManualCraftingFluidSubstitution(boolean substitute) {
+        this.manualCraftingFluidSubstitution = substitute;
+        getItemStack().set(ModComponents.MANUAL_CRAFTING_FLUID_SUBSTITUTION.get(), substitute);
     }
 
     public String getManualAnvilName() {

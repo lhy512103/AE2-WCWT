@@ -1,7 +1,9 @@
 package com.lhy.wcwt.client.gui.panels;
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.client.gui.widgets.BulkCompressionCutoffButton;
 import com.lhy.wcwt.client.gui.widgets.DirectionInputButton;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
+import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.network.CellConfigSetPacket;
@@ -98,12 +100,13 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     private static final int GHOST_TARGET_OFFSET_Y = -1;
     private static final int GHOST_TARGET_INSET = 1;
     private static final int GHOST_TARGET_SIZE = 16;
-    /** 元件工作台底部三个按钮：12×12，底图使用 AE2 Toolbar 按钮底图（Icon.TOOLBAR_BUTTON_BACKGROUND） */
+    /** 元件工作台底部四个按钮：12×12，底图使用 AE2 Toolbar 按钮底图（Icon.TOOLBAR_BUTTON_BACKGROUND） */
     private static final int CELL_BTN_Y          = 112;
     private static final int CELL_BTN_W          = 12, CELL_BTN_H = 12;
-    private static final int PARTITIONED_STORAGE_BTN_X = 60;
-    private static final int CELL_CLEAR_BTN_X          = 73;
-    private static final int CELL_COPY_MODE_BTN_X      = 86;
+    private static final int PARTITIONED_STORAGE_BTN_X = 58;
+    private static final int CELL_CLEAR_BTN_X          = 71;
+    private static final int CELL_COPY_MODE_BTN_X      = 84;
+    private static final int CELL_COMPRESSION_CUTOFF_BTN_X = CELL_COPY_MODE_BTN_X + 14;
     /** 元件编辑区拖拽/悬停高亮。原 0x80，降低 20% → 0x66。 */
     private static final int CELL_CONFIG_HOVER_COLOR = 0x66FFFFFF;
 
@@ -136,6 +139,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     private IconButton partitionedStorageBtn;
     private IconButton cellClearBtn;
     private IconButton cellCopyModeBtn;
+    private BulkCompressionCutoffButton bulkCompressionCutoffBtn;
 
     /** Menu 引用（由 Screen 注入），用于读取槽位物品渲染和获取 GuiSync 状态。 */
     private Supplier<WirelessComprehensiveWorkTerminalMenu> menuSupplier;
@@ -189,6 +193,9 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         }
         if (cellCopyModeBtn != null) {
             cellCopyModeBtn.setPosition(x + CELL_COPY_MODE_BTN_X, y + CELL_BTN_Y);
+        }
+        if (bulkCompressionCutoffBtn != null) {
+            bulkCompressionCutoffBtn.setPosition(x + CELL_COMPRESSION_CUTOFF_BTN_X, y + CELL_BTN_Y);
         }
         // 滑块只渲染、不接事件，但渲染前必须有正确的 displayX/Y。
         if (manageScrollbar != null) {
@@ -256,6 +263,12 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 y + slotRect.top() + GHOST_TARGET_INSET + GHOST_TARGET_OFFSET_Y,
                 GHOST_TARGET_SIZE,
                 GHOST_TARGET_SIZE);
+    }
+
+    public void hideBulkCompressionCutoffButton() {
+        if (bulkCompressionCutoffBtn != null) {
+            bulkCompressionCutoffBtn.setItem(net.minecraft.world.item.ItemStack.EMPTY);
+        }
     }
 
     private Rect2i toAbsoluteRect(ExtendedPanelLayout.Rect rect) {
@@ -416,6 +429,12 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                         Component.translatable("gui.wcwt.advanced_coding.cell_copy_mode.desc")
                                 .withStyle(ChatFormatting.GRAY)));
         children.add(cellCopyModeBtn);
+
+        bulkCompressionCutoffBtn = new BulkCompressionCutoffButton(towardMoreCompressed ->
+                PacketDistributor.sendToServer(new CellWorkbenchActionPacket(towardMoreCompressed
+                        ? CellWorkbenchActionPacket.Action.COMPRESSION_CUTOFF_NEXT
+                        : CellWorkbenchActionPacket.Action.COMPRESSION_CUTOFF_PREVIOUS)));
+        children.add(bulkCompressionCutoffBtn);
 
         // ─── 滑块（Scrollbar.SMALL = 与 ScrollingUpgradesPanel 升级槽完全相同的风格） ───
         // 当前没真实滚动需求，range 保持 0 → 自动渲染为 disabled 灰图标，不接事件。
@@ -656,6 +675,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         // 同步输入列表（基于当前选中的缓存样板）
         syncInputListFromSelectedPattern();
         syncLocalCellConfigOverridesWithCellStack();
+        updateBulkCompressionCutoffButton();
 
         // ⚠️ 关键：cell 容量是动态变化的（玩家可以随时放/取元件），
         // 仅在 init() 里调一次 resetScrollbarRange() 会让元件区滑块永远停在 range=0，
@@ -764,6 +784,13 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
             cellScrollbar.drawForegroundLayer(guiGraphics, cellScrollbar.getBounds(), mousePoint);
         }
 
+    }
+
+    private void updateBulkCompressionCutoffButton() {
+        if (bulkCompressionCutoffBtn == null) {
+            return;
+        }
+        bulkCompressionCutoffBtn.setItem(WcwtMegaCellsCompat.getCompressionCutoffItem(getCellStack()));
     }
 
     private void renderCopyReplaceLabels(GuiGraphics g, int mouseX, int mouseY) {

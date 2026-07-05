@@ -20,6 +20,11 @@
 15. Improved manual crafting item substitution with a server-side current-recipe ingredient fallback, allowing tag-based candidates such as alternate glass panes to be used when JEI/EMI did not send every candidate.
 16. Protected AE2 view cell slots from shift/quick-move extraction so sorting mods no longer unload view cells from the view cell panel.
 17. Added AllTheCompressed to the local runtime dependency set.
+18. Added MEGA Cells bulk compression cutoff support to the advanced coding cell editor, including a cutoff button beside the cell upgrade slot and server-side cycling of the bulk cell cutoff.
+19. Moved the MEGA Cells bulk compression cutoff button next to the cell editor copy-mode button, removed the separate upgrade-slot background, and scaled the cutoff item icon to the same 12x12 button size.
+20. Restored the AE2 toolbar-style background for the MEGA Cells bulk compression cutoff button and shifted the four cell editor utility buttons left by 2 px.
+21. Made the manual crafting area item and fluid substitution toggles independent from the pattern encoding area's substitution toggles.
+22. Persisted the manual crafting area item and fluid substitution toggle states on the terminal item so they survive closing and reopening the terminal.
 
 ### 中文
 1. 将工具包记忆槽位按钮的位置与状态样式对齐到 1.20.1 版本，支持关闭、悬停、开启三种状态，其中悬停与开启使用相同样式。
@@ -33,12 +38,17 @@
 9. 将样板供应器映射编辑对齐 ExtendedAE Plus 的客户端本地行为，专用服务器不再因这些 UI 按钮写入 `config/extendedae_plus/recipe_type_names.json`，上传与搜索路径改用客户端解析后的映射文本。
 10. 修复专用服务器环境下，将已编码样板放回样板编码区默认输出槽时，容器内容包编码失败并断开连接的问题；现在会先更新样板相关派生 UI 槽，再广播容器内容。
 11. 新增仅 OP 可用的 `/wcwt config` 指令，用于读取和修改 WCWT 服务端选项 `toolkitSlotCount` 与 `patternProviderActiveRefresh`。
-12. 在手动合成区工作台模式下，将物品替换与流体替换按钮镜像到放入物品、取走物品按钮下方，并复用样板编码区的同一开关状态。
+12. 在手动合成区工作台模式下，将物品替换与流体替换按钮镜像到放入物品、取走物品按钮下方。
 13. 实现手动合成区替换按钮的实际功能：连续合成时当前材料用完后可切换到 JEI/EMI 配方中的其它有效物品候选；流体替换可用 ME 网络流体重新填充返还容器，例如用网络里的水把空桶接回水桶。
 14. 修复手动合成区流体替换在原版空桶上不生效的问题；水桶类配方合成后现在会用 ME 网络流体重新填充空桶，避免连续合成停在空桶状态。
 15. 改进手动合成区物品替换：当 JEI/EMI 没有传完整候选时，服务端会在替换开启且同款材料抽取失败后，从当前配方 ingredient 兜底展开候选，使玻璃板等 tag 材料可继续替换。
 16. 保护 AE2 显示元件槽位，禁止 Shift/整理模组快速移动从显示元件面板卸下显示元件。
 17. 将 AllTheCompressed 加入本地运行时依赖。
+18. 在高级编码扩展 UI 的元件编辑区加入 MEGA Cells 大宗压缩截断支持：满足条件时会在元件升级槽右侧显示截断按钮，并可在服务端循环切换大宗元件的截断物品。
+19. 将 MEGA Cells 大宗压缩截断按钮移动到元件编辑区复制模式按钮右侧 14px 处，去掉独立升级槽背景，并把截断物品图标缩放到同样的 12x12 按钮尺寸。
+20. 为 MEGA Cells 大宗压缩截断按钮恢复与复制模式按钮一致的 AE2 toolbar 小按钮底图，并将元件编辑区这一排四个功能按钮整体左移 2px。
+21. 将手动合成区的物品替换与流体替换开关改为独立状态，不再与样板编码区的替换开关联动。
+22. 将手动合成区物品替换与流体替换开关状态持久化到终端物品上，关闭并重新打开终端后仍会保留。
 
 ## v1.3.1
 

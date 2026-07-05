@@ -607,10 +607,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         patternFluidSubstitutionButton = createPatternFluidSubstitutionButton();
         widgets.add("wcwtPatternFluidSubstitutions", patternFluidSubstitutionButton);
 
-        manualPatternSubstitutionButton = createPatternSubstitutionButton();
+        manualPatternSubstitutionButton = createManualPatternSubstitutionButton();
         widgets.add("wcwtManualPatternSubstitutions", manualPatternSubstitutionButton);
 
-        manualPatternFluidSubstitutionButton = createPatternFluidSubstitutionButton();
+        manualPatternFluidSubstitutionButton = createManualPatternFluidSubstitutionButton();
         widgets.add("wcwtManualPatternFluidSubstitutions", manualPatternFluidSubstitutionButton);
 
         cycleProcessingOutputButton = new ActionButton(appeng.api.config.ActionItems.S_CYCLE_PROCESSING_OUTPUT,
@@ -729,6 +729,46 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     menu.setPatternFluidSubstitute(state);
                     PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
                             PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
+                });
+        button.setHalfSize(true);
+        button.setDisableBackground(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescDisabled.text()));
+        return button;
+    }
+
+    private ToggleButton createManualPatternSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.S_SUBSTITUTION_ENABLED,
+                Icon.S_SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setManualCraftingItemSubstitution(state);
+                    PacketDistributor.sendToServer(new PatternModePacket(
+                            PatternModePacket.MODE_MANUAL_ITEM_SUBSTITUTION, state));
+                });
+        button.setHalfSize(true);
+        button.setDisableBackground(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.SubstitutionsOn.text(),
+                ButtonToolTips.SubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.SubstitutionsOff.text(),
+                ButtonToolTips.SubstitutionsDescDisabled.text()));
+        return button;
+    }
+
+    private ToggleButton createManualPatternFluidSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.S_FLUID_SUBSTITUTION_ENABLED,
+                Icon.S_FLUID_SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setManualCraftingFluidSubstitution(state);
+                    PacketDistributor.sendToServer(new PatternModePacket(
+                            PatternModePacket.MODE_MANUAL_FLUID_SUBSTITUTION, state));
                 });
         button.setHalfSize(true);
         button.setDisableBackground(true);
@@ -2110,14 +2150,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             manualPatternSubstitutionButton.setY(topPos + manualPatternSubstitutionsRect.top());
             manualPatternSubstitutionButton.visible = showManualPatternOptions;
             manualPatternSubstitutionButton.active = showManualPatternOptions;
-            manualPatternSubstitutionButton.setState(menu.isPatternSubstitute());
+            manualPatternSubstitutionButton.setState(menu.isManualCraftingItemSubstitution());
         }
         if (manualPatternFluidSubstitutionButton != null) {
             manualPatternFluidSubstitutionButton.setX(leftPos + manualPatternFluidSubstitutionsRect.left());
             manualPatternFluidSubstitutionButton.setY(topPos + manualPatternFluidSubstitutionsRect.top());
             manualPatternFluidSubstitutionButton.visible = showManualPatternOptions;
             manualPatternFluidSubstitutionButton.active = showManualPatternOptions;
-            manualPatternFluidSubstitutionButton.setState(menu.isPatternFluidSubstitute());
+            manualPatternFluidSubstitutionButton.setState(menu.isManualCraftingFluidSubstitution());
         }
     }
 
@@ -5207,13 +5247,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (inRect(relX, relY, batchItemReplacementButton)) {
             playPatternManagementClickSound();
             batchItemSubstitutions = !batchItemSubstitutions;
-            PacketDistributor.sendToServer(new PatternModePacket(0, batchItemSubstitutions));
+            PacketDistributor.sendToServer(new PatternModePacket(
+                    PatternModePacket.MODE_PATTERN_ITEM_SUBSTITUTIONS, batchItemSubstitutions));
             return true;
         }
         if (inRect(relX, relY, batchFluidReplacementButton)) {
             playPatternManagementClickSound();
             batchFluidSubstitutions = !batchFluidSubstitutions;
-            PacketDistributor.sendToServer(new PatternModePacket(1, batchFluidSubstitutions));
+            PacketDistributor.sendToServer(new PatternModePacket(
+                    PatternModePacket.MODE_PATTERN_FLUID_SUBSTITUTIONS, batchFluidSubstitutions));
             return true;
         }
 

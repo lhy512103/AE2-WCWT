@@ -152,6 +152,22 @@ public class ModComponents {
                     .networkSynchronized(ByteBufCodecs.STRING_UTF8));
 
     /**
+     * 手动合成区物品替换开关。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> MANUAL_CRAFTING_ITEM_SUBSTITUTION =
+            register("manual_crafting_item_substitution", builder -> builder
+                    .persistent(Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL));
+
+    /**
+     * 手动合成区流体替换开关。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> MANUAL_CRAFTING_FLUID_SUBSTITUTION =
+            register("manual_crafting_fluid_substitution", builder -> builder
+                    .persistent(Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL));
+
+    /**
      * 样板管理区“启用上传样板功能”开关。
      */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> PATTERN_MANAGEMENT_UPLOAD_ENABLED =

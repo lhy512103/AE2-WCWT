@@ -356,12 +356,12 @@
     "wcwtManualPatternSubstitutions": {
       "$comment": "工作台模式下，放入物品按钮下方的样板物品替换按钮。",
       "left": 134,
-      "bottom": 170
+      "bottom": 169
     },
     "wcwtManualPatternFluidSubstitutions": {
       "$comment": "工作台模式下，取走物品按钮下方的样板流体替换按钮。",
       "left": 134,
-      "bottom": 180
+      "bottom": 178
     },
     "manual_clearCraftingGrid_anvil": {
       "$comment": "铁砧模式下的清空合成网格按钮位置。",

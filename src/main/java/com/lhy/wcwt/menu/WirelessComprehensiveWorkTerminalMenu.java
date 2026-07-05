@@ -47,6 +47,7 @@ import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
@@ -55,6 +56,7 @@ import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.network.EncodePatternPacket;
 import com.lhy.wcwt.network.PatternEncodingModePacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
+import com.lhy.wcwt.network.PatternModePacket;
 import com.lhy.wcwt.network.PatternProviderFocusPacket;
 import com.lhy.wcwt.network.PatternProviderListPacket;
 import com.lhy.wcwt.network.PatternProviderSlotSyncPacket;
@@ -225,6 +227,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private long lastPatternProviderRequestTick = Long.MIN_VALUE;
     private long lastInventorySyncTick = Long.MIN_VALUE;
     private final List<List<ItemStack>> manualCraftingSlotAlternatives = createEmptyManualCraftingAlternatives();
+    private boolean manualCraftingItemSubstitution;
+    private boolean manualCraftingFluidSubstitution;
     /**
      * {@link #listUploadProviders(boolean)} 的「同一服务端 tick 内」缓存。
      * 原因：vanilla {@code AbstractContainerMenu.broadcastChanges()} 每 tick 会遍历所有槽位调用
@@ -259,6 +263,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         this.patternEncodingLogic = host.getLogic();
         this.manualSmithingBridge = new ManualSmithingMenuBridge();
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
+        this.manualCraftingItemSubstitution = host.isManualCraftingItemSubstitution();
+        this.manualCraftingFluidSubstitution = host.isManualCraftingFluidSubstitution();
         // 注意：不要在这里 new ToolboxMenu(this)！
         // 父类 MEStorageMenu 的构造器已经 new ToolboxMenu(this) 并添加了 9 个 TOOLBOX 槽，
         // 若在此重复创建则共有 18 个槽，界面会显示"两重"效果。
@@ -452,6 +458,28 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 if (isClientSide() && menuHost != null) {
                     menuHost.setManualWorkspaceMode(value);
                 }
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return manualCraftingItemSubstitution ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                manualCraftingItemSubstitution = value != 0;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return manualCraftingFluidSubstitution ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                manualCraftingFluidSubstitution = value != 0;
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -1704,6 +1732,34 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public void setPatternFluidSubstitute(boolean substitute) {
         if (patternEncodingLogic != null) {
             patternEncodingLogic.setFluidSubstitution(substitute);
+            broadcastChanges();
+        }
+    }
+
+    public boolean isManualCraftingItemSubstitution() {
+        return manualCraftingItemSubstitution;
+    }
+
+    public void setManualCraftingItemSubstitution(boolean substitute) {
+        if (manualCraftingItemSubstitution != substitute) {
+            manualCraftingItemSubstitution = substitute;
+            if (menuHost != null) {
+                menuHost.setManualCraftingItemSubstitution(substitute);
+            }
+            broadcastChanges();
+        }
+    }
+
+    public boolean isManualCraftingFluidSubstitution() {
+        return manualCraftingFluidSubstitution;
+    }
+
+    public void setManualCraftingFluidSubstitution(boolean substitute) {
+        if (manualCraftingFluidSubstitution != substitute) {
+            manualCraftingFluidSubstitution = substitute;
+            if (menuHost != null) {
+                menuHost.setManualCraftingFluidSubstitution(substitute);
+            }
             broadcastChanges();
         }
     }
@@ -3733,7 +3789,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private boolean isManualCraftingReplacementEnabled() {
-        return isPatternSubstitute() || isPatternFluidSubstitute();
+        return isManualCraftingItemSubstitution() || isManualCraftingFluidSubstitution();
     }
 
     private void handleManualCraftingResultAction(ServerPlayer player, InventoryAction action) {
@@ -3886,7 +3942,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         var filter = ViewCellItem.createItemFilter(getViewCells());
         KeyCounter availableStacks = null;
-        ManualCraftingRecipeAlternatives recipeAlternatives = isPatternSubstitute()
+        ManualCraftingRecipeAlternatives recipeAlternatives = isManualCraftingItemSubstitution()
                 ? new ManualCraftingRecipeAlternatives(recipe)
                 : null;
         for (int slot = 0; slot < Math.min(craftingMatrix.size(), before.length); slot++) {
@@ -3896,7 +3952,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             ItemStack current = craftingMatrix.getStackInSlot(slot);
             if (!current.isEmpty()) {
-                if (isPatternFluidSubstitute()
+                if (isManualCraftingFluidSubstitution()
                         && tryFillManualCraftingContainerFromFluid(craftingMatrix, slot, previous, current, before, recipe,
                                 expectedOutput)) {
                     continue;
@@ -3921,7 +3977,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (!exact.isEmpty()) {
             return exact;
         }
-        if (!isPatternSubstitute()) {
+        if (!isManualCraftingItemSubstitution()) {
             return ItemStack.EMPTY;
         }
 
@@ -5064,7 +5120,18 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         broadcastChanges();
     }
 
-    public void changePatternMode(int mode, boolean value) {
+    public void handlePatternMode(int mode, boolean value) {
+        switch (mode) {
+            case PatternModePacket.MODE_PATTERN_ITEM_SUBSTITUTIONS,
+                    PatternModePacket.MODE_PATTERN_FLUID_SUBSTITUTIONS -> changePatternCacheSubstitutionMode(mode, value);
+            case PatternModePacket.MODE_MANUAL_ITEM_SUBSTITUTION -> setManualCraftingItemSubstitution(value);
+            case PatternModePacket.MODE_MANUAL_FLUID_SUBSTITUTION -> setManualCraftingFluidSubstitution(value);
+            default -> {
+            }
+        }
+    }
+
+    private void changePatternCacheSubstitutionMode(int mode, boolean value) {
         for (var slot : getPatternCacheSlots()) {
             var stack = slot.getItem();
             var detail = PatternDetailsHelper.decodePattern(stack, getPlayer().level());
@@ -5076,8 +5143,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                             getCraftingRecipe(craft),
                             itemize(java.util.Arrays.stream(input).toList()),
                             itemize(output),
-                            mode == 0 ? value : craft.canSubstitute(),
-                            mode == 1 ? value : craft.canSubstituteFluids());
+                            mode == PatternModePacket.MODE_PATTERN_ITEM_SUBSTITUTIONS ? value : craft.canSubstitute(),
+                            mode == PatternModePacket.MODE_PATTERN_FLUID_SUBSTITUTIONS
+                                    ? value
+                                    : craft.canSubstituteFluids());
                     slot.set(newPattern);
                 } catch (Exception ignored) {
                 }
@@ -5431,6 +5500,19 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             menuHost.setCellCopyMode(cellCopyMode);
         }
         broadcastChanges();
+    }
+
+    public void cycleCellCompressionCutoff(boolean towardMoreCompressed) {
+        var cellStack = getStorageCellItem();
+        if (cellStack.isEmpty()) {
+            return;
+        }
+        if (WcwtMegaCellsCompat.switchCompressionCutoff(cellStack, towardMoreCompressed)) {
+            if (menuHost != null) {
+                menuHost.persistStorageCellItem();
+            }
+            broadcastChanges();
+        }
     }
 
     private static List<GenericStack> replaceInStacks(List<GenericStack> source,

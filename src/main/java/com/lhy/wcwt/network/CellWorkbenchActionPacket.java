@@ -19,7 +19,9 @@ public record CellWorkbenchActionPacket(Action action) implements CustomPacketPa
     public enum Action {
         PARTITION,   // 读取当前 StorageCell 内容填入 config 槽（分区存储）
         CLEAR,       // 清空所有 config 槽
-        COPY_MODE    // 切换 CopyMode（CLEAR_ON_REMOVE ↔ KEEP_ON_REMOVE）
+        COPY_MODE,   // 切换 CopyMode（CLEAR_ON_REMOVE ↔ KEEP_ON_REMOVE）
+        COMPRESSION_CUTOFF_PREVIOUS, // MEGA Cells 大宗压缩截断：向较小形态循环
+        COMPRESSION_CUTOFF_NEXT      // MEGA Cells 大宗压缩截断：向较大/更压缩形态循环
     }
 
     public static final Type<CellWorkbenchActionPacket> TYPE =
@@ -44,6 +46,8 @@ public record CellWorkbenchActionPacket(Action action) implements CustomPacketPa
                     case PARTITION  -> menu.partitionCell();
                     case CLEAR      -> menu.clearCellConfig();
                     case COPY_MODE  -> menu.toggleCellCopyMode();
+                    case COMPRESSION_CUTOFF_PREVIOUS -> menu.cycleCellCompressionCutoff(false);
+                    case COMPRESSION_CUTOFF_NEXT -> menu.cycleCellCompressionCutoff(true);
                 }
             }
         });
