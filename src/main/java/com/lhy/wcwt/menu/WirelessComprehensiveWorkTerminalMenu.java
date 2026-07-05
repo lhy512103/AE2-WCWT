@@ -4229,21 +4229,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return getManualWorkspaceMode() == ManualWorkspaceMode.ANVIL;
         }
 
-        var patternMode = getPatternEncodingMode();
-        if (semantic == WcwtSlotSemantics.WCWT_PATTERN_CRAFTING_GRID) {
-            return patternMode == EncodingMode.CRAFTING;
-        }
-        if (semantic == WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_INPUTS
-                || semantic == WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_OUTPUTS) {
-            return patternMode == EncodingMode.PROCESSING;
-        }
-        if (isPatternSmithingSemantic(semantic)) {
-            return patternMode == EncodingMode.SMITHING_TABLE;
-        }
-        if (semantic == WcwtSlotSemantics.WCWT_PATTERN_STONECUTTING_INPUT) {
-            return patternMode == EncodingMode.STONECUTTING;
-        }
-
         return true;
     }
 
@@ -4258,12 +4243,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT
                 || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RIGHT
                 || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT;
-    }
-
-    private static boolean isPatternSmithingSemantic(@Nullable SlotSemantic semantic) {
-        return semantic == WcwtSlotSemantics.WCWT_PATTERN_SMITHING_TEMPLATE
-                || semantic == WcwtSlotSemantics.WCWT_PATTERN_SMITHING_BASE
-                || semantic == WcwtSlotSemantics.WCWT_PATTERN_SMITHING_ADDITION;
     }
 
     private static boolean isDecorativeArmorSemantic(@Nullable SlotSemantic semantic) {
