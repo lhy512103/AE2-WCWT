@@ -3,8 +3,11 @@ package com.lhy.wcwt.helpers;
 import appeng.api.config.Actionable;
 import appeng.api.config.FuzzyMode;
 import appeng.api.config.IncludeExclude;
+import appeng.api.features.Locatables;
+import appeng.api.ids.AEComponents;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
+import appeng.api.networking.security.IActionHost;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.upgrades.IUpgradeableItem;
 import appeng.integration.modules.curios.CuriosIntegration;
@@ -20,6 +23,7 @@ import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.WcwtPickBlockPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
+import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.TextConstants;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
 import de.mari_023.ae2wtlib.api.AE2wtlibTags;
@@ -71,11 +75,12 @@ public final class WcwtWirelessFeatures {
         boolean hasMagnetCard = hasMagnetCard(terminal);
         boolean magnetEnabled = getMagnetSetting(terminal, "magnet");
         boolean pickupToMeEnabled = getMagnetSetting(terminal, "pickupToME");
-        IGrid grid = getGrid(player, terminalTarget.locator());
-        debugMagnetTick(player, terminal, sneaking, hasMagnetCard, magnetEnabled, pickupToMeEnabled, grid);
         if (sneaking || !hasMagnetCard || !magnetEnabled) {
+            debugMagnetTick(player, terminal, sneaking, hasMagnetCard, magnetEnabled, pickupToMeEnabled, null);
             return;
         }
+        IGrid grid = getGrid(player, terminalTarget);
+        debugMagnetTick(player, terminal, sneaking, hasMagnetCard, magnetEnabled, pickupToMeEnabled, grid);
         if (grid == null) {
             return;
         }
@@ -121,7 +126,7 @@ public final class WcwtWirelessFeatures {
             return;
         }
 
-        IGrid grid = getGrid(player, terminalTarget.locator());
+        IGrid grid = getGrid(player, terminalTarget);
         if (grid == null || grid.getStorageService() == null) {
             PacketDistributor.sendToPlayer(player, new WcwtRestockAmountsPacket(false, new HashMap<>()));
             return;
@@ -148,7 +153,7 @@ public final class WcwtWirelessFeatures {
             return;
         }
 
-        IGrid grid = getGrid(player, terminal.locator());
+        IGrid grid = getGrid(player, terminal);
         if (grid == null || grid.getStorageService() == null) {
             return;
         }
@@ -192,7 +197,7 @@ public final class WcwtWirelessFeatures {
             return false;
         }
 
-        IGrid grid = getGrid(serverPlayer, terminal.locator());
+        IGrid grid = getGrid(serverPlayer, terminal);
         if (grid == null || grid.getStorageService() == null) {
             debugMagnet(serverPlayer, "pickup-to-me skipped: grid/storage missing, stack={}, terminal={}",
                     describeStack(stack), describeStack(terminal.stack()));
@@ -268,7 +273,7 @@ public final class WcwtWirelessFeatures {
             return false;
         }
 
-        IGrid grid = getGrid(serverPlayer, terminalTarget.locator());
+        IGrid grid = getGrid(serverPlayer, terminalTarget);
         if (grid == null || grid.getStorageService() == null) {
             return false;
         }
@@ -296,7 +301,7 @@ public final class WcwtWirelessFeatures {
         }
 
         ItemStack terminal = terminalTarget.stack();
-        IGrid grid = getGrid(player, terminalTarget.locator());
+        IGrid grid = getGrid(player, terminalTarget);
         if (grid == null || grid.getStorageService() == null) {
             return;
         }
@@ -489,14 +494,73 @@ public final class WcwtWirelessFeatures {
         return null;
     }
 
-    private static IGrid getGrid(ServerPlayer player, ItemMenuHostLocator locator) {
-        WirelessComprehensiveWorkTerminalMenuHost host =
-                locator.locate(player, WirelessComprehensiveWorkTerminalMenuHost.class);
-        if (host == null) return null;
-        host.updateConnectedAccessPoint();
-        host.updateLinkStatus();
-        IGridNode node = host.getActionableNode();
+    private static IGrid getGrid(ServerPlayer player, TerminalTarget terminalTarget) {
+        IGrid openMenuGrid = getOpenMenuGrid(player, terminalTarget);
+        if (openMenuGrid != null) {
+            return openMenuGrid;
+        }
+        return getItemGrid(player, terminalTarget.stack());
+    }
+
+    @Nullable
+    private static IGrid getOpenMenuGrid(ServerPlayer player, TerminalTarget terminalTarget) {
+        if (!(player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)
+                || menu.getMenuHost() == null
+                || !(menu.getLocator() instanceof ItemMenuHostLocator locator)
+                || !isSameTerminalTarget(player, locator, terminalTarget)) {
+            return null;
+        }
+        IGridNode node = menu.getMenuHost().getActionableNode();
         return node == null ? null : node.getGrid();
+    }
+
+    private static boolean isSameTerminalTarget(Player player, ItemMenuHostLocator locator,
+                                                TerminalTarget terminalTarget) {
+        return locator.equals(terminalTarget.locator()) || locator.locateItem(player) == terminalTarget.stack();
+    }
+
+    @Nullable
+    private static IGrid getItemGrid(ServerPlayer player, ItemStack terminal) {
+        if (!(terminal.getItem() instanceof WirelessComprehensiveWorkTerminalItem item)) {
+            return null;
+        }
+
+        IGrid linkedGrid = item.getLinkedGrid(terminal, player.level(), null);
+        if (linkedGrid != null) {
+            return linkedGrid;
+        }
+        return getQuantumBridgeGrid(player, terminal, item);
+    }
+
+    @Nullable
+    private static IGrid getQuantumBridgeGrid(ServerPlayer player, ItemStack terminal,
+                                              WirelessComprehensiveWorkTerminalItem item) {
+        if (!AE2wtlibAPI.hasQuantumBridgeCard(() -> item.getUpgrades(terminal))) {
+            return null;
+        }
+
+        ItemStack singularity = terminal.getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY);
+        if (singularity.isEmpty()) {
+            return null;
+        }
+        Long frequency = singularity.get(AEComponents.ENTANGLED_SINGULARITY_ID);
+        if (frequency == null) {
+            return null;
+        }
+
+        IActionHost bridge = Locatables.quantumNetworkBridges().get(player.level(), frequency);
+        if (bridge == null) {
+            bridge = Locatables.quantumNetworkBridges().get(player.level(), -frequency);
+        }
+        if (bridge == null || bridge.getActionableNode() == null) {
+            return null;
+        }
+
+        IGrid grid = bridge.getActionableNode().getGrid();
+        if (grid == null || !grid.getEnergyService().isNetworkPowered()) {
+            return null;
+        }
+        return grid;
     }
 
     private static IPartitionList createFilter(ItemStack terminal,

@@ -25,6 +25,7 @@
 20. Restored the AE2 toolbar-style background for the MEGA Cells bulk compression cutoff button and shifted the four cell editor utility buttons left by 2 px.
 21. Made the manual crafting area item and fluid substitution toggles independent from the pattern encoding area's substitution toggles.
 22. Persisted the manual crafting area item and fluid substitution toggle states on the terminal item so they survive closing and reopening the terminal.
+23. Fixed wireless magnet, restock, pickup-to-ME, stow, and pick-block features not seeing quantum-bridge-only WCWT networks, while keeping the common wireless-link path lightweight.
 
 ### 中文
 1. 将工具包记忆槽位按钮的位置与状态样式对齐到 1.20.1 版本，支持关闭、悬停、开启三种状态，其中悬停与开启使用相同样式。
@@ -49,6 +50,7 @@
 20. 为 MEGA Cells 大宗压缩截断按钮恢复与复制模式按钮一致的 AE2 toolbar 小按钮底图，并将元件编辑区这一排四个功能按钮整体左移 2px。
 21. 将手动合成区的物品替换与流体替换开关改为独立状态，不再与样板编码区的替换开关联动。
 22. 将手动合成区物品替换与流体替换开关状态持久化到终端物品上，关闭并重新打开终端后仍会保留。
+23. 修复磁力、补货、拾取到 ME、收纳手持物品与鼠标中键取物等无线功能无法识别仅通过量子桥连接的 WCWT 网络的问题，同时保留普通无线链接路径的轻量解析。
 
 ## v1.3.1
 
