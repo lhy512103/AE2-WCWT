@@ -32,6 +32,7 @@ import appeng.menu.slot.RestrictedInputSlot;
 import appeng.parts.encoding.EncodingMode;
 import appeng.parts.encoding.PatternEncodingLogic;
 import appeng.util.ConfigInventory;
+import appeng.util.CraftingRecipeUtil;
 import appeng.util.Platform;
 import appeng.util.inv.CarriedItemInventory;
 import appeng.util.inv.FilteredInternalInventory;
@@ -77,6 +78,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.SingleRecipeInput;
@@ -93,13 +95,14 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.SmithingMenu;
 import net.minecraft.world.inventory.Slot;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.items.SlotItemHandler;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Contract;
@@ -3239,6 +3242,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private boolean isUpgradeLikeSemantic(@Nullable appeng.menu.SlotSemantic semantic) {
         return semantic == SlotSemantics.UPGRADE
+                || semantic == SlotSemantics.VIEW_CELL
                 || semantic == AE2wtlibSlotSemantics.SINGULARITY
                 || semantic == WcwtSlotSemantics.WCWT_CELL_UPGRADE;
     }
@@ -3435,10 +3439,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 logQuickMoveUpgrade("start player={}, slotIndex={}, source={}",
                         player.getScoreboardName(), slotIndex, describeSlot(sourceSlot));
             }
-            // 禁止从升级类槽位 shift 快速移出物品。原版客户端 shift 点击只发包，
+            // 禁止从升级类/显示元件类槽位 shift 快速移出物品。原版客户端 shift 点击只发包，
             // 而像 Inventory Essentials 这类整理/批量转移模组会程序化地遍历槽位直接调用
-            // quickMoveStack，从而把升级卡误当成可批量转移的物品掏出来。在服务端源头拦截，
-            // 不影响往升级槽内 shift 放入卡片（那走的是 canMoveTo 目标判定）。
+            // quickMoveStack，从而把升级卡或显示元件误当成可批量转移的物品掏出来。在服务端源头拦截，
+            // 不影响往这些槽内 shift 放入物品（那走的是 canMoveTo 目标判定）。
             if (isUpgradeLikeSemantic(getSlotSemantic(sourceSlot))) {
                 return ItemStack.EMPTY;
             }
@@ -3882,6 +3886,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         var filter = ViewCellItem.createItemFilter(getViewCells());
         KeyCounter availableStacks = null;
+        ManualCraftingRecipeAlternatives recipeAlternatives = isPatternSubstitute()
+                ? new ManualCraftingRecipeAlternatives(recipe)
+                : null;
         for (int slot = 0; slot < Math.min(craftingMatrix.size(), before.length); slot++) {
             ItemStack previous = before[slot];
             if (previous == null || previous.isEmpty()) {
@@ -3900,7 +3907,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 availableStacks = storage.getAvailableStacks();
             }
             ItemStack replacement = extractManualCraftingReplacement(slot, previous, before, recipe, expectedOutput,
-                    filter, availableStacks);
+                    filter, availableStacks, recipeAlternatives);
             if (!replacement.isEmpty()) {
                 craftingMatrix.setItemDirect(slot, replacement);
             }
@@ -3909,7 +3916,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private ItemStack extractManualCraftingReplacement(int slot, ItemStack previous, ItemStack[] before,
             RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
-            KeyCounter availableStacks) {
+            KeyCounter availableStacks, @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
         ItemStack exact = extractManualCraftingExactReplacement(previous, filter);
         if (!exact.isEmpty()) {
             return exact;
@@ -3919,6 +3926,29 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         List<ItemStack> alternatives = manualCraftingAlternativesFor(slot, previous);
+        ItemStack rememberedReplacement = extractManualCraftingAlternativeReplacement(slot, before, recipe,
+                expectedOutput, filter, availableStacks, alternatives);
+        if (!rememberedReplacement.isEmpty()) {
+            return rememberedReplacement;
+        }
+
+        List<ItemStack> recipeDerivedAlternatives = recipeAlternatives == null
+                ? List.of()
+                : recipeAlternatives.getAlternatives(previous);
+        if (recipeDerivedAlternatives.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        List<ItemStack> expandedAlternatives = mergeManualCraftingAlternatives(alternatives, recipeDerivedAlternatives);
+        if (expandedAlternatives.size() == alternatives.size()) {
+            return ItemStack.EMPTY;
+        }
+        return extractManualCraftingAlternativeReplacement(slot, before, recipe, expectedOutput, filter,
+                availableStacks, expandedAlternatives);
+    }
+
+    private ItemStack extractManualCraftingAlternativeReplacement(int slot, ItemStack[] before,
+            RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
+            KeyCounter availableStacks, List<ItemStack> alternatives) {
         if (alternatives.isEmpty()) {
             return ItemStack.EMPTY;
         }
@@ -3935,6 +3965,27 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
         return ItemStack.EMPTY;
+    }
+
+    private static List<ItemStack> mergeManualCraftingAlternatives(List<ItemStack> remembered,
+            List<ItemStack> recipeDerived) {
+        List<ItemStack> merged = new ArrayList<>(remembered.size() + recipeDerived.size());
+        merged.addAll(WcwtIngredientPriorities.deduplicateItemAlternatives(remembered));
+        for (ItemStack alternative : WcwtIngredientPriorities.deduplicateItemAlternatives(recipeDerived)) {
+            if (!containsSameItemAndComponents(merged, alternative)) {
+                merged.add(alternative.copyWithCount(1));
+            }
+        }
+        return merged;
+    }
+
+    private static boolean containsSameItemAndComponents(List<ItemStack> stacks, ItemStack candidate) {
+        for (ItemStack stack : stacks) {
+            if (ItemStack.isSameItemSameComponents(stack, candidate)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ItemStack extractManualCraftingExactReplacement(ItemStack previous, @Nullable IPartitionList filter) {
@@ -4019,17 +4070,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (contained == null || !(contained.what() instanceof AEFluidKey fluidKey) || contained.amount() <= 0) {
             return false;
         }
-        ItemStack filled = current.copyWithCount(1);
-        var fluidHandler = filled.getCapability(Capabilities.FluidHandler.ITEM);
-        if (fluidHandler == null) {
-            return false;
-        }
         int amount = (int) Math.min(Integer.MAX_VALUE, contained.amount());
-        int fillable = fluidHandler.fill(fluidKey.toStack(amount), Actionable.SIMULATE.getFluidAction());
-        if (fillable < amount) {
+        ItemStack filledContainer = fillManualCraftingFluidContainer(current, fluidKey, amount);
+        if (filledContainer.isEmpty()) {
             return false;
         }
-        if (!isManualCraftingReplacementValid(slot, fluidHandler.getContainer(), before, recipe, expectedOutput)) {
+        if (!isManualCraftingReplacementValid(slot, filledContainer, before, recipe, expectedOutput)) {
             return false;
         }
         long available = StorageHelper.poweredExtraction(energySource, storage, fluidKey, amount, getActionSource(),
@@ -4044,14 +4090,70 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             return false;
         }
-        int filledAmount = fluidHandler.fill(fluidKey.toStack(amount), Actionable.MODULATE.getFluidAction());
-        if (filledAmount < amount) {
-            long leftover = amount - Math.max(0, filledAmount);
-            StorageHelper.poweredInsert(energySource, storage, fluidKey, leftover, getActionSource());
-            return false;
-        }
-        craftingMatrix.setItemDirect(slot, fluidHandler.getContainer());
+        craftingMatrix.setItemDirect(slot, filledContainer.copyWithCount(1));
         return true;
+    }
+
+    private ItemStack fillManualCraftingFluidContainer(ItemStack emptyContainer, AEFluidKey fluidKey, int amount) {
+        ItemStack filled = emptyContainer.copyWithCount(1);
+        var fluidHandler = FluidUtil.getFluidHandler(filled).orElse(null);
+        if (fluidHandler != null) {
+            int fillable = fluidHandler.fill(fluidKey.toStack(amount), Actionable.SIMULATE.getFluidAction());
+            if (fillable >= amount) {
+                int filledAmount = fluidHandler.fill(fluidKey.toStack(amount), Actionable.MODULATE.getFluidAction());
+                if (filledAmount >= amount) {
+                    return fluidHandler.getContainer();
+                }
+            }
+        }
+
+        if (emptyContainer.is(Items.BUCKET)) {
+            ItemStack bucket = FluidUtil.getFilledBucket(fluidKey.toStack(amount));
+            if (!bucket.isEmpty()) {
+                return bucket.copyWithCount(1);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static final class ManualCraftingRecipeAlternatives {
+        private final RecipeHolder<CraftingRecipe> recipe;
+        private final HashMap<AEItemKey, List<ItemStack>> cache = new HashMap<>();
+        private @Nullable List<Ingredient> ingredients;
+
+        private ManualCraftingRecipeAlternatives(RecipeHolder<CraftingRecipe> recipe) {
+            this.recipe = recipe;
+        }
+
+        private List<ItemStack> getAlternatives(ItemStack previous) {
+            AEItemKey previousKey = AEItemKey.of(previous);
+            if (previousKey == null) {
+                return List.of();
+            }
+            return cache.computeIfAbsent(previousKey, ignored -> collectAlternatives(previous));
+        }
+
+        private List<ItemStack> collectAlternatives(ItemStack previous) {
+            List<ItemStack> result = new ArrayList<>();
+            for (Ingredient ingredient : getIngredients()) {
+                if (ingredient == null || ingredient.isEmpty() || !ingredient.test(previous)) {
+                    continue;
+                }
+                for (ItemStack candidate : ingredient.getItems()) {
+                    if (!candidate.isEmpty() && !containsSameItemAndComponents(result, candidate)) {
+                        result.add(candidate.copyWithCount(1));
+                    }
+                }
+            }
+            return result;
+        }
+
+        private List<Ingredient> getIngredients() {
+            if (ingredients == null) {
+                ingredients = List.copyOf(CraftingRecipeUtil.getIngredients(recipe.value()));
+            }
+            return ingredients;
+        }
     }
 
     @Override

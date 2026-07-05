@@ -22,6 +22,7 @@ public abstract class WcwtMenuProtectionMixin {
         }
         if (semantic == SlotSemantics.BLANK_PATTERN
                 || semantic == SlotSemantics.ENCODED_PATTERN
+                || semantic == SlotSemantics.VIEW_CELL
                 || isWcwtSpecialSemantic(semantic)) {
             cir.setReturnValue(false);
         }

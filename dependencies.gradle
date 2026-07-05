@@ -55,6 +55,7 @@ dependencies {
     localRuntime "curse.maven:codechicken-lib-1-8-242818:7281427"
     localRuntime "curse.maven:draconic-evolution-223565:7584459"
     localRuntime "curse.maven:productivebees-377897:8022994"
+    localRuntime "curse.maven:allthecompressed-514045:7361502"
     localRuntime "curse.maven:sophisticated-storage-619320:8249877"
     localRuntime "curse.maven:sophisticated-core-618298:8272330"
     localRuntime "dev.architectury:architectury-neoforge:${architectury_version}"

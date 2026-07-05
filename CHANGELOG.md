@@ -16,6 +16,10 @@
 11. Added OP-only `/wcwt config` commands for reading and changing the WCWT server options `toolkitSlotCount` and `patternProviderActiveRefresh`.
 12. Added mirrored item and fluid substitution toggles under the manual crafting area's Store Items and Take Items buttons while using crafting pattern mode.
 13. Implemented the manual crafting substitution toggles: repeated crafts can switch to another valid JEI/EMI item candidate when the current ingredient runs out, and fluid substitution can refill returned containers from ME fluids, such as refilling empty buckets from stored water.
+14. Fixed manual crafting fluid substitution not refilling vanilla empty buckets after bucket recipes, so repeated crafts can consume stored ME fluids instead of leaving the crafting grid with an empty bucket.
+15. Improved manual crafting item substitution with a server-side current-recipe ingredient fallback, allowing tag-based candidates such as alternate glass panes to be used when JEI/EMI did not send every candidate.
+16. Protected AE2 view cell slots from shift/quick-move extraction so sorting mods no longer unload view cells from the view cell panel.
+17. Added AllTheCompressed to the local runtime dependency set.
 
 ### 中文
 1. 将工具包记忆槽位按钮的位置与状态样式对齐到 1.20.1 版本，支持关闭、悬停、开启三种状态，其中悬停与开启使用相同样式。
@@ -31,6 +35,10 @@
 11. 新增仅 OP 可用的 `/wcwt config` 指令，用于读取和修改 WCWT 服务端选项 `toolkitSlotCount` 与 `patternProviderActiveRefresh`。
 12. 在手动合成区工作台模式下，将物品替换与流体替换按钮镜像到放入物品、取走物品按钮下方，并复用样板编码区的同一开关状态。
 13. 实现手动合成区替换按钮的实际功能：连续合成时当前材料用完后可切换到 JEI/EMI 配方中的其它有效物品候选；流体替换可用 ME 网络流体重新填充返还容器，例如用网络里的水把空桶接回水桶。
+14. 修复手动合成区流体替换在原版空桶上不生效的问题；水桶类配方合成后现在会用 ME 网络流体重新填充空桶，避免连续合成停在空桶状态。
+15. 改进手动合成区物品替换：当 JEI/EMI 没有传完整候选时，服务端会在替换开启且同款材料抽取失败后，从当前配方 ingredient 兜底展开候选，使玻璃板等 tag 材料可继续替换。
+16. 保护 AE2 显示元件槽位，禁止 Shift/整理模组快速移动从显示元件面板卸下显示元件。
+17. 将 AllTheCompressed 加入本地运行时依赖。
 
 ## v1.3.1
 
