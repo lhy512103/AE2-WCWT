@@ -242,6 +242,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private int syncedManualWorkspaceMode = ManualWorkspaceMode.CRAFTING.ordinal();
     private int syncedManualAnvilCost;
     private boolean manualCraftingActionInProgress;
+    private boolean suppressManualWorkspaceQuickMoveTargets;
     private int manualQuickCraftSlotIndex = -1;
     private int manualQuickCraftsRemaining;
     private int clientQuickMoveOptions = QUICK_MOVE_TO_COSMETIC_ARMOR
@@ -949,6 +950,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         @Override
         public boolean mayPlace(ItemStack stack) {
+            if (suppressManualWorkspaceQuickMoveTargets) {
+                return false;
+            }
             return super.mayPlace(stack) && mayPlacePredicate.test(stack);
         }
 
@@ -3798,6 +3802,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 }
             }
         }
+        if (slotIndex >= 0 && slotIndex < slots.size()
+                && isPlayerHotbarOrStorageSemanticSlot(slots.get(slotIndex))) {
+            boolean previousSuppressManualWorkspaceQuickMoveTargets = suppressManualWorkspaceQuickMoveTargets;
+            suppressManualWorkspaceQuickMoveTargets = true;
+            try {
+                return super.quickMoveStack(player, slotIndex);
+            } finally {
+                suppressManualWorkspaceQuickMoveTargets = previousSuppressManualWorkspaceQuickMoveTargets;
+            }
+        }
         return super.quickMoveStack(player, slotIndex);
     }
 
@@ -4206,7 +4220,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         var semantic = getSlotSemantic(candidateSlot);
-        if (!isQuickMoveDestinationAvailableForCurrentMode(semantic)) {
+        if (isManualWorkspaceQuickMoveTarget(semantic)) {
             return false;
         }
         if (semantic == WcwtSlotSemantics.WCWT_TOOLKIT
@@ -4221,26 +4235,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return true;
     }
 
-    private boolean isQuickMoveDestinationAvailableForCurrentMode(@Nullable SlotSemantic semantic) {
-        if (isManualSmithingSemantic(semantic)) {
-            return getManualWorkspaceMode() == ManualWorkspaceMode.SMITHING;
-        }
-        if (isManualAnvilSemantic(semantic)) {
-            return getManualWorkspaceMode() == ManualWorkspaceMode.ANVIL;
-        }
-
-        return true;
-    }
-
-    private static boolean isManualSmithingSemantic(@Nullable SlotSemantic semantic) {
+    private static boolean isManualWorkspaceQuickMoveTarget(@Nullable SlotSemantic semantic) {
         return semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_TEMPLATE
                 || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_BASE
                 || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_ADDITION
-                || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_RESULT;
-    }
-
-    private static boolean isManualAnvilSemantic(@Nullable SlotSemantic semantic) {
-        return semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT
                 || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RIGHT
                 || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT;
     }

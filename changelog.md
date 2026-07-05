@@ -17,7 +17,8 @@
 13. Fixed Polymorph recipe buttons disappearing after selection or flickering in the manual crafting area when another WCWT recipe source sent an empty recipe-list update.
 14. Reduced Polymorph conflict-recipe shift-crafting latency in the manual crafting area by reusing the selected AE2 crafting recipe during stack crafting and avoiding unrelated manual-workspace and pattern-preview refreshes.
 15. Fixed WCWT opening failing during menu construction when early AE2 slot-change callbacks reached WCWT pattern-preview slot checks before the pattern slots were initialized.
-16. Prevented quick-move fallback from inserting items into inactive manual workspace smithing/anvil slots when ME storage is full.
+16. Prevented quick-move fallback from inserting items into manual workspace smithing/anvil slots when ME storage is full.
+17. Temporarily disabled the Polymorph conflict test recipes by moving them out of the active recipe data path.
 
 
 ## 中文
@@ -37,7 +38,8 @@
 13. 修复 Polymorph 多态合成按钮在选择一次后消失，以及手动合成区按钮被其它 WCWT 配方源的空列表刷新刷掉而闪烁的问题。
 14. 降低手动合成区使用 Polymorph 冲突配方 Shift 合成一组时的延迟：一组连续合成期间复用 AE2 当前选中配方，并避免刷新无关手动工作区和样板预览。
 15. 修复 WCWT 无法打开终端界面的问题：AE2 父菜单构造期间提前触发槽位变化回调时，WCWT 样板预览槽判断现在会正确跳过尚未初始化的槽位数组。
-16. 修复 ME 存储已满时，快速移动回退逻辑会把物品塞进未启用的手动合成区锻造台/铁砧槽位的问题。
+16. 修复 ME 存储已满时，快速移动回退逻辑会把物品塞进手动合成区锻造台/铁砧槽位的问题。
+17. 临时禁用 Polymorph 冲突测试配方：将它们移出实际加载的配方数据路径。
 
 
 # 1.20.1.6
