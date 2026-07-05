@@ -169,6 +169,8 @@
 
   "wcwt.config.toolkitSlotCount": "Число слотов набора инструментов",
   "wcwt.config.toolkitSlotCount.tooltip": "Минимум 11 сохраняет первые 11 специализированных слотов инструментов. Обычно применяется сразу после сохранения.",
+  "wcwt.config.patternProviderActiveRefresh": "Активное обновление поставщиков шаблонов",
+  "wcwt.config.patternProviderActiveRefresh.tooltip": "ВКЛ: пока область управления шаблонами открыта, обновлять список поставщиков при изменениях. ВЫКЛ: обновлять только по явному запросу.",
   "wcwt.config.patternUploadFailFallbackToEditor": "При сбое загрузки предпочитать слот редактирования",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "ВЫКЛ: сначала вернуть в кэш шаблонов, затем в слот редактирования, если кэш полон. ВКЛ: сначала вернуть в слот редактирования.",
   "wcwt.config.patternManagementShiftQuick": "Быстрое Shift-перемещение в управлении шаблонами",

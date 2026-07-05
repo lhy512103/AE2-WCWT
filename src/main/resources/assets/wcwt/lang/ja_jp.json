@@ -167,6 +167,8 @@
 
   "wcwt.config.toolkitSlotCount": "ツールキットのスロット数",
   "wcwt.config.toolkitSlotCount.tooltip": "最小 11 で先頭 11 個の専用ツールスロットを維持します。通常は保存後すぐ反映されます。",
+  "wcwt.config.patternProviderActiveRefresh": "パターンプロバイダーのアクティブ更新",
+  "wcwt.config.patternProviderActiveRefresh.tooltip": "ON: パターン管理エリアを開いている間、内容変更時にプロバイダー一覧を更新します。OFF: 明示的な要求時のみ更新します。",
   "wcwt.config.patternUploadFailFallbackToEditor": "保存失敗時は編集スロット優先",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "OFF: まずパターンキャッシュへ、満杯なら編集スロットへ戻します。ON: まず編集スロットへ戻します。",
   "wcwt.config.patternManagementShiftQuick": "パターン管理 Shift クイック移動",

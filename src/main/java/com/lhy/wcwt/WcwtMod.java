@@ -24,6 +24,7 @@ import com.lhy.wcwt.universal.WcwtItemIds;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.compat.WcwtCuriosCompat;
 import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
+import com.lhy.wcwt.command.WcwtCommands;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -39,6 +40,7 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.InterModComms;
 import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
@@ -63,6 +65,7 @@ public class WcwtMod {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::addCreativeTabItems);
         modEventBus.addListener(this::registerCapabilities);
+        NeoForge.EVENT_BUS.addListener(WcwtCommands::register);
         modContainer.registerConfig(ModConfig.Type.CLIENT, WcwtClientConfig.SPEC);
         modContainer.registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
     }

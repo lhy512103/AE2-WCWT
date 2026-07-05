@@ -167,6 +167,8 @@
 
   "wcwt.config.toolkitSlotCount": "工具包槽位數量",
   "wcwt.config.toolkitSlotCount.tooltip": "最小 11 格，用於保留前 11 個專用工具槽。保存配置後一般即生效。",
+  "wcwt.config.patternProviderActiveRefresh": "樣板供應器主動刷新",
+  "wcwt.config.patternProviderActiveRefresh.tooltip": "開：樣板管理區打開時，供應器內容變化會主動刷新列表。關：僅在明確請求時刷新。",
   "wcwt.config.patternUploadFailFallbackToEditor": "上傳失敗優先回退到樣板編輯槽",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "關：優先回退到樣板緩存區，緩存區放不下再回退到樣板編輯槽。開：優先回退到樣板編輯槽。",
   "wcwt.config.patternManagementShiftQuick": "樣板管理 Shift 快速移動",

@@ -39,6 +39,7 @@ import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
+import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
@@ -1844,7 +1845,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private boolean shouldSyncPatternProviders(ServerPlayer serverPlayer) {
-        return serverPlayer.serverLevel().getGameTime() <= patternProviderSyncSubscriptionUntilTick;
+        return WcwtServerConfig.patternProviderActiveRefresh()
+                && serverPlayer.serverLevel().getGameTime() <= patternProviderSyncSubscriptionUntilTick;
     }
 
     /**

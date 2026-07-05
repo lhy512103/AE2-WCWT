@@ -178,6 +178,8 @@
 
   "wcwt.config.toolkitSlotCount": "Toolkit slot count",
   "wcwt.config.toolkitSlotCount.tooltip": "Minimum 11 keeps the first 11 dedicated tool slots available. Saving the file usually applies without restart.",
+  "wcwt.config.patternProviderActiveRefresh": "Pattern provider active refresh",
+  "wcwt.config.patternProviderActiveRefresh.tooltip": "On: while the pattern management area is open, actively refresh provider lists when contents change. Off: only refresh on explicit requests.",
   "wcwt.config.patternUploadFailFallbackToEditor": "Prefer edit slot on upload failure",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "Off: fall back to the pattern cache first, then the pattern edit slot if the cache is full. On: fall back to the pattern edit slot first.",
   "wcwt.config.patternManagementShiftQuick": "Pattern management shift quick move",
