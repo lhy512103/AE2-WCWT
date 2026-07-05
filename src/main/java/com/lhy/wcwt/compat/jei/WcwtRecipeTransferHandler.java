@@ -91,7 +91,7 @@ public class WcwtRecipeTransferHandler
                 WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
             }
             return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, doTransfer,
-                    transferHelper);
+                    transferHelper, mode != EncodingMode.CRAFTING);
         }
 
         boolean encodingRecipe = mode != EncodingMode.PROCESSING;

@@ -276,6 +276,14 @@ public final class WcwtIngredientPriorities {
     public static ItemStack chooseBestItemForPull(PriorityContext context,
                                                   Ingredient ingredient,
                                                   List<ItemStack> visibleAlternatives) {
+        if (WcwtStackMatching.requiresExactItemKeyMatch(visibleAlternatives)) {
+            for (var visibleAlternative : visibleAlternatives) {
+                if (visibleAlternative != null && !visibleAlternative.isEmpty()) {
+                    return visibleAlternative.copy();
+                }
+            }
+        }
+
         ItemStack bestNetworkIngredient = findBestNetworkIngredient(context, ingredient);
         if (!bestNetworkIngredient.isEmpty()) {
             return bestNetworkIngredient;

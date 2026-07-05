@@ -26,6 +26,7 @@ dependencies {
     compileOnly "dev.emi:emi-forge:${v.emi.get()}:api"
     compileOnly fg.deobf("maven.modrinth:extendedae-plus:${v.extendedae.plus.get()}")
     compileOnly fg.deobf("org.appliedenergistics:guideme:${v.guideme.get()}")
+    compileOnly fg.deobf(libs.polymorph)
 
     // ══════════════════════════════════════════════════════════
     //  runtimeOnly — 仅运行时
@@ -47,6 +48,12 @@ dependencies {
     runtimeOnly fg.deobf(libs.mystical.agriculture)
     runtimeOnly fg.deobf(libs.mystical.agradditions)
     runtimeOnly fg.deobf(libs.spark)
+    runtimeOnly fg.deobf(libs.ferrite.core)
+    runtimeOnly fg.deobf(libs.polymorph)
+    runtimeOnly fg.deobf(libs.productivebees)
+    runtimeOnly fg.deobf(libs.codechicken.lib)
+    runtimeOnly fg.deobf(libs.brandons.core)
+    runtimeOnly fg.deobf(libs.draconic.evolution)
 
     // ── Maven（需 fg.deobf）──────────────────────────────────
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${v.guideme.get()}")
@@ -63,6 +70,7 @@ dependencies {
     // ══════════════════════════════════════════════════════════
     clientRuntimeOnly fg.deobf("maven.modrinth:justenoughcharacters:${v.jecharacters.get()}")
     clientRuntimeOnly fg.deobf("maven.modrinth:extreme_sound_muffler:${v.sound.muffler.get()}")
+    clientRuntimeOnly fg.deobf(libs.embeddium)
     clientRuntimeOnly fg.deobf("caramelChat-mc1.20.1-forge:caramelChat-mc1.20.1-forge:${v.caramel.chat.get()}")
     clientRuntimeOnly fg.deobf(libs.mouse.tweaks)
     clientRuntimeOnly fg.deobf("Searchables-forge-1.20.1:Searchables-forge-1.20.1:${v.searchables.get()}")

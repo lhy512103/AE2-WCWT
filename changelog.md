@@ -8,6 +8,15 @@
 4. Added dedicated upgrade cards for extended UI panels; each panel button now appears only when its matching card is installed in the terminal upgrade slots.
 5. Added crafting recipes for the extended UI upgrade cards and hid mod-dependent cards unless their required integrations are loaded.
 6. Added Spark 1.10.53 Forge as a runtime dependency for profiling test runs.
+7. Moved WCWT server-side options from per-world serverconfig storage to global config/wcwt-server.toml and added scrolling to the WCWT config screen so all options remain reachable.
+8. Added OP-only chat commands for reading and changing WCWT server-side options: `/wcwt config toolkitSlotCount <value>` and `/wcwt config patternProviderActiveRefresh <true|false>`.
+9. Added FerriteCore, Polymorph, Productive Bees, CodeChicken Lib, Brandon's Core, and Draconic Evolution to runtime test dependencies, with Embeddium added to client-only runtime dependencies.
+10. Fixed recipe pull and preview highlights for NBT-specific item inputs, and limited Shift one-batch pulling to non-crafting recipes.
+11. Added Polymorph compatibility for the manual crafting area, manual smithing area, and crafting/smithing pattern encoding previews.
+12. Aligned WCWT text-field keyboard handling with AE2 so focused terminal inputs consume typing keys and no longer trigger WCWT shortcuts.
+13. Fixed Polymorph recipe buttons disappearing after selection or flickering in the manual crafting area when another WCWT recipe source sent an empty recipe-list update.
+14. Reduced Polymorph conflict-recipe shift-crafting latency in the manual crafting area by reusing the selected AE2 crafting recipe during stack crafting and avoiding unrelated manual-workspace and pattern-preview refreshes.
+15. Fixed WCWT opening failing during menu construction when early AE2 slot-change callbacks reached WCWT pattern-preview slot checks before the pattern slots were initialized.
 
 
 ## 中文
@@ -18,6 +27,15 @@
 4. 新增扩展 UI 专用升级卡；终端升级槽插入对应升级卡后，才会显示对应扩展 UI 按钮。
 5. 新增扩展 UI 升级卡合成配方；需要额外模组支持的升级卡会在对应模组加载后才显示。
 6. 将 Spark 1.10.53 Forge 加入运行时依赖，用于性能分析测试环境。
+7. 将 WCWT 服务端选项从按世界保存的 serverconfig 改为全局 config/wcwt-server.toml，并为 WCWT 配置界面加入滚动条，确保所有选项都能显示和点击。
+8. 新增仅 OP 可用的聊天框指令，用于读取和修改 WCWT 服务端选项：`/wcwt config toolkitSlotCount <数值>` 与 `/wcwt config patternProviderActiveRefresh <true|false>`。
+9. 将 FerriteCore、Polymorph、Productive Bees、CodeChicken Lib、Brandon's Core、Draconic Evolution 加入运行时测试依赖，并将 Embeddium 加入仅客户端运行时依赖。
+10. 修复配方拉取与预览高亮对带 NBT 物品输入匹配过宽的问题，并将 Shift 拉取一组限制为仅对非合成配方生效。
+11. 将 Polymorph 多态合成兼容迁入 1.20.1：手动合成区、手动锻造区，以及合成/锻造样板编码预览均可选择冲突配方。
+12. 对齐 AE2 的输入框键盘处理：终端输入框获得焦点时会消费输入按键，不再触发 WCWT 快捷键。
+13. 修复 Polymorph 多态合成按钮在选择一次后消失，以及手动合成区按钮被其它 WCWT 配方源的空列表刷新刷掉而闪烁的问题。
+14. 降低手动合成区使用 Polymorph 冲突配方 Shift 合成一组时的延迟：一组连续合成期间复用 AE2 当前选中配方，并避免刷新无关手动工作区和样板预览。
+15. 修复 WCWT 无法打开终端界面的问题：AE2 父菜单构造期间提前触发槽位变化回调时，WCWT 样板预览槽判断现在会正确跳过尚未初始化的槽位数组。
 
 
 # 1.20.1.6

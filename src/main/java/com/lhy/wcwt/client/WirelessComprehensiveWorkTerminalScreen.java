@@ -1551,14 +1551,26 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 || (patternManageMappingField != null && patternManageMappingField.isFocused());
     }
 
+    public boolean isTypingInAnyTextField() {
+        return isTypingInPatternManagementField()
+                || (manualAnvilNameField != null && manualAnvilNameField.isVisible()
+                && manualAnvilNameField.isFocused());
+    }
+
     private boolean isMeTerminalSearchFieldFocused() {
+        AETextField searchField = getMeTerminalSearchField();
+        return searchField != null && searchField.isFocused();
+    }
+
+    @Nullable
+    private AETextField getMeTerminalSearchField() {
         try {
             Field sf = MEStorageScreen.class.getDeclaredField("searchField");
             sf.setAccessible(true);
             Object field = sf.get(this);
-            return field instanceof AETextField textField && textField.isFocused();
+            return field instanceof AETextField textField ? textField : null;
         } catch (Throwable ignored) {
-            return false;
+            return null;
         }
     }
 
@@ -2353,6 +2365,18 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                                    Component message) {
             super(font, x, y, width, height, message);
             setBordered(false);
+        }
+
+        @Override
+        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+            if (super.keyPressed(keyCode, scanCode, modifiers)) {
+                return true;
+            }
+
+            return isFocused()
+                    && canConsumeInput()
+                    && keyCode != GLFW.GLFW_KEY_TAB
+                    && keyCode != GLFW.GLFW_KEY_ESCAPE;
         }
 
         @Override
@@ -4904,6 +4928,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (isManualAnvilNameFieldFocused() && isManualAnvilNameFieldBlurKey(keyCode)) {
+            blurManualAnvilNameField();
+            return true;
+        }
+
+        if (super.keyPressed(keyCode, scanCode, modifiers)) {
+            return true;
+        }
+
         if (keyCode == GLFW.GLFW_KEY_R
                 && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0
                 && (modifiers & GLFW.GLFW_MOD_SHIFT) != 0) {
@@ -4911,17 +4944,26 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return true;
         }
 
-        if (manualAnvilNameField != null && manualAnvilNameField.isVisible() && manualAnvilNameField.isFocused()
-                && (keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER
-                || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER
-                || keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE)) {
-            manualAnvilNameField.setFocused(false);
-            if (getFocused() == manualAnvilNameField) {
-                setFocused(null);
-            }
-            return true;
+        return false;
+    }
+
+    private boolean isManualAnvilNameFieldFocused() {
+        return manualAnvilNameField != null
+                && manualAnvilNameField.isVisible()
+                && manualAnvilNameField.isFocused();
+    }
+
+    private static boolean isManualAnvilNameFieldBlurKey(int keyCode) {
+        return keyCode == GLFW.GLFW_KEY_ENTER
+                || keyCode == GLFW.GLFW_KEY_KP_ENTER
+                || keyCode == GLFW.GLFW_KEY_ESCAPE;
+    }
+
+    private void blurManualAnvilNameField() {
+        manualAnvilNameField.setFocused(false);
+        if (getFocused() == manualAnvilNameField) {
+            setFocused(null);
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     private void reloadMainLayout() {

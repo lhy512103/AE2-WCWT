@@ -24,6 +24,13 @@ mystical-agradditions = "7.0.12"        # Modrinth slug: mystical-agradditions
 cosmetic-armor  = "1.20.1-1a"           # 本地 flatDir: libs/cosmetic-armor-reworked-1.20.1-1a.jar
 sound-muffler   = "3.51-1.20.1"         # Modrinth slug: extreme_sound_muffler
 spark           = "1.10.53-forge"       # Modrinth slug: spark
+ferrite-core    = "6.0.1"               # Modrinth slug: ferrite-core
+embeddium       = "0.3.31+mc1.20.1"     # Modrinth slug: embeddium
+polymorph       = "UZBKtFyR"             # Modrinth coordinate: maven.modrinth:tagwiZkJ:UZBKtFyR
+productivebees  = "1.20.1-12.6.0"       # Modrinth slug: productivebees
+codechicken-lib = "pxajg7Ob"            # Modrinth coordinate: maven.modrinth:2gq0ALnz:pxajg7Ob
+brandons-core   = "3.2.1.302"           # Modrinth slug: brandons-core
+draconic-evolution = "3.1.2.621"        # Modrinth slug: draconic-evolution
 caramel-chat    = "1.2.0"               # 本地 flatDir: libs/caramelChat-mc1.20.1-forge-1.2.0.jar
 modern-ui       = "3.12.0.1"            # Modrinth slug: modern-ui
 mouse-tweaks    = "1.20.1-2.25.1-forge" # Modrinth slug: mouse-tweaks
@@ -66,6 +73,13 @@ mystical-agradditions = { module = "maven.modrinth:mystical-agradditions", versi
 cosmetic-armor     = { module = "lain.mods:cosmetic-armor-reworked", version.ref = "cosmetic-armor" }
 sound-muffler      = { module = "maven.modrinth:extreme_sound_muffler", version.ref = "sound-muffler" }
 spark              = { module = "maven.modrinth:spark", version.ref = "spark" }
+ferrite-core       = { module = "maven.modrinth:ferrite-core", version.ref = "ferrite-core" }
+embeddium          = { module = "maven.modrinth:embeddium", version.ref = "embeddium" }
+polymorph          = { module = "maven.modrinth:tagwiZkJ", version.ref = "polymorph" }
+productivebees     = { module = "maven.modrinth:productivebees", version.ref = "productivebees" }
+codechicken-lib    = { module = "maven.modrinth:2gq0ALnz", version.ref = "codechicken-lib" }
+brandons-core      = { module = "maven.modrinth:brandons-core", version.ref = "brandons-core" }
+draconic-evolution = { module = "maven.modrinth:draconic-evolution", version.ref = "draconic-evolution" }
 caramel-chat       = { module = "caramelChat-mc1.20.1-forge:caramelChat-mc1.20.1-forge", version.ref = "caramel-chat" }
 modern-ui          = { module = "maven.modrinth:modern-ui", version.ref = "modern-ui" }
 mouse-tweaks       = { module = "maven.modrinth:mouse-tweaks", version.ref = "mouse-tweaks" }

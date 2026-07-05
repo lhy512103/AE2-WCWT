@@ -18,6 +18,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
+import appeng.api.stacks.AEItemKey;
 import appeng.core.localization.ItemModText;
 import appeng.menu.me.common.MEStorageMenu;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
@@ -31,6 +32,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import com.lhy.wcwt.pull.WcwtStackMatching;
 
 /** JEI「+」从 ME 拉配方原料：锁定合成网格时生效；编码逻辑见 {@link WcwtRecipeTransferHandler}。 */
 public final class WcwtPullRecipeTransfer {
@@ -40,13 +42,15 @@ public final class WcwtPullRecipeTransfer {
 
     public static IRecipeTransferError transfer(WirelessComprehensiveWorkTerminalMenu menu, Object recipeIgnored,
             IRecipeSlotsView recipeSlots, Player player,
-            boolean maxTransfer, boolean doTransfer, IRecipeTransferHandlerHelper transferHelper) {
-        boolean effectiveMaxTransfer = maxTransfer || Screen.hasShiftDown();
+            boolean maxTransfer, boolean doTransfer, IRecipeTransferHandlerHelper transferHelper,
+            boolean allowShiftMaxTransfer) {
+        boolean effectiveMaxTransfer = allowShiftMaxTransfer && (maxTransfer || Screen.hasShiftDown());
         boolean craftMissing = Screen.hasControlDown();
 
         if (!doTransfer) {
             if (hasAnyInput(recipeSlots)) {
-                return new TerminalPullTransferError(findTransferPreview(menu, recipeSlots), craftMissing);
+                return new TerminalPullTransferError(findTransferPreview(menu, recipeSlots), craftMissing,
+                        allowShiftMaxTransfer);
             }
             return null;
         }
@@ -107,17 +111,18 @@ public final class WcwtPullRecipeTransfer {
     }
 
     private static boolean computePreviewFlags(MEStorageMenu container, List<IRecipeSlotView> inputSlots, byte[] flags) {
-        var reservedTerminalAmounts = new Object2IntOpenHashMap<>();
+        var reservedTerminalAmounts = new Object2IntOpenHashMap<AEItemKey>();
         var playerItems = container.getPlayerInventory().items;
         var reservedPlayerItems = new int[playerItems.size()];
         boolean anyResolved = false;
 
         for (int idx = 0; idx < inputSlots.size(); idx++) {
             IRecipeSlotView slotView = inputSlots.get(idx);
-            var ingredient = toIngredient(slotView);
-            if (ingredient.isEmpty()) {
+            var alternatives = narrowSpecificAlternativesToDisplayed(getAlternativeStacks(slotView));
+            if (alternatives.isEmpty()) {
                 continue;
             }
+            Ingredient ingredient = Ingredient.of(alternatives.stream().map(ItemStack::copy));
 
             int requiredCount = getDisplayedStack(slotView).getCount();
             requiredCount = Math.max(requiredCount, 1);
@@ -133,7 +138,7 @@ public final class WcwtPullRecipeTransfer {
 
                     var stack = playerItems.get(slot);
                     if (stack.getCount() - reservedPlayerItems[slot] > 0
-                            && ingredient.test(stack)) {
+                            && WcwtStackMatching.matchesAnyAlternative(stack, alternatives, ingredient)) {
                         reservedPlayerItems[slot]++;
                         found = true;
                         anyResolved = true;
@@ -141,12 +146,13 @@ public final class WcwtPullRecipeTransfer {
                     }
                 }
 
-                if (!found && container.hasIngredient(ingredient, reservedTerminalAmounts)) {
+                if (!found && WcwtStackMatching.reserveClientRepoStoredIngredient(container, alternatives, ingredient,
+                        reservedTerminalAmounts)) {
                     found = true;
                     anyResolved = true;
                 }
 
-                if (!found && hasCraftableAlternative(container, ingredient)) {
+                if (!found && WcwtStackMatching.hasClientRepoCraftableIngredient(container, alternatives, ingredient)) {
                     craftable = true;
                     found = true;
                     anyResolved = true;
@@ -214,35 +220,8 @@ public final class WcwtPullRecipeTransfer {
                 .anyMatch(WcwtPullRecipeTransfer::hasItemStack);
     }
 
-    private static boolean hasCraftableAlternative(MEStorageMenu container, Ingredient ingredient) {
-        var clientRepo = container.getClientRepo();
-        if (clientRepo == null || ingredient.isEmpty()) {
-            return false;
-        }
-        for (var entry : clientRepo.getByIngredient(ingredient)) {
-            if (entry.isCraftable()) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static boolean hasItemStack(IRecipeSlotView slotView) {
         return slotView.getDisplayedItemStack().isPresent() || slotView.getItemStacks().findAny().isPresent();
-    }
-
-    private static Ingredient toIngredient(IRecipeSlotView slotView) {
-        List<ItemStack> stacks = new ArrayList<>();
-        slotView.getItemStacks()
-                .filter(stack -> !stack.isEmpty())
-                .forEach(stack -> stacks.add(stack.copy()));
-        if (stacks.isEmpty()) {
-            ItemStack displayed = getDisplayedStack(slotView);
-            if (!displayed.isEmpty()) {
-                stacks.add(displayed.copy());
-            }
-        }
-        return Ingredient.of(stacks.stream());
     }
 
     private static RequestedIngredient toRequestedIngredient(WirelessComprehensiveWorkTerminalMenu menu,
@@ -255,7 +234,7 @@ public final class WcwtPullRecipeTransfer {
 
     private static List<ItemStack> chooseRequestedAlternative(WirelessComprehensiveWorkTerminalMenu menu,
                                                               IRecipeSlotView slotView) {
-        List<ItemStack> visibleAlternatives = getAlternativeStacks(slotView);
+        List<ItemStack> visibleAlternatives = narrowSpecificAlternativesToDisplayed(getAlternativeStacks(slotView));
         if (visibleAlternatives.isEmpty()) {
             return List.of();
         }
@@ -279,6 +258,18 @@ public final class WcwtPullRecipeTransfer {
                     }
                 });
         return visibleAlternatives;
+    }
+
+    private static List<ItemStack> narrowSpecificAlternativesToDisplayed(List<ItemStack> alternatives) {
+        if (!WcwtStackMatching.requiresExactItemKeyMatch(alternatives)) {
+            return alternatives;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (alternative != null && !alternative.isEmpty()) {
+                return List.of(alternative.copy());
+            }
+        }
+        return List.of();
     }
 
     private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
@@ -327,14 +318,17 @@ public final class WcwtPullRecipeTransfer {
 
         private final PreviewSlots preview;
         private final boolean craftMissing;
+        private final boolean allowShiftMaxTransfer;
 
-        private TerminalPullTransferError(PreviewSlots preview, boolean craftMissing) {
+        private TerminalPullTransferError(PreviewSlots preview, boolean craftMissing, boolean allowShiftMaxTransfer) {
             this.preview = preview;
             this.craftMissing = craftMissing;
+            this.allowShiftMaxTransfer = allowShiftMaxTransfer;
         }
 
-        private static TerminalPullTransferError previewOnly(boolean craftMissing) {
-            return new TerminalPullTransferError(new PreviewSlots(List.of(), List.of(), false), craftMissing);
+        private static TerminalPullTransferError previewOnly(boolean craftMissing, boolean allowShiftMaxTransfer) {
+            return new TerminalPullTransferError(new PreviewSlots(List.of(), List.of(), false), craftMissing,
+                    allowShiftMaxTransfer);
         }
 
         @Override
@@ -380,7 +374,9 @@ public final class WcwtPullRecipeTransfer {
                 var line = preview.canIgnoreMissing() ? ItemModText.MISSING_ITEMS.text() : ItemModText.NO_ITEMS.text();
                 tooltip.add(line.withStyle(ChatFormatting.RED));
             }
-            tooltip.add(Component.translatable("message.wcwt.pull_shift_hint").withStyle(ChatFormatting.GRAY));
+            if (allowShiftMaxTransfer) {
+                tooltip.add(Component.translatable("message.wcwt.pull_shift_hint").withStyle(ChatFormatting.GRAY));
+            }
         }
 
         @Override

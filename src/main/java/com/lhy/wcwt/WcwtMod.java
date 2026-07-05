@@ -9,6 +9,7 @@ import appeng.core.localization.GuiText;
 import appeng.hotkeys.HotkeyActions;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.menu.locator.MenuLocators;
+import com.lhy.wcwt.command.WcwtConfigCommands;
 import com.lhy.wcwt.client.ModClientSetup;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.config.WcwtServerConfig;
@@ -81,8 +82,9 @@ public class WcwtMod {
         modEventBus.addListener(WcwtPacketsBootstrap::register);
         modEventBus.addListener(this::addCreativeTabItems);
         modEventBus.addListener(this::addBuiltinResourcePacks);
+        MinecraftForge.EVENT_BUS.addListener(WcwtConfigCommands::register);
 
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, WcwtServerConfig.SPEC, "wcwt-server.toml");
         DistExecutor.unsafeRunWhenOn(Dist.CLIENT, () -> () -> {
             ModLoadingContext.get().registerConfig(ModConfig.Type.CLIENT, WcwtClientConfig.SPEC);
             ModClientSetup.init(modEventBus);

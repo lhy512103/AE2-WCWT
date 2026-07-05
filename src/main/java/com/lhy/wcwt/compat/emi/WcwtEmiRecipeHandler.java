@@ -1,6 +1,7 @@
 package com.lhy.wcwt.compat.emi;
 
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.core.localization.ItemModText;
 import appeng.integration.modules.jeirei.TransferHelper;
@@ -19,6 +20,7 @@ import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtPullIngredientOrdering;
+import com.lhy.wcwt.pull.WcwtStackMatching;
 import dev.emi.emi.api.recipe.EmiPlayerInventory;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import dev.emi.emi.api.recipe.VanillaEmiRecipeCategories;
@@ -138,7 +140,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (isCraftingGridLocked(menu)) {
             PreviewResult preview = buildLockedGridPreview(menu, recipe);
             if (preview.inputCount() > 0) {
-                tooltip = createLockedGridTooltip(preview);
+                tooltip = createLockedGridTooltip(preview, getTransferMode(recipe) != EncodingMode.CRAFTING);
             }
         } else {
             Set<AEKey> availableNetworkKeys = collectAvailableNetworkKeys(menu);
@@ -215,7 +217,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             if (requestedIngredients.isEmpty()) {
                 return false;
             }
-            boolean maxTransfer = context.getAmount() > 1 || Screen.hasShiftDown();
+            boolean allowShiftMaxTransfer = mode != EncodingMode.CRAFTING;
+            boolean maxTransfer = allowShiftMaxTransfer && (context.getAmount() > 1 || Screen.hasShiftDown());
             boolean craftMissing = context.getDestination() != EmiCraftContext.Destination.NONE || Screen.hasControlDown();
             ModNetworking.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
                     requestedIngredients, menu.getManualWorkspaceMode().ordinal()));
@@ -254,7 +257,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     }
 
     private static PreviewResult buildLockedGridPreview(WirelessComprehensiveWorkTerminalMenu menu, EmiRecipe recipe) {
-        var reservedTerminalAmounts = new Object2IntOpenHashMap<Object>();
+        var reservedTerminalAmounts = new Object2IntOpenHashMap<AEItemKey>();
         var playerItems = menu.getPlayerInventory().items;
         var reservedPlayerItems = new int[playerItems.size()];
         Set<Integer> missingSlots = new HashSet<>();
@@ -264,7 +267,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         int inputCount = 0;
         for (int index = 0; index < recipe.getInputs().size(); index++) {
             EmiIngredient emiIngredient = recipe.getInputs().get(index);
-            List<ItemStack> alternatives = getAlternativeStacks(emiIngredient);
+            List<ItemStack> alternatives = narrowSpecificAlternativesToDisplayed(getAlternativeStacks(emiIngredient));
             if (alternatives.isEmpty()) {
                 continue;
             }
@@ -284,7 +287,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
                     var stack = playerItems.get(slot);
                     if (stack.getCount() - reservedPlayerItems[slot] > 0
-                            && matchesAnyAlternative(stack, alternatives, ingredient)) {
+                            && WcwtStackMatching.matchesAnyAlternative(stack, alternatives, ingredient)) {
                         reservedPlayerItems[slot]++;
                         found = true;
                         anyResolved = true;
@@ -292,12 +295,13 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                     }
                 }
 
-                if (!found && menu.hasIngredient(ingredient, reservedTerminalAmounts)) {
+                if (!found && WcwtStackMatching.reserveClientRepoStoredIngredient(menu, alternatives, ingredient,
+                        reservedTerminalAmounts)) {
                     found = true;
                     anyResolved = true;
                 }
 
-                if (!found && hasCraftableAlternative(menu, ingredient)) {
+                if (!found && WcwtStackMatching.hasClientRepoCraftableIngredient(menu, alternatives, ingredient)) {
                     craftable = true;
                     found = true;
                     anyResolved = true;
@@ -319,7 +323,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return new PreviewResult(missingSlots, craftableSlots, anyResolved, inputCount);
     }
 
-    private static List<Component> createLockedGridTooltip(PreviewResult preview) {
+    private static List<Component> createLockedGridTooltip(PreviewResult preview, boolean allowShiftMaxTransfer) {
         List<Component> tooltip = new ArrayList<>();
         tooltip.add(ItemModText.MOVE_ITEMS.text());
 
@@ -333,8 +337,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             tooltip.add(line.withStyle(net.minecraft.ChatFormatting.RED));
         }
 
-        tooltip.add(Component.translatable("message.wcwt.pull_shift_hint")
-                .withStyle(net.minecraft.ChatFormatting.GRAY));
+        if (allowShiftMaxTransfer) {
+            tooltip.add(Component.translatable("message.wcwt.pull_shift_hint")
+                    .withStyle(net.minecraft.ChatFormatting.GRAY));
+        }
         return tooltip;
     }
 
@@ -379,56 +385,11 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return availableKeys;
     }
 
-    private static boolean hasCraftableAlternative(WirelessComprehensiveWorkTerminalMenu menu,
-                                                   Ingredient ingredient) {
-        var clientRepo = menu.getClientRepo();
-        if (clientRepo == null || ingredient.isEmpty()) {
-            return false;
-        }
-
-        for (var entry : clientRepo.getByIngredient(ingredient)) {
-            if (entry.isCraftable()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static boolean matchesAnyAlternative(ItemStack stack, List<ItemStack> alternatives,
-                                                 Ingredient ingredient) {
-        if (stack.isEmpty()) {
-            return false;
-        }
-        for (ItemStack alternative : alternatives) {
-            if (ItemStack.isSameItem(stack, alternative)
-                    && java.util.Objects.equals(stack.getTag(), alternative.getTag())) {
-                return true;
-            }
-        }
-        if (ingredient != null && ingredient.test(stack)) {
-            return true;
-        }
-        for (ItemStack alternative : alternatives) {
-            if (!alternative.isEmpty() && ItemStack.isSameItem(stack, alternative)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static boolean isAvailableFromNetwork(Set<AEKey> availableNetworkKeys, EmiIngredient ingredient) {
         return ingredient.getEmiStacks().stream().anyMatch(emiIngredient -> {
             var stack = toGenericStack(emiIngredient, 1);
             return stack != null && availableNetworkKeys.contains(stack.what());
         });
-    }
-
-    private static Ingredient toIngredient(EmiIngredient ingredient) {
-        return Ingredient.of(ingredient.getEmiStacks().stream()
-                .map(EmiStack::getItemStack)
-                .filter(stack -> !stack.isEmpty())
-                .map(ItemStack::copy));
     }
 
     private static List<ItemStack> getAlternativeStacks(EmiIngredient ingredient) {
@@ -445,6 +406,18 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             }
         }
         return alternatives;
+    }
+
+    private static List<ItemStack> narrowSpecificAlternativesToDisplayed(List<ItemStack> alternatives) {
+        if (!WcwtStackMatching.requiresExactItemKeyMatch(alternatives)) {
+            return alternatives;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (alternative != null && !alternative.isEmpty()) {
+                return List.of(alternative.copy());
+            }
+        }
+        return List.of();
     }
 
     private static Map<Integer, SlotWidget> getRecipeInputSlots(EmiRecipe recipe, List<Widget> widgets) {
@@ -602,8 +575,11 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (visibleAlternatives.isEmpty()) {
             return null;
         }
+        visibleAlternatives = narrowSpecificAlternativesToDisplayed(visibleAlternatives);
         Ingredient wideIngredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
-        if (WcwtClientConfig.preferJeiBookmarksForPatternEncoding() && priorityContext.hasBookmarkPriorities()) {
+        if (!WcwtStackMatching.requiresExactItemKeyMatch(visibleAlternatives)
+                && WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
+                && priorityContext.hasBookmarkPriorities()) {
             ItemStack bookmarked = WcwtRecipeViewerBookmarkKeys.chooseBookmarkedItem(
                     wideIngredient, visibleAlternatives, priorityContext.bookmarkPriorities());
             if (!bookmarked.isEmpty()) {

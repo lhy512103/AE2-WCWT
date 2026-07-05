@@ -83,11 +83,14 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!level.isClientSide()) {
-            int slot = findHeldInventorySlot(player, stack);
-            if (slot >= 0 && openFromLocator(player, new WcwtInventoryLocator(slot), false)) {
-                return new InteractionResultHolder<>(InteractionResult.sidedSuccess(level.isClientSide()), stack);
-            }
+        if (level.isClientSide()) {
+            return new InteractionResultHolder<>(
+                    stack.isEmpty() || stack.getItem() != this ? InteractionResult.FAIL : InteractionResult.SUCCESS,
+                    stack);
+        }
+        int slot = findHeldInventorySlot(player, stack);
+        if (slot >= 0 && openFromLocator(player, new WcwtInventoryLocator(slot), false)) {
+            return new InteractionResultHolder<>(InteractionResult.sidedSuccess(false), stack);
         }
         return new InteractionResultHolder<>(InteractionResult.FAIL, stack);
     }

@@ -582,15 +582,17 @@ public final class WcwtTerminalPullService {
     @Nullable
     private static AEItemKey findCraftableAlternative(List<ItemStack> alternatives, @Nullable IPartitionList filter,
             ICraftingService craftingService) {
+        boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(alternatives);
         for (ItemStack alternative : alternatives) {
             var key = AEItemKey.of(alternative);
             if (key == null || filter != null && !filter.isListed(key)) {
                 continue;
             }
 
+            boolean exactAlternative = exactOnly || WcwtStackMatching.hasSpecificData(alternative);
             var craftableKey = craftingService.getFuzzyCraftable(key,
                     candidate -> candidate instanceof AEItemKey itemKey
-                            && itemKey.matches(alternative)
+                            && (exactAlternative ? itemKey.equals(key) : itemKey.matches(alternative))
                             && (filter == null || filter.isListed(itemKey)));
             if (craftableKey instanceof AEItemKey itemKey) {
                 return itemKey;
@@ -601,21 +603,7 @@ public final class WcwtTerminalPullService {
 
     private static boolean matchesAnyAlternative(ItemStack stack, List<ItemStack> alternatives,
             @Nullable Ingredient wideIngredient) {
-        for (ItemStack alternative : alternatives) {
-            if (ItemStack.isSameItem(stack, alternative)
-                    && java.util.Objects.equals(stack.getTag(), alternative.getTag())) {
-                return true;
-            }
-        }
-        if (wideIngredient != null && wideIngredient.test(stack)) {
-            return true;
-        }
-        for (ItemStack alternative : alternatives) {
-            if (!alternative.isEmpty() && ItemStack.isSameItem(stack, alternative)) {
-                return true;
-            }
-        }
-        return false;
+        return WcwtStackMatching.matchesAnyAlternative(stack, alternatives, wideIngredient);
     }
 
     private static ItemStack getDisplayStack(RequestedIngredient requestedIngredient) {

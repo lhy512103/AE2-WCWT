@@ -6,6 +6,7 @@ import appeng.init.client.InitScreens;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.gui.widgets.WcwtUniversalTerminalButton;
 import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
+import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -60,6 +61,7 @@ public class ModClientSetup {
             net.minecraft.client.gui.screens.MenuScreens.register(ModMenus.WCWT_MENU.get(), ModClientSetup::createMainScreen);
             InitScreens.register(ModMenus.WCWT_MAGNET_MENU.get(), WcwtMagnetScreen::new, "/screens/wtlib/magnet.json");
             InitScreens.register(ModMenus.WCWT_TRASH_MENU.get(), WcwtTrashScreen::new, "/screens/wtlib/trash.json");
+            WcwtPolymorphClientCompat.registerWidgets();
         });
     }
 
@@ -88,16 +90,23 @@ public class ModClientSetup {
 
     @SubscribeEvent
     public static void onScreenKeyPressedPre(ScreenEvent.KeyPressed.Pre event) {
+        Screen currentScreen = Minecraft.getInstance().screen;
+        if (isFocusedTextInput(currentScreen)) {
+            return;
+        }
+        if (!(currentScreen instanceof WirelessComprehensiveWorkTerminalScreen screen)) {
+            if (WcwtKeybindings.TOGGLE_CRAFTING_LOCK.matches(event.getKeyCode(), event.getScanCode())
+                    && toggleCurrentWcwtCraftingLock()) {
+                event.setCanceled(true);
+            }
+            return;
+        }
         if (WcwtKeybindings.TOGGLE_CRAFTING_LOCK.matches(event.getKeyCode(), event.getScanCode())
                 && toggleCurrentWcwtCraftingLock()) {
             event.setCanceled(true);
             return;
         }
-        if (!(Minecraft.getInstance().screen instanceof WirelessComprehensiveWorkTerminalScreen screen)) {
-            return;
-        }
-        if (!screen.isTypingInPatternManagementField()
-                && screen.handleExtendedUiHotkey(event.getKeyCode(), event.getScanCode())) {
+        if (screen.handleExtendedUiHotkey(event.getKeyCode(), event.getScanCode())) {
             event.setCanceled(true);
             return;
         }
@@ -112,6 +121,27 @@ public class ModClientSetup {
         if (screen.fillProviderSearchFromJeiIngredient()) {
             event.setCanceled(true);
         }
+    }
+
+    private static boolean isFocusedTextInput(Screen screen) {
+        if (screen == null) {
+            return false;
+        }
+        if (screen instanceof WirelessComprehensiveWorkTerminalScreen wcwtScreen
+                && wcwtScreen.isTypingInAnyTextField()) {
+            return true;
+        }
+        var focused = screen.getFocused();
+        if (focused instanceof net.minecraft.client.gui.components.EditBox) {
+            return true;
+        }
+        if (focused == null) {
+            return false;
+        }
+        String className = focused.getClass().getName().toLowerCase(java.util.Locale.ROOT);
+        return className.contains("textfield")
+                || className.contains("editbox")
+                || className.contains("numberentry");
     }
 
     private static boolean toggleCurrentWcwtCraftingLock() {

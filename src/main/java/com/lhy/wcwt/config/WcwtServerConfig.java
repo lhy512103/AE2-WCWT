@@ -3,12 +3,12 @@ package com.lhy.wcwt.config;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
- * {@code saves/<world>/serverconfig/wcwt-server.toml} 服务端配置。
+ * {@code config/wcwt-server.toml} 全局服务端配置。
  * 保存文件后 Forge 会重载，这里的 getter 会读取最新值。
  */
 public final class WcwtServerConfig {
-    private static final int MIN_TOOLKIT_SLOTS = 11;
-    private static final int MAX_TOOLKIT_SLOTS = 640;
+    public static final int MIN_TOOLKIT_SLOTS = 11;
+    public static final int MAX_TOOLKIT_SLOTS = 640;
     private static final int DEFAULT_TOOLKIT_SLOTS = 64;
 
     public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
