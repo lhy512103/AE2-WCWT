@@ -19,6 +19,7 @@ import appeng.helpers.patternprovider.PatternContainer;
 import appeng.helpers.InventoryAction;
 import appeng.items.storage.ViewCellItem;
 import appeng.menu.MenuOpener;
+import appeng.menu.SlotSemantic;
 import appeng.menu.SlotSemantics;
 import appeng.menu.me.items.CraftingTermMenu;
 import appeng.menu.slot.AppEngSlot;
@@ -4193,7 +4194,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     protected boolean isValidQuickMoveDestination(Slot candidateSlot, ItemStack stackToMove, boolean fromPlayerSide) {
-        if (candidateSlot == null || !candidateSlot.mayPlace(stackToMove)) {
+        if (candidateSlot == null || !candidateSlot.isActive() || !candidateSlot.mayPlace(stackToMove)) {
             return false;
         }
         if (isPlayerEquipmentOrOffhandSlot(candidateSlot)) {
@@ -4205,6 +4206,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         var semantic = getSlotSemantic(candidateSlot);
+        if (!isQuickMoveDestinationAvailableForCurrentMode(semantic)) {
+            return false;
+        }
         if (semantic == WcwtSlotSemantics.WCWT_TOOLKIT
                 && menuHost.getCurrentExtendedUI() != IExtendedUIHost.ExtendedUIType.TOOLKIT) {
             return false;
@@ -4217,7 +4221,52 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return true;
     }
 
-    private static boolean isDecorativeArmorSemantic(@Nullable appeng.menu.SlotSemantic semantic) {
+    private boolean isQuickMoveDestinationAvailableForCurrentMode(@Nullable SlotSemantic semantic) {
+        if (isManualSmithingSemantic(semantic)) {
+            return getManualWorkspaceMode() == ManualWorkspaceMode.SMITHING;
+        }
+        if (isManualAnvilSemantic(semantic)) {
+            return getManualWorkspaceMode() == ManualWorkspaceMode.ANVIL;
+        }
+
+        var patternMode = getPatternEncodingMode();
+        if (semantic == WcwtSlotSemantics.WCWT_PATTERN_CRAFTING_GRID) {
+            return patternMode == EncodingMode.CRAFTING;
+        }
+        if (semantic == WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_INPUTS
+                || semantic == WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_OUTPUTS) {
+            return patternMode == EncodingMode.PROCESSING;
+        }
+        if (isPatternSmithingSemantic(semantic)) {
+            return patternMode == EncodingMode.SMITHING_TABLE;
+        }
+        if (semantic == WcwtSlotSemantics.WCWT_PATTERN_STONECUTTING_INPUT) {
+            return patternMode == EncodingMode.STONECUTTING;
+        }
+
+        return true;
+    }
+
+    private static boolean isManualSmithingSemantic(@Nullable SlotSemantic semantic) {
+        return semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_TEMPLATE
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_BASE
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_ADDITION
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_RESULT;
+    }
+
+    private static boolean isManualAnvilSemantic(@Nullable SlotSemantic semantic) {
+        return semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RIGHT
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RESULT;
+    }
+
+    private static boolean isPatternSmithingSemantic(@Nullable SlotSemantic semantic) {
+        return semantic == WcwtSlotSemantics.WCWT_PATTERN_SMITHING_TEMPLATE
+                || semantic == WcwtSlotSemantics.WCWT_PATTERN_SMITHING_BASE
+                || semantic == WcwtSlotSemantics.WCWT_PATTERN_SMITHING_ADDITION;
+    }
+
+    private static boolean isDecorativeArmorSemantic(@Nullable SlotSemantic semantic) {
         return semantic == WcwtSlotSemantics.DECORATIVE_HELMET
                 || semantic == WcwtSlotSemantics.DECORATIVE_ARMOR
                 || semantic == WcwtSlotSemantics.DECORATIVE_SHIN_GUARDS
