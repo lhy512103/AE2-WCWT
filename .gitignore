@@ -21,6 +21,8 @@ build
 eclipse
 run
 logs
+.vscode/
+.codex/
 .ae2src/
 临时文件/
 *.log
