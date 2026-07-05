@@ -3,54 +3,34 @@
 ## v1.3.2
 
 ### English
-1. Aligned the toolkit memory-slot button with the 1.20.1 layout and state styling, including separate off, hover, and on states where hover and on share the same style.
-2. Ignored local scratch assets under `临时文件/`.
-3. Fixed JEI/EMI recipe pull and preview matching so item data components/NBT are respected, preventing same-item-ID variants such as Productive Bees bee spawn eggs from being treated as interchangeable.
-4. Limited Shift one-batch recipe pull to non-crafting recipes and updated the tooltip.
-5. Added a fallback Curios-card recipe input so the card recipe appears in JEI/EMI when Curios is loaded.
-6. Hid optional integration upgrade cards until their supporting mods are loaded, including Curios, Cosmetic Armor Reworked, AE2 Crystal Science, and AE2 Lightning Tech integrations.
-7. Added AE2 Lightning Tech to the local runtime dependency set.
-8. Switched the local runtime Curios dependency to CurseMaven file `curse.maven:curios-309927:6529130`.
-9. Kept pattern-provider mapping edits client-local like ExtendedAE Plus, so dedicated servers no longer write `config/extendedae_plus/recipe_type_names.json` for those UI buttons and upload/search paths use the client-resolved mapping text.
-10. Fixed a dedicated-server disconnect when putting an encoded pattern back into the pattern encoding output slot by updating derived pattern UI slots before broadcasting container contents.
-11. Added OP-only `/wcwt config` commands for reading and changing the WCWT server options `toolkitSlotCount` and `patternProviderActiveRefresh`.
-12. Added mirrored item and fluid substitution toggles under the manual crafting area's Store Items and Take Items buttons while using crafting pattern mode.
-13. Implemented the manual crafting substitution toggles: repeated crafts can switch to another valid JEI/EMI item candidate when the current ingredient runs out, and fluid substitution can refill returned containers from ME fluids, such as refilling empty buckets from stored water.
-14. Fixed manual crafting fluid substitution not refilling vanilla empty buckets after bucket recipes, so repeated crafts can consume stored ME fluids instead of leaving the crafting grid with an empty bucket.
-15. Improved manual crafting item substitution with a server-side current-recipe ingredient fallback, allowing tag-based candidates such as alternate glass panes to be used when JEI/EMI did not send every candidate.
-16. Protected AE2 view cell slots from shift/quick-move extraction so sorting mods no longer unload view cells from the view cell panel.
-17. Added AllTheCompressed to the local runtime dependency set.
-18. Added MEGA Cells bulk compression cutoff support to the advanced coding cell editor, including a cutoff button beside the cell upgrade slot and server-side cycling of the bulk cell cutoff.
-19. Moved the MEGA Cells bulk compression cutoff button next to the cell editor copy-mode button, removed the separate upgrade-slot background, and scaled the cutoff item icon to the same 12x12 button size.
-20. Restored the AE2 toolbar-style background for the MEGA Cells bulk compression cutoff button and shifted the four cell editor utility buttons left by 2 px.
-21. Made the manual crafting area item and fluid substitution toggles independent from the pattern encoding area's substitution toggles.
-22. Persisted the manual crafting area item and fluid substitution toggle states on the terminal item so they survive closing and reopening the terminal.
-23. Fixed wireless magnet, restock, pickup-to-ME, stow, and pick-block features not seeing quantum-bridge-only WCWT networks, while keeping the common wireless-link path lightweight.
+1. Changed the toolkit memory-slot button position and state styling;
+2. Fixed JEI/EMI recipe pull and preview matching not correctly distinguishing item data components/NBT, preventing same-item-ID variants such as Productive Bees bee spawn eggs from being treated as the same item;
+3. Limited Shift one-batch recipe pulls to non-crafting recipes only;
+4. Fixed the Curios card recipe not being visible in JEI/EMI;
+5. Extension upgrade cards that require extra mod support now only appear after their supporting mods are loaded;
+6. Fixed pattern management mappings being saved to the server config path on dedicated servers, and changed them to save to the client config path;
+7. Added OP-only `/wcwt config` commands for reading and changing the WCWT server options `toolkitSlotCount` and `patternProviderActiveRefresh`;
+8. Added item substitution and fluid substitution features to the manual crafting area's crafting-table mode:
+- Repeated crafts can switch to another valid JEI/EMI recipe candidate when the current ingredient runs out;
+- Fluid substitution can refill returned containers from ME network fluids, such as refilling an empty bucket from stored water.
+9. Fixed Shift/sorting-mod quick-move unloading view cells from the view cell panel;
+10. Added MEGA Cells bulk compression cutoff support to the advanced coding extension UI: when conditions are met, the cutoff button appears to the right of the cell editor copy-mode button;
+11. Fixed wireless magnet, restock, pickup-to-ME, stow-held-item, and pick-block features not recognizing WCWT networks connected only through a quantum bridge.
 
 ### 中文
-1. 将工具包记忆槽位按钮的位置与状态样式对齐到 1.20.1 版本，支持关闭、悬停、开启三种状态，其中悬停与开启使用相同样式。
-2. 忽略本地临时素材目录 `临时文件/`。
-3. 修复 JEI/EMI 配方拉取与预览匹配未正确区分物品数据组件/NBT 的问题，避免 Productive Bees 蜜蜂刷怪蛋等同 ID 不同数据的物品变体被当成同一种物品。
-4. 将按住 Shift 拉取一组配方用量限制为仅非合成配方生效，并同步更新 tooltip。
-5. 为饰品栏卡补充稳定的配方输入，使 Curios 加载时该卡配方可在 JEI/EMI 中显示。
-6. 需要额外模组支持的扩展升级卡现在只会在对应模组加载后显示，包括 Curios、Cosmetic Armor Reworked、AE2 Crystal Science 与 AE2 Lightning Tech 相关卡。
-7. 将 AE2 Lightning Tech 加入本地运行时依赖。
-8. 将本地运行时 Curios 依赖切换为 CurseMaven 文件 `curse.maven:curios-309927:6529130`。
-9. 将样板供应器映射编辑对齐 ExtendedAE Plus 的客户端本地行为，专用服务器不再因这些 UI 按钮写入 `config/extendedae_plus/recipe_type_names.json`，上传与搜索路径改用客户端解析后的映射文本。
-10. 修复专用服务器环境下，将已编码样板放回样板编码区默认输出槽时，容器内容包编码失败并断开连接的问题；现在会先更新样板相关派生 UI 槽，再广播容器内容。
-11. 新增仅 OP 可用的 `/wcwt config` 指令，用于读取和修改 WCWT 服务端选项 `toolkitSlotCount` 与 `patternProviderActiveRefresh`。
-12. 在手动合成区工作台模式下，将物品替换与流体替换按钮镜像到放入物品、取走物品按钮下方。
-13. 实现手动合成区替换按钮的实际功能：连续合成时当前材料用完后可切换到 JEI/EMI 配方中的其它有效物品候选；流体替换可用 ME 网络流体重新填充返还容器，例如用网络里的水把空桶接回水桶。
-14. 修复手动合成区流体替换在原版空桶上不生效的问题；水桶类配方合成后现在会用 ME 网络流体重新填充空桶，避免连续合成停在空桶状态。
-15. 改进手动合成区物品替换：当 JEI/EMI 没有传完整候选时，服务端会在替换开启且同款材料抽取失败后，从当前配方 ingredient 兜底展开候选，使玻璃板等 tag 材料可继续替换。
-16. 保护 AE2 显示元件槽位，禁止 Shift/整理模组快速移动从显示元件面板卸下显示元件。
-17. 将 AllTheCompressed 加入本地运行时依赖。
-18. 在高级编码扩展 UI 的元件编辑区加入 MEGA Cells 大宗压缩截断支持：满足条件时会在元件升级槽右侧显示截断按钮，并可在服务端循环切换大宗元件的截断物品。
-19. 将 MEGA Cells 大宗压缩截断按钮移动到元件编辑区复制模式按钮右侧 14px 处，去掉独立升级槽背景，并把截断物品图标缩放到同样的 12x12 按钮尺寸。
-20. 为 MEGA Cells 大宗压缩截断按钮恢复与复制模式按钮一致的 AE2 toolbar 小按钮底图，并将元件编辑区这一排四个功能按钮整体左移 2px。
-21. 将手动合成区的物品替换与流体替换开关改为独立状态，不再与样板编码区的替换开关联动。
-22. 将手动合成区物品替换与流体替换开关状态持久化到终端物品上，关闭并重新打开终端后仍会保留。
-23. 修复磁力、补货、拾取到 ME、收纳手持物品与鼠标中键取物等无线功能无法识别仅通过量子桥连接的 WCWT 网络的问题，同时保留普通无线链接路径的轻量解析。
+1. 更改将工具包记忆槽位按钮的位置与状态样式；
+2. 修复 JEI/EMI 配方拉取与预览匹配未正确区分物品数据组件/NBT 的问题，避免 Productive Bees 蜜蜂刷怪蛋等同 ID 不同数据的物品变体被当成同一种物品；
+3. 将按住 Shift 拉取一组配方用量限制为仅非合成配方生效；
+4. 修复饰品栏卡配方在 JEI/EMI 中不可见的问题；
+5. 需要额外模组支持的扩展升级卡现在只会在对应模组加载后显示；
+6. 修复专用服务器下，样板管理区映射保存到服务端配置路径的bug，更正为保存至客户端配置路径；
+7. 新增仅 OP 可用的 `/wcwt config` 指令，用于读取和修改 WCWT 服务端选项 `toolkitSlotCount` 与 `patternProviderActiveRefresh`；
+8. 在手动合成区工作台模式下，新增物品替换与流体替换功能：
+- 连续合成时当前材料用完后可切换到 JEI/EMI 配方中的其它有效物品候选；
+- 流体替换可用 ME 网络流体重新填充返还容器，例如用网络里的水把空桶接回水桶。
+9. 修复 Shift/整理模组快速移动时从显示元件面板卸下显示元件的bug；
+10. 在高级编码扩展 UI 的元件编辑区加入 MEGA Cells 大宗压缩截断支持：满足条件时会在元件编辑区复制模式按钮右侧显示截断按钮；
+11. 修复磁力、补货、拾取到 ME、收纳手持物品与鼠标中键取物等无线功能无法识别仅通过量子桥连接的 WCWT 网络的问题。
 
 ## v1.3.1
 
