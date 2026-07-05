@@ -180,6 +180,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ActionButton cycleProcessingOutputButton;
     private ToggleButton patternSubstitutionButton;
     private ToggleButton patternFluidSubstitutionButton;
+    private ToggleButton manualPatternSubstitutionButton;
+    private ToggleButton manualPatternFluidSubstitutionButton;
     
     // 样板倍增按钮
     private PatternMultiplierButton[] multiplierButtons;
@@ -599,41 +601,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                         !menu.isProcessingMaterialsMerge())));
         widgets.add("wcwtPatternMergeMaterials", processingMaterialsMergeButton);
 
-        patternSubstitutionButton = new ToggleButton(
-                Icon.S_SUBSTITUTION_ENABLED,
-                Icon.S_SUBSTITUTION_DISABLED,
-                state -> {
-                    menu.setPatternSubstitute(state);
-                    PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
-                            PatternEncodingOptionPacket.ACTION_SUBSTITUTE, state));
-                });
-        patternSubstitutionButton.setHalfSize(true);
-        patternSubstitutionButton.setDisableBackground(true);
-        patternSubstitutionButton.setTooltipOn(List.of(
-                ButtonToolTips.SubstitutionsOn.text(),
-                ButtonToolTips.SubstitutionsDescEnabled.text()));
-        patternSubstitutionButton.setTooltipOff(List.of(
-                ButtonToolTips.SubstitutionsOff.text(),
-                ButtonToolTips.SubstitutionsDescDisabled.text()));
+        patternSubstitutionButton = createPatternSubstitutionButton();
         widgets.add("wcwtPatternSubstitutions", patternSubstitutionButton);
 
-        patternFluidSubstitutionButton = new ToggleButton(
-                Icon.S_FLUID_SUBSTITUTION_ENABLED,
-                Icon.S_FLUID_SUBSTITUTION_DISABLED,
-                state -> {
-                    menu.setPatternFluidSubstitute(state);
-                    PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
-                            PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
-                });
-        patternFluidSubstitutionButton.setHalfSize(true);
-        patternFluidSubstitutionButton.setDisableBackground(true);
-        patternFluidSubstitutionButton.setTooltipOn(List.of(
-                ButtonToolTips.FluidSubstitutions.text(),
-                ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
-        patternFluidSubstitutionButton.setTooltipOff(List.of(
-                ButtonToolTips.FluidSubstitutions.text(),
-                ButtonToolTips.FluidSubstitutionsDescDisabled.text()));
+        patternFluidSubstitutionButton = createPatternFluidSubstitutionButton();
         widgets.add("wcwtPatternFluidSubstitutions", patternFluidSubstitutionButton);
+
+        manualPatternSubstitutionButton = createPatternSubstitutionButton();
+        widgets.add("wcwtManualPatternSubstitutions", manualPatternSubstitutionButton);
+
+        manualPatternFluidSubstitutionButton = createPatternFluidSubstitutionButton();
+        widgets.add("wcwtManualPatternFluidSubstitutions", manualPatternFluidSubstitutionButton);
 
         cycleProcessingOutputButton = new ActionButton(appeng.api.config.ActionItems.S_CYCLE_PROCESSING_OUTPUT,
                 () -> {
@@ -721,6 +699,46 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         widgets.add("trashButton", trashButton);
 
         installViewCellsVisibilityWidget();
+    }
+
+    private ToggleButton createPatternSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.S_SUBSTITUTION_ENABLED,
+                Icon.S_SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setPatternSubstitute(state);
+                    PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
+                            PatternEncodingOptionPacket.ACTION_SUBSTITUTE, state));
+                });
+        button.setHalfSize(true);
+        button.setDisableBackground(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.SubstitutionsOn.text(),
+                ButtonToolTips.SubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.SubstitutionsOff.text(),
+                ButtonToolTips.SubstitutionsDescDisabled.text()));
+        return button;
+    }
+
+    private ToggleButton createPatternFluidSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.S_FLUID_SUBSTITUTION_ENABLED,
+                Icon.S_FLUID_SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setPatternFluidSubstitute(state);
+                    PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
+                            PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
+                });
+        button.setHalfSize(true);
+        button.setDisableBackground(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescDisabled.text()));
+        return button;
     }
 
     private void openExtremeSoundMuffler() {
@@ -2057,6 +2075,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 new ExtendedPanelLayout.Rect(134, imageHeight - 214, 8, 8), imageWidth, imageHeight);
         var clearToPlayerRect = mainLayout.widget("clearToPlayerInv",
                 new ExtendedPanelLayout.Rect(144, imageHeight - 214, 8, 8), imageWidth, imageHeight);
+        var manualPatternSubstitutionsRect = mainLayout.widget("wcwtManualPatternSubstitutions",
+                new ExtendedPanelLayout.Rect(134, imageHeight - 204, 8, 8), imageWidth, imageHeight);
+        var manualPatternFluidSubstitutionsRect = mainLayout.widget("wcwtManualPatternFluidSubstitutions",
+                new ExtendedPanelLayout.Rect(144, imageHeight - 204, 8, 8), imageWidth, imageHeight);
         var clearGridAnvilRect = mainLayout.widget("manual_clearCraftingGrid_anvil",
                 new ExtendedPanelLayout.Rect(78, imageHeight - 168, 8, 8), imageWidth, imageHeight);
         var clearToPlayerAnvilRect = mainLayout.widget("manual_clearToPlayerInv_anvil",
@@ -2079,6 +2101,23 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             clearToPlayerInvButton.setY(topPos + activeClearToPlayerRect.top());
             clearToPlayerInvButton.visible = true;
             clearToPlayerInvButton.active = true;
+        }
+
+        boolean showManualPatternOptions = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING
+                && patternEncodingMode == EncodingMode.CRAFTING;
+        if (manualPatternSubstitutionButton != null) {
+            manualPatternSubstitutionButton.setX(leftPos + manualPatternSubstitutionsRect.left());
+            manualPatternSubstitutionButton.setY(topPos + manualPatternSubstitutionsRect.top());
+            manualPatternSubstitutionButton.visible = showManualPatternOptions;
+            manualPatternSubstitutionButton.active = showManualPatternOptions;
+            manualPatternSubstitutionButton.setState(menu.isPatternSubstitute());
+        }
+        if (manualPatternFluidSubstitutionButton != null) {
+            manualPatternFluidSubstitutionButton.setX(leftPos + manualPatternFluidSubstitutionsRect.left());
+            manualPatternFluidSubstitutionButton.setY(topPos + manualPatternFluidSubstitutionsRect.top());
+            manualPatternFluidSubstitutionButton.visible = showManualPatternOptions;
+            manualPatternFluidSubstitutionButton.active = showManualPatternOptions;
+            manualPatternFluidSubstitutionButton.setState(menu.isPatternFluidSubstitute());
         }
     }
 
@@ -2681,6 +2720,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 || patternEncodingMode == EncodingMode.SMITHING_TABLE;
         if (patternSubstitutionButton != null) {
             patternSubstitutionButton.visible = showItemSubstitutions;
+            patternSubstitutionButton.active = showItemSubstitutions;
             patternSubstitutionButton.setState(menu.isPatternSubstitute());
             patternSubstitutionButton.setX(buttonX + (patternEncodingMode == EncodingMode.CRAFTING ? 72 : 16));
             patternSubstitutionButton.setY(buttonY + (patternEncodingMode == EncodingMode.CRAFTING ? 6 : 14));
@@ -2689,6 +2729,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         boolean showFluidSubstitutions = patternEncodingMode == EncodingMode.CRAFTING;
         if (patternFluidSubstitutionButton != null) {
             patternFluidSubstitutionButton.visible = showFluidSubstitutions;
+            patternFluidSubstitutionButton.active = showFluidSubstitutions;
             patternFluidSubstitutionButton.setState(menu.isPatternFluidSubstitute());
             patternFluidSubstitutionButton.setX(buttonX + 82);
             patternFluidSubstitutionButton.setY(buttonY + 6);
