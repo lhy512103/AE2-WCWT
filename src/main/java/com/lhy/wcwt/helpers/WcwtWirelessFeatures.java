@@ -3,7 +3,11 @@ package com.lhy.wcwt.helpers;
 import appeng.api.config.Actionable;
 import appeng.api.config.FuzzyMode;
 import appeng.api.config.IncludeExclude;
+import appeng.api.features.Locatables;
+import appeng.api.ids.AEComponents;
 import appeng.api.networking.IGrid;
+import appeng.api.networking.IGridNode;
+import appeng.api.networking.security.IActionHost;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.upgrades.IUpgradeableItem;
 import appeng.integration.modules.curios.CuriosIntegration;
@@ -19,6 +23,7 @@ import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.WcwtPickBlockPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
+import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.TextConstants;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
 import de.mari_023.ae2wtlib.api.AE2wtlibTags;
@@ -57,23 +62,25 @@ public final class WcwtWirelessFeatures {
     }
 
     public static void tickPlayerMagnet(ServerPlayer player) {
-        ItemStack terminal = findTerminalStack(player, WcwtWirelessFeatures::hasMagnetCard);
-        if (!terminal.isEmpty()) {
+        var terminal = findTerminalTarget(player, WcwtWirelessFeatures::hasMagnetCard);
+        if (terminal != null) {
             tickMagnet(player, terminal);
         }
     }
 
-    public static void tickMagnet(ServerPlayer player, ItemStack terminal) {
-        syncRestockAmounts(player, terminal);
+    private static void tickMagnet(ServerPlayer player, TerminalTarget terminalTarget) {
+        var terminal = terminalTarget.stack();
+        syncRestockAmounts(player, terminalTarget);
         boolean sneaking = player.isShiftKeyDown();
         boolean hasMagnetCard = hasMagnetCard(terminal);
         boolean magnetEnabled = getMagnetSetting(terminal, "magnet");
         boolean pickupToMeEnabled = getMagnetSetting(terminal, "pickupToME");
-        IGrid grid = getGrid(player, terminal);
-        debugMagnetTick(player, terminal, sneaking, hasMagnetCard, magnetEnabled, pickupToMeEnabled, grid);
         if (sneaking || !hasMagnetCard || !magnetEnabled) {
+            debugMagnetTick(player, terminal, sneaking, hasMagnetCard, magnetEnabled, pickupToMeEnabled, null);
             return;
         }
+        IGrid grid = getGrid(player, terminalTarget);
+        debugMagnetTick(player, terminal, sneaking, hasMagnetCard, magnetEnabled, pickupToMeEnabled, grid);
         if (grid == null) {
             return;
         }
@@ -105,8 +112,8 @@ public final class WcwtWirelessFeatures {
         }
     }
 
-    private static void syncRestockAmounts(ServerPlayer player, ItemStack terminal) {
-        boolean enabled = terminal.getOrDefault(AE2wtlibComponents.RESTOCK, false);
+    private static void syncRestockAmounts(ServerPlayer player, TerminalTarget terminalTarget) {
+        boolean enabled = terminalTarget.stack().getOrDefault(AE2wtlibComponents.RESTOCK, false);
         int tick = player.getServer() == null ? 0 : player.getServer().getTickCount();
         Integer lastTick = RESTOCK_SYNC_TICKS.get(player);
         if (lastTick != null && tick - lastTick < 20) {
@@ -119,7 +126,7 @@ public final class WcwtWirelessFeatures {
             return;
         }
 
-        IGrid grid = getGrid(player, terminal);
+        IGrid grid = getGrid(player, terminalTarget);
         if (grid == null || grid.getStorageService() == null) {
             PacketDistributor.sendToPlayer(player, new WcwtRestockAmountsPacket(false, new HashMap<>()));
             return;
@@ -140,8 +147,8 @@ public final class WcwtWirelessFeatures {
     }
 
     public static void restock(ServerPlayer player, ItemStack item, ItemStack now, Consumer<ItemStack> setStack) {
-        ItemStack terminal = findTerminalStack(player, stack -> stack.getOrDefault(AE2wtlibComponents.RESTOCK, false));
-        if (terminal.isEmpty() || item.isEmpty() || item.is(AE2wtlibTags.NO_RESTOCK) || item.getMaxStackSize() == 1
+        var terminal = findTerminalTarget(player, stack -> stack.getOrDefault(AE2wtlibComponents.RESTOCK, false));
+        if (terminal == null || item.isEmpty() || item.is(AE2wtlibTags.NO_RESTOCK) || item.getMaxStackSize() == 1
                 || player.isCreative()) {
             return;
         }
@@ -184,8 +191,8 @@ public final class WcwtWirelessFeatures {
             return false;
         }
 
-        ItemStack terminal = findTerminalStack(serverPlayer, term -> canInsertPickup(term, stack, serverPlayer));
-        if (terminal.isEmpty()) {
+        var terminal = findTerminalTarget(serverPlayer, term -> canInsertPickup(term, stack, serverPlayer));
+        if (terminal == null) {
             debugMagnet(serverPlayer, "pickup-to-me skipped: no eligible terminal for stack={}", describeStack(stack));
             return false;
         }
@@ -193,7 +200,7 @@ public final class WcwtWirelessFeatures {
         IGrid grid = getGrid(serverPlayer, terminal);
         if (grid == null || grid.getStorageService() == null) {
             debugMagnet(serverPlayer, "pickup-to-me skipped: grid/storage missing, stack={}, terminal={}",
-                    describeStack(stack), describeStack(terminal));
+                    describeStack(stack), describeStack(terminal.stack()));
             return false;
         }
 
@@ -201,12 +208,12 @@ public final class WcwtWirelessFeatures {
                 .insert(AEItemKey.of(stack), stack.getCount(), Actionable.MODULATE, new PlayerSource(serverPlayer));
         if (inserted <= 0) {
             debugMagnet(serverPlayer, "pickup-to-me insert failed: stack={}, terminal={}",
-                    describeStack(stack), describeStack(terminal));
+                    describeStack(stack), describeStack(terminal.stack()));
             return false;
         }
 
         debugMagnet(serverPlayer, "pickup-to-me inserted: inserted={}, beforeStack={}, terminal={}",
-                inserted, describeStack(stack), describeStack(terminal));
+                inserted, describeStack(stack), describeStack(terminal.stack()));
         serverPlayer.awardStat(Stats.ITEM_PICKED_UP.get(stack.getItem()), (int) inserted);
         serverPlayer.onItemPickup(entity);
         stack.setCount((int) (stack.getCount() - inserted));
@@ -266,7 +273,7 @@ public final class WcwtWirelessFeatures {
             return false;
         }
 
-        IGrid grid = getGrid(serverPlayer, terminalTarget.stack());
+        IGrid grid = getGrid(serverPlayer, terminalTarget);
         if (grid == null || grid.getStorageService() == null) {
             return false;
         }
@@ -294,7 +301,7 @@ public final class WcwtWirelessFeatures {
         }
 
         ItemStack terminal = terminalTarget.stack();
-        IGrid grid = getGrid(player, terminal);
+        IGrid grid = getGrid(player, terminalTarget);
         if (grid == null || grid.getStorageService() == null) {
             return;
         }
@@ -462,11 +469,6 @@ public final class WcwtWirelessFeatures {
         return ItemStack.EMPTY;
     }
 
-    private static ItemStack findTerminalStack(ServerPlayer player, java.util.function.Predicate<ItemStack> predicate) {
-        var target = findTerminalTarget(player, predicate);
-        return target == null ? ItemStack.EMPTY : target.stack();
-    }
-
     private static TerminalTarget findTerminalTarget(ServerPlayer player,
                                                      java.util.function.Predicate<ItemStack> predicate) {
         var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
@@ -492,11 +494,73 @@ public final class WcwtWirelessFeatures {
         return null;
     }
 
-    private static IGrid getGrid(ServerPlayer player, ItemStack terminal) {
-        if (terminal.getItem() instanceof WirelessComprehensiveWorkTerminalItem item) {
-            return item.getLinkedGrid(terminal, player.level(), null);
+    private static IGrid getGrid(ServerPlayer player, TerminalTarget terminalTarget) {
+        IGrid openMenuGrid = getOpenMenuGrid(player, terminalTarget);
+        if (openMenuGrid != null) {
+            return openMenuGrid;
         }
-        return null;
+        return getItemGrid(player, terminalTarget.stack());
+    }
+
+    @Nullable
+    private static IGrid getOpenMenuGrid(ServerPlayer player, TerminalTarget terminalTarget) {
+        if (!(player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)
+                || menu.getMenuHost() == null
+                || !(menu.getLocator() instanceof ItemMenuHostLocator locator)
+                || !isSameTerminalTarget(player, locator, terminalTarget)) {
+            return null;
+        }
+        IGridNode node = menu.getMenuHost().getActionableNode();
+        return node == null ? null : node.getGrid();
+    }
+
+    private static boolean isSameTerminalTarget(Player player, ItemMenuHostLocator locator,
+                                                TerminalTarget terminalTarget) {
+        return locator.equals(terminalTarget.locator()) || locator.locateItem(player) == terminalTarget.stack();
+    }
+
+    @Nullable
+    private static IGrid getItemGrid(ServerPlayer player, ItemStack terminal) {
+        if (!(terminal.getItem() instanceof WirelessComprehensiveWorkTerminalItem item)) {
+            return null;
+        }
+
+        IGrid linkedGrid = item.getLinkedGrid(terminal, player.level(), null);
+        if (linkedGrid != null) {
+            return linkedGrid;
+        }
+        return getQuantumBridgeGrid(player, terminal, item);
+    }
+
+    @Nullable
+    private static IGrid getQuantumBridgeGrid(ServerPlayer player, ItemStack terminal,
+                                              WirelessComprehensiveWorkTerminalItem item) {
+        if (!AE2wtlibAPI.hasQuantumBridgeCard(() -> item.getUpgrades(terminal))) {
+            return null;
+        }
+
+        ItemStack singularity = terminal.getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY);
+        if (singularity.isEmpty()) {
+            return null;
+        }
+        Long frequency = singularity.get(AEComponents.ENTANGLED_SINGULARITY_ID);
+        if (frequency == null) {
+            return null;
+        }
+
+        IActionHost bridge = Locatables.quantumNetworkBridges().get(player.level(), frequency);
+        if (bridge == null) {
+            bridge = Locatables.quantumNetworkBridges().get(player.level(), -frequency);
+        }
+        if (bridge == null || bridge.getActionableNode() == null) {
+            return null;
+        }
+
+        IGrid grid = bridge.getActionableNode().getGrid();
+        if (grid == null || !grid.getEnergyService().isNetworkPowered()) {
+            return null;
+        }
+        return grid;
     }
 
     private static IPartitionList createFilter(ItemStack terminal,
