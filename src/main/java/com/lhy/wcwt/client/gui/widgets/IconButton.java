@@ -38,6 +38,7 @@ public class IconButton extends Button implements ITooltip {
     @Nullable
     private Supplier<Icon> overlayIcon;
     private int overlayOffsetY = 0;
+    private int overlayInset = 0;
     private boolean scaleTextureToButton = true;
     private boolean pressOffsetOnHover = false;
 
@@ -72,6 +73,11 @@ public class IconButton extends Button implements ITooltip {
 
     public IconButton setOverlayOffsetY(int overlayOffsetY) {
         this.overlayOffsetY = overlayOffsetY;
+        return this;
+    }
+
+    public IconButton setOverlayInset(int overlayInset) {
+        this.overlayInset = Math.max(0, overlayInset);
         return this;
     }
 
@@ -144,7 +150,9 @@ public class IconButton extends Button implements ITooltip {
             Icon icon = overlayIcon.get();
             if (icon != null) {
                 // 图标始终缩放到按钮内部
-                float iconScale = Math.min((float) width / icon.width, (float) height / icon.height);
+                int maxIconWidth = Math.max(1, width - overlayInset * 2);
+                int maxIconHeight = Math.max(1, height - overlayInset * 2);
+                float iconScale = Math.min((float) maxIconWidth / icon.width, (float) maxIconHeight / icon.height);
                 int renderW = (int)(icon.width  * iconScale);
                 int renderH = (int)(icon.height * iconScale);
                 int iconX = getX() + (width  - renderW) / 2;

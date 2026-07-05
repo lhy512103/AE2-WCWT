@@ -2,12 +2,15 @@ package com.lhy.wcwt.menu;
 
 import appeng.api.config.CopyMode;
 import appeng.api.config.Actionable;
+import appeng.api.behaviors.ContainerItemStrategies;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.inventories.InternalInventory;
+import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.AEKeyType;
+import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.ITerminalHost;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.StorageHelper;
@@ -31,14 +34,19 @@ import appeng.menu.slot.RestrictedInputSlot;
 import appeng.parts.encoding.EncodingMode;
 import appeng.parts.encoding.PatternEncodingLogic;
 import appeng.util.ConfigInventory;
+import appeng.util.CraftingRecipeUtil;
+import appeng.util.Platform;
 import appeng.util.inv.FilteredInternalInventory;
+import appeng.util.inv.CarriedItemInventory;
 import appeng.util.inv.PlayerInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
+import appeng.util.prioritylist.IPartitionList;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
@@ -50,9 +58,14 @@ import com.lhy.wcwt.network.EncodePatternPacket;
 import com.lhy.wcwt.network.OpenEaepProviderSelectScreenPacket;
 import com.lhy.wcwt.network.PatternEncodingModePacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
+import com.lhy.wcwt.network.PatternModePacket;
 import com.lhy.wcwt.network.PatternProviderFocusPacket;
 import com.lhy.wcwt.network.PatternProviderListPacket;
 import com.lhy.wcwt.network.TopActionPacket;
+import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
+import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import com.lhy.wcwt.pull.WcwtMeIngredientExtraction;
+import com.lhy.wcwt.pull.WcwtStackMatching;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import com.mojang.datafixers.util.Pair;
@@ -76,6 +89,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.crafting.CraftingRecipe;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.item.crafting.SmithingRecipe;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
@@ -91,10 +105,14 @@ import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.SmithingMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.TransientCraftingContainer;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import com.lhy.wcwt.compat.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
+import net.minecraftforge.common.ForgeHooks;
+import net.minecraftforge.event.ForgeEventFactory;
+import net.minecraftforge.fluids.FluidUtil;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.items.SlotItemHandler;
 import com.lhy.wcwt.compat.minecraft.world.item.crafting.SingleRecipeInput;
@@ -103,6 +121,7 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.common.math.LongMath;
+import it.unimi.dsi.fastutil.objects.Object2LongMap;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -241,8 +260,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private String manualAnvilName = "";
     private int syncedManualWorkspaceMode = ManualWorkspaceMode.CRAFTING.ordinal();
     private int syncedManualAnvilCost;
+    private int syncedCellUpgradeSlotCount;
     private boolean manualCraftingActionInProgress;
     private boolean suppressManualWorkspaceQuickMoveTargets;
+    private final List<List<ItemStack>> manualCraftingSlotAlternatives = createEmptyManualCraftingAlternatives();
+    private boolean manualCraftingItemSubstitution;
+    private boolean manualCraftingFluidSubstitution;
     private int manualQuickCraftSlotIndex = -1;
     private int manualQuickCraftsRemaining;
     private int clientQuickMoveOptions = QUICK_MOVE_TO_COSMETIC_ARMOR
@@ -255,6 +278,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         this.patternEncodingLogic = host.getLogic();
         this.manualSmithingBridge = new ManualSmithingMenuBridge();
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
+        this.manualCraftingItemSubstitution = host.isManualCraftingItemSubstitution();
+        this.manualCraftingFluidSubstitution = host.isManualCraftingFluidSubstitution();
         // 注意：不要在这里 new ToolboxMenu(this)！
         // 父类 MEStorageMenu 的构造器已经 new ToolboxMenu(this) 并添加了 9 个 TOOLBOX 槽，
         // 若在此重复创建则共有 18 个槽，界面会显示"两重"效果。
@@ -286,7 +311,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         // 用 SupplierInternalInventory 包一层，保证元件换出/换入时返回最新的 IUpgradeInventory。
         var cellUpgradeSupplier = new appeng.util.inv.SupplierInternalInventory(host::getCellUpgrades);
         for (int i = 0; i < CELL_UPGRADE_SLOTS; i++) {
-            addSlot(new OptionalRestrictedInputSlot(
+            addSlot(new CellUpgradeSlot(
                             RestrictedInputSlot.PlacableItemType.UPGRADES,
                             cellUpgradeSupplier, this, i, i, ip),
                     WcwtSlotSemantics.WCWT_CELL_UPGRADE);
@@ -483,6 +508,39 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
             @Override
             public int get() {
+                return getServerCellUpgradeSlotCount();
+            }
+
+            @Override
+            public void set(int value) {
+                syncedCellUpgradeSlotCount = clampCellUpgradeSlotCount(value);
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return manualCraftingItemSubstitution ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                manualCraftingItemSubstitution = value != 0;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return manualCraftingFluidSubstitution ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                manualCraftingFluidSubstitution = value != 0;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
                 return manualAnvilCost;
             }
 
@@ -500,6 +558,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (menuHost != null) {
             manualAnvilName = menuHost.getManualAnvilName();
             syncedManualWorkspaceMode = menuHost.getManualWorkspaceMode();
+            manualCraftingItemSubstitution = menuHost.isManualCraftingItemSubstitution();
+            manualCraftingFluidSubstitution = menuHost.isManualCraftingFluidSubstitution();
         }
         applyManualWorkspaceSlotActivation(ManualWorkspaceMode.fromOrdinal(syncedManualWorkspaceMode));
         updateManualWorkspaceResults();
@@ -541,6 +601,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     @Override
     public void doAction(ServerPlayer player, InventoryAction action, int slot, long id) {
         if (shouldUseManualCraftingActionFastPath(action, slot)) {
+            if (isManualCraftingReplacementEnabled()) {
+                handleManualCraftingResultAction(player, action);
+                return;
+            }
             boolean previousManualCraftingActionInProgress = manualCraftingActionInProgress;
             manualCraftingActionInProgress = true;
             try {
@@ -575,6 +639,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 || action == InventoryAction.CRAFT_ALL
                 || action == InventoryAction.CRAFT_ITEM
                 || action == InventoryAction.CRAFT_STACK;
+    }
+
+    private boolean isManualCraftingReplacementEnabled() {
+        return isManualCraftingItemSubstitution() || isManualCraftingFluidSubstitution();
     }
 
     private void addPlayerEquipmentSlots(Inventory inventory) {
@@ -1363,6 +1431,34 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return isClientSide() ? syncedManualAnvilCost : manualAnvilCost;
     }
 
+    private static List<List<ItemStack>> createEmptyManualCraftingAlternatives() {
+        List<List<ItemStack>> result = new ArrayList<>(9);
+        for (int i = 0; i < 9; i++) {
+            result.add(List.of());
+        }
+        return result;
+    }
+
+    public void rememberManualCraftingAlternatives(List<RequestedIngredient> requestedIngredients) {
+        if (isClientSide()) {
+            return;
+        }
+        for (int i = 0; i < manualCraftingSlotAlternatives.size(); i++) {
+            manualCraftingSlotAlternatives.set(i, List.of());
+        }
+        for (RequestedIngredient requested : requestedIngredients) {
+            if (requested == null || requested.targetSlot() < 0 || requested.targetSlot() >= 9) {
+                continue;
+            }
+            List<ItemStack> alternatives = WcwtIngredientPriorities.deduplicateItemAlternatives(
+                    requested.alternatives().stream()
+                            .filter(stack -> stack != null && !stack.isEmpty())
+                            .map(stack -> stack.copyWithCount(1))
+                            .toList());
+            manualCraftingSlotAlternatives.set(requested.targetSlot(), alternatives);
+        }
+    }
+
     private boolean isLinked() {
         return menuHost != null && menuHost.getActionableNode() != null && menuHost.getActionableNode().getGrid() != null;
     }
@@ -1886,6 +1982,34 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public void setPatternFluidSubstitute(boolean substitute) {
         if (patternEncodingLogic != null) {
             patternEncodingLogic.setFluidSubstitution(substitute);
+            broadcastChanges();
+        }
+    }
+
+    public boolean isManualCraftingItemSubstitution() {
+        return manualCraftingItemSubstitution;
+    }
+
+    public void setManualCraftingItemSubstitution(boolean substitute) {
+        if (manualCraftingItemSubstitution != substitute) {
+            manualCraftingItemSubstitution = substitute;
+            if (menuHost != null) {
+                menuHost.setManualCraftingItemSubstitution(substitute);
+            }
+            broadcastChanges();
+        }
+    }
+
+    public boolean isManualCraftingFluidSubstitution() {
+        return manualCraftingFluidSubstitution;
+    }
+
+    public void setManualCraftingFluidSubstitution(boolean substitute) {
+        if (manualCraftingFluidSubstitution != substitute) {
+            manualCraftingFluidSubstitution = substitute;
+            if (menuHost != null) {
+                menuHost.setManualCraftingFluidSubstitution(substitute);
+            }
             broadcastChanges();
         }
     }
@@ -2466,6 +2590,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public void setItem(int slotID, int stateId, ItemStack stack) {
         super.setItem(slotID, stateId, stack);
         syncPatternCacheClientDisplayStack(slotID, stack);
+        syncCellUpgradeClientDisplayStack(slotID, stack);
         updatePatternPreview(getPatternEncodingMode());
     }
 
@@ -2479,6 +2604,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     syncPatternCacheClientDisplayStack(menuSlot, items.get(menuSlot));
                 }
             }
+            for (Slot slot : getSlots(WcwtSlotSemantics.WCWT_CELL_UPGRADE)) {
+                int menuSlot = slots.indexOf(slot);
+                if (menuSlot >= 0 && menuSlot < items.size()) {
+                    syncCellUpgradeClientDisplayStack(menuSlot, items.get(menuSlot));
+                }
+            }
         }
         updatePatternPreview(getPatternEncodingMode());
     }
@@ -2489,6 +2620,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 && slotID < slots.size()
                 && slots.get(slotID) instanceof PatternCacheSlot cacheSlot) {
             cacheSlot.setClientDisplayStack(stack);
+        }
+    }
+
+    private void syncCellUpgradeClientDisplayStack(int slotID, ItemStack stack) {
+        if (isClientSide()
+                && slotID >= 0
+                && slotID < slots.size()
+                && slots.get(slotID) instanceof CellUpgradeSlot upgradeSlot) {
+            upgradeSlot.setClientDisplayStack(stack);
         }
     }
 
@@ -3018,6 +3158,84 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     /**
+     * 元件升级槽背后也是按当前元件动态切换的库存。客户端需要保留服务端 slot
+     * 同步来的显示堆叠，避免元件 ItemStack 还没刷新 NBT 镜像时图标短暂消失。
+     */
+    private class CellUpgradeSlot extends OptionalRestrictedInputSlot {
+        private ItemStack clientDisplayStack = ItemStack.EMPTY;
+
+        CellUpgradeSlot(RestrictedInputSlot.PlacableItemType valid, InternalInventory inv,
+                IOptionalSlotHost host, int invSlot, int groupNum, Inventory invPlayer) {
+            super(valid, inv, host, invSlot, groupNum, invPlayer);
+            if (isClientSide()) {
+                clientDisplayStack = super.getItem().copy();
+            }
+        }
+
+        private void setClientDisplayStack(ItemStack stack) {
+            if (isClientSide()) {
+                clientDisplayStack = stack.copy();
+            }
+        }
+
+        @Override
+        public ItemStack getItem() {
+            if (isClientSide()) {
+                return isSlotEnabled() ? clientDisplayStack : ItemStack.EMPTY;
+            }
+            return super.getItem();
+        }
+
+        @Override
+        public void initialize(ItemStack stack) {
+            if (isClientSide()) {
+                clientDisplayStack = stack.copy();
+                return;
+            }
+            super.initialize(stack);
+        }
+
+        @Override
+        public void set(ItemStack stack) {
+            if (isClientSide()) {
+                clientDisplayStack = stack.copy();
+                return;
+            }
+            super.set(stack);
+        }
+
+        @Override
+        public void clearStack() {
+            if (isClientSide()) {
+                clientDisplayStack = ItemStack.EMPTY;
+                return;
+            }
+            super.clearStack();
+            syncCellUpgradeSlotChanges();
+        }
+
+        @Override
+        public ItemStack remove(int amount) {
+            if (isClientSide()) {
+                if (!isSlotEnabled()) {
+                    return ItemStack.EMPTY;
+                }
+                ItemStack removed = clientDisplayStack.split(amount);
+                if (clientDisplayStack.isEmpty()) {
+                    clientDisplayStack = ItemStack.EMPTY;
+                }
+                return removed;
+            }
+
+            ItemStack removed = super.remove(amount);
+            if (!removed.isEmpty()) {
+                syncCellUpgradeSlotChanges();
+            }
+            return removed;
+        }
+    }
+
+    /**
      * 样板缓存区的底层库存是 {@link appeng.util.inv.SupplierInternalInventory}，每次访问都会用
      * {@code createInventory(...)} 从终端物品 NBT 现读一份全新的 {@link AppEngInternalInventory}。
      * 服务端因为会把改动写回 NBT，所以重开界面能看到；但客户端收到 slot 同步包时
@@ -3247,6 +3465,438 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (!remainder.isEmpty()) {
                 StorageHelper.poweredInsert(getWcwtEnergySource(), storage, key, remainder.getCount(), getActionSource());
             }
+        }
+    }
+
+    private void handleManualCraftingResultAction(ServerPlayer player, InventoryAction action) {
+        boolean previousManualCraftingActionInProgress = manualCraftingActionInProgress;
+        manualCraftingActionInProgress = true;
+        try {
+            handleManualCraftingResultActionInProgress(player, action);
+        } finally {
+            manualCraftingActionInProgress = previousManualCraftingActionInProgress;
+            if (!manualCraftingActionInProgress) {
+                cachedManualCraftingResultSignature = List.of();
+                updateManualCraftingResult();
+                forceInventorySyncOnNextBroadcast();
+                broadcastChanges();
+            }
+        }
+    }
+
+    private void handleManualCraftingResultActionInProgress(ServerPlayer player, InventoryAction action) {
+        InternalInventory craftingMatrix = getCraftingMatrix();
+        ItemStack initialOutput = getManualCraftingOutput();
+        if (initialOutput.isEmpty()) {
+            return;
+        }
+
+        int howManyPerCraft = Math.max(1, initialOutput.getCount());
+        int maxTimesToCraft;
+        InternalInventory target;
+        if (action == InventoryAction.CRAFT_SHIFT || action == InventoryAction.CRAFT_ALL) {
+            target = new PlayerInternalInventory(player.getInventory());
+            if (action == InventoryAction.CRAFT_SHIFT) {
+                maxTimesToCraft = Math.max(1, initialOutput.getMaxStackSize() / howManyPerCraft);
+            } else {
+                maxTimesToCraft = Math.max(1,
+                        initialOutput.getMaxStackSize() / howManyPerCraft * Inventory.INVENTORY_SIZE);
+            }
+        } else {
+            target = new CarriedItemInventory(this);
+            maxTimesToCraft = action == InventoryAction.CRAFT_STACK
+                    ? Math.max(1, initialOutput.getMaxStackSize() / howManyPerCraft)
+                    : 1;
+        }
+
+        for (int crafted = 0; crafted < maxTimesToCraft; crafted++) {
+            CraftingContainer input = createManualCraftingInput(craftingMatrix);
+            var currentRecipe = getCurrentRecipe();
+            CraftingRecipe recipe = currentRecipe instanceof CraftingRecipe craftingRecipe
+                    && craftingRecipe.matches(input, player.level())
+                    ? craftingRecipe
+                    : null;
+            if (recipe == null) {
+                updateManualCraftingResult();
+                currentRecipe = getCurrentRecipe();
+                input = createManualCraftingInput(craftingMatrix);
+                recipe = currentRecipe instanceof CraftingRecipe craftingRecipe
+                        && craftingRecipe.matches(input, player.level())
+                        ? craftingRecipe
+                        : null;
+                if (recipe == null) {
+                    return;
+                }
+            }
+
+            ItemStack output = recipe.assemble(input, player.level().registryAccess());
+            if (output.isEmpty() || !ItemStack.isSameItemSameTags(initialOutput, output)) {
+                return;
+            }
+            if (!target.simulateAdd(output).isEmpty()) {
+                return;
+            }
+
+            ItemStack craftedStack = craftManualCraftingItem(player, recipe, output);
+            if (craftedStack.isEmpty()) {
+                return;
+            }
+
+            ItemStack extra = target.addItems(craftedStack);
+            if (!extra.isEmpty()) {
+                Platform.spawnDrops(player.level(), player.blockPosition(), List.of(extra));
+                return;
+            }
+        }
+    }
+
+    private ItemStack getManualCraftingOutput() {
+        for (Slot resultSlot : getSlots(SlotSemantics.CRAFTING_RESULT)) {
+            ItemStack stack = resultSlot.getItem();
+            if (!stack.isEmpty()) {
+                return stack.copy();
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private CraftingContainer createManualCraftingInput(InternalInventory craftingMatrix) {
+        var ingredients = new ItemStack[9];
+        for (int i = 0; i < ingredients.length; i++) {
+            ingredients[i] = i < craftingMatrix.size()
+                    ? craftingMatrix.getStackInSlot(i).copy()
+                    : ItemStack.EMPTY;
+        }
+        return createCraftingInput(ingredients);
+    }
+
+    private ItemStack craftManualCraftingItem(Player player, CraftingRecipe recipe, ItemStack output) {
+        InternalInventory craftingMatrix = getCraftingMatrix();
+        ItemStack[] before = snapshotManualCraftingGrid(craftingMatrix);
+        ItemStack crafted = output.copy();
+
+        crafted.onCraftedBy(player.level(), player, crafted.getCount());
+        ForgeEventFactory.firePlayerCraftingEvent(player, crafted, craftingMatrix.toContainer());
+
+        consumeManualCraftingIngredients(player, craftingMatrix, recipe);
+        restockManualCraftingInputs(craftingMatrix, before, recipe, crafted);
+        slotsChanged(craftingMatrix.toContainer());
+        return crafted;
+    }
+
+    private static ItemStack[] snapshotManualCraftingGrid(InternalInventory craftingMatrix) {
+        ItemStack[] before = new ItemStack[Math.min(9, craftingMatrix.size())];
+        for (int i = 0; i < before.length; i++) {
+            before[i] = craftingMatrix.getStackInSlot(i).copy();
+        }
+        return before;
+    }
+
+    private void consumeManualCraftingIngredients(Player player, InternalInventory craftingMatrix,
+            CraftingRecipe recipe) {
+        CraftingContainer input = createManualCraftingInput(craftingMatrix);
+
+        ForgeHooks.setCraftingPlayer(player);
+        NonNullList<ItemStack> remainingItems;
+        try {
+            remainingItems = recipe.getRemainingItems(input);
+        } finally {
+            ForgeHooks.setCraftingPlayer(null);
+        }
+
+        for (int slotIndex = 0; slotIndex < Math.min(craftingMatrix.size(), remainingItems.size()); slotIndex++) {
+            craftingMatrix.extractItem(slotIndex, 1, false);
+            ItemStack remainingInSlot = remainingItems.get(slotIndex);
+            if (remainingInSlot.isEmpty()) {
+                continue;
+            }
+            if (craftingMatrix.getStackInSlot(slotIndex).isEmpty()) {
+                craftingMatrix.setItemDirect(slotIndex, remainingInSlot.copy());
+            } else if (!player.getInventory().add(remainingInSlot.copy())) {
+                player.drop(remainingInSlot.copy(), false);
+            }
+        }
+    }
+
+    private void restockManualCraftingInputs(InternalInventory craftingMatrix, ItemStack[] before,
+            CraftingRecipe recipe, ItemStack expectedOutput) {
+        if (isClientSide() || menuHost == null || before == null || storage == null) {
+            return;
+        }
+        var filter = ViewCellItem.createItemFilter(getViewCells());
+        KeyCounter availableStacks = null;
+        boolean itemSubstitution = isManualCraftingItemSubstitution();
+        ManualCraftingRecipeAlternatives recipeAlternatives = itemSubstitution
+                ? new ManualCraftingRecipeAlternatives(recipe)
+                : null;
+        for (int slot = 0; slot < Math.min(craftingMatrix.size(), before.length); slot++) {
+            ItemStack previous = before[slot];
+            if (previous == null || previous.isEmpty()) {
+                continue;
+            }
+            ItemStack current = craftingMatrix.getStackInSlot(slot);
+            if (!current.isEmpty()) {
+                if (isManualCraftingFluidSubstitution()
+                        && tryFillManualCraftingContainerFromFluid(craftingMatrix, slot, previous, current, before,
+                                recipe, expectedOutput)) {
+                    continue;
+                }
+                continue;
+            }
+            ItemStack exact = extractManualCraftingExactReplacement(previous, filter);
+            if (!exact.isEmpty()) {
+                craftingMatrix.setItemDirect(slot, exact);
+                continue;
+            }
+            if (!itemSubstitution) {
+                continue;
+            }
+            if (availableStacks == null) {
+                availableStacks = storage.getAvailableStacks();
+            }
+            ItemStack replacement = extractManualCraftingReplacement(slot, previous, before, recipe, expectedOutput,
+                    filter, availableStacks, recipeAlternatives);
+            if (!replacement.isEmpty()) {
+                craftingMatrix.setItemDirect(slot, replacement);
+            }
+        }
+    }
+
+    private ItemStack extractManualCraftingReplacement(int slot, ItemStack previous, ItemStack[] before,
+            CraftingRecipe recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
+            KeyCounter availableStacks, @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
+        List<ItemStack> alternatives = manualCraftingAlternativesFor(slot, previous);
+        ItemStack rememberedReplacement = extractManualCraftingAlternativeReplacement(slot, before, recipe,
+                expectedOutput, filter, availableStacks, alternatives);
+        if (!rememberedReplacement.isEmpty()) {
+            return rememberedReplacement;
+        }
+
+        List<ItemStack> recipeDerivedAlternatives = recipeAlternatives == null
+                ? List.of()
+                : recipeAlternatives.getAlternatives(previous);
+        if (recipeDerivedAlternatives.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        List<ItemStack> expandedAlternatives = mergeManualCraftingAlternatives(alternatives, recipeDerivedAlternatives);
+        if (expandedAlternatives.size() == alternatives.size()) {
+            return ItemStack.EMPTY;
+        }
+        return extractManualCraftingAlternativeReplacement(slot, before, recipe, expectedOutput, filter,
+                availableStacks, expandedAlternatives);
+    }
+
+    private ItemStack extractManualCraftingAlternativeReplacement(int slot, ItemStack[] before,
+            CraftingRecipe recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
+            KeyCounter availableStacks, List<ItemStack> alternatives) {
+        if (alternatives.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(alternatives);
+        for (AEItemKey candidate : manualCraftingReplacementCandidates(alternatives, wideIngredient, filter,
+                availableStacks)) {
+            ItemStack candidateStack = candidate.toStack();
+            if (!isManualCraftingReplacementValid(slot, candidateStack, before, recipe, expectedOutput)) {
+                continue;
+            }
+            long extracted = StorageHelper.poweredExtraction(getWcwtEnergySource(), storage, candidate, 1,
+                    getActionSource());
+            if (extracted > 0) {
+                return candidate.toStack(1);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static List<ItemStack> mergeManualCraftingAlternatives(List<ItemStack> remembered,
+            List<ItemStack> recipeDerived) {
+        List<ItemStack> merged = new ArrayList<>(remembered.size() + recipeDerived.size());
+        merged.addAll(WcwtIngredientPriorities.deduplicateItemAlternatives(remembered));
+        for (ItemStack alternative : WcwtIngredientPriorities.deduplicateItemAlternatives(recipeDerived)) {
+            if (!containsSameItemAndComponents(merged, alternative)) {
+                merged.add(alternative.copyWithCount(1));
+            }
+        }
+        return merged;
+    }
+
+    private static boolean containsSameItemAndComponents(List<ItemStack> stacks, ItemStack candidate) {
+        for (ItemStack stack : stacks) {
+            if (ItemStack.isSameItemSameTags(stack, candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private ItemStack extractManualCraftingExactReplacement(ItemStack previous, @Nullable IPartitionList filter) {
+        if (storage == null) {
+            return ItemStack.EMPTY;
+        }
+        AEItemKey key = AEItemKey.of(previous);
+        if (key == null || filter != null && !filter.isListed(key)) {
+            return ItemStack.EMPTY;
+        }
+        long extracted = StorageHelper.poweredExtraction(getWcwtEnergySource(), storage, key, 1, getActionSource());
+        return extracted > 0 ? key.toStack(1) : ItemStack.EMPTY;
+    }
+
+    private List<ItemStack> manualCraftingAlternativesFor(int slot, ItemStack previous) {
+        if (slot < 0 || slot >= manualCraftingSlotAlternatives.size()) {
+            return List.of();
+        }
+        List<ItemStack> alternatives = manualCraftingSlotAlternatives.get(slot);
+        if (alternatives.isEmpty()) {
+            return List.of();
+        }
+        var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(alternatives);
+        return WcwtStackMatching.matchesAnyAlternative(previous, alternatives, wideIngredient)
+                ? alternatives
+                : List.of();
+    }
+
+    private List<AEItemKey> manualCraftingReplacementCandidates(List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient, @Nullable IPartitionList filter, KeyCounter availableStacks) {
+        List<AEItemKey> candidates = new ArrayList<>();
+        for (ItemStack alternative : WcwtIngredientPriorities.deduplicateItemAlternatives(alternatives)) {
+            AEItemKey key = AEItemKey.of(alternative);
+            if (key != null
+                    && availableStacks.get(key) > 0
+                    && (filter == null || filter.isListed(key))
+                    && !candidates.contains(key)) {
+                candidates.add(key);
+            }
+        }
+        if (WcwtStackMatching.requiresExactItemKeyMatch(alternatives)) {
+            return candidates;
+        }
+        for (Object2LongMap.Entry<AEKey> entry : availableStacks) {
+            if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
+                continue;
+            }
+            if (filter != null && !filter.isListed(itemKey)) {
+                continue;
+            }
+            if (!WcwtStackMatching.matchesItemKey(itemKey, alternatives, wideIngredient)
+                    || candidates.contains(itemKey)) {
+                continue;
+            }
+            candidates.add(itemKey);
+        }
+        return candidates;
+    }
+
+    private boolean isManualCraftingReplacementValid(int slot, ItemStack candidate, ItemStack[] before,
+            CraftingRecipe recipe, ItemStack expectedOutput) {
+        if (candidate.isEmpty()) {
+            return false;
+        }
+        ItemStack[] adjusted = new ItemStack[9];
+        for (int i = 0; i < adjusted.length; i++) {
+            ItemStack stack = i < before.length ? before[i] : ItemStack.EMPTY;
+            adjusted[i] = i == slot ? candidate.copyWithCount(1) : stack.copy();
+        }
+        CraftingContainer input = createCraftingInput(adjusted);
+        return recipe.matches(input, getPlayer().level())
+                && ItemStack.isSameItemSameTags(
+                        expectedOutput,
+                        recipe.assemble(input, getPlayer().level().registryAccess()));
+    }
+
+    private boolean tryFillManualCraftingContainerFromFluid(InternalInventory craftingMatrix, int slot,
+            ItemStack previous, ItemStack current, ItemStack[] before, CraftingRecipe recipe,
+            ItemStack expectedOutput) {
+        if (current.getCount() != 1) {
+            return false;
+        }
+        GenericStack contained = ContainerItemStrategies.getContainedStack(previous, AEKeyType.fluids());
+        if (contained == null || !(contained.what() instanceof AEFluidKey fluidKey) || contained.amount() <= 0) {
+            return false;
+        }
+        int amount = (int) Math.min(Integer.MAX_VALUE, contained.amount());
+        ItemStack filledContainer = fillManualCraftingFluidContainer(current, fluidKey, amount);
+        if (filledContainer.isEmpty()) {
+            return false;
+        }
+        if (!isManualCraftingReplacementValid(slot, filledContainer, before, recipe, expectedOutput)) {
+            return false;
+        }
+        long available = StorageHelper.poweredExtraction(getWcwtEnergySource(), storage, fluidKey, amount,
+                getActionSource(), Actionable.SIMULATE);
+        if (available < amount) {
+            return false;
+        }
+        long extracted = StorageHelper.poweredExtraction(getWcwtEnergySource(), storage, fluidKey, amount,
+                getActionSource());
+        if (extracted < amount) {
+            if (extracted > 0) {
+                StorageHelper.poweredInsert(getWcwtEnergySource(), storage, fluidKey, extracted, getActionSource());
+            }
+            return false;
+        }
+        craftingMatrix.setItemDirect(slot, filledContainer.copyWithCount(1));
+        return true;
+    }
+
+    private ItemStack fillManualCraftingFluidContainer(ItemStack emptyContainer, AEFluidKey fluidKey, int amount) {
+        ItemStack filled = emptyContainer.copyWithCount(1);
+        var fluidHandler = FluidUtil.getFluidHandler(filled).orElse(null);
+        if (fluidHandler != null) {
+            int fillable = fluidHandler.fill(fluidKey.toStack(amount), Actionable.SIMULATE.getFluidAction());
+            if (fillable >= amount) {
+                int filledAmount = fluidHandler.fill(fluidKey.toStack(amount), Actionable.MODULATE.getFluidAction());
+                if (filledAmount >= amount) {
+                    return fluidHandler.getContainer();
+                }
+            }
+        }
+
+        if (emptyContainer.is(Items.BUCKET)) {
+            ItemStack bucket = FluidUtil.getFilledBucket(fluidKey.toStack(amount));
+            if (!bucket.isEmpty()) {
+                return bucket.copyWithCount(1);
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static final class ManualCraftingRecipeAlternatives {
+        private final CraftingRecipe recipe;
+        private final HashMap<AEItemKey, List<ItemStack>> cache = new HashMap<>();
+        private @Nullable List<Ingredient> ingredients;
+
+        private ManualCraftingRecipeAlternatives(CraftingRecipe recipe) {
+            this.recipe = recipe;
+        }
+
+        private List<ItemStack> getAlternatives(ItemStack previous) {
+            AEItemKey previousKey = AEItemKey.of(previous);
+            if (previousKey == null) {
+                return List.of();
+            }
+            return cache.computeIfAbsent(previousKey, ignored -> collectAlternatives(previous));
+        }
+
+        private List<ItemStack> collectAlternatives(ItemStack previous) {
+            List<ItemStack> result = new ArrayList<>();
+            for (Ingredient ingredient : getIngredients()) {
+                if (ingredient == null || ingredient.isEmpty() || !ingredient.test(previous)) {
+                    continue;
+                }
+                for (ItemStack candidate : ingredient.getItems()) {
+                    if (!candidate.isEmpty() && !containsSameItemAndComponents(result, candidate)) {
+                        result.add(candidate.copyWithCount(1));
+                    }
+                }
+            }
+            return result;
+        }
+
+        private List<Ingredient> getIngredients() {
+            if (ingredients == null) {
+                ingredients = List.copyOf(CraftingRecipeUtil.getIngredients(recipe));
+            }
+            return ingredients;
         }
     }
 
@@ -4432,12 +5082,14 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      */
     @Override
     public boolean isSlotEnabled(int idx) {
+        if (idx < CELL_UPGRADE_SLOTS) {
+            int upgradeSlots = isServerSide()
+                    ? getServerCellUpgradeSlotCount()
+                    : syncedCellUpgradeSlotCount;
+            return idx < upgradeSlots;
+        }
         if (menuHost == null) {
             return false;
-        }
-        if (idx < CELL_UPGRADE_SLOTS) {
-            var upgrades = menuHost.getCellUpgrades();
-            return upgrades != null && idx < upgrades.size();
         }
 
         int resonatingIndex = idx - OPTIONAL_SLOT_GROUP_RESONATING_STORAGE_BASE;
@@ -4445,6 +5097,18 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return resonatingIndex >= 0
                 && resonatingIndex < resonatingStorage.size()
                 && menuHost.getCurrentExtendedUI() == IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING;
+    }
+
+    private int getServerCellUpgradeSlotCount() {
+        if (menuHost == null) {
+            return 0;
+        }
+        var upgrades = menuHost.getCellUpgrades();
+        return upgrades == null ? 0 : clampCellUpgradeSlotCount(upgrades.size());
+    }
+
+    private static int clampCellUpgradeSlotCount(int value) {
+        return Math.max(0, Math.min(CELL_UPGRADE_SLOTS, value));
     }
 
     @Override
@@ -4461,10 +5125,22 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (manualWorkspaceSlotChanged) {
             syncManualWorkspaceChanges();
         }
-        if (menuHost != null && getSlots(WcwtSlotSemantics.WCWT_CELL_UPGRADE).contains(slot)) {
-            menuHost.persistStorageCellItem();
+        if (menuHost != null && isServerSide() && getSlots(WcwtSlotSemantics.WCWT_CELL_UPGRADE).contains(slot)) {
+            syncCellUpgradeSlotChanges();
+        }
+        if (menuHost != null && isServerSide() && getSlots(WcwtSlotSemantics.WCWT_STORAGE_CELL).contains(slot)) {
+            forceInventorySyncOnNextBroadcast();
             broadcastChanges();
         }
+    }
+
+    private void syncCellUpgradeSlotChanges() {
+        if (menuHost == null || isClientSide()) {
+            return;
+        }
+        menuHost.persistStorageCellItem();
+        forceInventorySyncOnNextBroadcast();
+        broadcastChanges();
     }
 
     @Override
@@ -5123,6 +5799,17 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         broadcastChanges();
     }
 
+    public void handlePatternMode(int mode, boolean value) {
+        switch (mode) {
+            case PatternModePacket.MODE_PATTERN_ITEM_SUBSTITUTIONS,
+                    PatternModePacket.MODE_PATTERN_FLUID_SUBSTITUTIONS -> changePatternMode(mode, value);
+            case PatternModePacket.MODE_MANUAL_ITEM_SUBSTITUTION -> setManualCraftingItemSubstitution(value);
+            case PatternModePacket.MODE_MANUAL_FLUID_SUBSTITUTION -> setManualCraftingFluidSubstitution(value);
+            default -> {
+            }
+        }
+    }
+
     public void changePatternMode(int mode, boolean value) {
         for (var slot : getPatternCacheSlots()) {
             var stack = slot.getItem();
@@ -5500,6 +6187,20 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             menuHost.setCellCopyMode(cellCopyMode);
         }
         broadcastChanges();
+    }
+
+    public void cycleCellCompressionCutoff(boolean towardMoreCompressed) {
+        var cellStack = getStorageCellItem();
+        if (cellStack.isEmpty()) {
+            return;
+        }
+        if (WcwtMegaCellsCompat.switchCompressionCutoff(cellStack, towardMoreCompressed)) {
+            if (menuHost != null) {
+                menuHost.syncCellConfigMirrorFromActual();
+                menuHost.persistStorageCellItem();
+            }
+            broadcastChanges();
+        }
     }
 
     private static List<GenericStack> replaceInStacks(List<GenericStack> source,

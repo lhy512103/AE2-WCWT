@@ -189,6 +189,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ActionButton cycleProcessingOutputButton;
     private ToggleButton patternSubstitutionButton;
     private ToggleButton patternFluidSubstitutionButton;
+    private ToggleButton manualPatternSubstitutionButton;
+    private ToggleButton manualPatternFluidSubstitutionButton;
     
     // 样板倍增按钮
     private PatternMultiplierButton[] multiplierButtons;
@@ -591,39 +593,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                         !menu.isProcessingMaterialsMerge())));
         widgets.add("wcwtPatternMergeMaterials", processingMaterialsMergeButton);
 
-        patternSubstitutionButton = new ToggleButton(
-                Icon.SUBSTITUTION_ENABLED,
-                Icon.SUBSTITUTION_DISABLED,
-                state -> {
-                    menu.setPatternSubstitute(state);
-                    ModNetworking.sendToServer(new PatternEncodingOptionPacket(
-                            PatternEncodingOptionPacket.ACTION_SUBSTITUTE, state));
-                });
-        patternSubstitutionButton.setHalfSize(true);
-        patternSubstitutionButton.setTooltipOn(List.of(
-                ButtonToolTips.SubstitutionsOn.text(),
-                ButtonToolTips.SubstitutionsDescEnabled.text()));
-        patternSubstitutionButton.setTooltipOff(List.of(
-                ButtonToolTips.SubstitutionsOff.text(),
-                ButtonToolTips.SubstitutionsDescDisabled.text()));
+        patternSubstitutionButton = createPatternSubstitutionButton();
         widgets.add("wcwtPatternSubstitutions", patternSubstitutionButton);
 
-        patternFluidSubstitutionButton = new ToggleButton(
-                Icon.FLUID_SUBSTITUTION_ENABLED,
-                Icon.FLUID_SUBSTITUTION_DISABLED,
-                state -> {
-                    menu.setPatternFluidSubstitute(state);
-                    ModNetworking.sendToServer(new PatternEncodingOptionPacket(
-                            PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
-                });
-        patternFluidSubstitutionButton.setHalfSize(true);
-        patternFluidSubstitutionButton.setTooltipOn(List.of(
-                ButtonToolTips.FluidSubstitutions.text(),
-                ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
-        patternFluidSubstitutionButton.setTooltipOff(List.of(
-                ButtonToolTips.FluidSubstitutions.text(),
-                ButtonToolTips.FluidSubstitutionsDescDisabled.text()));
+        patternFluidSubstitutionButton = createPatternFluidSubstitutionButton();
         widgets.add("wcwtPatternFluidSubstitutions", patternFluidSubstitutionButton);
+
+        manualPatternSubstitutionButton = createManualPatternSubstitutionButton();
+        widgets.add("wcwtManualPatternSubstitutions", manualPatternSubstitutionButton);
+
+        manualPatternFluidSubstitutionButton = createManualPatternFluidSubstitutionButton();
+        widgets.add("wcwtManualPatternFluidSubstitutions", manualPatternFluidSubstitutionButton);
 
         cycleProcessingOutputButton = new ActionButton(appeng.api.config.ActionItems.CYCLE_PROCESSING_OUTPUT,
                 () -> {
@@ -708,6 +688,82 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 Component.translatable("gui.ae2wtlib.trash"),
                 btn -> menu.openWcwtTrashMenu());
         widgets.add("trashButton", trashButton);
+    }
+
+    private ToggleButton createPatternSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.SUBSTITUTION_ENABLED,
+                Icon.SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setPatternSubstitute(state);
+                    ModNetworking.sendToServer(new PatternEncodingOptionPacket(
+                            PatternEncodingOptionPacket.ACTION_SUBSTITUTE, state));
+                });
+        button.setHalfSize(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.SubstitutionsOn.text(),
+                ButtonToolTips.SubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.SubstitutionsOff.text(),
+                ButtonToolTips.SubstitutionsDescDisabled.text()));
+        return button;
+    }
+
+    private ToggleButton createPatternFluidSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.FLUID_SUBSTITUTION_ENABLED,
+                Icon.FLUID_SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setPatternFluidSubstitute(state);
+                    ModNetworking.sendToServer(new PatternEncodingOptionPacket(
+                            PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
+                });
+        button.setHalfSize(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescDisabled.text()));
+        return button;
+    }
+
+    private ToggleButton createManualPatternSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.SUBSTITUTION_ENABLED,
+                Icon.SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setManualCraftingItemSubstitution(state);
+                    ModNetworking.sendToServer(new PatternModePacket(
+                            PatternModePacket.MODE_MANUAL_ITEM_SUBSTITUTION, state));
+                });
+        button.setHalfSize(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.SubstitutionsOn.text(),
+                ButtonToolTips.SubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.SubstitutionsOff.text(),
+                ButtonToolTips.SubstitutionsDescDisabled.text()));
+        return button;
+    }
+
+    private ToggleButton createManualPatternFluidSubstitutionButton() {
+        ToggleButton button = new ToggleButton(
+                Icon.FLUID_SUBSTITUTION_ENABLED,
+                Icon.FLUID_SUBSTITUTION_DISABLED,
+                state -> {
+                    menu.setManualCraftingFluidSubstitution(state);
+                    ModNetworking.sendToServer(new PatternModePacket(
+                            PatternModePacket.MODE_MANUAL_FLUID_SUBSTITUTION, state));
+                });
+        button.setHalfSize(true);
+        button.setTooltipOn(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescEnabled.text()));
+        button.setTooltipOff(List.of(
+                ButtonToolTips.FluidSubstitutions.text(),
+                ButtonToolTips.FluidSubstitutionsDescDisabled.text()));
+        return button;
     }
 
     private void openExtremeSoundMuffler() {
@@ -2242,6 +2298,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 new ExtendedPanelLayout.Rect(134, imageHeight - 214, 8, 8), imageWidth, imageHeight);
         var clearToPlayerRect = mainLayout.widget("clearToPlayerInv",
                 new ExtendedPanelLayout.Rect(144, imageHeight - 214, 8, 8), imageWidth, imageHeight);
+        var manualPatternSubstitutionsRect = mainLayout.widget("wcwtManualPatternSubstitutions",
+                new ExtendedPanelLayout.Rect(134, imageHeight - 204, 8, 8), imageWidth, imageHeight);
+        var manualPatternFluidSubstitutionsRect = mainLayout.widget("wcwtManualPatternFluidSubstitutions",
+                new ExtendedPanelLayout.Rect(144, imageHeight - 204, 8, 8), imageWidth, imageHeight);
         var clearGridAnvilRect = mainLayout.widget("manual_clearCraftingGrid_anvil",
                 new ExtendedPanelLayout.Rect(78, imageHeight - 168, 8, 8), imageWidth, imageHeight);
         var clearToPlayerAnvilRect = mainLayout.widget("manual_clearToPlayerInv_anvil",
@@ -2264,6 +2324,22 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             clearToPlayerInvButton.setY(topPos + activeClearToPlayerRect.top());
             clearToPlayerInvButton.visible = true;
             clearToPlayerInvButton.active = true;
+        }
+
+        boolean showManualPatternOptions = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING;
+        if (manualPatternSubstitutionButton != null) {
+            manualPatternSubstitutionButton.setX(leftPos + manualPatternSubstitutionsRect.left());
+            manualPatternSubstitutionButton.setY(topPos + manualPatternSubstitutionsRect.top());
+            manualPatternSubstitutionButton.visible = showManualPatternOptions;
+            manualPatternSubstitutionButton.active = showManualPatternOptions;
+            manualPatternSubstitutionButton.setState(menu.isManualCraftingItemSubstitution());
+        }
+        if (manualPatternFluidSubstitutionButton != null) {
+            manualPatternFluidSubstitutionButton.setX(leftPos + manualPatternFluidSubstitutionsRect.left());
+            manualPatternFluidSubstitutionButton.setY(topPos + manualPatternFluidSubstitutionsRect.top());
+            manualPatternFluidSubstitutionButton.visible = showManualPatternOptions;
+            manualPatternFluidSubstitutionButton.active = showManualPatternOptions;
+            manualPatternFluidSubstitutionButton.setState(menu.isManualCraftingFluidSubstitution());
         }
     }
 
@@ -3358,8 +3434,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (cellUpgradesPanel != null) {
                 boolean showCellUpgrades = panelOpen && hasVisibleCellUpgradeSlot();
                 cellUpgradesPanel.setVisible(showCellUpgrades);
-                if (showCellUpgrades && upgradesPanel != null) {
-                    refreshCellUpgradePanelLayout();
+                if (showCellUpgrades && upgradesPanel != null && advancedCodingPanel != null) {
+                    int panelHeight = cellUpgradesPanel.getBounds().getHeight();
+                    cellUpgradesPanel.setPosition(new Point(
+                            upgradesPanel.getBounds().getX(),
+                            advancedCodingPanel.getY() - topPos - panelHeight + 3));
                     refreshCellUpgradeScrollbarLayout();
                 }
             } else if (!panelOpen) {
@@ -5065,16 +5144,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
 
-        var panelBounds = cellUpgradesPanel.getBounds();
-        var fallback = new ExtendedPanelLayout.Rect(
-                panelBounds.getX() + WcwtUpgradeSlotBackground.SCROLLBAR_X,
-                panelBounds.getY() + WcwtUpgradeSlotBackground.SCROLLBAR_Y,
-                0,
-                0);
-        var rect = mainLayout.widget("cellUpgradeScrollbar", fallback, imageWidth, imageHeight);
         cellUpgradesPanel.setScrollbarOffset(new Point(
-                rect.left() - panelBounds.getX(),
-                rect.top() - panelBounds.getY()));
+                mainLayout.widgetInt("cellUpgradeScrollbar", "left", WcwtUpgradeSlotBackground.SCROLLBAR_X),
+                mainLayout.widgetInt("cellUpgradeScrollbar", "top", WcwtUpgradeSlotBackground.SCROLLBAR_Y)));
     }
 
     private boolean handleStonecuttingRecipeClick(double mouseX, double mouseY) {
@@ -5168,13 +5240,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (inRect(relX, relY, batchItemReplacementButton)) {
             playPatternManagementClickSound();
             batchItemSubstitutions = !batchItemSubstitutions;
-            ModNetworking.sendToServer(new PatternModePacket(0, batchItemSubstitutions));
+            ModNetworking.sendToServer(new PatternModePacket(
+                    PatternModePacket.MODE_PATTERN_ITEM_SUBSTITUTIONS, batchItemSubstitutions));
             return true;
         }
         if (inRect(relX, relY, batchFluidReplacementButton)) {
             playPatternManagementClickSound();
             batchFluidSubstitutions = !batchFluidSubstitutions;
-            ModNetworking.sendToServer(new PatternModePacket(1, batchFluidSubstitutions));
+            ModNetworking.sendToServer(new PatternModePacket(
+                    PatternModePacket.MODE_PATTERN_FLUID_SUBSTITUTIONS, batchFluidSubstitutions));
             return true;
         }
 

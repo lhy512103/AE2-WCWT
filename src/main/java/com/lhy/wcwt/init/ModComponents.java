@@ -21,6 +21,8 @@ public final class ModComponents {
 
     public static final String CRAFTING_GRID_LOCKED = "crafting_grid_locked";
     public static final String MANUAL_WORKSPACE_MODE = "manual_workspace_mode";
+    public static final String MANUAL_CRAFTING_ITEM_SUBSTITUTION = "manual_crafting_item_substitution";
+    public static final String MANUAL_CRAFTING_FLUID_SUBSTITUTION = "manual_crafting_fluid_substitution";
     public static final String MANUAL_ANVIL_NAME = "manual_anvil_name";
     public static final String PATTERN_MANAGEMENT_UPLOAD_ENABLED = "pattern_management_upload_enabled";
     public static final String PATTERN_MANAGEMENT_DISPLAY_MODE = "pattern_management_display_mode";

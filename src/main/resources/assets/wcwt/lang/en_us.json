@@ -108,6 +108,7 @@
   "gui.wcwt.advanced_coding.cell_clear.desc": "Clear all cell workbench config slots.",
   "gui.wcwt.advanced_coding.cell_copy_mode": "Copy Mode",
   "gui.wcwt.advanced_coding.cell_copy_mode.desc": "Choose whether config slots are cleared when removing the cell.",
+  "gui.tooltips.megacells.CompressionCutoff": "Compression Cutoff",
   "gui.wcwt_rlpattern_coding.lightningtitle": "Overload Pattern Editor",
   "gui.wcwt_rlpattern_coding.resonatingtitle": "Resonating Pattern Converter",
   "gui.wcwt.rlpc.resonating_convert": "Convert to Resonating",

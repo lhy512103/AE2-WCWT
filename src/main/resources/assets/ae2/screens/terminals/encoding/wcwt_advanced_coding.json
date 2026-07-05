@@ -93,21 +93,28 @@
     },
     "partitioned_storage": {
       "comment": "分区存储按钮（默认 192:168, 高亮 224:128, 24x24 缩放至 12x12）",
-      "left": 68,
+      "left": 58,
       "top": 112,
       "width": 12,
       "height": 12
     },
     "cell_clear": {
       "comment": "清除按钮（默认 192:168, 高亮 224:128, 24x24 缩放至 12x12）",
-      "left": 82,
+      "left": 71,
       "top": 112,
       "width": 12,
       "height": 12
     },
     "cell_copy_mode": {
       "comment": "复制模式按钮（默认 192:168, 高亮 224:128, 24x24 缩放至 12x12）",
-      "left": 96,
+      "left": 84,
+      "top": 112,
+      "width": 12,
+      "height": 12
+    },
+    "cell_compression_cutoff": {
+      "comment": "MEGA Cells 大宗压缩截断按钮，显示当前截断物品",
+      "left": 98,
       "top": 112,
       "width": 12,
       "height": 12

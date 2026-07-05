@@ -55,14 +55,19 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
     public void setMaxRows(int maxRows) {
         this.maxRows = Math.max(1, maxRows);
         setScrollbarRange();
-        scrollbar.setHeight(Math.max(0, getVisibleSlotCount() * WcwtUpgradeSlotBackground.SLOT_SIZE - 2));
+        updateScrollbarHeight();
+        updateScrollbarPosition();
     }
 
     public void setVisible(boolean visible) {
         this.visible = visible;
-        scrollbar.setVisible(visible && scrolling());
         if (!visible) {
+            scrollbar.setVisible(false);
             hideAllSlots();
+        } else {
+            setScrollbarRange();
+            updateScrollbarHeight();
+            updateScrollbarPosition();
         }
     }
 
@@ -73,7 +78,7 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
 
     @Override
     public boolean isVisible() {
-        return visible;
+        return visible && getEnabledSlotCount() > 0;
     }
 
     @Override
@@ -111,6 +116,7 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
         }
 
         setScrollbarRange();
+        updateScrollbarHeight();
         updateScrollbarPosition();
 
         int slotOriginX = x + WcwtUpgradeSlotBackground.SLOT_X;
@@ -143,8 +149,11 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
 
     @Override
     public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+        if (!visible) {
+            return;
+        }
         int slotCount = getVisibleSlotCount();
-        if (!visible || slotCount <= 0) {
+        if (slotCount <= 0) {
             return;
         }
 
@@ -181,6 +190,10 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
 
     private void updateScrollbarPosition() {
         scrollbar.setPosition(new Point(x + scrollbarOffset.getX(), y + scrollbarOffset.getY()));
+    }
+
+    private void updateScrollbarHeight() {
+        scrollbar.setHeight(Math.max(0, getVisibleSlotCount() * WcwtUpgradeSlotBackground.SLOT_SIZE - 2));
     }
 
     private int getEnabledSlotCount() {

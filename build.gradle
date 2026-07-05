@@ -95,9 +95,9 @@ repositories {
         content { includeGroup 'mezz.jei' }
     }
 
-    exclusiveContent {
-        forRepository { maven { url = 'https://cursemaven.com' } }
-        filter { includeGroup 'curse.maven' }
+    maven {
+        url = 'https://cursemaven.com'
+        content { includeGroup 'curse.maven' }
     }
 
     maven {

@@ -54,6 +54,7 @@ dependencies {
     runtimeOnly fg.deobf(libs.codechicken.lib)
     runtimeOnly fg.deobf(libs.brandons.core)
     runtimeOnly fg.deobf(libs.draconic.evolution)
+    runtimeOnly fg.deobf("maven.modrinth:jjuIRIVr:SH2D1n3s")
 
     // ── Maven（需 fg.deobf）──────────────────────────────────
     runtimeOnly fg.deobf("org.appliedenergistics:guideme:${v.guideme.get()}")
@@ -64,6 +65,7 @@ dependencies {
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:${v.jei.get()}")
     runtimeOnly fg.deobf("lain.mods:cosmetic-armor-reworked:${v.cosmetic.armor.get()}")
     runtimeOnly fg.deobf(libs.modern.ui)
+    runtimeOnly fg.deobf("curse.maven:allthecompressed-514045:4938351")
 
     // ══════════════════════════════════════════════════════════
     //  clientRuntimeOnly — 仅 runClient 加载

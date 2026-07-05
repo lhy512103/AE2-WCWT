@@ -106,6 +106,7 @@
   "gui.wcwt.advanced_coding.cell_clear.desc": "清空元件工作台的所有配置格。",
   "gui.wcwt.advanced_coding.cell_copy_mode": "复制模式",
   "gui.wcwt.advanced_coding.cell_copy_mode.desc": "选择取出元件时是否清空配置格。",
+  "gui.tooltips.megacells.CompressionCutoff": "压缩截断",
   "gui.wcwt_rlpattern_coding.lightningtitle": "过载样板编辑区",
   "gui.wcwt_rlpattern_coding.resonatingtitle": "谐振样板转换区",
   "gui.wcwt.rlpc.resonating_convert": "谐振样板转换",
