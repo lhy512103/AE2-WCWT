@@ -2143,8 +2143,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             clearToPlayerInvButton.active = true;
         }
 
-        boolean showManualPatternOptions = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING
-                && patternEncodingMode == EncodingMode.CRAFTING;
+        boolean showManualPatternOptions = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING;
         if (manualPatternSubstitutionButton != null) {
             manualPatternSubstitutionButton.setX(leftPos + manualPatternSubstitutionsRect.left());
             manualPatternSubstitutionButton.setY(topPos + manualPatternSubstitutionsRect.top());

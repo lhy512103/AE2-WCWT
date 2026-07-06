@@ -4,12 +4,14 @@
 
 ### English
 
-1. Fixed recipe pull to the manual crafting area and pattern encoding area ignoring NBT variants.
+1. Fixed manual crafting area item substitution and fluid substitution buttons being incorrectly tied to the pattern encoding mode; they are now independently controlled by the manual workspace mode.
+2. Fixed recipe pull to the manual crafting area and pattern encoding area ignoring NBT variants.
 
 
 ### 中文
 
-1. 修复配方拉取至手动合成区和样板编码区忽略NBT变体的bug。
+1. 修复手动合成区物品替换和流体替换按钮错误地与样板编码模式绑定；现在这两个按钮仅由手动工作区模式独立控制。
+2. 修复配方拉取至手动合成区和样板编码区忽略NBT变体的bug。
 
 
 ## v1.3.2
