@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.2-hotfix
+
+### English
+
+1. Fixed recipe pull to the manual crafting area and pattern encoding area ignoring NBT variants.
+
+
+### 中文
+
+1. 修复配方拉取至手动合成区和样板编码区忽略NBT变体的bug。
+
+
 ## v1.3.2
 
 ### English
