@@ -191,19 +191,21 @@ public class WcwtRecipeTransferHandler
             List<IRecipeSlotView> inputSlots = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream()
                     .limit(mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE)
                     .toList();
-            List<ItemStack> visibleRecipeAlternatives = collectVisibleItemAlternatives(inputSlots);
             if (mode == EncodingMode.CRAFTING) {
                 var ingredients = CraftingRecipeUtil.ensure3by3CraftingMatrix(recipe);
                 List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
                 for (int slot = 0; slot < ingredients.size(); slot++) {
-                    resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), visibleRecipeAlternatives));
+                    List<ItemStack> slotAlternatives = collectPerSlotAlternatives(inputSlots, slot);
+                    resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), slotAlternatives));
                 }
                 return resolved;
             }
             var ingredients = CraftingRecipeUtil.getIngredients(recipe);
             List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
             for (int slot = 0; slot < ingredients.size(); slot++) {
-                resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), visibleRecipeAlternatives));
+                // For non-crafting modes (smithing/stonecutting), JEI slots may not map 1:1
+                // to recipe ingredients. Pass empty alternatives to avoid cross-slot contamination.
+                resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), List.of()));
             }
             return resolved;
         }
@@ -322,9 +324,18 @@ public class WcwtRecipeTransferHandler
         return best.isEmpty() ? null : GenericStack.fromItemStack(best.copyWithCount(1));
     }
 
-    private static List<ItemStack> collectVisibleItemAlternatives(List<IRecipeSlotView> inputSlots) {
-        return inputSlots.stream()
-                .flatMap(slotView -> slotView.getItemStacks().filter(stack -> !stack.isEmpty()).map(ItemStack::copy))
+    /**
+     * Collect visible item alternatives for a single JEI input slot.
+     * Returns only the items visible in this specific slot, preventing
+     * cross-slot NBT contamination when resolving recipe ingredients.
+     */
+    private static List<ItemStack> collectPerSlotAlternatives(List<IRecipeSlotView> inputSlots, int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= inputSlots.size()) {
+            return List.of();
+        }
+        return inputSlots.get(slotIndex).getItemStacks()
+                .filter(stack -> !stack.isEmpty())
+                .map(ItemStack::copy)
                 .toList();
     }
 
