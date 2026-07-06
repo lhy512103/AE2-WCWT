@@ -486,20 +486,35 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                                                                       EmiRecipe recipe,
                                                                       List<Widget> widgets) {
         EncodingMode mode = getTransferMode(recipe);
+        List<@Nullable GenericStack> sparseInputs = new ArrayList<>();
+        Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
+        if (mode == EncodingMode.CRAFTING) {
+            Map<Integer, SlotWidget> orderedInputSlots = getOrderedCraftingInputSlots(inputSlots);
+            if (!orderedInputSlots.isEmpty()) {
+                for (int i = 0; i < 9; i++) {
+                    SlotWidget slot = orderedInputSlots.get(i);
+                    sparseInputs.add(slot == null || slot.getStack() == null || slot.getStack().isEmpty()
+                            ? null
+                            : toGenericStack(priorityContext, slot.getStack()));
+                }
+                return sparseInputs;
+            }
+        }
+
         var backingRecipe = recipe.getBackingRecipe();
         if (backingRecipe != null && mode != EncodingMode.PROCESSING) {
             List<Ingredient> ingredients = mode == EncodingMode.CRAFTING
                     ? appeng.util.CraftingRecipeUtil.ensure3by3CraftingMatrix(backingRecipe)
                     : appeng.util.CraftingRecipeUtil.getIngredients(backingRecipe);
             List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
-            for (Ingredient ingredient : ingredients) {
-                resolved.add(toBestGenericStack(priorityContext, ingredient));
+            for (int i = 0; i < ingredients.size(); i++) {
+                SlotWidget slot = inputSlots.get(i);
+                resolved.add(toBestGenericStack(priorityContext, ingredients.get(i),
+                        getVisibleAlternativesForSlot(recipe, slot, i)));
             }
             return resolved;
         }
 
-        List<@Nullable GenericStack> sparseInputs = new ArrayList<>();
-        Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
         int limit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
         int count = Math.min(recipe.getInputs().size(), limit);
         for (int i = 0; i < count; i++) {
@@ -532,6 +547,23 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     private static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,
                                                                          EmiRecipe recipe) {
         var priorityContext = createPriorityContext(menu);
+        if (getTransferMode(recipe) == EncodingMode.CRAFTING) {
+            List<Widget> widgets = collectRecipeWidgets(recipe);
+            Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
+            List<RequestedIngredient> requested = new ArrayList<>();
+            for (var slotEntry : getOrderedCraftingInputSlots(inputSlots).entrySet()) {
+                RequestedIngredient ingredient = toRequestedIngredient(priorityContext,
+                        slotEntry.getValue().getStack(),
+                        slotEntry.getKey());
+                if (ingredient != null) {
+                    requested.add(ingredient);
+                }
+            }
+            if (!requested.isEmpty()) {
+                return requested;
+            }
+        }
+
         List<RequestedIngredient> result = new ArrayList<>();
         for (int slotIndex = 0; slotIndex < recipe.getInputs().size(); slotIndex++) {
             EmiIngredient ingredient = recipe.getInputs().get(slotIndex);
@@ -595,6 +627,39 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return new RequestedIngredient(List.of(best), count, targetSlot);
     }
 
+    private static Map<Integer, SlotWidget> getOrderedCraftingInputSlots(Map<Integer, SlotWidget> inputSlots) {
+        return inputSlots.values().stream()
+                .filter(slot -> slot != null && slot.getStack() != null && !slot.getStack().isEmpty())
+                .sorted(java.util.Comparator
+                        .comparingInt((SlotWidget slot) -> slot.getBounds().y())
+                        .thenComparingInt(slot -> slot.getBounds().x()))
+                .limit(9)
+                .collect(java.util.stream.Collectors.toMap(
+                        slot -> {
+                            Bounds bounds = slot.getBounds();
+                            int col = Math.max(0, Math.min(2, bounds.x() / 18));
+                            int row = Math.max(0, Math.min(2, bounds.y() / 18));
+                            return row * 3 + col;
+                        },
+                        slot -> slot,
+                        (left, right) -> left,
+                        java.util.LinkedHashMap::new));
+    }
+
+    private static List<ItemStack> getVisibleAlternativesForSlot(EmiRecipe recipe,
+                                                                 @Nullable SlotWidget slot,
+                                                                 int inputIndex) {
+        EmiIngredient ingredient = slot != null && slot.getStack() != null
+                ? slot.getStack()
+                : inputIndex >= 0 && inputIndex < recipe.getInputs().size()
+                ? recipe.getInputs().get(inputIndex)
+                : null;
+        if (ingredient == null || ingredient.isEmpty()) {
+            return List.of();
+        }
+        return getAlternativeStacks(ingredient);
+    }
+
     @Nullable
     private static GenericStack toGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                EmiIngredient ingredient) {
@@ -603,10 +668,23 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
 
         List<GenericStack> candidates = new ArrayList<>();
+        List<ItemStack> itemCandidates = new ArrayList<>();
         for (var emiStack : ingredient.getEmiStacks()) {
             GenericStack candidate = toGenericStack(emiStack, ingredient.getAmount());
             if (candidate != null) {
                 candidates.add(candidate);
+            }
+            ItemStack itemStack = emiStack.getItemStack();
+            if (!itemStack.isEmpty()) {
+                itemCandidates.add(itemStack.copy());
+            }
+        }
+        if (!itemCandidates.isEmpty()) {
+            ItemStack best = WcwtIngredientPriorities.chooseBestItemForEncoding(priorityContext,
+                    Ingredient.of(itemCandidates.stream().map(ItemStack::copy)), itemCandidates);
+            if (!best.isEmpty()) {
+                return GenericStack.fromItemStack(best.copyWithCount(
+                        Math.max(1, (int) Math.min(Integer.MAX_VALUE, ingredient.getAmount()))));
             }
         }
         GenericStack best = WcwtIngredientPriorities.chooseBestGenericStack(priorityContext, candidates);
@@ -628,11 +706,13 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     @Nullable
     private static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
-                                                   Ingredient ingredient) {
+                                                   Ingredient ingredient,
+                                                   List<ItemStack> visibleAlternatives) {
         if (ingredient == null || ingredient.isEmpty()) {
             return null;
         }
-        ItemStack best = WcwtIngredientPriorities.chooseBestItemForEncoding(priorityContext, ingredient);
+        ItemStack best = WcwtIngredientPriorities.chooseBestItemForEncoding(
+                priorityContext, ingredient, visibleAlternatives);
         return best.isEmpty() ? null : GenericStack.fromItemStack(best.copyWithCount(1));
     }
 

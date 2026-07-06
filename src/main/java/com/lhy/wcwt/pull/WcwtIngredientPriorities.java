@@ -154,23 +154,55 @@ public final class WcwtIngredientPriorities {
 
     public static ItemStack chooseBestItemForEncoding(PriorityContext context,
                                                       Ingredient ingredient) {
+        return chooseBestItemForEncoding(context, ingredient, List.of());
+    }
+
+    public static ItemStack chooseBestItemForEncoding(PriorityContext context,
+                                                      Ingredient ingredient,
+                                                      List<ItemStack> visibleAlternatives) {
         if (ingredient == null || ingredient.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        ItemStack bookmarked = chooseBookmarkedItem(context, ingredient);
+        List<ItemStack> exactAlternatives = collectExactAlternatives(ingredient, visibleAlternatives);
+        ItemStack exactVisible = chooseFirstSpecificVisibleAlternative(ingredient, visibleAlternatives);
+        if (!exactVisible.isEmpty()) {
+            return exactVisible;
+        }
+
+        ItemStack bookmarked = exactAlternatives.isEmpty()
+                ? chooseBookmarkedItem(context, ingredient, visibleAlternatives)
+                : choosePrioritizedExactItem(exactAlternatives, context.bookmarkPriorities());
         if (!bookmarked.isEmpty()) {
             return bookmarked;
         }
-        ItemStack favorited = chooseFavoritedItem(context, ingredient);
+        ItemStack favorited = exactAlternatives.isEmpty()
+                ? chooseFavoritedItem(context, ingredient, visibleAlternatives)
+                : choosePrioritizedExactItem(exactAlternatives, context.favoritePriorities());
         if (!favorited.isEmpty()) {
             return favorited;
         }
+        if (!exactAlternatives.isEmpty()) {
+            ItemStack exactNetworkIngredient = findBestExactNetworkIngredient(context, exactAlternatives);
+            if (!exactNetworkIngredient.isEmpty()) {
+                return exactNetworkIngredient;
+            }
+            return exactAlternatives.get(0).copy();
+        }
+
         ItemStack bestNetworkIngredient = findBestNetworkIngredient(context, ingredient);
         if (!bestNetworkIngredient.isEmpty()) {
             return bestNetworkIngredient;
         }
 
         ItemStack[] items = ingredient.getItems();
+        if (visibleAlternatives != null && !visibleAlternatives.isEmpty()) {
+            ItemStack bestVisible = chooseMostSpecificItem(items,
+                    stack -> containsEquivalentStack(visibleAlternatives, stack));
+            if (!bestVisible.isEmpty()) {
+                return bestVisible;
+            }
+        }
+
         ItemStack bestAny = chooseMostSpecificItem(items, stack -> true);
         if (!bestAny.isEmpty()) {
             return bestAny;
@@ -216,38 +248,42 @@ public final class WcwtIngredientPriorities {
         return best;
     }
 
-    private static ItemStack chooseBookmarkedItem(PriorityContext context, Ingredient ingredient) {
+    private static ItemStack chooseBookmarkedItem(PriorityContext context,
+                                                  Ingredient ingredient,
+                                                  List<ItemStack> visibleAlternatives) {
         if (!context.hasBookmarkPriorities()) {
             return ItemStack.EMPTY;
         }
-        ItemStack best = ItemStack.EMPTY;
-        int bestPriority = Integer.MAX_VALUE;
-        for (ItemStack stack : ingredient.getItems()) {
-            if (stack == null || stack.isEmpty() || !ingredient.test(stack)) {
-                continue;
-            }
-            var key = AEItemKey.of(stack);
-            Integer priority = key != null ? context.bookmarkPriorities().get(key) : null;
-            if (priority != null && priority < bestPriority) {
-                best = stack.copy();
-                bestPriority = priority;
-            }
-        }
-        return best;
+        return choosePrioritizedItem(ingredient, visibleAlternatives, context.bookmarkPriorities());
     }
 
-    private static ItemStack chooseFavoritedItem(PriorityContext context, Ingredient ingredient) {
+    private static ItemStack chooseFavoritedItem(PriorityContext context,
+                                                 Ingredient ingredient,
+                                                 List<ItemStack> visibleAlternatives) {
         if (!context.hasFavoritePriorities()) {
             return ItemStack.EMPTY;
         }
+        return choosePrioritizedItem(ingredient, visibleAlternatives, context.favoritePriorities());
+    }
+
+    private static ItemStack choosePrioritizedItem(Ingredient ingredient,
+                                                  List<ItemStack> visibleAlternatives,
+                                                  Map<AEKey, Integer> priorities) {
         ItemStack best = ItemStack.EMPTY;
         int bestPriority = Integer.MAX_VALUE;
-        for (ItemStack stack : ingredient.getItems()) {
+        List<ItemStack> candidates = new ArrayList<>(deduplicateItemAlternatives(visibleAlternatives));
+        for (ItemStack item : ingredient.getItems()) {
+            if (item != null && !item.isEmpty() && !containsEquivalentStack(candidates, item)) {
+                candidates.add(item.copy());
+            }
+        }
+
+        for (ItemStack stack : candidates) {
             if (stack == null || stack.isEmpty() || !ingredient.test(stack)) {
                 continue;
             }
             var key = AEItemKey.of(stack);
-            Integer priority = key != null ? context.favoritePriorities().get(key) : null;
+            Integer priority = key != null ? priorities.get(key) : null;
             if (priority != null && priority < bestPriority) {
                 best = stack.copy();
                 bestPriority = priority;
@@ -276,12 +312,17 @@ public final class WcwtIngredientPriorities {
     public static ItemStack chooseBestItemForPull(PriorityContext context,
                                                   Ingredient ingredient,
                                                   List<ItemStack> visibleAlternatives) {
-        if (WcwtStackMatching.requiresExactItemKeyMatch(visibleAlternatives)) {
-            for (var visibleAlternative : visibleAlternatives) {
-                if (visibleAlternative != null && !visibleAlternative.isEmpty()) {
-                    return visibleAlternative.copy();
-                }
+        ItemStack exactVisible = chooseFirstSpecificVisibleAlternative(ingredient, visibleAlternatives);
+        if (!exactVisible.isEmpty()) {
+            return exactVisible;
+        }
+        List<ItemStack> exactAlternatives = collectExactAlternatives(ingredient, visibleAlternatives);
+        if (!exactAlternatives.isEmpty()) {
+            ItemStack exactNetworkIngredient = findBestExactNetworkIngredient(context, exactAlternatives);
+            if (!exactNetworkIngredient.isEmpty()) {
+                return exactNetworkIngredient;
             }
+            return exactAlternatives.get(0).copy();
         }
 
         ItemStack bestNetworkIngredient = findBestNetworkIngredient(context, ingredient);
@@ -312,6 +353,74 @@ public final class WcwtIngredientPriorities {
                 .map(AEItemKey.class::cast)
                 .map(AEItemKey::toStack)
                 .orElse(ItemStack.EMPTY);
+    }
+
+    private static ItemStack findBestExactNetworkIngredient(PriorityContext context, List<ItemStack> exactAlternatives) {
+        AEItemKey best = null;
+        int bestPriority = Integer.MIN_VALUE;
+        for (ItemStack alternative : exactAlternatives) {
+            AEItemKey key = AEItemKey.of(alternative);
+            if (key == null) {
+                continue;
+            }
+            int priority = context.ingredientPriorities().getOrDefault(key, Integer.MIN_VALUE);
+            if (priority > bestPriority) {
+                best = key;
+                bestPriority = priority;
+            }
+        }
+        return best != null && bestPriority != Integer.MIN_VALUE ? best.toStack() : ItemStack.EMPTY;
+    }
+
+    private static ItemStack chooseFirstSpecificVisibleAlternative(Ingredient ingredient,
+                                                                  List<ItemStack> visibleAlternatives) {
+        if (!WcwtStackMatching.requiresExactItemKeyMatch(visibleAlternatives)) {
+            return ItemStack.EMPTY;
+        }
+        for (var visibleAlternative : deduplicateItemAlternatives(visibleAlternatives)) {
+            if (WcwtStackMatching.hasSpecificData(visibleAlternative)
+                    && ingredient.test(visibleAlternative)) {
+                return visibleAlternative.copy();
+            }
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static List<ItemStack> collectExactAlternatives(Ingredient ingredient,
+                                                           List<ItemStack> visibleAlternatives) {
+        List<ItemStack> exactAlternatives = new ArrayList<>();
+        for (ItemStack visibleAlternative : deduplicateItemAlternatives(visibleAlternatives)) {
+            if (WcwtStackMatching.hasSpecificData(visibleAlternative)
+                    && ingredient.test(visibleAlternative)
+                    && !containsEquivalentStack(exactAlternatives, visibleAlternative)) {
+                exactAlternatives.add(visibleAlternative.copy());
+            }
+        }
+        for (ItemStack stack : ingredient.getItems()) {
+            if (WcwtStackMatching.hasSpecificData(stack)
+                    && !containsEquivalentStack(exactAlternatives, stack)) {
+                exactAlternatives.add(stack.copy());
+            }
+        }
+        return exactAlternatives;
+    }
+
+    private static ItemStack choosePrioritizedExactItem(List<ItemStack> exactAlternatives,
+                                                       Map<AEKey, Integer> priorities) {
+        if (priorities == null || priorities.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+        ItemStack best = ItemStack.EMPTY;
+        int bestPriority = Integer.MAX_VALUE;
+        for (ItemStack stack : exactAlternatives) {
+            AEItemKey key = AEItemKey.of(stack);
+            Integer priority = key != null ? priorities.get(key) : null;
+            if (priority != null && priority < bestPriority) {
+                best = stack.copy();
+                bestPriority = priority;
+            }
+        }
+        return best;
     }
 
     private static boolean isUndamaged(GridInventoryEntry entry) {
