@@ -396,6 +396,17 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (!WcwtStackMatching.requiresExactItemKeyMatch(alternatives)) {
             return alternatives;
         }
+        // Collect all alternatives with specific NBT data first
+        List<ItemStack> specific = new ArrayList<>();
+        for (ItemStack alt : alternatives) {
+            if (alt != null && !alt.isEmpty() && WcwtStackMatching.hasSpecificData(alt)) {
+                specific.add(alt.copy());
+            }
+        }
+        if (!specific.isEmpty()) {
+            return specific;
+        }
+        // Fallback: no specific alternatives found, return first non-empty
         for (ItemStack alternative : alternatives) {
             if (alternative != null && !alternative.isEmpty()) {
                 return List.of(alternative.copy());

@@ -1,7 +1,6 @@
 package com.lhy.wcwt.compat.jei;
 
 import appeng.core.localization.ItemModText;
-import appeng.integration.modules.itemlists.CraftingHelper;
 import appeng.menu.me.items.CraftingTermMenu;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
@@ -17,7 +16,6 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -116,12 +114,12 @@ public class WcwtCraftingRecipeTransferHandler
 
         if (doTransfer) {
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
-            if (menu.getManualWorkspaceMode() != WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
-                return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, true,
-                        transferHelper, false);
-            }
-            ResourceLocation recipeId = recipeHolder.id();
-            CraftingHelper.performTransfer(menu, recipeId, recipe, craftMissing);
+            // Use WcwtPullRecipeTransfer for all locked-grid cases, including CRAFTING mode.
+            // CraftingHelper.performTransfer uses AE2's generic item matching (most abundant first,
+            // no NBT preference), which can pull wrong NBT variants. WcwtPullRecipeTransfer
+            // respects NBT-specific alternatives from JEI slot views, preserving exact item matching.
+            return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, true,
+                    transferHelper, false);
         }
 
         return null;
