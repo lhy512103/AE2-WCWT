@@ -168,6 +168,14 @@ public class ModComponents {
                     .networkSynchronized(ByteBufCodecs.BOOL));
 
     /**
+     * 样板编码区处理样板合并材料开关。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> PROCESSING_MATERIALS_MERGE =
+            register("processing_materials_merge", builder -> builder
+                    .persistent(Codec.BOOL)
+                    .networkSynchronized(ByteBufCodecs.BOOL));
+
+    /**
      * 样板管理区“启用上传样板功能”开关。
      */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> PATTERN_MANAGEMENT_UPLOAD_ENABLED =

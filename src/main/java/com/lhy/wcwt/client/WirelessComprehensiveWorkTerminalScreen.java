@@ -44,6 +44,7 @@ import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
+import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import com.lhy.wcwt.client.gui.panels.*;
 import com.lhy.wcwt.client.gui.widgets.*;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
@@ -433,7 +434,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                                                      Inventory playerInventory,
                                                      Component title,
                                                      ScreenStyle style) {
-        super(menu, playerInventory, title, style);
+        super(menu, playerInventory, title, WcwtTextRendering.applyToStyle(style));
         WcwtFavorites.ensureLoaded();
         hookRepoUpdateListener();
         favoriteItemsButton = addToLeftToolbar(new FavoriteItemsButton(WcwtFavorites::isEnabled,
@@ -478,12 +479,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         stonecuttingPatternScrollbar.setRange(0, 0, STONECUTTING_RESULT_COLS);
         stonecuttingPatternScrollbar.setCaptureMouseWheel(false);
 
-        patternManageSearchField = widgets.addTextField("manage_search");
+        patternManageSearchField = addWcwtManagementTextField("manage_search");
         patternManageSearchField.setPlaceholder(Component.translatable("gui.wcwt.pattern_management.provider_search"));
         patternManageSearchField.setResponder(str -> onPatternManagementSearchChanged());
         patternManageSearchField.setMaxLength(64);
 
-        patternManageMappingField = widgets.addTextField("manage_mapping");
+        patternManageMappingField = addWcwtManagementTextField("manage_mapping");
         patternManageMappingField.setPlaceholder(Component.translatable("gui.wcwt.pattern_management.mapping_input"));
         patternManageMappingField.setMaxLength(64);
         patternManagementPage = mainLayout.widget("management_page", patternManagementPage, imageWidth, imageHeight);
@@ -4140,7 +4141,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int color = (tooExpensive || !mayPickup) ? 0xFF6060 : 0x80FF20;
         var rect = mainLayout.widget("manual_anvil_cost",
                 new ExtendedPanelLayout.Rect(79, imageHeight - 194, 0, 0), imageWidth, imageHeight);
-        guiGraphics.drawString(font, text, rect.left(), rect.top(), color);
+        WcwtTextRendering.drawString(guiGraphics, font, text, rect.left(), rect.top(), color, true);
     }
 
     private boolean hasManualAnvilResult() {
@@ -4318,7 +4319,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         Component displayName = row.entries().size() > 1
                 ? Component.empty().append(row.displayName()).append(Component.literal(" (" + row.entries().size() + ")"))
                 : row.displayName();
-        guiGraphics.drawString(font,
+        WcwtTextRendering.drawString(guiGraphics, font,
                 font.substrByWidth(displayName, 94).getString(),
                 patternManagementPage.left() + 20, rowY + 5 + PATTERN_MANAGEMENT_HEADER_Y_OFFSET,
                 textColor, false);
@@ -4634,7 +4635,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private void renderPatternManagementButtonText(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
                                                    Component text, int color, int mouseX, int mouseY) {
         String label = text.getString();
-        float scale = 0.75F;
+        float scale = WcwtTextRendering.scale(0.75F);
         int textWidth = font.width(label);
         boolean hover = mouseX >= leftPos + rect.left() && mouseX < leftPos + rect.left() + rect.width()
                 && mouseY >= topPos + rect.top() && mouseY < topPos + rect.top() + rect.height();
@@ -4649,19 +4650,46 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         pose.popPose();
     }
 
+    private AETextField addWcwtManagementTextField(String id) {
+        var field = new WcwtScaledPlaceholderTextField(getStyle(), font, 0, 0, 0, 0);
+        field.setBordered(false);
+        field.setMaxLength(25);
+        field.setTextColor(0xFFFFFF);
+        field.setSelectionColor(0xFF000080);
+        field.setVisible(true);
+        widgets.add(id, field);
+        return field;
+    }
+
     private void renderBatchProcessingLabels(GuiGraphics guiGraphics, int color) {
-        drawScaledVerticalText(guiGraphics,
-                Component.translatable("gui.wcwt.batch.pattern_multiplier").getString(),
-                13, imageHeight - 136, color, 0.875F);
-        guiGraphics.drawString(font, Component.translatable("gui.wcwt.batch.item_substitution"),
+        String multiplierLabel = Component.translatable("gui.wcwt.batch.pattern_multiplier").getString();
+        if (WcwtTextRendering.isEnglish()) {
+            drawCenteredScaledText(guiGraphics, multiplierLabel, 17, imageHeight - 125, color, 0.75F);
+        } else {
+            drawScaledVerticalText(guiGraphics, multiplierLabel, 13, imageHeight - 136, color, 0.875F);
+        }
+        WcwtTextRendering.drawString(guiGraphics, font, Component.translatable("gui.wcwt.batch.item_substitution"),
                 108, imageHeight - 131, color, false);
-        guiGraphics.drawString(font, Component.translatable("gui.wcwt.batch.fluid_substitution"),
+        WcwtTextRendering.drawString(guiGraphics, font, Component.translatable("gui.wcwt.batch.fluid_substitution"),
                 108, imageHeight - 113, color, false);
+    }
+
+    private void drawCenteredScaledText(GuiGraphics guiGraphics, String text, int centerX, int y,
+                                          int color, float baseScale) {
+        float renderedScale = WcwtTextRendering.scale(baseScale);
+        float x = centerX - font.width(text) * renderedScale / 2.0F;
+        var pose = guiGraphics.pose();
+        pose.pushPose();
+        pose.translate(x, y, 0);
+        pose.scale(renderedScale, renderedScale, 1.0F);
+        guiGraphics.drawString(font, text, 0, 0, color, false);
+        pose.popPose();
     }
 
     private void drawVerticalText(GuiGraphics guiGraphics, String text, int x, int y, int color) {
         for (int i = 0; i < text.length(); i++) {
-            guiGraphics.drawString(font, text.substring(i, i + 1), x, y + i * 8, color, false);
+            WcwtTextRendering.drawString(guiGraphics, font, text.substring(i, i + 1),
+                    x, y + i * 8, color, false);
         }
     }
 
@@ -4669,7 +4697,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var pose = guiGraphics.pose();
         pose.pushPose();
         pose.translate(x, y, 0);
-        pose.scale(scale, scale, 1.0F);
+        float renderedScale = WcwtTextRendering.scale(scale);
+        pose.scale(renderedScale, renderedScale, 1.0F);
         // 缩小后也按缩小后的字高排布，避免视觉上字符间隙被放大。
         int step = 8;
         for (int i = 0; i < text.length(); i++) {

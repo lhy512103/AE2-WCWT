@@ -1,6 +1,7 @@
 package com.lhy.wcwt.client.gui.panels;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.gui.widgets.BulkCompressionCutoffButton;
+import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import com.lhy.wcwt.client.gui.widgets.DirectionInputButton;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
@@ -692,12 +693,12 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         var font = Minecraft.getInstance().font;
         
         // 样板输入方向编辑区标题（JSON: text.input_direction_title left=4 top=3）
-        guiGraphics.drawString(font,
+        WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.advanced_coding.input_direction_title"),
                 x + 4, y + 3, 0x404040, false);
 
         // 元件编辑区标题（JSON: text.cell_edit_title）
-        guiGraphics.drawString(font,
+        WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.advanced_coding.cell_edit_title"),
                 x + CELL_EDIT_TITLE_X, y + CELL_EDIT_TITLE_Y, 0x404040, false);
         
@@ -798,7 +799,8 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         var copyLabel    = Component.translatable("gui.wcwt.advanced_coding.copy_label");
         var replaceLabel = Component.translatable("gui.wcwt.advanced_coding.replace_label");
         int copyTextW    = font.width(copyLabel);
-        int replaceTextW = font.width(replaceLabel);
+        float replaceScale = WcwtTextRendering.scale(1.0F);
+        float replaceTextW = font.width(replaceLabel) * replaceScale;
         int copyLabelX    = x + COPY_PATTERN_BTN_X + Math.round((COPY_PATTERN_BTN_W - copyTextW)    / 2f);
         int replaceLabelX = x + REPLACE_BTN_X      + Math.round((REPLACE_BTN_W      - replaceTextW) / 2f);
         int labelBaseY = y + COPY_PATTERN_BTN_Y + (COPY_PATTERN_BTN_H - 7) / 2 - 1;
@@ -815,14 +817,14 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
 
         var pose = g.pose();
         pose.pushPose();
-        float copyScale = 0.80f;
+        float copyScale = WcwtTextRendering.scale(0.80f);
         float copyCenterX = x + COPY_PATTERN_BTN_X + COPY_PATTERN_BTN_W / 2f;
         float copyCenterY = copyLabelY + 3.5f;
         pose.translate(copyCenterX, copyCenterY, 0);
         pose.scale(copyScale, copyScale, 1.0f);
         g.drawString(font, copyLabel, Math.round(-copyTextW / 2f), Math.round(-3.5f), 0xFFFFFF, false);
         pose.popPose();
-        g.drawString(font, replaceLabel, replaceLabelX, replaceLabelY, 0xFFFFFF, false);
+        WcwtTextRendering.drawString(g, font, replaceLabel, replaceLabelX, replaceLabelY, 0xFFFFFF, false);
 
         if (DEBUG && (debugTick % 60) == 0) {
             WcwtMod.LOGGER.info("[WCWT-DEBUG] copy label: textW={} btnX={} btnW={} -> labelX={} (btnCenter={}, textCenter={})",

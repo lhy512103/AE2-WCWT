@@ -1,5 +1,6 @@
 {
   "$schema": "schema.json",
+  "helpTopic": "wcwt:wcwt/index.md",
   "$comment": "坐标均以终端 GUI 左上角为基准；left/top 直接表示渲染坐标，right/bottom 表示反向锚点（实际坐标为界面宽/高减去该值），-9999 表示隐藏到屏幕外。",
   "includes": [
     "../terminals/encoding/crafting.json",

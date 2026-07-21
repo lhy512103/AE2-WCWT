@@ -4,6 +4,7 @@ import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.Scrollbar;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
+import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.ResonatingLightningPatternActionPacket;
@@ -159,13 +160,13 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
         var font = Minecraft.getInstance().font;
         if (HAS_AE2LT) {
-            guiGraphics.drawString(font,
+            WcwtTextRendering.drawString(guiGraphics, font,
                     Component.translatable("gui.wcwt_rlpattern_coding.lightningtitle"),
                     x + 3, y + 3, 0x404040, false);
             renderLightningEntries(guiGraphics, mouseX, mouseY);
         }
         if (HAS_AE2CS) {
-            guiGraphics.drawString(font,
+            WcwtTextRendering.drawString(guiGraphics, font,
                     Component.translatable("gui.wcwt_rlpattern_coding.resonatingtitle"),
                     x + 3, y + 95, 0x404040, false);
         }
@@ -197,7 +198,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
                 guiGraphics.renderItem(stack, slotX + 1, rowY + 1);
                 guiGraphics.renderItemDecorations(Minecraft.getInstance().font, stack, slotX + 1, rowY + 1);
             }
-            guiGraphics.drawString(Minecraft.getInstance().font,
+            WcwtTextRendering.drawString(guiGraphics, Minecraft.getInstance().font,
                     entry.label(), x + LIGHTNING_TEXT_X, rowY + 5, 0x404040, false);
             renderModeSwitch(guiGraphics, entry, rowY);
         }

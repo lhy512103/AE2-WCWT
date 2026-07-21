@@ -1,4 +1,5 @@
 package com.lhy.wcwt.client.gui.panels;
+import com.lhy.wcwt.client.gui.WcwtTextRendering;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -77,7 +78,7 @@ public class ToolkitPanel extends ExtendedUIPanel {
     @Override
     protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         var font = Minecraft.getInstance().font;
-        guiGraphics.drawString(font,
+        WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.extended_ui.toolkit"),
                 x + 4, y + 3, 0x404040, false);
         renderSlotIcons(guiGraphics);

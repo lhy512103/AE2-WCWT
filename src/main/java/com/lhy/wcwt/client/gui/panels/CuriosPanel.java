@@ -1,4 +1,5 @@
 package com.lhy.wcwt.client.gui.panels;
+import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -72,7 +73,7 @@ public class CuriosPanel extends ExtendedUIPanel {
     protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         // 渲染标题
         var font = Minecraft.getInstance().font;
-        guiGraphics.drawString(font, 
+        WcwtTextRendering.drawString(guiGraphics, font,
             Component.translatable("gui.wcwt.extended_ui.curios"),
             x + 4, y + 3, 0x404040, false);
         

@@ -1,6 +1,7 @@
 package com.lhy.wcwt.client.gui.widgets;
 
 import appeng.client.gui.widgets.ITooltip;
+import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
@@ -69,9 +70,10 @@ public class PatternMultiplierButton extends Button implements ITooltip {
         int textColor = pressedLook ? 0xA0A0A0 : 0xFFFFFF;
         
         // 居中绘制文本
-        int textX = getX() + (17 - font.width(text)) / 2;
-        int textY = getY() + (16 - font.lineHeight) / 2 + (pressedLook ? 1 : 0);
-        guiGraphics.drawString(font, text, textX, textY, textColor);
+        float scale = WcwtTextRendering.scale(1.0F);
+        float textX = getX() + (17 - font.width(text) * scale) / 2.0F;
+        float textY = getY() + (16 - font.lineHeight * scale) / 2.0F + (pressedLook ? 1 : 0);
+        WcwtTextRendering.drawString(guiGraphics, font, text, textX, textY, textColor, true);
     }
     
     @Override

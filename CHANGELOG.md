@@ -4,56 +4,37 @@
 
 ### English
 
-1. Fixed locked crafting-grid JEI/EMI previews becoming extremely slow on recipes with very large displayed input amounts by using batched availability checks and reusing EMI preview results within the same client tick.
-2. Fixed recipe pulls counting player inventory ingredients without actually moving them into the manual crafting grid.
-3. Changed ME recipe pulls and maximum-transfer planning to process matching quantities in batches instead of one item at a time.
-4. Synchronized WCWT's local runtime integration dependencies with JEICT, adding the previously missing content mods, utility libraries, and AE2 addons used for development compatibility testing.
-5. Updated the development and build NeoForge version from 21.1.215 to 21.1.233 while keeping the declared compatibility range unchanged at 21.1.215 and above.
-6. Added ATO and Allthemodium to the local runtime dependencies for integration and compatibility testing.
-7. Reduced manual crafting latency with item substitution enabled, especially for durability-changing ingredients, by reusing recipe alternatives and batching grid refresh and inventory synchronization across each crafting action.
-8. Added AE Infinity Booster to the local runtime dependencies for integration and compatibility testing.
-9. Fixed JEI ghost dragging of special ingredient types into the advanced coding component editor, including Lightning Tech lightning and Mekanism chemicals, by reusing WCWT's AE2 ingredient conversion path.
-10. Added ClientSort to the local runtime dependencies for integration and compatibility testing.
-11. Added Inventory Essentials and Balm to the local runtime dependencies for integration and compatibility testing.
-12. Prevented quick-move and inventory-sorting automation from moving armor, cosmetic armor, curios, and offhand items; these equipment slots now only allow manual insertion and removal.
-13. Fixed AE pick-block extraction leaving the client on the previous held item when the picked block was placed into another hotbar slot, and fixed mouse-wheel transfers targeting the hidden crafting grid while the manual workspace was in smithing or anvil mode.
-14. Reimplemented opening a pattern provider target container entirely in WCWT, including provider target-direction resolution and validated remote-menu lifetime handling, so the feature no longer depends on ExtendedAE Plus and no longer closes intermittently at long range.
-15. Fixed provider target containers that expose their UI through block interaction instead of `MenuProvider` by matching the 1.20.1 implementation's validated provider-location snapshot and empty-hand target activation fallback.
-16. Fixed terminal hotkeys triggering while typing an item name in the manual anvil workspace.
-17. Fixed shift-moving encoded patterns from the player inventory targeting the last provider whose cache-upload button was used after that provider was no longer visible.
-18. Fixed stutter, failed placement, and first-click cursor desync when rapidly moving patterns between adjacent pattern-management slots by using ordered container-slot synchronization and avoiding a full provider-list rebuild for every click.
-19. Fixed pattern icons in the pattern-management area taking a provider-list refresh to appear after placement by reading the already synchronized menu-slot cache directly, without extra network requests or server scans.
-20. Added AE2 Import Export Card to the local runtime dependencies for integration and compatibility testing.
-21. Updated the Applied Energistics 2 Wireless Terminals local runtime dependency file from 8048692 to 8450398.
-22. Updated AE2WTLib and its compile-time API from 19.5.0 to 19.5.1 to satisfy the updated AE2 Wireless Terminals runtime requirement.
-23. Added a default-enabled client option controlling whether encoding also fills the pattern-provider search field when upload is disabled; when the option is off, upload-enabled encoding still fills the field normally.
-
+1. Fixed severe lag caused by JEI/EMI checking very large recipe inputs one item at a time while the crafting grid is locked.
+2. Fixed recipe transfer counting materials in the player inventory as satisfied without actually moving them into the manual crafting grid.
+3. Improved manual crafting responsiveness with item substitution enabled, especially for ingredients with durability.
+4. Fixed JEI being unable to drag special ingredient types into the component editor in the advanced encoding interface.
+5. Prevented quick-move and inventory-sorting mods from automatically moving armor, cosmetic armor, Curios, and offhand items; these equipment slots now only allow manual insertion and removal.
+6. Fixed AE pick-block extraction leaving the previously held item selected when the extracted block was placed into another hotbar slot.
+7. Fixed mouse-wheel transfers entering the hidden crafting grid while the manual workspace was in smithing-table or anvil mode.
+8. Reimplemented opening a pattern provider's target container inside WCWT, removing the dependency on ExtendedAE Plus for this feature.
+9. Fixed terminal hotkeys triggering while typing an item name in the manual anvil workspace.
+10. Fixed Shift-moving encoded patterns from the player inventory targeting the last provider used by the cached-pattern save action after that provider was no longer visible.
+11. Added a default-enabled client option controlling whether encoding fills the resolved mapping into Provider Search while pattern upload is disabled.
+12. Added bilingual Chinese and English GuideME documentation for the terminal.
+13. Reduced English text throughout the terminal interface.
+14. Prevented the currently open WCWT terminal from being removed through its Curios slot without affecting other terminals or accessories.
 
 ### 中文
 
-1. 修复锁定合成网格后，JEI/EMI 对超大输入数量配方逐个检查材料导致严重卡顿的问题；改为批量可用量检查，并让 EMI 在同一客户端 tick 复用预览结果。
+1. 修复锁定合成网格后，JEI/EMI 对超大输入数量配方逐个检查材料导致严重卡顿的问题。
 2. 修复配方拉取将玩家物品栏材料计为已满足、却未实际移动到手动合成网格的问题。
-3. 将 ME 配方拉取与最大拉取数量规划改为批量处理匹配数量，避免逐个物品循环。
-4. 将 WCWT 的本地运行时兼容测试依赖与 JEICT 对齐，补充此前缺少的内容模组、工具库与 AE2 扩展模组。
-5. 将开发与构建使用的 NeoForge 从 21.1.215 升级到 21.1.233，同时保持声明的兼容范围为 21.1.215 及以上不变。
-6. 将 ATO 与 Allthemodium 加入本地运行时依赖，用于联动与兼容性测试。
-7. 优化开启物品替换后的手动合成延迟，尤其是会改变耐久度的材料；同一次合成操作复用配方候选，并合并网格刷新与库存同步。
-8. 将 AE Infinity Booster 加入本地运行时依赖，用于联动与兼容性测试。
-9. 修复 JEI 无法将特殊类型材料拖入高级编码界面元件编辑区的问题，包括闪电科技的闪电和 Mekanism 化学品；现在会复用 WCWT 的 AE2 材料转换路径。
-10. 将 ClientSort 加入本地运行时依赖，用于联动与兼容性测试。
-11. 将 Inventory Essentials 与 Balm 加入本地运行时依赖，用于联动与兼容性测试。
-12. 禁止快速移动和整理模组自动移动盔甲、装饰盔甲、饰品及副手物品；这些装备槽现在只能手动放入和拿取。
-13. 修复从 AE 网络中键选取方块到其它快捷栏槽后客户端仍显示原手持物品的问题，并修复手动工作区处于锻造台或铁砧模式时鼠标滚轮转移仍将物品放入隐藏工作台合成格的问题。
-14. 在 WCWT 内部重新实现打开样板供应器目标容器的功能，包括供应器目标方向解析与远程菜单有效期校验；该功能不再依赖 ExtendedAE Plus，并修复远距离打开后界面偶发失效的问题。
-15. 修复目标机器通过方块交互而非 `MenuProvider` 打开界面时仍提示失败的问题；对齐 1.20.1 实现，加入供应器位置快照校验和空手激活目标方块的回退路径。
-16. 修复在手动合成区的铁砧名称输入框内打字时仍会触发终端快捷键的问题。
-17. 修复从玩家物品栏 Shift 移动已编码样板时，在上次点击缓存区依次保存按钮的供应器已不再可见后，仍错误转移到该供应器的问题。
-18. 修复在样板管理区快速移动相邻槽位内样板时出现卡顿、无法放入，以及首次拿起后鼠标样板立即消失的问题；现在改用菜单槽位的有序容器同步，并避免每次点击都重建和下发完整供应器列表。
-19. 修复样板管理区放下样板后图标需要等待供应器列表刷新才显示的问题；现在直接读取已同步的菜单槽位缓存，不增加额外网络请求或服务端扫描。
-20. 将 AE2 Import Export Card 加入本地运行时依赖，用于联动与兼容性测试。
-21. 将 Applied Energistics 2 Wireless Terminals 本地运行时依赖文件从 8048692 更新到 8450398。
-22. 将 AE2WTLib 及其编译期 API 从 19.5.0 更新到 19.5.1，以满足新版 AE2 Wireless Terminals 的运行时依赖要求。
-23. 新增默认开启的客户端配置，用于控制未开启上传功能时，编码样板是否仍将解析后的映射填入供应器搜索框；关闭该配置后，开启上传功能进行编码时仍会正常填入。
+3. 优化开启物品替换后的手动合成延迟，尤其是会改变耐久度的材料。
+4. 修复 JEI 无法将特殊类型材料拖入高级编码界面元件编辑区的问题。
+5. 禁止快速移动和整理模组自动移动盔甲、装饰盔甲、饰品及副手物品；这些装备槽现在只能手动放入和拿取。
+6. 修复从 AE 网络中键选取方块到其它快捷栏槽后客户端仍显示原手持物品的问题。
+7. 修复手动工作区处于锻造台或铁砧模式时鼠标滚轮转移仍将物品放入隐藏工作台合成格的问题。
+8. 在 WCWT 内部重新实现打开样板供应器目标容器的功能，该功能不再依赖 ExtendedAE Plus。
+9. 修复在手动合成区的铁砧名称输入框内打字时仍会触发终端快捷键的问题。
+10. 修复从玩家物品栏 Shift 移动已编码样板时，在上次点击缓存区依次保存按钮的供应器已不再可见后，仍错误转移到该供应器的问题。
+11. 新增默认开启的客户端配置，用于控制未开启上传功能时，编码样板是否仍将解析后的映射填入供应器搜索框。
+12. 为终端添加中英文 GuideME 指南。
+13. 将终端界面内的英文文字统一缩小。
+14. 禁止从 Curios 饰品槽中取下当前已打开的 WCWT 终端，同时不影响其它终端和饰品。
 
 
 ## v1.3.2-hotfix

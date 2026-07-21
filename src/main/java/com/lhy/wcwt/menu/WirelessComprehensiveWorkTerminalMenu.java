@@ -265,6 +265,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
         this.manualCraftingItemSubstitution = host.isManualCraftingItemSubstitution();
         this.manualCraftingFluidSubstitution = host.isManualCraftingFluidSubstitution();
+        this.processingMaterialsMerge = host.isProcessingMaterialsMerge();
         // 注意：不要在这里 new ToolboxMenu(this)！
         // 父类 MEStorageMenu 的构造器已经 new ToolboxMenu(this) 并添加了 9 个 TOOLBOX 槽，
         // 若在此重复创建则共有 18 个槽，界面会显示"两重"效果。
@@ -834,7 +835,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
     }
 
-    public static class WcwtCurioSlot extends SlotItemHandler implements WcwtActivatableSlot {
+    public final class WcwtCurioSlot extends SlotItemHandler implements WcwtActivatableSlot {
         private final String identifier;
         private final boolean canToggleRendering;
         private boolean renderStatus;
@@ -862,6 +863,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         public void toggleRenderStatus() {
             renderStatus = !renderStatus;
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            ItemStack currentTerminal = menuHost != null ? menuHost.getItemStack() : ItemStack.EMPTY;
+            return getItem() != currentTerminal && super.mayPickup(player);
         }
 
         @Override
@@ -1771,6 +1778,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             case PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE -> setPatternFluidSubstitute(value);
             case PatternEncodingOptionPacket.ACTION_PROCESSING_MERGE_MATERIALS -> {
                 processingMaterialsMerge = value;
+                if (menuHost != null) {
+                    menuHost.setProcessingMaterialsMerge(value);
+                }
                 if (value && patternEncodingLogic != null && getPatternEncodingMode() == EncodingMode.PROCESSING) {
                     wcwtMergeProcessingGuard = true;
                     try {

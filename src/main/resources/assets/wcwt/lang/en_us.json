@@ -111,7 +111,7 @@
   "gui.wcwt.pattern_management.display_mode.visible": "Visible providers",
   "gui.wcwt.pattern_management.display_mode.not_full": "Non-full providers",
   "gui.wcwt.pattern_management.search_mode.tooltip": "Switch search mode: %s",
-  "gui.wcwt.batch.pattern_multiplier": "MULTI",
+  "gui.wcwt.batch.pattern_multiplier": "SCALE",
   "gui.wcwt.batch.item_substitution": "Item Swap",
   "gui.wcwt.batch.fluid_substitution": "Fluid Swap",
   "gui.wcwt.manual_workspace.smithing": "Smithing Table",

@@ -183,6 +183,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private boolean manualCraftingItemSubstitution;
     /** 手动合成区流体替换开关，持久化到终端物品自身。 */
     private boolean manualCraftingFluidSubstitution;
+    /** 样板编码区处理样板合并材料开关，持久化到终端物品自身。 */
+    private boolean processingMaterialsMerge;
     /** 左上铁砧工作区当前命名文本。 */
     private String manualAnvilName;
     
@@ -284,6 +286,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
                 ModComponents.MANUAL_CRAFTING_ITEM_SUBSTITUTION.get(), false);
         this.manualCraftingFluidSubstitution = getItemStack().getOrDefault(
                 ModComponents.MANUAL_CRAFTING_FLUID_SUBSTITUTION.get(), false);
+        this.processingMaterialsMerge = getItemStack().getOrDefault(
+                ModComponents.PROCESSING_MATERIALS_MERGE.get(), false);
         this.manualAnvilName = getItemStack().getOrDefault(ModComponents.MANUAL_ANVIL_NAME.get(), "");
         this.currentExtendedUI = consumePendingExtendedUi(player);
         if (DEBUG_TOOLKIT) {
@@ -918,6 +922,15 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     public void setManualCraftingFluidSubstitution(boolean substitute) {
         this.manualCraftingFluidSubstitution = substitute;
         getItemStack().set(ModComponents.MANUAL_CRAFTING_FLUID_SUBSTITUTION.get(), substitute);
+    }
+
+    public boolean isProcessingMaterialsMerge() {
+        return processingMaterialsMerge;
+    }
+
+    public void setProcessingMaterialsMerge(boolean merge) {
+        this.processingMaterialsMerge = merge;
+        getItemStack().set(ModComponents.PROCESSING_MATERIALS_MERGE.get(), merge);
     }
 
     public String getManualAnvilName() {
