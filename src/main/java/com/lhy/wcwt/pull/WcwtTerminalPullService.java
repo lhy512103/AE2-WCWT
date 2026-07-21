@@ -87,7 +87,6 @@ public final class WcwtTerminalPullService {
         InternalInventory craftingGrid = getPullTargetInventory(menu, targetMode);
 
         var playerInventorySnapshot = snapshotInventory(playerInventory.items);
-        var reservedPlayerItems = new int[playerInventorySnapshot.size()];
         var craftingGridSnapshot = craftingGrid != null ? snapshotInventory(craftingGrid) : List.<ItemStack>of();
         var reservedCraftingGridItems = craftingGrid != null ? new int[craftingGridSnapshot.size()] : null;
         int transferSets = payload.maxTransfer()
@@ -110,17 +109,22 @@ public final class WcwtTerminalPullService {
             }
 
             var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(requested.alternatives());
-            int satisfiedByInventory = consumeFromPlayerInventory(playerInventorySnapshot, menu, requested.alternatives(),
-                    wideIngredient, requested.count(), reservedPlayerItems);
             int satisfiedByCraftingGrid = consumeFromCraftingGrid(craftingGridSnapshot, requested.alternatives(),
-                    wideIngredient, requested.count() - satisfiedByInventory, reservedCraftingGridItems, requestedSlot);
-            int missingAmount = requested.count() - satisfiedByInventory - satisfiedByCraftingGrid;
+                    wideIngredient, requested.count(), reservedCraftingGridItems, requestedSlot);
+            int amountToMove = requested.count() - satisfiedByCraftingGrid;
+            List<ItemStack> pulledStacks = craftingGrid == null
+                    ? new ArrayList<>()
+                    : extractFromPlayerInventory(playerInventory, menu, requested.alternatives(), wideIngredient,
+                            amountToMove);
+            int satisfiedByInventory = pulledStacks.stream().mapToInt(ItemStack::getCount).sum();
+            int missingAmount = amountToMove - satisfiedByInventory;
             if (missingAmount <= 0) {
-                continue;
+                missingAmount = 0;
             }
 
             List<ItemStack> extractedStacks = WcwtMeIngredientExtraction.extractAlternatives(storage, energy, actionSource,
                     filter, requested.alternatives(), missingAmount);
+            pulledStacks.addAll(extractedStacks);
             int extractedCount = extractedStacks.stream().mapToInt(ItemStack::getCount).sum();
             int remainingToHandle = missingAmount - extractedCount;
             if (remainingToHandle > 0 && payload.craftMissing() && craftingService != null) {
@@ -138,11 +142,7 @@ public final class WcwtTerminalPullService {
                 missingItems.add(getDisplayStack(requested).copyWithCount(remainingToHandle));
             }
 
-            if (extractedStacks.isEmpty()) {
-                continue;
-            }
-
-            for (ItemStack extractedStack : extractedStacks) {
+            for (ItemStack extractedStack : pulledStacks) {
                 ItemStack remainder = extractedStack;
                 if (craftingGrid != null) {
                     remainder = insertIntoCraftingGrid(craftingGrid, requestedSlot, remainder);
@@ -312,14 +312,12 @@ public final class WcwtTerminalPullService {
                 return false;
             }
             var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(ingredient.alternatives());
-            for (int unit = 0; unit < ingredient.count(); unit++) {
-                if (!WcwtMeIngredientExtraction.reserveOneUnit(remaining, ingredient.alternatives(), wideIngredient)) {
-                    if (craftMissing && craftingService != null
-                            && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null) {
-                        continue;
-                    }
-                    return false;
-                }
+            int reserved = WcwtMeIngredientExtraction.reserveAmount(remaining, ingredient.alternatives(), wideIngredient,
+                    ingredient.count());
+            if (reserved < ingredient.count()
+                    && !(craftMissing && craftingService != null
+                            && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null)) {
+                return false;
             }
         }
 
@@ -339,33 +337,30 @@ public final class WcwtTerminalPullService {
         }
     }
 
-    private static int consumeFromPlayerInventory(List<ItemStack> inventorySnapshot, MEStorageMenu menu,
-            List<ItemStack> alternatives, @Nullable Ingredient wideIngredient, int amount,
-            int[] reservedPlayerItems) {
-        int matched = 0;
-        for (int i = 0; i < inventorySnapshot.size(); i++) {
+    private static List<ItemStack> extractFromPlayerInventory(Inventory inventory, MEStorageMenu menu,
+            List<ItemStack> alternatives, @Nullable Ingredient wideIngredient, int amount) {
+        List<ItemStack> extracted = new ArrayList<>();
+        int remaining = Math.max(0, amount);
+        for (int i = 0; i < inventory.items.size() && remaining > 0; i++) {
             if (menu.isPlayerInventorySlotLocked(i)) {
                 continue;
             }
 
-            ItemStack stack = inventorySnapshot.get(i);
+            ItemStack stack = inventory.items.get(i);
             if (stack.isEmpty() || !matchesAnyAlternative(stack, alternatives, wideIngredient)) {
                 continue;
             }
 
-            int available = stack.getCount() - reservedPlayerItems[i];
-            if (available <= 0) {
-                continue;
-            }
-
-            int consumed = Math.min(available, amount - matched);
-            reservedPlayerItems[i] += consumed;
-            matched += consumed;
-            if (matched >= amount) {
-                return matched;
+            ItemStack taken = stack.split(Math.min(stack.getCount(), remaining));
+            if (!taken.isEmpty()) {
+                extracted.add(taken);
+                remaining -= taken.getCount();
             }
         }
-        return matched;
+        if (!extracted.isEmpty()) {
+            inventory.setChanged();
+        }
+        return extracted;
     }
 
     private static int consumeFromCraftingGrid(List<ItemStack> craftingGridSnapshot, List<ItemStack> alternatives,

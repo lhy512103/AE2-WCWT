@@ -1,12 +1,17 @@
 package com.lhy.wcwt.pull;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
@@ -38,149 +43,127 @@ public final class WcwtMeIngredientExtraction {
 
     public static List<ItemStack> extractAlternatives(MEStorage storage, IEnergySource energy, IActionSource actionSource,
             @Nullable IPartitionList filter, List<ItemStack> alternativeStacks, int amount) {
-        List<AEItemKey> preferredKeys = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks).stream()
-                .map(AEItemKey::of)
-                .filter(Objects::nonNull)
-                .filter(k -> filter == null || filter.isListed(k))
-                .distinct()
-                .toList();
-        Ingredient wide = ingredientFromItemStacks(alternativeStacks);
         List<ItemStack> orderedAlts = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks);
+        Ingredient wide = ingredientFromItemStacks(orderedAlts);
         boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
+        List<AEItemKey> candidates = buildCandidateKeys(storage, filter, orderedAlts, wide, exactOnly);
 
         Map<AEItemKey, Integer> extractedByKey = new LinkedHashMap<>();
-        for (int i = 0; i < amount; i++) {
-            AEItemKey used = tryExtractOneUnit(storage, energy, actionSource, filter, preferredKeys, wide, orderedAlts,
-                    exactOnly);
-            if (used == null) {
+        int remaining = Math.max(0, amount);
+        for (AEItemKey candidate : candidates) {
+            if (remaining <= 0) {
                 break;
             }
-            extractedByKey.merge(used, 1, Integer::sum);
+            long extracted = StorageHelper.poweredExtraction(energy, storage, candidate, remaining, actionSource);
+            if (extracted <= 0) {
+                continue;
+            }
+            int extractedAmount = (int) Math.min(extracted, remaining);
+            extractedByKey.merge(candidate, extractedAmount, Integer::sum);
+            remaining -= extractedAmount;
         }
         return extractedByKey.entrySet().stream()
                 .map(e -> e.getKey().toStack(e.getValue()))
                 .toList();
     }
 
-    @Nullable
-    private static AEItemKey tryExtractOneUnit(MEStorage storage, IEnergySource energy, IActionSource actionSource,
-            @Nullable IPartitionList filter, List<AEItemKey> preferredKeys, @Nullable Ingredient wide,
-            List<ItemStack> orderedAlts, boolean exactOnly) {
-        for (AEItemKey candidate : preferredKeys) {
-            long extracted = StorageHelper.poweredExtraction(energy, storage, candidate, 1, actionSource);
-            if (extracted > 0) {
-                return candidate;
-            }
-        }
+    private static List<AEItemKey> buildCandidateKeys(MEStorage storage, @Nullable IPartitionList filter,
+            List<ItemStack> orderedAlts, @Nullable Ingredient wide, boolean exactOnly) {
+        LinkedHashSet<AEItemKey> candidates = new LinkedHashSet<>();
+        orderedAlts.stream()
+                .map(AEItemKey::of)
+                .filter(Objects::nonNull)
+                .filter(key -> filter == null || filter.isListed(key))
+                .forEach(candidates::add);
         if (exactOnly) {
-            return null;
+            return List.copyOf(candidates);
         }
+
+        List<AvailableCandidate> available = new ArrayList<>();
+        for (var entry : storage.getAvailableStacks()) {
+            if (entry.getLongValue() > 0 && entry.getKey() instanceof AEItemKey itemKey
+                    && (filter == null || filter.isListed(itemKey))) {
+                available.add(new AvailableCandidate(itemKey, entry.getLongValue()));
+            }
+        }
+        available.sort((left, right) -> Long.compare(right.amount(), left.amount()));
         if (wide != null) {
-            for (var entry : storage.getAvailableStacks()) {
-                if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
-                    continue;
-                }
-                if (filter != null && !filter.isListed(itemKey)) {
-                    continue;
-                }
-                if (!itemKey.matches(wide)) {
-                    continue;
-                }
-                long extracted = StorageHelper.poweredExtraction(energy, storage, itemKey, 1, actionSource);
-                if (extracted > 0) {
-                    return itemKey;
-                }
-            }
+            available.stream()
+                    .map(AvailableCandidate::key)
+                    .filter(key -> key.matches(wide))
+                    .forEach(candidates::add);
         }
+        Set<Item> fallbackItems = new HashSet<>();
         for (ItemStack alt : orderedAlts) {
-            if (alt.isEmpty()) {
-                continue;
-            }
-            var wantedItem = alt.getItem();
-            for (var entry : storage.getAvailableStacks()) {
-                if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
-                    continue;
-                }
-                if (filter != null && !filter.isListed(itemKey)) {
-                    continue;
-                }
-                if (itemKey.getItem() != wantedItem) {
-                    continue;
-                }
-                long extracted = StorageHelper.poweredExtraction(energy, storage, itemKey, 1, actionSource);
-                if (extracted > 0) {
-                    return itemKey;
-                }
+            if (!alt.isEmpty()) {
+                fallbackItems.add(alt.getItem());
             }
         }
-        return null;
+        available.stream()
+                .map(AvailableCandidate::key)
+                .filter(key -> fallbackItems.contains(key.getItem()))
+                .forEach(candidates::add);
+        return List.copyOf(candidates);
     }
 
     public static boolean reserveOneUnit(Map<AEItemKey, Long> remaining, List<ItemStack> alternativeStacks,
             @Nullable Ingredient wideIngredient) {
-        List<AEItemKey> preferredKeys = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks).stream()
-                .map(AEItemKey::of)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
+        return reserveAmount(remaining, alternativeStacks, wideIngredient, 1) == 1;
+    }
+
+    public static int reserveAmount(Map<AEItemKey, Long> remaining, List<ItemStack> alternativeStacks,
+            @Nullable Ingredient wideIngredient, int requestedAmount) {
+        if (requestedAmount <= 0) {
+            return 0;
+        }
         List<ItemStack> orderedAlts = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks);
         boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
+        LinkedHashSet<AEItemKey> candidates = new LinkedHashSet<>();
+        orderedAlts.stream()
+                .map(AEItemKey::of)
+                .filter(Objects::nonNull)
+                .forEach(candidates::add);
 
-        for (AEItemKey candidate : preferredKeys) {
-            long available = remaining.getOrDefault(candidate, 0L);
-            if (available > 0) {
-                remaining.put(candidate, available - 1);
-                return true;
-            }
-        }
-        if (exactOnly) {
-            return false;
-        }
-        if (wideIngredient != null) {
-            AEItemKey pick = null;
-            long pickAmount = 0;
+        if (!exactOnly && wideIngredient != null) {
             for (var e : remaining.entrySet()) {
                 AEItemKey key = e.getKey();
-                long avail = e.getValue();
-                if (avail <= 0) {
-                    continue;
+                if (e.getValue() > 0 && key.matches(wideIngredient)) {
+                    candidates.add(key);
                 }
-                if (!key.matches(wideIngredient)) {
-                    continue;
-                }
-                if (avail > pickAmount) {
-                    pickAmount = avail;
-                    pick = key;
-                }
-            }
-            if (pick != null) {
-                remaining.put(pick, pickAmount - 1);
-                return true;
             }
         }
-        for (ItemStack alt : orderedAlts) {
-            if (alt.isEmpty()) {
+        if (!exactOnly) {
+            Set<Item> fallbackItems = new HashSet<>();
+            for (ItemStack alt : orderedAlts) {
+                if (!alt.isEmpty()) {
+                    fallbackItems.add(alt.getItem());
+                }
+            }
+            for (var e : remaining.entrySet()) {
+                AEItemKey key = e.getKey();
+                if (e.getValue() > 0 && fallbackItems.contains(key.getItem())) {
+                    candidates.add(key);
+                }
+            }
+        }
+
+        int reserved = 0;
+        for (AEItemKey candidate : candidates) {
+            long available = remaining.getOrDefault(candidate, 0L);
+            int needed = requestedAmount - reserved;
+            if (available <= 0 || needed <= 0) {
                 continue;
             }
-            var wantedItem = alt.getItem();
-            AEItemKey pick = null;
-            long pickAmount = 0;
-            for (var e : remaining.entrySet()) {
-                AEItemKey key = e.getKey();
-                long avail = e.getValue();
-                if (avail <= 0 || key.getItem() != wantedItem) {
-                    continue;
-                }
-                if (avail > pickAmount) {
-                    pickAmount = avail;
-                    pick = key;
-                }
-            }
-            if (pick != null) {
-                remaining.put(pick, pickAmount - 1);
-                return true;
+            int amount = (int) Math.min(available, needed);
+            remaining.put(candidate, available - amount);
+            reserved += amount;
+            if (reserved >= requestedAmount) {
+                break;
             }
         }
-        return false;
+        return reserved;
+    }
+
+    private record AvailableCandidate(AEItemKey key, long amount) {
     }
 }

@@ -11,6 +11,7 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.BooleanValue PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR;
+    public static final ModConfigSpec.BooleanValue AUTO_FILL_PATTERN_PROVIDER_SEARCH_WHEN_UPLOAD_DISABLED;
     public static final ModConfigSpec.BooleanValue ENABLE_RECIPE_PULL_TRANSFER;
     public static final ModConfigSpec.BooleanValue AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER;
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
@@ -29,6 +30,10 @@ public final class WcwtClientConfig {
                 .comment("If true: failed pattern uploads fall back to the pattern edit slot first. If false: fall back to the pattern cache first.")
                 .translation("wcwt.config.patternUploadFailFallbackToEditor")
                 .define("patternUploadFailFallbackToEditor", false);
+        AUTO_FILL_PATTERN_PROVIDER_SEARCH_WHEN_UPLOAD_DISABLED = BUILDER
+                .comment("If true: encoding a pattern also fills the pattern-provider search field when pattern upload is disabled. If false: the field is filled only when pattern upload is enabled.")
+                .translation("wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled")
+                .define("autoFillPatternProviderSearchWhenUploadDisabled", true);
         ENABLE_RECIPE_PULL_TRANSFER = BUILDER
                 .comment("If false: disable WCWT JEI/EMI recipe pull and encoding transfer handling, including preview highlights.")
                 .translation("wcwt.config.enableRecipePullTransfer")
@@ -85,6 +90,10 @@ public final class WcwtClientConfig {
 
     public static boolean patternUploadFailFallbackToEditor() {
         return PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR.get();
+    }
+
+    public static boolean autoFillPatternProviderSearchWhenUploadDisabled() {
+        return AUTO_FILL_PATTERN_PROVIDER_SEARCH_WHEN_UPLOAD_DISABLED.get();
     }
 
     public static boolean patternManagementShiftQuickEnabled() {

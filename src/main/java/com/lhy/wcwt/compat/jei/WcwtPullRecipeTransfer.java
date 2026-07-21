@@ -53,13 +53,15 @@ public final class WcwtPullRecipeTransfer {
 
         if (!doTransfer) {
             if (hasAnyInput(recipeSlots)) {
-                return new TerminalPullTransferError(findTransferPreview(menu, recipeSlots), craftMissing,
+                return new TerminalPullTransferError(
+                        findTransferPreview(menu, recipeSlots, allowShiftMaxTransfer), craftMissing,
                         allowShiftMaxTransfer);
             }
             return null;
         }
 
-        List<RequestedIngredient> requestedIngredients = collectRequestedIngredients(menu, recipeSlots);
+        List<RequestedIngredient> requestedIngredients = collectRequestedIngredients(menu, recipeSlots,
+                allowShiftMaxTransfer);
         if (menu.getManualWorkspaceMode() == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING
                 && WcwtRecipeTransferHandler.getTransferMode(recipeIgnored, recipeSlots) == EncodingMode.PROCESSING) {
             requestedIngredients = mergeProcessingIngredients(requestedIngredients);
@@ -75,7 +77,8 @@ public final class WcwtPullRecipeTransfer {
     }
 
     private static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,
-                                                                         IRecipeSlotsView recipeSlots) {
+                                                                         IRecipeSlotsView recipeSlots,
+                                                                         boolean processing) {
         List<IRecipeSlotView> inputs = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT);
         List<RequestedIngredient> result = new ArrayList<>();
         for (int slotIndex = 0; slotIndex < inputs.size(); slotIndex++) {
@@ -83,7 +86,7 @@ public final class WcwtPullRecipeTransfer {
             if (!hasItemStack(slotView)) {
                 continue;
             }
-            RequestedIngredient ingredient = toRequestedIngredient(menu, slotView, slotIndex);
+            RequestedIngredient ingredient = toRequestedIngredient(menu, slotView, slotIndex, processing);
             if (!ingredient.alternatives().isEmpty()) {
                 result.add(ingredient);
             }
@@ -123,7 +126,8 @@ public final class WcwtPullRecipeTransfer {
 
     private static final Map<IRecipeSlotsView, CachedPreview> PREVIEW_CACHE = new WeakHashMap<>();
 
-    private record CachedPreview(byte[] flags, boolean anyResolved, int invHash, long computedAtTick) {
+    private record CachedPreview(byte[] flags, boolean anyResolved, int invHash, long computedAtTick,
+            boolean processing) {
     }
 
     /**
@@ -132,7 +136,8 @@ public final class WcwtPullRecipeTransfer {
      * 避开重复的 {@code Ingredient.of} 候选展开 / 全背包扫描 / {@code getByIngredient}。
      * 缓存只存每槽判定位，高亮用的 slotView 取自当次调用，避免过期引用画错位与 WeakHashMap key 被 pin。
      */
-    private static PreviewSlots findTransferPreview(MEStorageMenu container, IRecipeSlotsView recipeSlots) {
+    private static PreviewSlots findTransferPreview(MEStorageMenu container, IRecipeSlotsView recipeSlots,
+            boolean processing) {
         List<IRecipeSlotView> inputs = collectInputSlots(recipeSlots);
 
         int invHash = playerInventoryHash(container);
@@ -142,17 +147,19 @@ public final class WcwtPullRecipeTransfer {
         if (cached != null
                 && cached.flags.length == inputs.size()
                 && cached.invHash == invHash
+                && cached.processing == processing
                 && tick - cached.computedAtTick < PREVIEW_TTL_TICKS) {
             return assemble(inputs, cached.flags, cached.anyResolved);
         }
 
         byte[] flags = new byte[inputs.size()];
-        boolean anyResolved = computeFlags(container, inputs, flags);
-        PREVIEW_CACHE.put(recipeSlots, new CachedPreview(flags, anyResolved, invHash, tick));
+        boolean anyResolved = computeFlags(container, inputs, flags, processing);
+        PREVIEW_CACHE.put(recipeSlots, new CachedPreview(flags, anyResolved, invHash, tick, processing));
         return assemble(inputs, flags, anyResolved);
     }
 
-    private static boolean computeFlags(MEStorageMenu container, List<IRecipeSlotView> inputs, byte[] flags) {
+    private static boolean computeFlags(MEStorageMenu container, List<IRecipeSlotView> inputs, byte[] flags,
+            boolean processing) {
         var reservedTerminalAmounts = new Object2IntOpenHashMap<AEItemKey>();
         var playerItems = container.getPlayerInventory().items;
         var reservedPlayerItems = new int[playerItems.size()];
@@ -166,46 +173,43 @@ public final class WcwtPullRecipeTransfer {
             }
             Ingredient ingredient = Ingredient.of(alternatives.stream().map(ItemStack::copy));
 
-            int requiredCount = Math.max(getDisplayedStack(slotView).getCount(), 1);
-
-            boolean missing = false;
+            int maxStackSize = alternatives.stream().mapToInt(ItemStack::getMaxStackSize).max().orElse(64);
+            int requiredCount = processing
+                    ? Math.max(1, Math.min(getDisplayedStack(slotView).getCount(), maxStackSize))
+                    : 1;
+            int remaining = requiredCount;
             boolean craftable = false;
-            for (int i = 0; i < requiredCount; i++) {
-                boolean found = false;
-                for (int slot = 0; slot < playerItems.size(); slot++) {
-                    if (container.isPlayerInventorySlotLocked(slot)) {
-                        continue;
-                    }
 
-                    var stack = playerItems.get(slot);
-                    if (stack.getCount() - reservedPlayerItems[slot] > 0
-                            && WcwtStackMatching.matchesAnyAlternative(stack, alternatives, ingredient)) {
-                        reservedPlayerItems[slot]++;
-                        found = true;
-                        anyResolved = true;
-                        break;
-                    }
+            for (int slot = 0; slot < playerItems.size() && remaining > 0; slot++) {
+                if (container.isPlayerInventorySlotLocked(slot)) {
+                    continue;
                 }
 
-                if (!found && WcwtStackMatching.reserveClientRepoStoredIngredient(container, alternatives, ingredient,
-                        reservedTerminalAmounts)) {
-                    found = true;
-                    anyResolved = true;
+                var stack = playerItems.get(slot);
+                int available = stack.getCount() - reservedPlayerItems[slot];
+                if (available <= 0 || !WcwtStackMatching.matchesAnyAlternative(stack, alternatives, ingredient)) {
+                    continue;
                 }
+                int reserved = Math.min(available, remaining);
+                reservedPlayerItems[slot] += reserved;
+                remaining -= reserved;
+                anyResolved = true;
+            }
 
-                if (!found && WcwtStackMatching.hasClientRepoCraftableIngredient(container, alternatives, ingredient)) {
-                    craftable = true;
-                    found = true;
-                    anyResolved = true;
-                }
+            int terminalReserved = WcwtStackMatching.reserveClientRepoStoredIngredient(container, alternatives, ingredient,
+                    reservedTerminalAmounts, remaining);
+            remaining -= terminalReserved;
+            anyResolved |= terminalReserved > 0;
 
-                if (!found) {
-                    missing = true;
-                }
+            if (remaining > 0
+                    && WcwtStackMatching.hasClientRepoCraftableIngredient(container, alternatives, ingredient)) {
+                craftable = true;
+                anyResolved = true;
+                remaining = 0;
             }
 
             byte f = 0;
-            if (missing) {
+            if (remaining > 0) {
                 f |= MISSING;
             }
             if (craftable) {
@@ -267,9 +271,10 @@ public final class WcwtPullRecipeTransfer {
 
     private static RequestedIngredient toRequestedIngredient(WirelessComprehensiveWorkTerminalMenu menu,
                                                              IRecipeSlotView slotView,
-                                                             int slotIndex) {
+                                                              int slotIndex,
+                                                              boolean processing) {
         List<ItemStack> alternatives = chooseRequestedAlternative(menu, slotView);
-        int count = Math.max(getDisplayedStack(slotView).getCount(), 1);
+        int count = processing ? Math.max(getDisplayedStack(slotView).getCount(), 1) : 1;
         return new RequestedIngredient(alternatives, count, slotIndex);
     }
 

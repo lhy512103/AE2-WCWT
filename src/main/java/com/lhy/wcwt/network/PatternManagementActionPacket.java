@@ -2,10 +2,12 @@ package com.lhy.wcwt.network;
 
 import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
+import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.helpers.WcwtRemoteMenuAccess;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderSorts;
@@ -16,12 +18,17 @@ import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -33,26 +40,41 @@ public record PatternManagementActionPacket(Action action,
                                             int cacheSlot,
                                             String searchText,
                                             String mappingText,
-                                            boolean shiftQuickEnabled) implements CustomPacketPayload {
+                                            boolean shiftQuickEnabled,
+                                            boolean hasProviderLocation,
+                                            long providerPosLong,
+                                            String providerDimensionId,
+                                            int providerFaceOrdinal) implements CustomPacketPayload {
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
+    private static final boolean DEBUG_PROVIDER_UI = Boolean.getBoolean("wcwt.debug.providerUi");
 
     public static final Type<PatternManagementActionPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_action"));
 
-    public static final StreamCodec<ByteBuf, PatternManagementActionPacket> STREAM_CODEC = StreamCodec.composite(
-            ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal),
-            PatternManagementActionPacket::action,
-            ByteBufCodecs.VAR_LONG,
-            PatternManagementActionPacket::providerId,
-            ByteBufCodecs.VAR_INT,
-            PatternManagementActionPacket::cacheSlot,
-            ByteBufCodecs.STRING_UTF8,
-            PatternManagementActionPacket::searchText,
-            ByteBufCodecs.STRING_UTF8,
-            PatternManagementActionPacket::mappingText,
-            ByteBufCodecs.BOOL,
-            PatternManagementActionPacket::shiftQuickEnabled,
-            PatternManagementActionPacket::new);
+    public static final StreamCodec<ByteBuf, PatternManagementActionPacket> STREAM_CODEC = StreamCodec.of(
+            (buf, packet) -> {
+                ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal).encode(buf, packet.action());
+                ByteBufCodecs.VAR_LONG.encode(buf, packet.providerId());
+                ByteBufCodecs.VAR_INT.encode(buf, packet.cacheSlot());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.searchText());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.mappingText());
+                ByteBufCodecs.BOOL.encode(buf, packet.shiftQuickEnabled());
+                ByteBufCodecs.BOOL.encode(buf, packet.hasProviderLocation());
+                ByteBufCodecs.VAR_LONG.encode(buf, packet.providerPosLong());
+                ByteBufCodecs.STRING_UTF8.encode(buf, packet.providerDimensionId());
+                ByteBufCodecs.VAR_INT.encode(buf, packet.providerFaceOrdinal());
+            },
+            buf -> new PatternManagementActionPacket(
+                    ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal).decode(buf),
+                    ByteBufCodecs.VAR_LONG.decode(buf),
+                    ByteBufCodecs.VAR_INT.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.BOOL.decode(buf),
+                    ByteBufCodecs.VAR_LONG.decode(buf),
+                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    ByteBufCodecs.VAR_INT.decode(buf)));
 
     @Override
     public Type<? extends CustomPacketPayload> type() {
@@ -64,11 +86,18 @@ public record PatternManagementActionPacket(Action action,
             if (context.player() instanceof ServerPlayer player
                     && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 menu.requestPatternProviderSyncSubscription();
+                boolean refreshProviderList = true;
                 switch (packet.action) {
                     case UPLOAD_CACHE_SLOT -> uploadCachePatterns(player, menu, packet.providerId);
-                    case OPEN_PROVIDER_UI -> openProviderUi(player, packet.providerId);
-                    case EXCHANGE_PROVIDER_SLOT -> exchangeProviderSlot(player, packet.providerId, packet.cacheSlot);
-                    case QUICK_EXTRACT_PROVIDER_SLOT -> quickExtractProviderSlot(player, packet.providerId, packet.cacheSlot);
+                    case OPEN_PROVIDER_UI -> openProviderUi(player, packet);
+                    case EXCHANGE_PROVIDER_SLOT -> {
+                        exchangeProviderSlot(player, packet.providerId, packet.cacheSlot);
+                        refreshProviderList = false;
+                    }
+                    case QUICK_EXTRACT_PROVIDER_SLOT -> {
+                        quickExtractProviderSlot(player, packet.providerId, packet.cacheSlot);
+                        refreshProviderList = false;
+                    }
                     case QUICK_INSERT_FIRST_PROVIDER -> {
                         if (packet.shiftQuickEnabled()) {
                             quickInsertEncodedPattern(player, packet.providerId, packet.cacheSlot, packet.searchText);
@@ -78,7 +107,10 @@ public record PatternManagementActionPacket(Action action,
                         return;
                     }
                 }
-                PacketDistributor.sendToPlayer(player, PatternProviderListPacket.buildForPlayer(player, packet.searchText));
+                if (refreshProviderList) {
+                    PacketDistributor.sendToPlayer(player,
+                            PatternProviderListPacket.buildForPlayer(player, packet.searchText));
+                }
             }
         });
     }
@@ -254,40 +286,118 @@ public record PatternManagementActionPacket(Action action,
         }
     }
 
-    private static void openProviderUi(ServerPlayer player, long providerId) {
-        var provider = getProviderByOrdinal(player, providerId);
-        if (provider == null) {
+    private static void openProviderUi(ServerPlayer player, PatternManagementActionPacket packet) {
+        ResolvedProvider resolved = resolveProvider(player, packet);
+        if (resolved == null) {
             player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"), true);
             return;
         }
 
-        Location location = getLocation(provider);
+        Location location = resolved.location;
+        logProviderUi(
+                "WCWT provider ui: player={}, providerId={}, providerClass={}, level={}, pos={}, face={}",
+                player.getScoreboardName(),
+                packet.providerId(),
+                resolved.provider.getClass().getName(),
+                location.level != null ? location.level.dimension().location() : "null",
+                location.pos,
+                location.face);
         if (location.pos == null || location.level == null) {
-            player.displayClientMessage(Component.translatable("extendedae_plus.message.provider.location_missing"), true);
+            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_location_missing"), true);
             return;
         }
 
-        if (tryOpenNeighbor(player, location.level, location.pos, location.face)) {
-            return;
-        }
-        if (provider instanceof MenuProvider menuProvider) {
-            player.openMenu(menuProvider, location.pos);
-            return;
-        }
-        var selfProvider = location.level.getBlockState(location.pos).getMenuProvider(location.level, location.pos);
-        if (selfProvider != null) {
-            player.openMenu(selfProvider, location.pos);
+        if (tryOpenTarget(player, resolved.provider, location.level, location.pos, location.face)) {
             return;
         }
         player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.open_ui_failed"), true);
     }
 
-    private static boolean tryOpenNeighbor(ServerPlayer player, ServerLevel level, BlockPos pos, Direction face) {
-        if (face != null && tryOpenAt(player, level, pos.relative(face))) {
-            return true;
+    private static ResolvedProvider resolveProvider(ServerPlayer player, PatternManagementActionPacket packet) {
+        var providers = listProviders(player);
+        PatternContainer ordinalProvider = getProviderByOrdinal(providers, packet.providerId);
+        if (!packet.hasProviderLocation) {
+            return ordinalProvider != null
+                    ? new ResolvedProvider(ordinalProvider, getLocation(ordinalProvider))
+                    : null;
+        }
+        RequestedLocation requested = getRequestedLocation(player, packet);
+        if (requested == null) {
+            return null;
+        }
+
+        if (ordinalProvider != null) {
+            Location location = getLocation(ordinalProvider);
+            if (matches(location, requested)) {
+                return new ResolvedProvider(ordinalProvider, location);
+            }
+        }
+        for (PatternContainer provider : providers) {
+            Location location = getLocation(provider);
+            if (matches(location, requested)) {
+                return new ResolvedProvider(provider, location);
+            }
+        }
+        return null;
+    }
+
+    private static RequestedLocation getRequestedLocation(ServerPlayer player, PatternManagementActionPacket packet) {
+        if (!packet.hasProviderLocation) {
+            return null;
+        }
+        ResourceLocation dimensionId = ResourceLocation.tryParse(packet.providerDimensionId);
+        if (dimensionId == null) {
+            return null;
+        }
+        ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, dimensionId);
+        ServerLevel level = player.server.getLevel(dimension);
+        if (level == null) {
+            return null;
+        }
+        Direction face = packet.providerFaceOrdinal >= 0 && packet.providerFaceOrdinal < Direction.values().length
+                ? Direction.values()[packet.providerFaceOrdinal]
+                : null;
+        return new RequestedLocation(level, BlockPos.of(packet.providerPosLong), face);
+    }
+
+    private static boolean matches(Location location, RequestedLocation requested) {
+        if (location.level == null || location.pos == null
+                || location.level != requested.level || !location.pos.equals(requested.pos)) {
+            return false;
+        }
+        return location.face == null || requested.face == null || location.face == requested.face;
+    }
+
+    private static boolean tryOpenTarget(ServerPlayer player, PatternContainer patternProvider,
+                                         ServerLevel level, BlockPos pos, Direction face) {
+        if (!level.isLoaded(pos)) {
+            return false;
+        }
+        if (patternProvider instanceof PatternProviderLogicHost logicHost) {
+            var targets = logicHost.getTargets();
+            if (targets != null) {
+                for (Direction direction : targets) {
+                    BlockPos targetPos = pos.relative(direction);
+                    if (tryOpenAt(player, level, targetPos)
+                            || tryUseTargetBlock(player, level, targetPos, direction)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        if (face != null) {
+            BlockPos targetPos = pos.relative(face);
+            return tryOpenAt(player, level, targetPos)
+                    || tryUseTargetBlock(player, level, targetPos, face);
         }
         for (Direction direction : Direction.values()) {
-            if (direction != face && tryOpenAt(player, level, pos.relative(direction))) {
+            if (tryOpenAt(player, level, pos.relative(direction))) {
+                return true;
+            }
+        }
+        for (Direction direction : Direction.values()) {
+            if (tryUseTargetBlock(player, level, pos.relative(direction), direction)) {
                 return true;
             }
         }
@@ -300,15 +410,42 @@ public record PatternManagementActionPacket(Action action,
         }
         BlockEntity be = level.getBlockEntity(pos);
         if (be instanceof MenuProvider menuProvider) {
-            player.openMenu(menuProvider, pos);
-            return true;
+            return WcwtRemoteMenuAccess.open(player, menuProvider, level, pos);
         }
         var provider = level.getBlockState(pos).getMenuProvider(level, pos);
         if (provider != null) {
-            player.openMenu(provider, pos);
-            return true;
+            return WcwtRemoteMenuAccess.open(player, provider, level, pos);
         }
         return false;
+    }
+
+    private static boolean tryUseTargetBlock(ServerPlayer player, ServerLevel level, BlockPos targetPos,
+                                             Direction providerToTarget) {
+        if (!level.isLoaded(targetPos)) {
+            return false;
+        }
+        var state = level.getBlockState(targetPos);
+        if (state.isAir()) {
+            return false;
+        }
+        var previousMenu = player.containerMenu;
+        var hit = new BlockHitResult(Vec3.atCenterOf(targetPos), providerToTarget.getOpposite(), targetPos, false);
+        var result = state.useWithoutItem(level, player, hit);
+        boolean opened = WcwtRemoteMenuAccess.trackOpenedMenu(player, previousMenu, level, targetPos);
+        logProviderUi(
+                "WCWT provider ui: used target level={}, pos={}, block={}, result={}, opened={}",
+                level.dimension().location(),
+                targetPos,
+                state.getBlock().getDescriptionId(),
+                result,
+                opened);
+        return opened;
+    }
+
+    private static void logProviderUi(String message, Object... args) {
+        if (DEBUG_PROVIDER_UI) {
+            WcwtMod.LOGGER.info(message, args);
+        }
     }
 
     private static PatternContainer getProviderByOrdinal(ServerPlayer player, long providerId) {
@@ -443,6 +580,12 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static Location getLocation(PatternContainer provider) {
+        if (provider instanceof PatternProviderLogicHost host) {
+            BlockEntity be = host.getBlockEntity();
+            if (be != null && be.getLevel() instanceof ServerLevel level) {
+                return new Location(level, be.getBlockPos(), getSingleTarget(host));
+            }
+        }
         if (provider instanceof BlockEntity be && be.getLevel() instanceof ServerLevel level) {
             return new Location(level, be.getBlockPos(), null);
         }
@@ -452,7 +595,18 @@ public record PatternManagementActionPacket(Action action,
         return new Location(null, null, null);
     }
 
+    private static Direction getSingleTarget(PatternProviderLogicHost host) {
+        var targets = host.getTargets();
+        return targets != null && targets.size() == 1 ? targets.iterator().next() : null;
+    }
+
     private record Location(ServerLevel level, BlockPos pos, Direction face) {
+    }
+
+    private record RequestedLocation(ServerLevel level, BlockPos pos, Direction face) {
+    }
+
+    private record ResolvedProvider(PatternContainer provider, Location location) {
     }
 
     private record InsertResult(int inserted, ItemStack remaining) {

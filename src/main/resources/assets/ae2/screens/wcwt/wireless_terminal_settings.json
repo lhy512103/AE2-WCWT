@@ -84,16 +84,22 @@
       "top": 124,
       "width": 180
     },
+    "autoFillPatternProviderSearchWhenUploadDisabled": {
+      "$comment": "编码时自动将映射填入供应器搜索框。",
+      "left": 10,
+      "top": 139,
+      "width": 180
+    },
     "patternMultiplierApplyToEditorProcessing": {
       "$comment": "样板倍增器同时作用于样板编码区处理样板开关。",
       "left": 10,
-      "top": 144,
+      "top": 154,
       "width": 180
     },
     "autoSwitchManualWorkspaceOnRecipeTransfer": {
       "$comment": "拉取样板时自动切换手动工作区开关。",
       "left": 10,
-      "top": 164,
+      "top": 169,
       "width": 180
     },
     "expandToolkitInManagementArea": {

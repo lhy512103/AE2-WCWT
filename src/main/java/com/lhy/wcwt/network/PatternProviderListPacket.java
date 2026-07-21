@@ -223,6 +223,12 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
     }
 
     private static Location getLocation(PatternContainer container) {
+        if (container instanceof appeng.helpers.patternprovider.PatternProviderLogicHost host) {
+            BlockEntity be = host.getBlockEntity();
+            if (be != null && be.getLevel() != null) {
+                return new Location(be.getBlockPos(), be.getLevel().dimension(), getSingleTarget(host));
+            }
+        }
         if (container instanceof BlockEntity be && be.getLevel() != null) {
             return new Location(be.getBlockPos(), be.getLevel().dimension(), null);
         }
@@ -230,6 +236,12 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
             return new Location(part.getBlockEntity().getBlockPos(), part.getLevel().dimension(), part.getSide());
         }
         return new Location(null, null, null);
+    }
+
+    @Nullable
+    private static Direction getSingleTarget(appeng.helpers.patternprovider.PatternProviderLogicHost host) {
+        var targets = host.getTargets();
+        return targets != null && targets.size() == 1 ? targets.iterator().next() : null;
     }
 
     private static String getMappedProviderDisplayName(PatternContainer provider) {

@@ -466,7 +466,12 @@ public class WcwtRecipeTransferHandler
     }
 
     @Nullable
-    private static GenericStack toGenericStack(@Nullable ITypedIngredient<?> ingredient) {
+    /**
+     * Converts any JEI ingredient type that WCWT can transfer into an AE2 stack.
+     * Package-private so the advanced coding ghost handler can use the exact same
+     * integration and fallback conversions as recipe transfer.
+     */
+    static GenericStack toGenericStack(@Nullable ITypedIngredient<?> ingredient) {
         if (ingredient == null) {
             return null;
         }

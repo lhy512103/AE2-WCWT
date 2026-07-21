@@ -3,6 +3,7 @@ package com.lhy.wcwt.compat.jei;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
 import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
@@ -114,6 +115,14 @@ public class WcwtJeiPlugin implements IModPlugin {
 
     @Nullable
     private static AEKey toAEKey(ITypedIngredient<?> ingredient) {
+        // Reuse the recipe-transfer conversion path so JEI-registered special
+        // ingredients (for example Lightning Tech lightning and Mekanism
+        // chemicals) are converted to their AE2 keys as well.
+        GenericStack converted = WcwtRecipeTransferHandler.toGenericStack(ingredient);
+        if (converted != null) {
+            return converted.what();
+        }
+
         Object raw = ingredient.getIngredient();
         if (raw instanceof net.minecraft.world.item.ItemStack stack && !stack.isEmpty()) {
             return AEItemKey.of(stack);

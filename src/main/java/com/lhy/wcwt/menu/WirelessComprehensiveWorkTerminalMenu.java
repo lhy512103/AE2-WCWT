@@ -3499,7 +3499,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             // 而像 Inventory Essentials 这类整理/批量转移模组会程序化地遍历槽位直接调用
             // quickMoveStack，从而把升级卡或显示元件误当成可批量转移的物品掏出来。在服务端源头拦截，
             // 不影响往这些槽内 shift 放入物品（那走的是 canMoveTo 目标判定）。
-            if (isUpgradeLikeSemantic(getSlotSemantic(sourceSlot))) {
+            if (isUpgradeLikeSemantic(getSlotSemantic(sourceSlot))
+                    || isManualOnlyEquipmentSlot(sourceSlot)) {
                 return ItemStack.EMPTY;
             }
             if (isPlayerArmorSlot(sourceSlot)) {
@@ -3532,7 +3533,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     EquipmentSlot equipmentSlot = player.getEquipmentSlotForItem(sourceStack);
                     if (equipmentSlot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR) {
                         Slot targetSlot = getPlayerArmorSlot(equipmentSlot);
-                        if (targetSlot != null && !targetSlot.hasItem() && targetSlot.mayPlace(sourceStack)) {
+                        if (targetSlot != null && !isManualOnlyEquipmentSlot(targetSlot)
+                                && !targetSlot.hasItem() && targetSlot.mayPlace(sourceStack)) {
                             ItemStack original = sourceStack.copy();
                             if (moveItemStackTo(sourceStack, targetSlot.index, targetSlot.index + 1, false)) {
                                 finishPriorityQuickMove(player, sourceSlot, sourceStack);
@@ -3637,7 +3639,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         for (var targetSlot : getSlots(WcwtSlotSemantics.AE_CURIOS)) {
-            if (targetSlot == sourceSlot || targetSlot.hasItem() || !targetSlot.mayPlace(sourceStack)) {
+            if (targetSlot == sourceSlot || isManualOnlyEquipmentSlot(targetSlot)
+                    || targetSlot.hasItem() || !targetSlot.mayPlace(sourceStack)) {
                 continue;
             }
 
@@ -3681,6 +3684,17 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 || slot == getPlayerArmorSlot(EquipmentSlot.CHEST)
                 || slot == getPlayerArmorSlot(EquipmentSlot.LEGS)
                 || slot == getPlayerArmorSlot(EquipmentSlot.FEET);
+    }
+
+    private boolean isManualOnlyEquipmentSlot(Slot slot) {
+        var semantic = getSlotSemantic(slot);
+        return semantic == WcwtSlotSemantics.AE2WTLIB_HELMET
+                || semantic == WcwtSlotSemantics.AE2WTLIB_CHESTPLATE
+                || semantic == WcwtSlotSemantics.AE2WTLIB_LEGGINGS
+                || semantic == WcwtSlotSemantics.AE2WTLIB_BOOTS
+                || semantic == WcwtSlotSemantics.AE2WTLIB_OFFHAND
+                || isDecorativeArmorSemantic(semantic)
+                || semantic == WcwtSlotSemantics.AE_CURIOS;
     }
 
     private boolean isCurioSlot(Slot slot) {
@@ -3762,6 +3776,23 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return getSlots(WcwtSlotSemantics.AE2WTLIB_OFFHAND).contains(slot);
     }
 
+    private boolean isInactiveManualWorkspaceInputSemantic(@Nullable appeng.menu.SlotSemantic semantic) {
+        var mode = getManualWorkspaceMode();
+        if (semantic == SlotSemantics.CRAFTING_GRID) {
+            return mode != ManualWorkspaceMode.CRAFTING;
+        }
+        if (semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_TEMPLATE
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_BASE
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_ADDITION) {
+            return mode != ManualWorkspaceMode.SMITHING;
+        }
+        if (semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_LEFT
+                || semantic == WcwtSlotSemantics.WCWT_MANUAL_ANVIL_RIGHT) {
+            return mode != ManualWorkspaceMode.ANVIL;
+        }
+        return false;
+    }
+
     private static boolean isManualSmithingOrAnvilInputSemantic(@Nullable appeng.menu.SlotSemantic semantic) {
         return semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_TEMPLATE
                 || semantic == WcwtSlotSemantics.WCWT_MANUAL_SMITHING_BASE
@@ -3817,35 +3848,56 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     : 1;
         }
 
-        for (int crafted = 0; crafted < maxTimesToCraft; crafted++) {
-            CraftingInput input = createManualCraftingInput(craftingMatrix);
-            RecipeHolder<CraftingRecipe> recipe = getCurrentRecipe();
-            if (recipe == null || !recipe.value().matches(input, player.level())) {
-                updateManualCraftingResult();
-                recipe = getCurrentRecipe();
-                input = createManualCraftingInput(craftingMatrix);
+        boolean craftedAny = false;
+        RecipeHolder<CraftingRecipe> cachedAlternativesRecipe = null;
+        ManualCraftingRecipeAlternatives cachedAlternatives = null;
+        try {
+            for (int crafted = 0; crafted < maxTimesToCraft; crafted++) {
+                CraftingInput input = createManualCraftingInput(craftingMatrix);
+                RecipeHolder<CraftingRecipe> recipe = getCurrentRecipe();
                 if (recipe == null || !recipe.value().matches(input, player.level())) {
+                    updateManualCraftingResult();
+                    recipe = getCurrentRecipe();
+                    input = createManualCraftingInput(craftingMatrix);
+                    if (recipe == null || !recipe.value().matches(input, player.level())) {
+                        return;
+                    }
+                }
+
+                ItemStack output = recipe.value().assemble(input, player.level().registryAccess());
+                if (output.isEmpty() || !ItemStack.isSameItemSameComponents(initialOutput, output)) {
+                    return;
+                }
+                if (!target.simulateAdd(output).isEmpty()) {
+                    return;
+                }
+
+                ManualCraftingRecipeAlternatives recipeAlternatives = null;
+                if (isManualCraftingItemSubstitution()) {
+                    if (cachedAlternatives == null || cachedAlternativesRecipe != recipe) {
+                        cachedAlternativesRecipe = recipe;
+                        cachedAlternatives = new ManualCraftingRecipeAlternatives(recipe);
+                    }
+                    recipeAlternatives = cachedAlternatives;
+                }
+
+                ItemStack craftedStack = craftManualCraftingItem(player, recipe, output, recipeAlternatives);
+                if (craftedStack.isEmpty()) {
+                    return;
+                }
+                craftedAny = true;
+
+                ItemStack extra = target.addItems(craftedStack);
+                if (!extra.isEmpty()) {
+                    Platform.spawnDrops(player.level(), player.blockPosition(), List.of(extra));
                     return;
                 }
             }
-
-            ItemStack output = recipe.value().assemble(input, player.level().registryAccess());
-            if (output.isEmpty() || !ItemStack.isSameItemSameComponents(initialOutput, output)) {
-                return;
-            }
-            if (!target.simulateAdd(output).isEmpty()) {
-                return;
-            }
-
-            ItemStack craftedStack = craftManualCraftingItem(player, recipe, output);
-            if (craftedStack.isEmpty()) {
-                return;
-            }
-
-            ItemStack extra = target.addItems(craftedStack);
-            if (!extra.isEmpty()) {
-                Platform.spawnDrops(player.level(), player.blockPosition(), List.of(extra));
-                return;
+        } finally {
+            if (craftedAny) {
+                slotsChanged(craftingMatrix.toContainer());
+                // Let the normal server menu tick perform the full inventory broadcast once for the whole action.
+                forceInventorySyncOnNextBroadcast();
             }
         }
     }
@@ -3871,7 +3923,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return CraftingInput.of(3, 3, items);
     }
 
-    private ItemStack craftManualCraftingItem(Player player, RecipeHolder<CraftingRecipe> recipe, ItemStack output) {
+    private ItemStack craftManualCraftingItem(Player player, RecipeHolder<CraftingRecipe> recipe, ItemStack output,
+            @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
         InternalInventory craftingMatrix = getCraftingMatrix();
         ItemStack[] before = snapshotManualCraftingGrid(craftingMatrix);
         ItemStack crafted = output.copy();
@@ -3880,10 +3933,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         EventHooks.firePlayerCraftingEvent(player, crafted, craftingMatrix.toContainer());
 
         consumeManualCraftingIngredients(player, craftingMatrix, recipe);
-        restockManualCraftingInputs(craftingMatrix, before, recipe, crafted);
-        slotsChanged(craftingMatrix.toContainer());
-        forceInventorySyncOnNextBroadcast();
-        broadcastChanges();
+        restockManualCraftingInputs(craftingMatrix, before, recipe, crafted, recipeAlternatives);
         return crafted;
     }
 
@@ -3936,15 +3986,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private void restockManualCraftingInputs(InternalInventory craftingMatrix, ItemStack[] before,
-            RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput) {
+            RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput,
+            @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
         if (isClientSide() || menuHost == null || before == null) {
             return;
         }
         var filter = ViewCellItem.createItemFilter(getViewCells());
         KeyCounter availableStacks = null;
-        ManualCraftingRecipeAlternatives recipeAlternatives = isManualCraftingItemSubstitution()
-                ? new ManualCraftingRecipeAlternatives(recipe)
-                : null;
         for (int slot = 0; slot < Math.min(craftingMatrix.size(), before.length); slot++) {
             ItemStack previous = before[slot];
             if (previous == null || previous.isEmpty()) {
@@ -4217,10 +4265,18 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (candidateSlot instanceof PatternProviderSlot) {
             return false;
         }
+        // Equipment slots are intentionally manual-only. This blocks both
+        // shift-click and inventory-sorting mods while preserving mouse input.
+        if (isManualOnlyEquipmentSlot(candidateSlot)) {
+            return false;
+        }
         if (!fromPlayerSide && isOffhandSlot(candidateSlot)) {
             return false;
         }
         var candidateSemantic = getSlotSemantic(candidateSlot);
+        if (isInactiveManualWorkspaceInputSemantic(candidateSemantic)) {
+            return false;
+        }
         if (fromPlayerSide
                 && !getLinkStatus().connected()
                 && isManualSmithingOrAnvilInputSemantic(candidateSemantic)) {

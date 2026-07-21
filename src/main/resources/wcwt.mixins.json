@@ -6,6 +6,7 @@
   "mixins": [
     "WcwtNetworkToolItemMixin",
     "WcwtMenuProtectionMixin",
+    "WcwtRemoteMenuMixin",
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin"
   ],

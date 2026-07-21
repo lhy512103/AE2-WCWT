@@ -31,6 +31,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.entity.EntitySelector;
@@ -352,6 +353,7 @@ public final class WcwtWirelessFeatures {
         requestedStack.setCount((int) extracted);
         inventory.setItem(targetSlot, requestedStack);
         inventory.selected = targetSlot;
+        player.connection.send(new ClientboundSetCarriedItemPacket(targetSlot));
         player.inventoryMenu.broadcastChanges();
     }
 

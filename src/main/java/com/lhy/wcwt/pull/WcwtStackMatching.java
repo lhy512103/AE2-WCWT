@@ -78,10 +78,17 @@ public final class WcwtStackMatching {
 
     public static boolean reserveClientRepoStoredIngredient(MEStorageMenu menu, List<ItemStack> alternatives,
             @Nullable Ingredient wideIngredient, Object2IntOpenHashMap<AEItemKey> reservedAmounts) {
+        return reserveClientRepoStoredIngredient(menu, alternatives, wideIngredient, reservedAmounts, 1) == 1;
+    }
+
+    public static int reserveClientRepoStoredIngredient(MEStorageMenu menu, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient, Object2IntOpenHashMap<AEItemKey> reservedAmounts,
+            int requestedAmount) {
         var clientRepo = menu.getClientRepo();
-        if (clientRepo == null) {
-            return false;
+        if (clientRepo == null || requestedAmount <= 0) {
+            return 0;
         }
+        int reserved = 0;
         for (var entry : clientRepo.getAllEntries()) {
             if (entry.getStoredAmount() <= 0 || !(entry.getWhat() instanceof AEItemKey itemKey)) {
                 continue;
@@ -91,13 +98,18 @@ public final class WcwtStackMatching {
             }
 
             long available = entry.getStoredAmount() - reservedAmounts.getInt(itemKey);
-            if (available <= 0) {
+            int remaining = requestedAmount - reserved;
+            if (available <= 0 || remaining <= 0) {
                 continue;
             }
-            reservedAmounts.addTo(itemKey, 1);
-            return true;
+            int amount = (int) Math.min(available, remaining);
+            reservedAmounts.addTo(itemKey, amount);
+            reserved += amount;
+            if (reserved >= requestedAmount) {
+                break;
+            }
         }
-        return false;
+        return reserved;
     }
 
     public static boolean hasClientRepoCraftableIngredient(MEStorageMenu menu, List<ItemStack> alternatives,

@@ -28,6 +28,7 @@ import dev.emi.emi.api.widget.SlotWidget;
 import dev.emi.emi.api.widget.Widget;
 import dev.emi.emi.api.widget.WidgetHolder;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
@@ -49,6 +50,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.WeakHashMap;
 
 /**
  * EMI 对 WCWT 的官方 recipe handler 接入。
@@ -58,6 +60,12 @@ import java.util.HashSet;
  * 锁定合成网格 -> 走 WCWT 现有从 ME 拉料的网络包。
  */
 public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehensiveWorkTerminalMenu> {
+    private static final Map<WirelessComprehensiveWorkTerminalMenu, CachedPreview> LOCKED_PREVIEW_CACHE = new WeakHashMap<>();
+
+    private record CachedPreview(EmiRecipe recipe, EncodingMode mode, int inventoryHash, long tick,
+            PreviewResult result) {
+    }
+
     @Override
     public EmiPlayerInventory getInventory(AbstractContainerScreen<WirelessComprehensiveWorkTerminalMenu> screen) {
         List<EmiStack> inventory = new ArrayList<>();
@@ -241,6 +249,22 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     }
 
     private static PreviewResult buildLockedGridPreview(WirelessComprehensiveWorkTerminalMenu menu, EmiRecipe recipe) {
+        EncodingMode mode = getTransferMode(recipe);
+        int inventoryHash = playerInventoryHash(menu);
+        long tick = currentClientTick();
+        CachedPreview cached = LOCKED_PREVIEW_CACHE.get(menu);
+        if (cached != null && cached.recipe == recipe && cached.mode == mode
+                && cached.inventoryHash == inventoryHash && cached.tick == tick) {
+            return cached.result;
+        }
+
+        PreviewResult result = computeLockedGridPreview(menu, recipe, mode);
+        LOCKED_PREVIEW_CACHE.put(menu, new CachedPreview(recipe, mode, inventoryHash, tick, result));
+        return result;
+    }
+
+    private static PreviewResult computeLockedGridPreview(WirelessComprehensiveWorkTerminalMenu menu, EmiRecipe recipe,
+            EncodingMode mode) {
         var reservedTerminalAmounts = new Object2IntOpenHashMap<AEItemKey>();
         var playerItems = menu.getPlayerInventory().items;
         var reservedPlayerItems = new int[playerItems.size()];
@@ -258,45 +282,41 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             Ingredient ingredient = Ingredient.of(alternatives.stream().map(ItemStack::copy));
             inputCount++;
 
-            int requiredCount = Math.max(1, (int) Math.min(Integer.MAX_VALUE, emiIngredient.getAmount()));
-            boolean missing = false;
+            int maxStackSize = alternatives.stream().mapToInt(ItemStack::getMaxStackSize).max().orElse(64);
+            int requiredCount = mode == EncodingMode.CRAFTING
+                    ? 1
+                    : Math.max(1, (int) Math.min(emiIngredient.getAmount(), maxStackSize));
+            int remaining = requiredCount;
             boolean craftable = false;
 
-            for (int i = 0; i < requiredCount; i++) {
-                boolean found = false;
-                for (int slot = 0; slot < playerItems.size(); slot++) {
-                    if (menu.isPlayerInventorySlotLocked(slot)) {
-                        continue;
-                    }
-
-                    var stack = playerItems.get(slot);
-                    if (stack.getCount() - reservedPlayerItems[slot] > 0
-                            && WcwtStackMatching.matchesAnyAlternative(stack, alternatives, ingredient)) {
-                        reservedPlayerItems[slot]++;
-                        found = true;
-                        anyResolved = true;
-                        break;
-                    }
+            for (int slot = 0; slot < playerItems.size() && remaining > 0; slot++) {
+                if (menu.isPlayerInventorySlotLocked(slot)) {
+                    continue;
                 }
 
-                if (!found && WcwtStackMatching.reserveClientRepoStoredIngredient(menu, alternatives, ingredient,
-                        reservedTerminalAmounts)) {
-                    found = true;
-                    anyResolved = true;
+                var stack = playerItems.get(slot);
+                int available = stack.getCount() - reservedPlayerItems[slot];
+                if (available <= 0 || !WcwtStackMatching.matchesAnyAlternative(stack, alternatives, ingredient)) {
+                    continue;
                 }
-
-                if (!found && WcwtStackMatching.hasClientRepoCraftableIngredient(menu, alternatives, ingredient)) {
-                    craftable = true;
-                    found = true;
-                    anyResolved = true;
-                }
-
-                if (!found) {
-                    missing = true;
-                }
+                int reserved = Math.min(available, remaining);
+                reservedPlayerItems[slot] += reserved;
+                remaining -= reserved;
+                anyResolved = true;
             }
 
-            if (missing) {
+            int terminalReserved = WcwtStackMatching.reserveClientRepoStoredIngredient(menu, alternatives, ingredient,
+                    reservedTerminalAmounts, remaining);
+            remaining -= terminalReserved;
+            anyResolved |= terminalReserved > 0;
+
+            if (remaining > 0 && WcwtStackMatching.hasClientRepoCraftableIngredient(menu, alternatives, ingredient)) {
+                craftable = true;
+                anyResolved = true;
+                remaining = 0;
+            }
+
+            if (remaining > 0) {
                 missingSlots.add(index);
             }
             if (craftable) {
@@ -305,6 +325,24 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
 
         return new PreviewResult(missingSlots, craftableSlots, anyResolved, inputCount);
+    }
+
+    private static int playerInventoryHash(WirelessComprehensiveWorkTerminalMenu menu) {
+        var items = menu.getPlayerInventory().items;
+        int hash = 1;
+        for (int slot = 0; slot < items.size(); slot++) {
+            ItemStack stack = items.get(slot);
+            long stackHash = stack.isEmpty() ? 0L : ItemStack.hashItemAndComponents(stack);
+            hash = 31 * hash + Long.hashCode(stackHash);
+            hash = 31 * hash + stack.getCount();
+            hash = 31 * hash + (menu.isPlayerInventorySlotLocked(slot) ? 1 : 0);
+        }
+        return hash;
+    }
+
+    private static long currentClientTick() {
+        var level = Minecraft.getInstance().level;
+        return level != null ? level.getGameTime() : 0L;
     }
 
     private static List<Component> createLockedGridTooltip(PreviewResult preview, boolean allowShiftMaxTransfer) {
@@ -556,7 +594,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                         recipe.getInputs().get(slotEntry.getKey()),
                         slotEntry.getKey());
                 if (ingredient != null) {
-                    requested.add(ingredient);
+                    requested.add(new RequestedIngredient(ingredient.alternatives(), 1, ingredient.slotIndex()));
                 }
             }
             if (!requested.isEmpty()) {
