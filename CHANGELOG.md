@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.3.3-hotfix
+
+### English
+
+1. Fixed remote provider menus causing startup crashes or container synchronization errors in some modpacks.
+2. Fixed protocol disconnects when remotely opening machine menus that require custom initialization data.
+
+### 中文
+
+1. 修复远程供应器菜单在部分整合包中导致启动崩溃或容器同步异常的问题。
+2. 修复远程打开需要自定义初始化数据的机器界面时导致协议失联的问题。
+
 ## v1.3.3
 
 ### English

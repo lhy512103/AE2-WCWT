@@ -378,8 +378,8 @@ public record PatternManagementActionPacket(Action action,
             if (targets != null) {
                 for (Direction direction : targets) {
                     BlockPos targetPos = pos.relative(direction);
-                    if (tryOpenAt(player, level, targetPos)
-                            || tryUseTargetBlock(player, level, targetPos, direction)) {
+                    if (tryUseTargetBlock(player, level, targetPos, direction)
+                            || tryOpenAt(player, level, targetPos)) {
                         return true;
                     }
                 }
@@ -388,16 +388,13 @@ public record PatternManagementActionPacket(Action action,
         }
         if (face != null) {
             BlockPos targetPos = pos.relative(face);
-            return tryOpenAt(player, level, targetPos)
-                    || tryUseTargetBlock(player, level, targetPos, face);
+            return tryUseTargetBlock(player, level, targetPos, face)
+                    || tryOpenAt(player, level, targetPos);
         }
         for (Direction direction : Direction.values()) {
-            if (tryOpenAt(player, level, pos.relative(direction))) {
-                return true;
-            }
-        }
-        for (Direction direction : Direction.values()) {
-            if (tryUseTargetBlock(player, level, pos.relative(direction), direction)) {
+            BlockPos targetPos = pos.relative(direction);
+            if (tryUseTargetBlock(player, level, targetPos, direction)
+                    || tryOpenAt(player, level, targetPos)) {
                 return true;
             }
         }
