@@ -34,7 +34,7 @@ public final class WcwtMixinConfigPlugin implements IMixinConfigPlugin {
             return shouldApplyCompatMixin("extendedae_plus", targetClassName, mixinClassName);
         }
         if (mixinClassName.startsWith(JEI_COMPAT_PACKAGE)) {
-            return shouldApplyCompatMixin("jei", targetClassName, mixinClassName);
+            return shouldApplyJeiCompatMixin(targetClassName, mixinClassName);
         }
         return shouldApplyCompatMixin(null, targetClassName, mixinClassName);
     }
@@ -80,6 +80,16 @@ public final class WcwtMixinConfigPlugin implements IMixinConfigPlugin {
         boolean apply = modLoaded || classPresent;
         LOGGER.info("WCWT compat mixin check: mixin={}, target={}, modId={}, modLoaded={}, classPresent={}, apply={}",
                 mixinClassName, targetClassName, modId, modLoaded, classPresent, apply);
+        return apply;
+    }
+
+    private static boolean shouldApplyJeiCompatMixin(String targetClassName, String mixinClassName) {
+        boolean modLoaded = isModLoaded("jei");
+        boolean targetClassPresent = isClassPresent(targetClassName);
+        // TMRVもjeiのmod IDを公開するため、フルJEI内部の対象クラスまで存在するときだけ適用する。
+        boolean apply = modLoaded && targetClassPresent;
+        LOGGER.info("WCWT JEI compat mixin check: mixin={}, target={}, modLoaded={}, targetClassPresent={}, apply={}",
+                mixinClassName, targetClassName, modLoaded, targetClassPresent, apply);
         return apply;
     }
 }

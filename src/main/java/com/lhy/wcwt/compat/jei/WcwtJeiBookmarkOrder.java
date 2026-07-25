@@ -15,17 +15,20 @@ import mezz.jei.gui.input.handlers.BookmarkInputHandler;
 import mezz.jei.gui.input.handlers.SameElementInputHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraftforge.client.event.ScreenEvent;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Optional;
 
+/**
+ * フルJEIの内部GUIクラスを使うブックマーク操作。
+ *
+ * <p>TMRVはJEI公開APIだけを提供するため、このクラスはJEI内部GUIクラスが
+ * 実在するときだけMixinから読み込まれる。</p>
+ */
 public final class WcwtJeiBookmarkOrder {
-    private static Field focusSourceField;
-    private static final String EAEP_JEI_RUNTIME_PROXY = "com.extendedae_plus.integration.jei.JeiRuntimeProxy";
     private static final boolean DEBUG = Boolean.getBoolean("wcwt.debug.jeiBookmark");
+    private static Field focusSourceField;
 
     private WcwtJeiBookmarkOrder() {
     }
@@ -35,12 +38,14 @@ public final class WcwtJeiBookmarkOrder {
                                                  IInternalKeyMappings keyBindings,
                                                  CallbackInfoReturnable<Optional<IUserInputHandler>> cir) {
         Minecraft minecraft = Minecraft.getInstance();
+        // ピック操作以外、またはJEIのブックマーク操作と競合する入力は処理しない。
         if (minecraft.player == null
                 || minecraft.options == null
                 || !input.is(minecraft.options.keyPickItem)
                 || input.is(keyBindings.getBookmark())) {
             return;
         }
+        // WCWT端末を所持していない場合はJEI本来の操作へ戻す。
         if (!WcwtWirelessFeatures.hasAnyTerminal(minecraft.player)) {
             debug("JEI bookmark handler skipped: no WCWT terminal, screen={}, mouse={},{}",
                     screen == null ? null : screen.getClass().getName(), input.getMouseX(), input.getMouseY());
@@ -49,24 +54,27 @@ public final class WcwtJeiBookmarkOrder {
 
         try {
             CombinedRecipeFocusSource focusSource = getFocusSource(handler);
+            // JEI内部フィールドを取得できない版では入力を奪わない。
             if (focusSource == null) {
                 debug("JEI bookmark handler skipped: no focusSource field on {}", handler.getClass().getName());
                 return;
             }
             Optional<IClickableIngredientInternal<?>> clickedOptional =
                     focusSource.getIngredientUnderMouse(input, keyBindings).findFirst();
+            // マウス下に材料がない場合はJEI本来の入力処理へ戻す。
             if (clickedOptional.isEmpty()) {
                 return;
             }
 
             IClickableIngredientInternal<?> clicked = clickedOptional.get();
             ITypedIngredient<?> typedIngredient = clicked.getTypedIngredient();
-            GenericStack stack = WcwtRecipeTransferHandler.toGenericStackForBookmark(
-                    typedIngredient);
+            GenericStack stack = WcwtJeiIngredientConverter.toGenericStack(typedIngredient);
+            // AE2へ変換できない材料は注文パケットを送らない。
             if (stack == null || stack.what() == null) {
                 return;
             }
 
+            // シミュレーション呼び出しでは入力消費とパケット送信を行わない。
             if (!input.isSimulate()) {
                 debug("JEI bookmark handler sending WCWT craft packet stack={}", stack);
                 ModNetworking.sendToServer(
@@ -76,61 +84,12 @@ public final class WcwtJeiBookmarkOrder {
             IUserInputHandler sameElement = new SameElementInputHandler(handler, clicked::isMouseOver);
             cir.setReturnValue(Optional.of(sameElement));
         } catch (RuntimeException | LinkageError ignored) {
+            // JEI内部実装が想定外の版では、クリックを壊さずJEI本来の処理へ戻す。
         }
     }
 
-    public static boolean handleEaepMouseButtonPre(ScreenEvent.MouseButtonPressed.Pre event) {
-        int button = event.getButton();
-        boolean eaepOpenCraftClick = button == 2;
-        boolean eaepPullOrCraftClick = button == 0 && Screen.hasControlDown();
-        if (!eaepOpenCraftClick && !eaepPullOrCraftClick) {
-            return false;
-        }
-
-        Minecraft minecraft = Minecraft.getInstance();
-        debug("EAEP JEI mouse pre entered: button={}, mouse={},{} player={}, screen={}",
-                button, event.getMouseX(), event.getMouseY(), minecraft.player,
-                minecraft.screen == null ? null : minecraft.screen.getClass().getName());
-        if (minecraft.player == null) {
-            debug("EAEP JEI mouse pre skipped: no client player");
-            return false;
-        }
-        if (!WcwtWirelessFeatures.hasAnyTerminal(minecraft.player)) {
-            debug("EAEP JEI mouse pre skipped: no WCWT terminal");
-            return false;
-        }
-
-        GenericStack stack = findEaepHoveredGenericStack(event.getMouseX(), event.getMouseY());
-        if (stack == null || stack.what() == null) {
-            debug("EAEP JEI mouse pre skipped: no hovered generic stack");
-            return false;
-        }
-
-        WcwtJeiBookmarkOrderPacket.Action action = eaepOpenCraftClick
-                ? WcwtJeiBookmarkOrderPacket.Action.OPEN_CRAFT
-                : WcwtJeiBookmarkOrderPacket.Action.PULL_OR_CRAFT;
-        debug("EAEP JEI mouse pre sending WCWT packet action={} and canceling EAEP stack={}", action, stack);
-        ModNetworking.sendToServer(new WcwtJeiBookmarkOrderPacket(stack, action));
-        event.setCanceled(true);
-        return true;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static GenericStack findEaepHoveredGenericStack(double mouseX, double mouseY) {
-        try {
-            Class<?> proxyClass = Class.forName(EAEP_JEI_RUNTIME_PROXY);
-            Method method = proxyClass.getMethod("getIngredientUnderMouse", double.class, double.class);
-            Object result = method.invoke(null, mouseX, mouseY);
-            if (result instanceof Optional<?> optional
-                    && optional.orElse(null) instanceof ITypedIngredient<?> typedIngredient) {
-                return WcwtRecipeTransferHandler.toGenericStackForBookmark(typedIngredient);
-            }
-        } catch (ReflectiveOperationException | LinkageError ignored) {
-        }
-        return null;
-    }
-
-    private static void debug(String message, Object... args) {
+    static void debug(String message, Object... args) {
+        // デバッグフラグが無効な通常起動ではクリックごとのログを出さない。
         if (DEBUG) {
             WcwtMod.LOGGER.info("WCWT JEI bookmark debug: " + message, args);
         }
@@ -139,8 +98,10 @@ public final class WcwtJeiBookmarkOrder {
     private static CombinedRecipeFocusSource getFocusSource(BookmarkInputHandler handler) {
         try {
             Field field = focusSourceField;
+            // 初回だけJEI内部フィールドを探索し、以降のクリックでは再利用する。
             if (field == null) {
                 field = findField(BookmarkInputHandler.class, "focusSource", CombinedRecipeFocusSource.class);
+                // 対応フィールドがないJEI版ではフルJEI連携を無効として扱う。
                 if (field == null) {
                     return null;
                 }
@@ -156,13 +117,16 @@ public final class WcwtJeiBookmarkOrder {
     private static Field findField(Class<?> owner, String preferredName, Class<?> expectedType) {
         try {
             Field field = owner.getDeclaredField(preferredName);
+            // 既知のフィールド名と型が一致する場合は最短経路で採用する。
             if (expectedType.isAssignableFrom(field.getType())) {
                 field.setAccessible(true);
                 return field;
             }
         } catch (NoSuchFieldException ignored) {
+            // フィールド名が変わったJEI版では、下の型検索へフォールバックする。
         }
 
+        // 難読化や名称変更に備え、同じ型のフィールドだけを候補として探索する。
         for (Field field : owner.getDeclaredFields()) {
             if (expectedType.isAssignableFrom(field.getType())) {
                 field.setAccessible(true);

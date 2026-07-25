@@ -491,7 +491,7 @@ public class WcwtRecipeTransferHandler
 
     @Nullable
     static GenericStack toGenericStackForBookmark(@Nullable ITypedIngredient<?> ingredient) {
-        return toGenericStack(ingredient, false);
+        return WcwtJeiIngredientConverter.toGenericStack(ingredient);
     }
 
     @Nullable
