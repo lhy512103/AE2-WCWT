@@ -1,5 +1,6 @@
 {
   "pack.wcwt.dark_ae_ui": "WCWT ダーク AE-UI テクスチャ（作者：fish_dan_）",
+  "gui.wcwt.wireless_settings.other_settings_title": "その他の設定",
   "gui.wcwt.crafting_lock.locked": "クラフトグリッド固定",
   "gui.wcwt.crafting_lock.locked.desc": "JEI レシピを手動 3x3 クラフトへ転送",
   "gui.wcwt.crafting_lock.unlocked": "クラフトグリッド非固定",

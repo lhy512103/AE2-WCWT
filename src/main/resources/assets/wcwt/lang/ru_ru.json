@@ -1,5 +1,6 @@
 {
   "pack.wcwt.dark_ae_ui": "Тёмные текстуры AE-UI для WCWT (автор: fish_dan_)",
+  "gui.wcwt.wireless_settings.other_settings_title": "Прочие настройки",
   "gui.wcwt.crafting_lock.locked": "Сетка крафта закреплена",
   "gui.wcwt.crafting_lock.locked.desc": "Рецепты JEI переносятся в ручной крафт 3x3",
   "gui.wcwt.crafting_lock.unlocked": "Сетка крафта не закреплена",

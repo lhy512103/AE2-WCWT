@@ -8,6 +8,8 @@
 2. GUI text colors are now defined in a screen-style palette JSON, so resource packs can restyle text colors; the dark pack overrides them with light text.
 3. Completed the Traditional Chinese (zh_tw) translation with previously missing entries.
 4. Added a server config `maxSyncedSlotsPerProvider` (default 1024) limiting non-empty pattern slots synced per provider in the pattern management area; slots beyond the limit are hidden with a log warning instead of disconnecting the client.
+5. Fixed the "Other Settings" header in the wireless terminal settings screen not being localized (issue #11).
+6. Fixed capitalization of WCWT checkbox labels in the wireless terminal settings screen for English.
 
 ### 中文
 
@@ -15,6 +17,8 @@
 2. 界面文字颜色改由屏幕样式调色板 JSON 定义，资源包可自定义文字颜色；暗色材质包已覆盖为浅色文字。
 3. 补齐繁体中文（zh_tw）缺失的翻译条目。
 4. 新增服务端配置 `maxSyncedSlotsPerProvider`（默认 1024），限制样板管理区单个供应器同步的非空样板槽位数量；超限槽位隐藏并记录日志警告，不再导致客户端断连。
+5. 修复无线终端设置界面"其他设置"分组标题未本地化的问题（issue #11）。
+6. 修正无线终端设置界面中 WCWT 复选框英文标签的大小写。
 
 ## v1.3.3-hotfix
 

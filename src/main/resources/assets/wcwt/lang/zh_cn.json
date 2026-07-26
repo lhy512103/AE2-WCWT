@@ -1,5 +1,6 @@
 {
   "pack.wcwt.dark_ae_ui": "WCWT 暗色AE-UI扩展材质（作者：fish_dan_）",
+  "gui.wcwt.wireless_settings.other_settings_title": "其他设置",
   "gui.wcwt.crafting_lock.locked": "合成网格已锁定",
   "gui.wcwt.crafting_lock.locked.desc": "JEI配方将传输到手动合成3x3",
   "gui.wcwt.crafting_lock.unlocked": "合成网格未锁定",
