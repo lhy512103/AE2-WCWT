@@ -13,9 +13,9 @@ import appeng.api.networking.security.IActionHost;
 import appeng.api.storage.MEStorage;
 import appeng.api.storage.SupplierStorage;
 import appeng.api.storage.cells.ICellWorkbenchItem;
+import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.UpgradeInventories;
@@ -228,9 +228,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     // 左上手动铁砧工作区 - 2个槽位
     private final SupplierInternalInventory manualAnvilInv;
     private final AppEngInternalInventory trashInv = new AppEngInternalInventory(27);
-    private final ConfigInventory magnetPickupConfig = ConfigInventory.configTypes(AEKeyType.items()::equals, 27,
+    private final ConfigInventory magnetPickupConfig = ConfigInventory.configTypes(AEItemKey.filter(), 27,
             this::updateMagnetPickupConfig);
-    private final ConfigInventory magnetInsertConfig = ConfigInventory.configTypes(AEKeyType.items()::equals, 27,
+    private final ConfigInventory magnetInsertConfig = ConfigInventory.configTypes(AEItemKey.filter(), 27,
             this::updateMagnetInsertConfig);
     // 元件工作台 - AE2 CellWorkbench 同款 63 格 config 镜像
     private final GenericStackInv cellConfigInv = new GenericStackInv(this::cellConfigChanged,

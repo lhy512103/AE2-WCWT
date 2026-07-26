@@ -683,7 +683,7 @@ public final class WcwtWirelessFeatures {
     }
 
     private static IPartitionList createFilter(ItemStack terminal, String key, Player player) {
-        ConfigInventory config = ConfigInventory.configTypes(appeng.api.stacks.AEKeyType.items()::equals, 27, () -> {
+        ConfigInventory config = ConfigInventory.configTypes(appeng.api.stacks.AEItemKey.filter(), 27, () -> {
         });
         config.readFromChildTag(getRootTag(terminal).getCompound(key), "");
         IPartitionList.Builder builder = IPartitionList.builder();
