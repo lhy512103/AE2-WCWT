@@ -53,7 +53,7 @@
   "slots": {
 	"resonating_storage": {
 	  "$comment": "谐振样板转换后缓存的位置，一行7个总共21个；slotSpacingX / slotSpacingY 为槽位起点步进，默认 16。",
-      "left": 3,
+      "left": 4,
       "top": 124,
       "slotSpacingX": 18,
       "slotSpacingY": 18,
