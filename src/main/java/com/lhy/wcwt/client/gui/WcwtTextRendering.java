@@ -1,5 +1,7 @@
 package com.lhy.wcwt.client.gui;
 
+import appeng.client.gui.AEBaseScreen;
+import appeng.client.gui.style.PaletteColor;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.Text;
 import net.minecraft.client.Minecraft;
@@ -22,6 +24,20 @@ public final class WcwtTextRendering {
     public static boolean isEnglish() {
         String language = Minecraft.getInstance().getLanguageManager().getSelected();
         return language != null && language.regionMatches(true, 0, "en_", 0, 3);
+    }
+
+    /**
+     * 面板标题等文字的默认颜色。走 ScreenStyle 调色板（wcwt_palette.json），
+     * 这样资源包（如内置暗色材质）可以覆盖文字颜色。
+     */
+    public static int defaultTextColor() {
+        if (Minecraft.getInstance().screen instanceof AEBaseScreen<?> aeScreen) {
+            var color = aeScreen.getStyle().getColor(PaletteColor.DEFAULT_TEXT_COLOR);
+            if (color != null) {
+                return color.toARGB();
+            }
+        }
+        return 0xFF404040;
     }
 
     public static float scale(float baseScale) {

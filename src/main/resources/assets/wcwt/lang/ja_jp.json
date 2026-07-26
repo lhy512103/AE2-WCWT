@@ -1,4 +1,5 @@
 {
+  "pack.wcwt.dark_ae_ui": "WCWT ダーク AE-UI テクスチャ（作者：fish_dan_）",
   "gui.wcwt.crafting_lock.locked": "クラフトグリッド固定",
   "gui.wcwt.crafting_lock.locked.desc": "JEI レシピを手動 3x3 クラフトへ転送",
   "gui.wcwt.crafting_lock.unlocked": "クラフトグリッド非固定",
@@ -170,6 +171,8 @@
   "wcwt.config.toolkitSlotCount.tooltip": "最小 11 で先頭 11 個の専用ツールスロットを維持します。通常は保存後すぐ反映されます。",
   "wcwt.config.patternProviderActiveRefresh": "パターンプロバイダーのアクティブ更新",
   "wcwt.config.patternProviderActiveRefresh.tooltip": "ON: パターン管理エリアを開いている間、内容変更時にプロバイダー一覧を更新します。OFF: 明示的な要求時のみ更新します。",
+  "wcwt.config.maxSyncedSlotsPerProvider": "プロバイダーごとの最大同期パターンスロット数",
+  "wcwt.config.maxSyncedSlotsPerProvider.tooltip": "パターン管理エリアで各プロバイダーからクライアントへ同期する非空スロットの上限。超過分は表示されません（ログに警告）。大きい値はパケットサイズを増加させます。",
   "wcwt.config.patternUploadFailFallbackToEditor": "保存失敗時は編集スロット優先",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "OFF: まずパターンキャッシュへ、満杯なら編集スロットへ戻します。ON: まず編集スロットへ戻します。",
   "wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled": "アップロード無効時も供給器検索を自動入力",

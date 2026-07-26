@@ -75,7 +75,7 @@ public class CuriosPanel extends ExtendedUIPanel {
         var font = Minecraft.getInstance().font;
         WcwtTextRendering.drawString(guiGraphics, font,
             Component.translatable("gui.wcwt.extended_ui.curios"),
-            x + 4, y + 3, 0x404040, false);
+            x + 4, y + 3, WcwtTextRendering.defaultTextColor(), false);
         
         // 槽位现在由 Screen 按 AE_CURIOS 真实 Slot 渲染，这里只画面板与标题。
     }

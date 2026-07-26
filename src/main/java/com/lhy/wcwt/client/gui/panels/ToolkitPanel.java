@@ -80,7 +80,7 @@ public class ToolkitPanel extends ExtendedUIPanel {
         var font = Minecraft.getInstance().font;
         WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.extended_ui.toolkit"),
-                x + 4, y + 3, 0x404040, false);
+                x + 4, y + 3, WcwtTextRendering.defaultTextColor(), false);
         renderSlotIcons(guiGraphics);
     }
 

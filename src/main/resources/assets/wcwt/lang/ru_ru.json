@@ -1,4 +1,5 @@
 {
+  "pack.wcwt.dark_ae_ui": "Тёмные текстуры AE-UI для WCWT (автор: fish_dan_)",
   "gui.wcwt.crafting_lock.locked": "Сетка крафта закреплена",
   "gui.wcwt.crafting_lock.locked.desc": "Рецепты JEI переносятся в ручной крафт 3x3",
   "gui.wcwt.crafting_lock.unlocked": "Сетка крафта не закреплена",
@@ -172,6 +173,8 @@
   "wcwt.config.toolkitSlotCount.tooltip": "Минимум 11 сохраняет первые 11 специализированных слотов инструментов. Обычно применяется сразу после сохранения.",
   "wcwt.config.patternProviderActiveRefresh": "Активное обновление поставщиков шаблонов",
   "wcwt.config.patternProviderActiveRefresh.tooltip": "ВКЛ: пока область управления шаблонами открыта, обновлять список поставщиков при изменениях. ВЫКЛ: обновлять только по явному запросу.",
+  "wcwt.config.maxSyncedSlotsPerProvider": "Макс. синхронизируемых слотов шаблонов на поставщика",
+  "wcwt.config.maxSyncedSlotsPerProvider.tooltip": "Максимум непустых слотов шаблонов, синхронизируемых клиенту на поставщика в области управления шаблонами. Слоты сверх лимита не отображаются (в лог пишется предупреждение). Большие значения увеличивают размер пакета.",
   "wcwt.config.patternUploadFailFallbackToEditor": "При сбое загрузки предпочитать слот редактирования",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "ВЫКЛ: сначала вернуть в кэш шаблонов, затем в слот редактирования, если кэш полон. ВКЛ: сначала вернуть в слот редактирования.",
   "wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled": "Заполнять поиск поставщика при отключённой загрузке",

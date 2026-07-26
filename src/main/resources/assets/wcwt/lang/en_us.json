@@ -1,4 +1,5 @@
 {
+  "pack.wcwt.dark_ae_ui": "WCWT Dark AE-UI Textures (by fish_dan_)",
   "gui.wcwt.crafting_lock.locked": "Crafting Grid Locked",
   "gui.wcwt.crafting_lock.locked.desc": "JEI recipes transfer to manual crafting 3x3",
   "gui.wcwt.crafting_lock.unlocked": "Crafting Grid Unlocked",
@@ -181,6 +182,8 @@
   "wcwt.config.toolkitSlotCount.tooltip": "Minimum 11 keeps the first 11 dedicated tool slots available. Saving the file usually applies without restart.",
   "wcwt.config.patternProviderActiveRefresh": "Pattern provider active refresh",
   "wcwt.config.patternProviderActiveRefresh.tooltip": "On: while the pattern management area is open, actively refresh provider lists when contents change. Off: only refresh on explicit requests.",
+  "wcwt.config.maxSyncedSlotsPerProvider": "Max synced pattern slots per provider",
+  "wcwt.config.maxSyncedSlotsPerProvider.tooltip": "Max non-empty pattern slots synced to the client per provider in the pattern management area. Slots beyond this limit are hidden (a warning is logged). Large values increase packet size.",
   "wcwt.config.patternUploadFailFallbackToEditor": "Prefer edit slot on upload failure",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "Off: fall back to the pattern cache first, then the pattern edit slot if the cache is full. On: fall back to the pattern edit slot first.",
   "wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled": "Auto-fill provider search when upload is off",

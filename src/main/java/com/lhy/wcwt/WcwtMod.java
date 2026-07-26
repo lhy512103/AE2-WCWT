@@ -41,8 +41,13 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.InterModComms;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.repository.Pack;
+import net.minecraft.server.packs.repository.PackSource;
 import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
 import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,6 +70,7 @@ public class WcwtMod {
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::addCreativeTabItems);
         modEventBus.addListener(this::registerCapabilities);
+        modEventBus.addListener(this::addBuiltInPacks);
         NeoForge.EVENT_BUS.addListener(WcwtCommands::register);
         modContainer.registerConfig(ModConfig.Type.CLIENT, WcwtClientConfig.SPEC);
         modContainer.registerConfig(ModConfig.Type.SERVER, WcwtServerConfig.SPEC);
@@ -120,6 +126,18 @@ public class WcwtMod {
                 Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD, wcwt, 1, groupKey);
             }
         });
+    }
+
+    private void addBuiltInPacks(AddPackFindersEvent event) {
+        if (event.getPackType() == PackType.CLIENT_RESOURCES) {
+            event.addPackFinders(
+                    ResourceLocation.fromNamespaceAndPath(MOD_ID, "resourcepacks/dark_ae_ui"),
+                    PackType.CLIENT_RESOURCES,
+                    Component.translatable("pack.wcwt.dark_ae_ui"),
+                    PackSource.BUILT_IN,
+                    false,
+                    Pack.Position.TOP);
+        }
     }
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {

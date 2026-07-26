@@ -162,13 +162,13 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         if (HAS_AE2LT) {
             WcwtTextRendering.drawString(guiGraphics, font,
                     Component.translatable("gui.wcwt_rlpattern_coding.lightningtitle"),
-                    x + 3, y + 3, 0x404040, false);
+                    x + 3, y + 3, WcwtTextRendering.defaultTextColor(), false);
             renderLightningEntries(guiGraphics, mouseX, mouseY);
         }
         if (HAS_AE2CS) {
             WcwtTextRendering.drawString(guiGraphics, font,
                     Component.translatable("gui.wcwt_rlpattern_coding.resonatingtitle"),
-                    x + 3, y + 95, 0x404040, false);
+                    x + 3, y + 95, WcwtTextRendering.defaultTextColor(), false);
         }
 
         updateTooltip(mouseX, mouseY);
@@ -199,7 +199,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
                 guiGraphics.renderItemDecorations(Minecraft.getInstance().font, stack, slotX + 1, rowY + 1);
             }
             WcwtTextRendering.drawString(guiGraphics, Minecraft.getInstance().font,
-                    entry.label(), x + LIGHTNING_TEXT_X, rowY + 5, 0x404040, false);
+                    entry.label(), x + LIGHTNING_TEXT_X, rowY + 5, WcwtTextRendering.defaultTextColor(), false);
             renderModeSwitch(guiGraphics, entry, rowY);
         }
         renderLightningScrollbar(guiGraphics);

@@ -1,6 +1,6 @@
 {
   "$schema": "../schema.json",
-  "includes": ["../common/common.json"],
+  "includes": ["../common/common.json", "wcwt_palette.json"],
   "background": {
     "$comment": "WCWT 打开的无线终端设置子界面背景。",
     "texture": "guis/wcwt/wcwt_setup.png",

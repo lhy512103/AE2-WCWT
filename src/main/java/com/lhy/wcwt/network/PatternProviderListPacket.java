@@ -5,6 +5,7 @@ import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
+import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
@@ -38,9 +39,10 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
     public static final Type<PatternProviderListPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list"));
 
+    // 解码侧防御上限：必须 ≥ 配置允许的最大值（编码条目数由配置在服务端截断）。
     private static final StreamCodec<RegistryFriendlyByteBuf, Int2ObjectMap<ItemStack>> SLOTS_CODEC =
             ByteBufCodecs.map(Int2ObjectArrayMap::new, ByteBufCodecs.SHORT.map(Short::intValue, Integer::shortValue),
-                    ItemStack.OPTIONAL_STREAM_CODEC, 512);
+                    ItemStack.OPTIONAL_STREAM_CODEC, WcwtServerConfig.MAX_SYNCED_PROVIDER_SLOTS);
 
     public static final StreamCodec<RegistryFriendlyByteBuf, PatternProviderListPacket> STREAM_CODEC = StreamCodec.composite(
             Entry.STREAM_CODEC.apply(ByteBufCodecs.list()),
@@ -191,16 +193,30 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         long id = 1;
         int copiedNonEmptySlots = 0;
         int totalInventorySlots = 0;
+        int maxSyncedSlots = WcwtServerConfig.maxSyncedSlotsPerProvider();
         for (var container : providers) {
             InternalInventory inv = container.getTerminalPatternInventory();
             totalInventorySlots += inv.size();
             var slots = new Int2ObjectArrayMap<ItemStack>();
+            // SLOTS_CODEC 的 map 上限为 MAX_SYNCED_PROVIDER_SLOTS，slot 索引以 short 编码；
+            // 超限会导致整包编码失败并断开客户端，这里截断并告警。
+            int truncatedSlots = 0;
             for (int i = 0; i < inv.size(); i++) {
                 var stack = inv.getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    slots.put(i, stack.copy());
-                    copiedNonEmptySlots++;
+                if (stack.isEmpty()) {
+                    continue;
                 }
+                if (slots.size() >= maxSyncedSlots || i > Short.MAX_VALUE) {
+                    truncatedSlots++;
+                    continue;
+                }
+                slots.put(i, stack.copy());
+                copiedNonEmptySlots++;
+            }
+            if (truncatedSlots > 0) {
+                WcwtMod.LOGGER.warn(
+                        "Pattern provider '{}' has too many pattern slots to sync; {} non-empty slots not shown in the terminal (limit {} per provider, configurable via maxSyncedSlotsPerProvider)",
+                        getMappedProviderDisplayName(container), truncatedSlots, maxSyncedSlots);
             }
             var location = getLocation(container);
             entries.add(new Entry(id++, container.getTerminalGroup(), getMappedProviderDisplayName(container), inv.size(), slots,

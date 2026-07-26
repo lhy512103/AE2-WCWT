@@ -11,11 +11,16 @@ public final class WcwtServerConfig {
     public static final int MAX_TOOLKIT_SLOTS = 640;
     private static final int DEFAULT_TOOLKIT_SLOTS = 64;
 
+    public static final int MIN_SYNCED_PROVIDER_SLOTS = 64;
+    public static final int MAX_SYNCED_PROVIDER_SLOTS = 8192;
+    private static final int DEFAULT_SYNCED_PROVIDER_SLOTS = 1024;
+
     public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec SPEC;
 
     public static final ModConfigSpec.IntValue TOOLKIT_SLOT_COUNT;
     public static final ModConfigSpec.BooleanValue PATTERN_PROVIDER_ACTIVE_REFRESH;
+    public static final ModConfigSpec.IntValue MAX_SYNCED_SLOTS_PER_PROVIDER;
 
     static {
         TOOLKIT_SLOT_COUNT = BUILDER
@@ -26,6 +31,13 @@ public final class WcwtServerConfig {
                 .comment("Whether the pattern management area actively refreshes provider lists while it is open.")
                 .translation("wcwt.config.patternProviderActiveRefresh")
                 .define("patternProviderActiveRefresh", true);
+        MAX_SYNCED_SLOTS_PER_PROVIDER = BUILDER
+                .comment("Max non-empty pattern slots synced to the client per provider in the pattern management area.",
+                        "Slots beyond this limit are hidden in the terminal (a warning is logged).",
+                        "Large values increase packet size; the whole provider list must stay under Minecraft's 8 MiB packet limit.")
+                .translation("wcwt.config.maxSyncedSlotsPerProvider")
+                .defineInRange("maxSyncedSlotsPerProvider", DEFAULT_SYNCED_PROVIDER_SLOTS,
+                        MIN_SYNCED_PROVIDER_SLOTS, MAX_SYNCED_PROVIDER_SLOTS);
         SPEC = BUILDER.build();
     }
 
@@ -43,6 +55,10 @@ public final class WcwtServerConfig {
 
     public static boolean patternProviderActiveRefresh() {
         return PATTERN_PROVIDER_ACTIVE_REFRESH.get();
+    }
+
+    public static int maxSyncedSlotsPerProvider() {
+        return MAX_SYNCED_SLOTS_PER_PROVIDER.get();
     }
 
     public static void setPatternProviderActiveRefresh(boolean value) {

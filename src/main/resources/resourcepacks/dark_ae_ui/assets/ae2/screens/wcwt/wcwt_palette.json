@@ -1,0 +1,7 @@
+{
+  "$comment": "暗色 AE-UI 材质的文字调色板覆盖：深色背景下用浅色文字。",
+  "palette": {
+    "DEFAULT_TEXT_COLOR": "#e0e0e0",
+    "MUTED_TEXT_COLOR": "#9aa0b0"
+  }
+}

@@ -4160,7 +4160,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private void renderPatternManagement(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
         int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
-        int textColor = 0x404040;
+        int textColor = WcwtTextRendering.defaultTextColor();
 
         renderPatternManagementBackground(guiGraphics);
 

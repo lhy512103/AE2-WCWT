@@ -1,0 +1,7 @@
+{
+  "$comment": "WCWT 界面文字调色板。资源包（如内置的暗色 AE-UI 材质）可覆盖此文件来改文字颜色。",
+  "palette": {
+    "DEFAULT_TEXT_COLOR": "#413f54",
+    "MUTED_TEXT_COLOR": "#878fa5"
+  }
+}

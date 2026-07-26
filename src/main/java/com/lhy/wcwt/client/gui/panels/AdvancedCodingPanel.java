@@ -695,12 +695,12 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         // 样板输入方向编辑区标题（JSON: text.input_direction_title left=4 top=3）
         WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.advanced_coding.input_direction_title"),
-                x + 4, y + 3, 0x404040, false);
+                x + 4, y + 3, WcwtTextRendering.defaultTextColor(), false);
 
         // 元件编辑区标题（JSON: text.cell_edit_title）
         WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.advanced_coding.cell_edit_title"),
-                x + CELL_EDIT_TITLE_X, y + CELL_EDIT_TITLE_Y, 0x404040, false);
+                x + CELL_EDIT_TITLE_X, y + CELL_EDIT_TITLE_Y, WcwtTextRendering.defaultTextColor(), false);
         
         // 隐藏所有方向按钮
         directionButtons.forEach((key, buttons) -> {

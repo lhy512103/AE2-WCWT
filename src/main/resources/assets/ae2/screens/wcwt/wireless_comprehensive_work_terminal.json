@@ -7,7 +7,8 @@
     "../terminals/encoding/processing.json",
     "../terminals/encoding/smithing_table.json",
     "../terminals/encoding/stonecutting.json",
-    "../terminals/crafting_terminal.json"
+    "../terminals/crafting_terminal.json",
+    "wcwt_palette.json"
   ],
   "background": {
     "$comment": "主终端固定背景图区域；srcRect 为从贴图中截取的 x/y/宽/高。",
