@@ -41,7 +41,9 @@ public final class WcwtJeiBookmarkOrder {
                 || input.is(keyBindings.getBookmark())) {
             return;
         }
-        if (!WcwtWirelessFeatures.hasAnyTerminal(minecraft.player)) {
+        boolean hasTerminal = WcwtWirelessFeatures.hasAnyTerminal(minecraft.player);
+        WcwtMod.LOGGER.warn("[WCWT-DBG] JEI recipe ingredient middle-click: hasAnyTerminal={}", hasTerminal);
+        if (!hasTerminal) {
             debug("JEI bookmark handler skipped: no WCWT terminal, screen={}, mouse={},{}",
                     screen == null ? null : screen.getClass().getName(), input.getMouseX(), input.getMouseY());
             return;
@@ -49,12 +51,14 @@ public final class WcwtJeiBookmarkOrder {
 
         try {
             CombinedRecipeFocusSource focusSource = getFocusSource(handler);
+            WcwtMod.LOGGER.warn("[WCWT-DBG] JEI recipe ingredient: focusSource={}", focusSource == null ? "null" : "found");
             if (focusSource == null) {
                 debug("JEI bookmark handler skipped: no focusSource field on {}", handler.getClass().getName());
                 return;
             }
             Optional<IClickableIngredientInternal<?>> clickedOptional =
                     focusSource.getIngredientUnderMouse(input, keyBindings).findFirst();
+            WcwtMod.LOGGER.warn("[WCWT-DBG] JEI recipe ingredient: clickedOptional present={}", clickedOptional.isPresent());
             if (clickedOptional.isEmpty()) {
                 return;
             }
@@ -63,11 +67,13 @@ public final class WcwtJeiBookmarkOrder {
             ITypedIngredient<?> typedIngredient = clicked.getTypedIngredient();
             GenericStack stack = WcwtRecipeTransferHandler.toGenericStackForBookmark(
                     typedIngredient);
+            WcwtMod.LOGGER.warn("[WCWT-DBG] JEI recipe ingredient: toGenericStack={}", stack);
             if (stack == null || stack.what() == null) {
                 return;
             }
 
             if (!input.isSimulate()) {
+                WcwtMod.LOGGER.warn("[WCWT-DBG] JEI recipe ingredient: sending OPEN_CRAFT packet, stack={}", stack);
                 debug("JEI bookmark handler sending WCWT craft packet stack={}", stack);
                 ModNetworking.sendToServer(
                         new WcwtJeiBookmarkOrderPacket(stack, WcwtJeiBookmarkOrderPacket.Action.OPEN_CRAFT));
@@ -75,7 +81,8 @@ public final class WcwtJeiBookmarkOrder {
 
             IUserInputHandler sameElement = new SameElementInputHandler(handler, clicked::isMouseOver);
             cir.setReturnValue(Optional.of(sameElement));
-        } catch (RuntimeException | LinkageError ignored) {
+        } catch (RuntimeException | LinkageError e) {
+            WcwtMod.LOGGER.warn("[WCWT-DBG] JEI recipe ingredient: exception={}", e.toString());
         }
     }
 

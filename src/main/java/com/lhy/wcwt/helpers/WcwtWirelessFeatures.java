@@ -340,6 +340,8 @@ public final class WcwtWirelessFeatures {
 
     public static void pickBlock(ServerPlayer player, ItemStack requestedStack) {
         AEItemKey key = AEItemKey.of(requestedStack);
+        WcwtMod.LOGGER.warn("[WCWT-DBG] server pickBlock entry: player={}, requested={}, key={}",
+                player.getScoreboardName(), describeStack(requestedStack), key);
         if (key == null) {
             debugPickBlock(player, "skipped: requested stack has no AE item key, requested={}",
                     describeStack(requestedStack));
@@ -428,15 +430,20 @@ public final class WcwtWirelessFeatures {
 
         var terminalTarget = findTerminalTarget(player,
                 terminalPredicate, true);
+        WcwtMod.LOGGER.warn("[WCWT-DBG] server pickBlock terminalTarget={}, terminals={}",
+                terminalTarget == null ? "null" : terminalTarget.sourceDescription(),
+                describePickBlockTerminals(player));
         if (terminalTarget == null) {
             debugPickBlock(player, "skipped: no WCWT terminal found");
             return;
         }
 
         ItemStack terminal = terminalTarget.stack();
-        debugPickBlock(player, "using terminal source={}, terminal={}",
+        debugPickBlock(player, "using terminal source={}, terminal=",
                 terminalTarget.sourceDescription(), describeStack(terminal));
         IGrid grid = getGrid(player, terminalTarget);
+        WcwtMod.LOGGER.warn("[WCWT-DBG] server pickBlock grid={}, locator={}",
+                grid == null ? "null" : "found", terminalTarget.locator());
         if (grid == null || grid.getStorageService() == null) {
             debugPickBlock(player, "skipped: grid/storage missing, requested={}, terminal={}",
                     describeStack(requestedStack), describeStack(terminal));
@@ -447,12 +454,16 @@ public final class WcwtWirelessFeatures {
         var playerSource = new PlayerSource(player);
 
         var extracted = networkInventory.extract(what, amountToExtract, Actionable.SIMULATE, playerSource);
+        WcwtMod.LOGGER.warn("[WCWT-DBG] server pickBlock simulate extract={}, amount={}, alwaysCraft={}, craft_if_missing={}",
+                extracted, amountToExtract, alwaysCraftIfAvailable, getBoolean(terminal, "craft_if_missing"));
         debugPickBlock(player, "network simulate extract requested={}, amount={}, extracted={}",
                 describeStack(requestedStack), amountToExtract, extracted);
         if (extracted == 0) {
             boolean craftSettingAllows = alwaysCraftIfAvailable || getBoolean(terminal, "craft_if_missing");
-            if (!craftSettingAllows
-                    || grid.getCraftingService().getCraftingFor(what).isEmpty()) {
+            boolean hasCrafting = !grid.getCraftingService().getCraftingFor(what).isEmpty();
+            WcwtMod.LOGGER.warn("[WCWT-DBG] server pickBlock extracted=0: craftSettingAllows={}, hasCrafting={}",
+                    craftSettingAllows, hasCrafting);
+            if (!craftSettingAllows || !hasCrafting) {
                 debugPickBlock(player, "skipped: requested stack missing, requested={}, craftIfMissing={}, alwaysCraft={}, terminal={}",
                         describeStack(requestedStack), getBoolean(terminal, "craft_if_missing"),
                         alwaysCraftIfAvailable, describeStack(terminal));

@@ -137,7 +137,10 @@ public abstract class WcwtMinecraftPickBlockMixin {
             wcwt$debugEarlySkip("hitResult type " + hitResult.getType());
             return;
         }
-        if (!WcwtWirelessFeatures.hasPickBlockTerminal(player)) {
+        boolean hasTerminal = WcwtWirelessFeatures.hasPickBlockTerminal(player);
+        WcwtMod.LOGGER.warn("[WCWT-DBG] client tryPickBlock: hasPickBlockTerminal={}, terminals={}",
+                hasTerminal, WcwtWirelessFeatures.describePickBlockTerminals(player));
+        if (!hasTerminal) {
             wcwt$debugEarlySkip("no WCWT with pick_block enabled; " + WcwtWirelessFeatures.describePickBlockTerminals(player));
             return;
         }
