@@ -420,7 +420,20 @@ public final class WcwtWirelessFeatures {
                 debugPickBlock(player, "skipped: requested stack already in player inventory slot={}", existingSlot);
                 return;
             } else {
-                targetSlot = inHand.isEmpty() ? inventory.selected : inventory.getFreeSlot();
+                if (inHand.isEmpty()) {
+                    targetSlot = inventory.selected;
+                } else {
+                    // Hand is occupied — find an empty hotbar slot and switch to it,
+                    // matching vanilla pick-block behaviour (middle-click switches the
+                    // selected slot rather than silently filling a non-hotbar slot).
+                    int emptyHotbar = findEmptyHotbarSlot(inventory);
+                    if (emptyHotbar >= 0) {
+                        inventory.selected = emptyHotbar;
+                        targetSlot = emptyHotbar;
+                    } else {
+                        targetSlot = inventory.getFreeSlot();
+                    }
+                }
             }
         }
         if (targetSlot < 0) {
@@ -670,6 +683,16 @@ public final class WcwtWirelessFeatures {
             debugPickBlock(player, "terminal target not found by predicate");
         }
         return null;
+    }
+
+    /** Returns the index of the first empty hotbar slot (0–8), or -1 if none. */
+    private static int findEmptyHotbarSlot(Inventory inventory) {
+        for (int i = 0; i < 9; i++) {
+            if (inventory.getItem(i).isEmpty()) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private static IGrid getGrid(ServerPlayer player, ItemStack terminal) {
