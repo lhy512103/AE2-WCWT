@@ -1676,7 +1676,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         setFocused(null);
         boolean useEaepUploadScreen = patternManagementUploadEnabled
-                && net.minecraft.client.gui.screens.Screen.hasShiftDown();
+                && (net.minecraft.client.gui.screens.Screen.hasShiftDown()
+                        || resolvePreferredUploadProvider(searchKey).isOpenEaep());
         PreferredUploadProvider preferredProvider = useEaepUploadScreen
                 ? PreferredUploadProvider.NONE
                 : resolvePreferredUploadProvider(searchKey);
@@ -1720,6 +1721,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 .filter(group -> JecSearchCompat.contains(group.name(), query))
                 .toList();
         if (matchingGroups.size() != 1) {
+            // When multiple providers share the same name and the config is enabled,
+            // signal the caller to fall back to the EAEP provider-select screen so
+            // the user can choose which one to use — same as Shift+click behaviour.
+            if (matchingGroups.size() > 1
+                    && WcwtClientConfig.patternUploadMultiMatchOpenEaepScreen()
+                    && ModList.get().isLoaded("extendedae_plus")) {
+                return PreferredUploadProvider.OPEN_EAEP;
+            }
             return PreferredUploadProvider.NONE;
         }
         var group = matchingGroups.get(0);
@@ -3236,13 +3245,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
         patternManagementRows.clear();
         String filter = patternManageSearchField != null ? patternManageSearchField.getValue().trim().toLowerCase() : "";
+        boolean compactEmptySlots = WcwtClientConfig.patternManagementAutoCompactEmptySlots();
         patternProviders.stream()
                 .filter(this::isPatternProviderVisibleInManagement)
                 .filter(entry -> filter.isEmpty() || patternProviderMatches(entry, filter))
                 .sorted(Comparator.comparing(entry -> getPatternProviderSearchName(entry).toLowerCase()))
                 .forEach(entry -> {
                     patternManagementRows.add(new PatternManagementHeaderRow(entry));
-                    if (patternManagementShowSlots) {
+                    // When auto-compact is on, skip slot rows for completely empty providers
+                    // (no patterns at all) so they take only one header line, matching EAEP.
+                    boolean skipSlots = compactEmptySlots && entry.slots().isEmpty();
+                    if (patternManagementShowSlots && !skipSlots) {
                         for (int offset = 0; offset < entry.inventorySize(); offset += PATTERN_MANAGEMENT_COLS) {
                             patternManagementRows.add(new PatternManagementSlotsRow(entry, offset,
                             Math.min(PATTERN_MANAGEMENT_COLS, entry.inventorySize() - offset)));
@@ -6284,6 +6297,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private record PreferredUploadProvider(long providerId, String providerName) {
         private static final PreferredUploadProvider NONE = new PreferredUploadProvider(-1L, "");
+        /** Signals that the EAEP provider-select screen should be opened instead. */
+        private static final PreferredUploadProvider OPEN_EAEP = new PreferredUploadProvider(-2L, "");
+
+        private boolean isOpenEaep() {
+            return providerId == -2L;
+        }
     }
 
     private static final class PreferredUploadProviderGroup {

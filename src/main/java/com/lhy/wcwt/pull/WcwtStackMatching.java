@@ -18,9 +18,18 @@ public final class WcwtStackMatching {
         return WcwtPullIngredientOrdering.componentSpecificityRank(stack) > 0;
     }
 
+    /**
+     * Returns true when the alternatives list requires an exact AEItemKey match
+     * (i.e. NBT must also match).  Damageable items such as tools are excluded:
+     * their {Damage:N} tag is part of the NBT, so insisting on an exact match
+     * would prevent an undamaged network tool from satisfying a slot that lists
+     * a specific durability value.  For tools we fall back to item-only matching.
+     */
     public static boolean requiresExactItemKeyMatch(List<ItemStack> alternatives) {
         for (ItemStack alternative : alternatives) {
-            if (alternative != null && !alternative.isEmpty() && hasSpecificData(alternative)) {
+            if (alternative != null && !alternative.isEmpty()
+                    && hasSpecificData(alternative)
+                    && !isDamageable(alternative)) {
                 return true;
             }
         }
@@ -124,5 +133,10 @@ public final class WcwtStackMatching {
                 && !second.isEmpty()
                 && ItemStack.isSameItem(first, second)
                 && Objects.equals(first.getTag(), second.getTag());
+    }
+
+    /** Returns true if the item has a durability bar (tools, armour, etc.). */
+    private static boolean isDamageable(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && stack.getItem().canBeDepleted();
     }
 }

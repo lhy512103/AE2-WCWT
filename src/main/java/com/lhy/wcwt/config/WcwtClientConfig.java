@@ -28,6 +28,8 @@ public final class WcwtClientConfig {
     public static final ForgeConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
     public static final ForgeConfigSpec.BooleanValue LAST_OTHER_KEY_TYPES_FILTER;
     public static final ForgeConfigSpec.BooleanValue FAVORITED_ITEMS_FIRST;
+    public static final ForgeConfigSpec.BooleanValue PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS;
+    public static final ForgeConfigSpec.BooleanValue PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN;
     public static final ForgeConfigSpec.ConfigValue<java.util.List<? extends String>> FAVORITED_KEYS;
 
     static {
@@ -103,6 +105,14 @@ public final class WcwtClientConfig {
         FAVORITED_KEYS = BUILDER
                 .comment("Serialized client-side favorite AE keys for WCWT terminal sorting and overlays.")
                 .defineList("favoritedKeys", java.util.List.of(), entry -> entry instanceof String);
+        PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS = BUILDER
+                .comment("If true: in the pattern management area, providers with only empty slots are grouped and shown compactly, matching EAEP behaviour.")
+                .translation("wcwt.config.patternManagementAutoCompactEmptySlots")
+                .define("patternManagementAutoCompactEmptySlots", true);
+        PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN = BUILDER
+                .comment("If true: when uploading a pattern and multiple providers share the same name, open the EAEP provider-select screen instead of silently skipping. Requires ExtendedAE Plus.")
+                .translation("wcwt.config.patternUploadMultiMatchOpenEaepScreen")
+                .define("patternUploadMultiMatchOpenEaepScreen", true);
         SPEC = BUILDER.build();
     }
 
@@ -208,5 +218,13 @@ public final class WcwtClientConfig {
     public static void setFavoritedKeys(java.util.Collection<String> keys) {
         FAVORITED_KEYS.set(java.util.List.copyOf(keys));
         SPEC.save();
+    }
+
+    public static boolean patternManagementAutoCompactEmptySlots() {
+        return PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS.get();
+    }
+
+    public static boolean patternUploadMultiMatchOpenEaepScreen() {
+        return PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN.get();
     }
 }
