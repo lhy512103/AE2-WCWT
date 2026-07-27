@@ -362,6 +362,21 @@ public class WcwtRecipeTransferHandler
                 }
             }
 
+            // JEI が表示している材料（cycling の先頭）が ME ネットワーク内に存在するなら、
+            // 保管量によるランキングより優先して使う。これにより AE2 標準端末と同じ材料が
+            // 選ばれる（例: GTL 通用电路板 vs 普通电路板）。
+            ItemStack displayed = itemCandidates.get(0);
+            AEItemKey displayedKey = AEItemKey.of(displayed);
+            if (displayedKey != null
+                    && priorityContext.ingredientPriorities().containsKey(displayedKey)) {
+                GenericStack stack = GenericStack.fromItemStack(preserveItemAmounts
+                        ? displayed.copy()
+                        : displayed.copyWithCount(1));
+                if (stack != null) {
+                    return stack;
+                }
+            }
+
             List<GenericStack> itemStacks = itemCandidates.stream()
                     .map(stack -> GenericStack.fromItemStack(preserveItemAmounts
                             ? stack.copy()

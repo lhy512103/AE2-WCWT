@@ -346,7 +346,7 @@ public final class WcwtWirelessFeatures {
             return;
         }
         pickBlock(player, key, requestedStack.getMaxStackSize(), HotbarTarget.REPLACE_SELECTED,
-                stack -> getBoolean(stack, "pick_block"));
+                stack -> getBoolean(stack, "pick_block"), false);
     }
 
     public static void orderJeiBookmark(ServerPlayer player, @Nullable GenericStack requestedStack) {
@@ -359,10 +359,11 @@ public final class WcwtWirelessFeatures {
         AEKey what = requestedStack.what();
         if (what instanceof AEItemKey itemKey) {
             // 取出/合成：与 EAEP 原版一致，尝试取出一整组（maxStackSize）；
-            // 若库存为空但可合成，pickBlock 内部会打开合成数量界面。
+            // 若库存为空但可合成，直接打开合成数量界面（不受 craft_if_missing 设定影响，
+            // 因为这是用户主动的 Ctrl+左键下单操作）。
             int targetAmount = itemKey.toStack(1).getMaxStackSize();
             debugJeiBookmark(player, "server handling item order key={}, targetAmount={}", itemKey, targetAmount);
-            pickBlock(player, itemKey, targetAmount, HotbarTarget.FREE_SLOT, stack -> true);
+            pickBlock(player, itemKey, targetAmount, HotbarTarget.FREE_SLOT, stack -> true, true);
             return;
         }
         debugJeiBookmark(player, "server handling craft order key={}", what);
@@ -380,6 +381,11 @@ public final class WcwtWirelessFeatures {
 
     private static void pickBlock(ServerPlayer player, AEItemKey what, int targetAmount, HotbarTarget hotbarTarget,
                                   Predicate<ItemStack> terminalPredicate) {
+        pickBlock(player, what, targetAmount, hotbarTarget, terminalPredicate, false);
+    }
+
+    private static void pickBlock(ServerPlayer player, AEItemKey what, int targetAmount, HotbarTarget hotbarTarget,
+                                  Predicate<ItemStack> terminalPredicate, boolean alwaysCraftIfAvailable) {
         ItemStack requestedStack = what.toStack(Math.max(1, targetAmount));
         if (requestedStack.isEmpty()) {
             debugPickBlock(player, "skipped: requested stack empty");
@@ -444,11 +450,12 @@ public final class WcwtWirelessFeatures {
         debugPickBlock(player, "network simulate extract requested={}, amount={}, extracted={}",
                 describeStack(requestedStack), amountToExtract, extracted);
         if (extracted == 0) {
-            if (!getBoolean(terminal, "craft_if_missing")
+            boolean craftSettingAllows = alwaysCraftIfAvailable || getBoolean(terminal, "craft_if_missing");
+            if (!craftSettingAllows
                     || grid.getCraftingService().getCraftingFor(what).isEmpty()) {
-                debugPickBlock(player, "skipped: requested stack missing, requested={}, craftIfMissing={}, terminal={}",
+                debugPickBlock(player, "skipped: requested stack missing, requested={}, craftIfMissing={}, alwaysCraft={}, terminal={}",
                         describeStack(requestedStack), getBoolean(terminal, "craft_if_missing"),
-                        describeStack(terminal));
+                        alwaysCraftIfAvailable, describeStack(terminal));
                 return;
             }
             debugPickBlock(player, "opening craft amount menu for requested={}, locator={}",

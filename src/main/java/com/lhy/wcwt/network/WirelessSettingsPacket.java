@@ -43,7 +43,12 @@ public record WirelessSettingsPacket(boolean pickBlock, boolean restock, boolean
                     && menu.getMenuHost() != null) {
                 applySettings(menu.getMenuHost().getItemStack(), packet);
                 if (menu.getLocator() instanceof WcwtCurioLocator curioLocator) {
-                    applySettings(curioLocator.locateItem(context.player()), packet);
+                    // getStackInSlot returns a direct reference, but Curios won't sync the
+                    // mutation to the client unless we call setStackInSlot to trigger dirty
+                    // tracking. Fetch → mutate → store to ensure the client sees the change.
+                    ItemStack curioStack = curioLocator.locateItem(context.player());
+                    applySettings(curioStack, packet);
+                    curioLocator.storeItem(context.player(), curioStack);
                 }
             }
         });
