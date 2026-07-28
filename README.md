@@ -4,7 +4,7 @@ AE2 WCWT adds a **Wireless Comprehensive Work Terminal** for **Applied Energisti
 
 It is not just another wireless crafting terminal. It gathers storage access, pattern encoding, manual crafting, pattern provider management, toolkit slots, and several AE2 add-on workflows into one wireless terminal screen.
 
-Current version: `20.0.0.2`
+Current Forge 1.20.1 hotfix version: `1.20.1.7-hotfix`
 
 ## Feature Overview
 

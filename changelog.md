@@ -3,11 +3,25 @@
 ## English
 
 1. Fixed recipe pull to the manual crafting area and pattern encoding area ignoring NBT variant bugs.
+2. Fixed a client crash when TooManyRecipeViewers exposed the JEI mod ID
+   without providing JEI's internal GUI classes.
+3. Split ExtendedAE Plus bookmark input handling from the full-JEI internal
+   path and converted item, fluid, and Mekanism chemical ingredients through
+   a public-API-only compatibility layer.
 
 
 ## 中文
 
 1. 修复配方拉取至手动合成区和样板编码区忽略NBT变体的bug。
+
+## 日本語
+
+1. 手動クラフト領域とパターンエンコード領域へのレシピ転送で、
+   NBT差分が無視される問題を修正。
+2. TooManyRecipeViewersがJEIのmod IDを公開しながらJEI内部GUIクラスを
+   持たない場合に発生するクライアントクラッシュを修正。
+3. ExtendedAE Plusのブックマーク入力処理をフルJEI内部経路から分離し、
+   アイテム・液体・Mekanism Chemicalを公開APIだけの互換層で変換。
 
 
 
