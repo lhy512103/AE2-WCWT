@@ -979,6 +979,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     // 实现IExtendedUIHost接口
     @Override
     public ExtendedUIType getCurrentExtendedUI() {
+        currentExtendedUI = normalizeExtendedUI(currentExtendedUI);
         return currentExtendedUI;
     }
     

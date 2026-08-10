@@ -148,6 +148,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             Math.max(1L, Long.getLong("wcwt.inventorySyncIntervalTicks", 1L));
     private static final boolean DEBUG_PERF_SKIPPED_INVENTORY_SYNC =
             Boolean.getBoolean("wcwt.debug.perfSkippedInventorySync");
+    private static final boolean DEBUG_TOOLBOX_GATE =
+            Boolean.getBoolean("wcwt.debug.toolboxGate");
 
     public static final String TYPE_ID = "wireless_comprehensive_work_terminal";
     public static final String TOP_ACTION = "topAction";
@@ -271,6 +273,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private int clientQuickMoveOptions = QUICK_MOVE_TO_COSMETIC_ARMOR
             | QUICK_MOVE_TO_CARD_BOX
             | QUICK_MOVE_TO_TOOLKIT;
+    private String lastToolboxGateState = "";
 
     public WirelessComprehensiveWorkTerminalMenu(int id, Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) {
         super(com.lhy.wcwt.init.ModMenus.WCWT_MENU.get(), id, ip, host, false);
@@ -280,6 +283,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
         this.manualCraftingItemSubstitution = host.isManualCraftingItemSubstitution();
         this.manualCraftingFluidSubstitution = host.isManualCraftingFluidSubstitution();
+        updateToolboxSlotAccess();
+        gateWcwtToolboxSlots();
         // 注意：不要在这里 new ToolboxMenu(this)！
         // 父类 MEStorageMenu 的构造器已经 new ToolboxMenu(this) 并添加了 9 个 TOOLBOX 槽，
         // 若在此重复创建则共有 18 个槽，界面会显示"两重"效果。
@@ -445,6 +450,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             public void set(int value) {
                 syncedExtendedUiAvailabilityMask = value;
                 syncedExtendedUiAvailabilityKnown = true;
+                updateToolboxSlotAccess();
+                gateWcwtToolboxSlots();
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -562,6 +569,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             manualCraftingFluidSubstitution = menuHost.isManualCraftingFluidSubstitution();
         }
         applyManualWorkspaceSlotActivation(ManualWorkspaceMode.fromOrdinal(syncedManualWorkspaceMode));
+        updateToolboxSlotAccess();
         updateManualWorkspaceResults();
         initializingMenu = false;
     }
@@ -693,6 +701,23 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return isValidExtendedUiOrdinal(syncedExtendedUiOrdinal)
                 ? IExtendedUIHost.ExtendedUIType.values()[syncedExtendedUiOrdinal]
                 : IExtendedUIHost.ExtendedUIType.NONE;
+    }
+
+    /**
+     * AE2 父菜单会始终注册 Toolbox 槽位，但 WCWT 只有安装卡槽包卡后才拥有对应功能。
+     * 禁用这些槽位可以避免没有扩展按钮时仍通过快捷移动或容器点击写入升级卡。
+     */
+    private void gateWcwtToolboxSlots() {
+        boolean enabled = isServerSide()
+                ? menuHost != null && ExtendedUiUpgradeCards.isInstalled(
+                        menuHost.getUpgrades(), IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX)
+                : (syncedExtendedUiAvailabilityMask
+                        & ExtendedUiUpgradeCards.mask(IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX)) != 0;
+        for (var slot : getSlots(SlotSemantics.TOOLBOX)) {
+            if (slot instanceof AppEngSlot appEngSlot) {
+                appEngSlot.setSlotEnabled(enabled);
+            }
+        }
     }
 
     public int getExtendedUiAvailabilityMask() {
@@ -2039,7 +2064,45 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return processingMaterialsMerge;
     }
 
+    private void updateToolboxSlotAccess() {
+        boolean installed = menuHost != null
+                && ExtendedUiUpgradeCards.isInstalled(
+                        menuHost.getUpgrades(), IExtendedUIHost.ExtendedUIType.TOOL_SLOTS_BOX);
+        var toolboxSemantic = SlotSemantics.getOrThrow("TOOLBOX");
+        int totalSlots = 0;
+        int activeBefore = 0;
+        int activeAfter = 0;
+        for (Slot slot : getSlots(toolboxSemantic)) {
+            totalSlots++;
+            if (slot.isActive()) {
+                activeBefore++;
+            }
+            if (slot instanceof AppEngSlot appEngSlot) {
+                appEngSlot.setActive(installed);
+            }
+            if (slot.isActive()) {
+                activeAfter++;
+            }
+        }
+
+        String state = "installed=" + installed
+                + ", total=" + totalSlots
+                + ", activeBefore=" + activeBefore
+                + ", activeAfter=" + activeAfter
+                + ", menuHost=" + (menuHost != null)
+                + ", server=" + isServerSide();
+        if (DEBUG_TOOLBOX_GATE && !state.equals(lastToolboxGateState)) {
+            lastToolboxGateState = state;
+            WcwtMod.LOGGER.info("WCWT toolbox gate: {}", state);
+        }
+        if (!installed && activeAfter > 0) {
+            WcwtMod.LOGGER.warn("WCWT toolbox gate left {} active slots without TOOL_SLOTS_BOX_CARD: {}",
+                    activeAfter, state);
+        }
+    }
+
     public void broadcastChanges() {
+        updateToolboxSlotAccess();
         long totalStartNs = 0L;
         long preSuperNs = 0L;
         long superNs = 0L;
@@ -2222,6 +2285,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         try {
+            MatrixDuplicateResult matrixDuplicate = findMatrixDuplicatePattern(grid, uploadStack);
+            if (matrixDuplicate.duplicate()) {
+                serverPlayer.sendSystemMessage(Component.translatable("extendedae_plus.message.matrix.duplicate"));
+                return MatrixUploadResult.uploaded(matrixDuplicate.providerId(), matrixDuplicate.slot());
+            }
             EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(grid, uploadStack);
             if (ecoDuplicate.duplicate()) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
@@ -2237,6 +2305,18 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         } catch (Throwable ignored) {
         }
         return MatrixUploadResult.FAILURE;
+    }
+
+    private MatrixDuplicateResult findMatrixDuplicatePattern(appeng.api.networking.IGrid grid, ItemStack encodedPattern) {
+        var providers = listUploadProviders(false);
+        for (int i = 0; i < providers.size(); i++) {
+            var provider = providers.get(i);
+            int duplicateSlot = findMatchingPatternSlot(provider, encodedPattern);
+            if (duplicateSlot >= 0) {
+                return new MatrixDuplicateResult(true, i + 1L, duplicateSlot);
+            }
+        }
+        return MatrixDuplicateResult.NONE;
     }
 
     private EcoUploadDuplicateResult findEcoDuplicatePattern(appeng.api.networking.IGrid grid, ItemStack encodedPattern) {
@@ -2460,6 +2540,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private record ProviderTarget(long providerId, PatternContainer provider, String providerName) {
+    }
+
+    private record MatrixDuplicateResult(boolean duplicate, long providerId, int slot) {
+        private static final MatrixDuplicateResult NONE = new MatrixDuplicateResult(false, -1, -1);
     }
 
     private record EcoUploadDuplicateResult(boolean duplicate, long providerId, int slot) {

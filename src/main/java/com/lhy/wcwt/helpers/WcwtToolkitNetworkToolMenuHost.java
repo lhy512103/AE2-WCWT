@@ -21,7 +21,7 @@ import appeng.api.stacks.AEKey;
 /**
  * 让 AE 网络工具放在 WCWT 工具包中时，内部 9 格升级卡库存的修改能够正确回写到工具包槽位。
  */
-public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost {
+public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost implements WcwtNetworkToolSourceHost {
     private static final int FLUSH_INTERVAL_TICKS = Math.max(1,
             Integer.getInteger("wcwt.toolkitNetworkToolFlushTicks", 10));
 

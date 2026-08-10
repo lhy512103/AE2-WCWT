@@ -16,7 +16,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.pull.WcwtTerminalPullService;
 
 public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissing,
-        List<RequestedIngredient> requestedIngredients, int manualWorkspaceMode)
+        List<RequestedIngredient> requestedIngredients, int manualWorkspaceMode, boolean reportMissingMaterials)
         implements CustomPacketPayload {
 
     public static final CustomPacketPayload.Type<WcwtPullRecipeInputsPacket> TYPE =
@@ -28,17 +28,23 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
     public WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissing,
             List<RequestedIngredient> requestedIngredients) {
         this(maxTransfer, craftMissing, requestedIngredients,
-                WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING.ordinal());
+                WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING.ordinal(), true);
     }
 
     public WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissing,
             List<RequestedIngredient> requestedIngredients, int manualWorkspaceMode) {
+        this(maxTransfer, craftMissing, requestedIngredients, manualWorkspaceMode, true);
+    }
+
+    public WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissing,
+            List<RequestedIngredient> requestedIngredients, int manualWorkspaceMode, boolean reportMissingMaterials) {
         this.maxTransfer = maxTransfer;
         this.craftMissing = craftMissing;
         this.requestedIngredients = requestedIngredients.stream().map(RequestedIngredient::copy).toList();
         this.manualWorkspaceMode = WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode
                 .fromOrdinal(manualWorkspaceMode)
                 .ordinal();
+        this.reportMissingMaterials = reportMissingMaterials;
     }
 
     private static WcwtPullRecipeInputsPacket decode(RegistryFriendlyByteBuf buffer) {
@@ -50,7 +56,9 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
             ingredients.add(RequestedIngredient.decode(buffer));
         }
         int manualWorkspaceMode = buffer.readVarInt();
-        return new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, ingredients, manualWorkspaceMode);
+        boolean reportMissingMaterials = buffer.readBoolean();
+        return new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, ingredients, manualWorkspaceMode,
+                reportMissingMaterials);
     }
 
     private void write(RegistryFriendlyByteBuf buffer) {
@@ -61,6 +69,7 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
             ingredient.write(buffer);
         }
         buffer.writeVarInt(manualWorkspaceMode);
+        buffer.writeBoolean(reportMissingMaterials);
     }
 
     @Override

@@ -102,7 +102,7 @@ public class WcwtCraftingRecipeTransferHandler
         }
 
         return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, doTransfer,
-                transferHelper, false);
+                transferHelper, false, true);
     }
 
     private static void forceManualCraftingWorkspace(WirelessComprehensiveWorkTerminalMenu menu) {

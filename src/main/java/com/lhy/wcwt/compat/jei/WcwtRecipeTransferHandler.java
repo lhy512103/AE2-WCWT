@@ -77,6 +77,9 @@ public class WcwtRecipeTransferHandler
         if (!WcwtClientConfig.enableRecipePullTransfer()) {
             return null;
         }
+        if (WcwtMultiblockTransferCompat.isSupportedRecipe(recipe, recipeSlots)) {
+            return transferMultiblockRecipe(menu, recipe, recipeSlots, doTransfer);
+        }
         if (shouldSkipTransferAnalysis(recipe)) {
             return null;
         }
@@ -92,7 +95,7 @@ public class WcwtRecipeTransferHandler
                 WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
             }
             return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, doTransfer,
-                    transferHelper, mode != EncodingMode.CRAFTING);
+                    transferHelper, mode != EncodingMode.CRAFTING, true);
         }
 
         boolean encodingRecipe = mode != EncodingMode.PROCESSING;
@@ -122,6 +125,27 @@ public class WcwtRecipeTransferHandler
             updateEaepProviderSearchKey(recipe, minecraftRecipe, mode);
             ModNetworking.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         }
+        return null;
+    }
+
+    private IRecipeTransferError transferMultiblockRecipe(WirelessComprehensiveWorkTerminalMenu menu,
+                                                           Object recipe,
+                                                           IRecipeSlotsView recipeSlots,
+                                                           boolean doTransfer) {
+        if (isCraftingGridLocked(menu)) {
+            return transferHelper.createInternalError();
+        }
+        var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
+        if (transfer == null) {
+            return transferHelper.createInternalError();
+        }
+        if (!doTransfer) {
+            var craftableSlots = findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE);
+            return new WcwtEncodingRecipeTransferError(craftableSlots);
+        }
+        WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
+        ModNetworking.sendToServer(new JeiCraftingTransferPacket(
+                transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING));
         return null;
     }
 
@@ -304,7 +328,7 @@ public class WcwtRecipeTransferHandler
                 .toList();
     }
 
-    private static List<ItemStack> collectVisibleItemAlternatives(IRecipeSlotView slotView) {
+    static List<ItemStack> collectVisibleItemAlternatives(IRecipeSlotView slotView) {
         List<ItemStack> alternatives = new ArrayList<>();
         slotView.getDisplayedItemStack()
                 .filter(stack -> !stack.isEmpty())
@@ -347,7 +371,7 @@ public class WcwtRecipeTransferHandler
                 .toList();
     }
 
-    private static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+    static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                         IRecipeSlotView slotView,
                                                         boolean preserveItemAmounts) {
         List<ItemStack> itemCandidates = collectVisibleItemAlternatives(slotView);
@@ -417,7 +441,7 @@ public class WcwtRecipeTransferHandler
         return selected;
     }
 
-    private static WcwtIngredientPriorities.PriorityContext createPriorityContext(WirelessComprehensiveWorkTerminalMenu menu) {
+    static WcwtIngredientPriorities.PriorityContext createPriorityContext(WirelessComprehensiveWorkTerminalMenu menu) {
         Map<appeng.api.stacks.AEKey, Integer> bookmarkPriorities = WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
                 ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
                 : Map.of();

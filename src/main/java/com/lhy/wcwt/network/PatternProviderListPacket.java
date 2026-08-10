@@ -4,6 +4,7 @@ import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
@@ -192,6 +193,7 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
         }
 
         providers.sort(PatternProviderSorts.STABLE);
+        int maxSyncedSlotsPerProvider = WcwtServerConfig.maxSyncedSlotsPerProvider();
         long id = 1;
         int copiedNonEmptySlots = 0;
         int totalInventorySlots = 0;
@@ -199,12 +201,29 @@ public record PatternProviderListPacket(List<Entry> entries) implements CustomPa
             InternalInventory inv = container.getTerminalPatternInventory();
             totalInventorySlots += inv.size();
             var slots = new Int2ObjectArrayMap<ItemStack>();
+            int nonEmptySlots = 0;
+            int skippedNonEmptySlots = 0;
             for (int i = 0; i < inv.size(); i++) {
                 var stack = inv.getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    slots.put(i, stack.copy());
-                    copiedNonEmptySlots++;
+                if (stack.isEmpty()) {
+                    continue;
                 }
+                if (nonEmptySlots >= maxSyncedSlotsPerProvider) {
+                    skippedNonEmptySlots++;
+                    continue;
+                }
+                slots.put(i, stack.copy());
+                nonEmptySlots++;
+                copiedNonEmptySlots++;
+            }
+            if (skippedNonEmptySlots > 0) {
+                WcwtMod.LOGGER.warn(
+                        "WCWT provider sync truncated provider={}, inventorySlots={}, syncedNonEmptySlots={}, skippedNonEmptySlots={}, limit={}",
+                        container.getClass().getName(),
+                        inv.size(),
+                        nonEmptySlots,
+                        skippedNonEmptySlots,
+                        maxSyncedSlotsPerProvider);
             }
             var location = getLocation(container);
             entries.add(new Entry(id++, container.getTerminalGroup(), inv.size(), slots,

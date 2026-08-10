@@ -1,6 +1,40 @@
-# 1.20.1.7-hotfix
+# 1.20.1.8
 
 ## English
+
+1. Fixed Curios terminal pick-block synchronization and empty hotbar slot selection.
+2. Fixed GTCEu programmed circuit priority and magnet filter slot matching.
+3. Fixed duplicate provider titles not being grouped when multiple identical providers appear in the same pattern-management provider group.
+4. Added configurable empty-slot compaction grouped by provider.
+5. Added a configurable EAEP provider-selection screen when uploading patterns to multiple providers with the same name.
+6. Optimized tool ingredient matching for recipe transfer.
+7. Added the `maxSyncedSlotsPerProvider` server setting (default 1024) to cap synchronized non-empty pattern slots per provider and prevent oversized provider-list packets from disconnecting clients.
+8. Fixed JEI/EMI transfers of recipes with extremely large quantities freezing the client due to per-item preview loops.
+9. Capped each pulled ingredient at its runtime maximum stack size, including stack-size changes from other mods, and removed the fixed 64-item transfer limit.
+10. Added generic JEI multiblock-structure pattern encoding for structure pages without real outputs, while retaining GTL hatch filtering.
+11. Fixed the 3×3 upgrade toolbox still requiring a carried Network Tool after installing the Network Tool Slot Pack Card.
+12. Added the `fillProviderSearchFromJeiBookmark` client option to control whether pressing F over a JEI ingredient or bookmark also fills the pattern-management provider search field.
+13. Fixed pressing F over a bookmark automatically filling the JEI search field.
+
+
+## 中文
+
+1. 修复饰品栏终端中键取物设置同步和手上有物品时切换空快捷栏槽位的问题。
+2. 修复GTCEu 编程电路优先级和磁力过滤槽位匹配问题。
+3. 修复样板管理区供应器列表组内多个相同供应器标题不分组显示标题的问题。
+4. 新增按供应器合并的空槽压缩显示，可在配置文件中开启。
+5. 新增多个同名供应器上传样板时打开 EAEP 供应器选择界面，可在配置文件中开启。
+6. 优化配方转移时的工具类材料匹配。
+7. 新增服务端配置 `maxSyncedSlotsPerProvider`（默认 1024），限制每个供应器同步的非空样板槽位数量，避免过大的供应器列表数据包导致客户端断连。
+8. 修复 JEI/EMI 转移超大合成量配方时按单个物品循环预览导致客户端卡死的问题。
+9. 单项配方材料拉取数量改为不超过物品运行时最大堆叠数量，自动兼容其他模组对堆叠上限的修改，并移除固定 64 个的限制。
+10. 新增通用 JEI 多方块结构样板编码：识别没有真实产物的多方块结构信息页，保留 GTL 仓室过滤。
+11. 修复安装网络工具卡槽包卡后，仍需携带网络工具才显示 3×3 升级卡槽的问题。
+12. 新增客户端配置 `fillProviderSearchFromJeiBookmark` ，用于控制对着 JEI 配料或书签按 F 键时是否同时填充样板管理区的供应器搜索框。
+13. 修复对着书签 F 键时会自动填充到 JEI 搜索框的问题。
+
+
+# 1.20.1.7-hotfix
 
 1. Fixed recipe pull to the manual crafting area and pattern encoding area ignoring NBT variant bugs.
 

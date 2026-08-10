@@ -3,7 +3,7 @@ package com.lhy.wcwt.mixin;
 import appeng.items.contents.NetworkToolMenuHost;
 import appeng.menu.AEBaseMenu;
 import appeng.menu.ToolboxMenu;
-import com.lhy.wcwt.helpers.WcwtToolkitNetworkToolMenuHost;
+import com.lhy.wcwt.helpers.WcwtNetworkToolSourceHost;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -25,7 +25,7 @@ public abstract class WcwtToolboxMenuMixin {
     @Redirect(method = "<init>", at = @At(value = "INVOKE",
             target = "Lappeng/menu/AEBaseMenu;lockPlayerInventorySlot(I)V"), remap = false)
     private void wcwt$skipPlayerSlotLockForCuriosToolkit(AEBaseMenu menu, int invSlot) {
-        if (inv instanceof WcwtToolkitNetworkToolMenuHost wcwtHost && wcwtHost.isCuriosBacked()) {
+        if (inv instanceof WcwtNetworkToolSourceHost wcwtHost && wcwtHost.isCuriosBacked()) {
             return;
         }
         menu.lockPlayerInventorySlot(invSlot);
@@ -33,7 +33,7 @@ public abstract class WcwtToolboxMenuMixin {
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true, remap = false)
     private void wcwt$validateCuriosToolkitWithoutPlayerSlot(CallbackInfo ci) {
-        if (!(inv instanceof WcwtToolkitNetworkToolMenuHost wcwtHost) || !wcwtHost.isCuriosBacked()) {
+        if (!(inv instanceof WcwtNetworkToolSourceHost wcwtHost) || !wcwtHost.isCuriosBacked()) {
             return;
         }
 

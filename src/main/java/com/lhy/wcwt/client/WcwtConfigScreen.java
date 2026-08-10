@@ -12,6 +12,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntSupplier;
 
 public class WcwtConfigScreen extends Screen {
     private static final int ROW_HEIGHT = 24;
@@ -138,6 +139,20 @@ public class WcwtConfigScreen extends Screen {
                         WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_TOOLKIT.set(value);
                         saveClientConfig();
                     });
+            y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.patternManagementAutoCompactEmptySlots",
+                    () -> WcwtClientConfig.PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS.get(),
+                    value -> {
+                        WcwtClientConfig.PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.patternUploadMultiMatchOpenEaepScreen",
+                    () -> WcwtClientConfig.PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN.get(),
+                    value -> {
+                        WcwtClientConfig.PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN.set(value);
+                        saveClientConfig();
+                    });
         } else {
             addDisabledRow(y, "wcwt.config.clientNotLoaded");
         }
@@ -153,6 +168,10 @@ public class WcwtConfigScreen extends Screen {
                     });
             y += ROW_HEIGHT;
             addIntegerRow(y, "wcwt.config.toolkitSlotCount",
+                    () -> WcwtServerConfig.TOOLKIT_SLOT_COUNT.get(),
+                    WcwtServerConfig.MIN_TOOLKIT_SLOTS,
+                    WcwtServerConfig.MAX_TOOLKIT_SLOTS,
+                    8,
                     () -> {
                         int next = Math.max(WcwtServerConfig.MIN_TOOLKIT_SLOTS,
                                 WcwtServerConfig.TOOLKIT_SLOT_COUNT.get() - 8);
@@ -163,6 +182,24 @@ public class WcwtConfigScreen extends Screen {
                         int next = Math.min(WcwtServerConfig.MAX_TOOLKIT_SLOTS,
                                 WcwtServerConfig.TOOLKIT_SLOT_COUNT.get() + 8);
                         WcwtServerConfig.TOOLKIT_SLOT_COUNT.set(next);
+                        saveServerConfig();
+                    });
+            y += ROW_HEIGHT;
+            addIntegerRow(y, "wcwt.config.maxSyncedSlotsPerProvider",
+                    () -> WcwtServerConfig.MAX_SYNCED_SLOTS_PER_PROVIDER.get(),
+                    WcwtServerConfig.MIN_SYNCED_SLOTS_PER_PROVIDER,
+                    WcwtServerConfig.MAX_SYNCED_SLOTS_PER_PROVIDER_LIMIT,
+                    128,
+                    () -> {
+                        int next = Math.max(WcwtServerConfig.MIN_SYNCED_SLOTS_PER_PROVIDER,
+                                WcwtServerConfig.MAX_SYNCED_SLOTS_PER_PROVIDER.get() - 128);
+                        WcwtServerConfig.MAX_SYNCED_SLOTS_PER_PROVIDER.set(next);
+                        saveServerConfig();
+                    },
+                    () -> {
+                        int next = Math.min(WcwtServerConfig.MAX_SYNCED_SLOTS_PER_PROVIDER_LIMIT,
+                                WcwtServerConfig.MAX_SYNCED_SLOTS_PER_PROVIDER.get() + 128);
+                        WcwtServerConfig.MAX_SYNCED_SLOTS_PER_PROVIDER.set(next);
                         saveServerConfig();
                     });
             y += ROW_HEIGHT;
@@ -186,18 +223,22 @@ public class WcwtConfigScreen extends Screen {
         rows.add(new ConfigRow(translationKey, y, List.of(button)));
     }
 
-    private void addIntegerRow(int y, String translationKey, Runnable decreaseAction, Runnable increaseAction) {
-        int currentValue = WcwtServerConfig.TOOLKIT_SLOT_COUNT.get();
-        Button decrease = addRenderableWidget(Button.builder(Component.literal("-8 (" + currentValue + ")"),
+    private void addIntegerRow(int y, String translationKey, IntSupplier getter,
+                               int minValue, int maxValue, int step,
+                               Runnable decreaseAction, Runnable increaseAction) {
+        int currentValue = getter.getAsInt();
+        Button decrease = addRenderableWidget(Button.builder(Component.literal("-" + step + " (" + currentValue + ")"),
                 btn -> {
                     decreaseAction.run();
                     rebuildWidgets();
                 }).bounds(width - LABEL_X - BUTTON_WIDTH * 2 - 4, y - 4, BUTTON_WIDTH, 20).build());
-        Button increase = addRenderableWidget(Button.builder(Component.literal("+8 (" + currentValue + ")"),
+        Button increase = addRenderableWidget(Button.builder(Component.literal("+" + step + " (" + currentValue + ")"),
                 btn -> {
                     increaseAction.run();
                     rebuildWidgets();
                 }).bounds(width - LABEL_X - BUTTON_WIDTH, y - 4, BUTTON_WIDTH, 20).build());
+        decrease.active = currentValue > minValue;
+        increase.active = currentValue < maxValue;
         rows.add(new ConfigRow(translationKey, y, List.of(decrease, increase)));
     }
 

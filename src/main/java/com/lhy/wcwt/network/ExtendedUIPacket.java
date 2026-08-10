@@ -2,6 +2,7 @@ package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.api.IExtendedUIHost;
+import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import io.netty.buffer.ByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.ByteBufCodecs;
@@ -38,7 +39,13 @@ public record ExtendedUIPacket(IExtendedUIHost.ExtendedUIType uiType) implements
             if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 var host = menu.getMenuHost();
                 if (host != null) {
-                    host.setCurrentExtendedUI(packet.uiType());
+                    var requestedType = packet.uiType();
+                    if (!ExtendedUiUpgradeCards.canOpen(host.getUpgrades(), requestedType)) {
+                        host.closeExtendedUI();
+                        menu.broadcastChanges();
+                        return;
+                    }
+                    host.setCurrentExtendedUI(requestedType);
                     menu.broadcastChanges();
                 }
             }

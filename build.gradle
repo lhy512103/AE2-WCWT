@@ -61,6 +61,7 @@ minecraft {
         client {
             workingDirectory project.file('run/client')
             property 'forge.enabledGameTestNamespaces', mod_id
+            property 'wcwt.debug.toolboxGate', 'false'
         }
         server {
             workingDirectory project.file('run/server')
@@ -77,8 +78,6 @@ mixin {
 
 // ── 仓库 ──────────────────────────────────────────────────────
 repositories {
-    flatDir { dirs 'libs' }
-
     mavenCentral()
 
     maven {

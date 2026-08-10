@@ -40,7 +40,6 @@ import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
  */
 public final class WcwtTerminalPullService {
     private static final int MAX_DETAIL_ITEMS = 5;
-    private static final int MAX_PROCESSING_TRANSFER_STACK_SIZE = 64;
 
     private WcwtTerminalPullService() {
     }
@@ -148,7 +147,7 @@ public final class WcwtTerminalPullService {
                     remainingToHandle = 0;
                 }
             }
-            if (remainingToHandle > 0) {
+            if (remainingToHandle > 0 && payload.reportMissingMaterials()) {
                 missingItems.add(getDisplayStack(requested).copyWithCount(remainingToHandle));
             }
 
@@ -326,7 +325,6 @@ public final class WcwtTerminalPullService {
             RequestedIngredient ingredient = requestedIngredients.get(ingredientIndex);
             int maxSets = getMaxTransferSetsForTarget(targetMode, List.of(ingredient));
             int maxUnits = (int) Math.min(Integer.MAX_VALUE, (long) ingredient.count() * Math.max(1, maxSets));
-            int reservedUnits = 0;
             var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(ingredient.alternatives());
             int targetSlot = ingredient.targetSlot() >= 0 ? ingredient.targetSlot() : ingredientIndex;
             if (targetSlot >= 0 && targetSlot < craftingGridSnapshot.size()) {
@@ -336,17 +334,14 @@ public final class WcwtTerminalPullService {
                 }
             }
 
-            for (int unit = 0; unit < maxUnits; unit++) {
-                if (WcwtMeIngredientExtraction.reserveOneUnit(availableByKey, ingredient.alternatives(), wideIngredient)) {
-                    reservedUnits++;
-                    continue;
-                }
-                if (craftMissing && craftingService != null
-                        && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null) {
-                    reservedUnits++;
-                    continue;
-                }
-                break;
+            long reservedAmount = WcwtMeIngredientExtraction.reserveAmount(
+                    availableByKey, ingredient.alternatives(), wideIngredient, maxUnits);
+            int reservedUnits = (int) reservedAmount;
+            if (reservedUnits < maxUnits
+                    && craftMissing
+                    && craftingService != null
+                    && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null) {
+                reservedUnits = maxUnits;
             }
 
             if (reservedUnits > 0) {
@@ -367,13 +362,9 @@ public final class WcwtTerminalPullService {
             return 1;
         }
 
-        int maxSets = 64;
+        int maxSets = Integer.MAX_VALUE;
         for (RequestedIngredient ingredient : requestedIngredients) {
-            int maxStackSize = ingredient.alternatives().stream()
-                    .filter(stack -> stack != null && !stack.isEmpty())
-                    .mapToInt(ItemStack::getMaxStackSize)
-                    .max()
-                    .orElse(MAX_PROCESSING_TRANSFER_STACK_SIZE);
+            int maxStackSize = WcwtStackMatching.getMaxStackSize(ingredient.alternatives());
             if (maxStackSize <= 1) {
                 return 1;
             }
@@ -398,11 +389,7 @@ public final class WcwtTerminalPullService {
                 continue;
             }
 
-            int maxAllowed = alternatives.stream()
-                    .mapToInt(ItemStack::getMaxStackSize)
-                    .max()
-                    .orElse(64);
-            int count = Math.max(1, Math.min(ingredient.count(), maxAllowed));
+            int count = WcwtStackMatching.clampRequestedAmount(alternatives, ingredient.count());
             sanitized.add(new RequestedIngredient(alternatives, count, ingredient.targetSlot()));
         }
         return sanitized;
@@ -466,14 +453,12 @@ public final class WcwtTerminalPullService {
                 return false;
             }
             var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(ingredient.alternatives());
-            for (int unit = 0; unit < ingredient.count(); unit++) {
-                if (!WcwtMeIngredientExtraction.reserveOneUnit(remaining, ingredient.alternatives(), wideIngredient)) {
-                    if (craftMissing && craftingService != null
-                            && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null) {
-                        continue;
-                    }
-                    return false;
-                }
+            long reserved = WcwtMeIngredientExtraction.reserveAmount(
+                    remaining, ingredient.alternatives(), wideIngredient, ingredient.count());
+            if (reserved < ingredient.count()
+                    && !(craftMissing && craftingService != null
+                    && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null)) {
+                return false;
             }
         }
 

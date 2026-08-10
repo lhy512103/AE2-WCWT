@@ -2,7 +2,7 @@ package com.lhy.wcwt.pull;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.menu.me.common.MEStorageMenu;
-import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import org.jetbrains.annotations.Nullable;
@@ -12,6 +12,21 @@ import java.util.Objects;
 
 public final class WcwtStackMatching {
     private WcwtStackMatching() {
+    }
+
+    public static int getMaxStackSize(List<ItemStack> alternatives) {
+        if (alternatives == null) {
+            return 1;
+        }
+        return alternatives.stream()
+                .filter(stack -> stack != null && !stack.isEmpty())
+                .mapToInt(ItemStack::getMaxStackSize)
+                .max()
+                .orElse(1);
+    }
+
+    public static int clampRequestedAmount(List<ItemStack> alternatives, long requestedAmount) {
+        return (int) Math.max(1L, Math.min(requestedAmount, getMaxStackSize(alternatives)));
     }
 
     public static boolean hasSpecificData(ItemStack stack) {
@@ -85,12 +100,43 @@ public final class WcwtStackMatching {
         return false;
     }
 
-    public static boolean reserveClientRepoStoredIngredient(MEStorageMenu menu, List<ItemStack> alternatives,
-            @Nullable Ingredient wideIngredient, Object2IntOpenHashMap<AEItemKey> reservedAmounts) {
-        var clientRepo = menu.getClientRepo();
-        if (clientRepo == null) {
-            return false;
+    public static long reservePlayerInventoryIngredient(MEStorageMenu menu, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient, int[] reservedAmounts, long requestedAmount) {
+        if (requestedAmount <= 0) {
+            return 0;
         }
+        var playerItems = menu.getPlayerInventory().items;
+        long remaining = requestedAmount;
+        for (int slot = 0; slot < playerItems.size() && slot < reservedAmounts.length; slot++) {
+            if (menu.isPlayerInventorySlotLocked(slot)) {
+                continue;
+            }
+            var stack = playerItems.get(slot);
+            if (!matchesAnyAlternative(stack, alternatives, wideIngredient)) {
+                continue;
+            }
+            int available = stack.getCount() - reservedAmounts[slot];
+            if (available <= 0) {
+                continue;
+            }
+            int reserved = (int) Math.min(available, remaining);
+            reservedAmounts[slot] += reserved;
+            remaining -= reserved;
+            if (remaining <= 0) {
+                break;
+            }
+        }
+        return requestedAmount - remaining;
+    }
+
+    public static long reserveClientRepoStoredIngredient(MEStorageMenu menu, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient, Object2LongOpenHashMap<AEItemKey> reservedAmounts,
+            long requestedAmount) {
+        var clientRepo = menu.getClientRepo();
+        if (clientRepo == null || requestedAmount <= 0) {
+            return 0;
+        }
+        long remaining = requestedAmount;
         for (var entry : clientRepo.getAllEntries()) {
             if (entry.getStoredAmount() <= 0 || !(entry.getWhat() instanceof AEItemKey itemKey)) {
                 continue;
@@ -99,14 +145,18 @@ public final class WcwtStackMatching {
                 continue;
             }
 
-            long available = entry.getStoredAmount() - reservedAmounts.getInt(itemKey);
+            long available = entry.getStoredAmount() - reservedAmounts.getLong(itemKey);
             if (available <= 0) {
                 continue;
             }
-            reservedAmounts.addTo(itemKey, 1);
-            return true;
+            long reserved = Math.min(available, remaining);
+            reservedAmounts.addTo(itemKey, reserved);
+            remaining -= reserved;
+            if (remaining <= 0) {
+                break;
+            }
         }
-        return false;
+        return requestedAmount - remaining;
     }
 
     public static boolean hasClientRepoCraftableIngredient(MEStorageMenu menu, List<ItemStack> alternatives,

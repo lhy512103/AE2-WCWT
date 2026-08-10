@@ -49,33 +49,18 @@ public final class WcwtMeIngredientExtraction {
         boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
 
         Map<AEItemKey, Integer> extractedByKey = new LinkedHashMap<>();
-        for (int i = 0; i < amount; i++) {
-            AEItemKey used = tryExtractOneUnit(storage, energy, actionSource, filter, preferredKeys, wide, orderedAlts,
-                    exactOnly);
-            if (used == null) {
+        int remaining = Math.max(0, amount);
+        for (AEItemKey candidate : preferredKeys) {
+            int extracted = extractAmount(storage, energy, actionSource, candidate, remaining);
+            if (extracted > 0) {
+                extractedByKey.merge(candidate, extracted, Integer::sum);
+                remaining -= extracted;
+            }
+            if (remaining <= 0) {
                 break;
             }
-            extractedByKey.merge(used, 1, Integer::sum);
         }
-        return extractedByKey.entrySet().stream()
-                .map(e -> e.getKey().toStack(e.getValue()))
-                .toList();
-    }
-
-    @Nullable
-    private static AEItemKey tryExtractOneUnit(MEStorage storage, IEnergySource energy, IActionSource actionSource,
-            @Nullable IPartitionList filter, List<AEItemKey> preferredKeys, @Nullable Ingredient wide,
-            List<ItemStack> orderedAlts, boolean exactOnly) {
-        for (AEItemKey candidate : preferredKeys) {
-            long extracted = StorageHelper.poweredExtraction(energy, storage, candidate, 1, actionSource);
-            if (extracted > 0) {
-                return candidate;
-            }
-        }
-        if (exactOnly) {
-            return null;
-        }
-        if (wide != null) {
+        if (remaining > 0 && !exactOnly && wide != null) {
             for (var entry : storage.getAvailableStacks()) {
                 if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
                     continue;
@@ -86,38 +71,65 @@ public final class WcwtMeIngredientExtraction {
                 if (!itemKey.matches(wide)) {
                     continue;
                 }
-                long extracted = StorageHelper.poweredExtraction(energy, storage, itemKey, 1, actionSource);
+                int extracted = extractAmount(storage, energy, actionSource, itemKey, remaining);
                 if (extracted > 0) {
-                    return itemKey;
+                    extractedByKey.merge(itemKey, extracted, Integer::sum);
+                    remaining -= extracted;
+                }
+                if (remaining <= 0) {
+                    break;
                 }
             }
         }
-        for (ItemStack alt : orderedAlts) {
-            if (alt.isEmpty()) {
-                continue;
-            }
-            var wantedItem = alt.getItem();
-            for (var entry : storage.getAvailableStacks()) {
-                if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
+        if (remaining > 0 && !exactOnly) {
+            for (ItemStack alt : orderedAlts) {
+                if (alt.isEmpty()) {
                     continue;
                 }
-                if (filter != null && !filter.isListed(itemKey)) {
-                    continue;
+                var wantedItem = alt.getItem();
+                for (var entry : storage.getAvailableStacks()) {
+                    if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
+                        continue;
+                    }
+                    if (filter != null && !filter.isListed(itemKey)) {
+                        continue;
+                    }
+                    if (itemKey.getItem() != wantedItem) {
+                        continue;
+                    }
+                    int extracted = extractAmount(storage, energy, actionSource, itemKey, remaining);
+                    if (extracted > 0) {
+                        extractedByKey.merge(itemKey, extracted, Integer::sum);
+                        remaining -= extracted;
+                    }
+                    if (remaining <= 0) {
+                        break;
+                    }
                 }
-                if (itemKey.getItem() != wantedItem) {
-                    continue;
-                }
-                long extracted = StorageHelper.poweredExtraction(energy, storage, itemKey, 1, actionSource);
-                if (extracted > 0) {
-                    return itemKey;
+                if (remaining <= 0) {
+                    break;
                 }
             }
         }
-        return null;
+        return extractedByKey.entrySet().stream()
+                .map(e -> e.getKey().toStack(e.getValue()))
+                .toList();
     }
 
-    public static boolean reserveOneUnit(Map<AEItemKey, Long> remaining, List<ItemStack> alternativeStacks,
-            @Nullable Ingredient wideIngredient) {
+    private static int extractAmount(MEStorage storage, IEnergySource energy, IActionSource actionSource,
+            AEItemKey key, int requestedAmount) {
+        if (requestedAmount <= 0) {
+            return 0;
+        }
+        long extracted = StorageHelper.poweredExtraction(energy, storage, key, requestedAmount, actionSource);
+        return (int) Math.min(Math.max(extracted, 0), requestedAmount);
+    }
+
+    public static long reserveAmount(Map<AEItemKey, Long> remaining, List<ItemStack> alternativeStacks,
+            @Nullable Ingredient wideIngredient, long requestedAmount) {
+        if (requestedAmount <= 0) {
+            return 0;
+        }
         List<AEItemKey> preferredKeys = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks).stream()
                 .map(AEItemKey::of)
                 .filter(Objects::nonNull)
@@ -125,37 +137,27 @@ public final class WcwtMeIngredientExtraction {
                 .toList();
         List<ItemStack> orderedAlts = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks);
         boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
+        long amountLeft = requestedAmount;
 
         for (AEItemKey candidate : preferredKeys) {
-            long available = remaining.getOrDefault(candidate, 0L);
-            if (available > 0) {
-                remaining.put(candidate, available - 1);
-                return true;
+            amountLeft -= reserveFromKey(remaining, candidate, amountLeft);
+            if (amountLeft <= 0) {
+                return requestedAmount;
             }
         }
         if (exactOnly) {
-            return false;
+            return requestedAmount - amountLeft;
         }
         if (wideIngredient != null) {
-            AEItemKey pick = null;
-            long pickAmount = 0;
-            for (var e : remaining.entrySet()) {
-                AEItemKey key = e.getKey();
-                long avail = e.getValue();
-                if (avail <= 0) {
+            for (var entry : remaining.entrySet()) {
+                AEItemKey key = entry.getKey();
+                if (entry.getValue() <= 0 || !key.matches(wideIngredient)) {
                     continue;
                 }
-                if (!key.matches(wideIngredient)) {
-                    continue;
+                amountLeft -= reserveFromKey(remaining, key, amountLeft);
+                if (amountLeft <= 0) {
+                    return requestedAmount;
                 }
-                if (avail > pickAmount) {
-                    pickAmount = avail;
-                    pick = key;
-                }
-            }
-            if (pick != null) {
-                remaining.put(pick, pickAmount - 1);
-                return true;
             }
         }
         for (ItemStack alt : orderedAlts) {
@@ -163,24 +165,26 @@ public final class WcwtMeIngredientExtraction {
                 continue;
             }
             var wantedItem = alt.getItem();
-            AEItemKey pick = null;
-            long pickAmount = 0;
-            for (var e : remaining.entrySet()) {
-                AEItemKey key = e.getKey();
-                long avail = e.getValue();
-                if (avail <= 0 || key.getItem() != wantedItem) {
+            for (var entry : remaining.entrySet()) {
+                AEItemKey key = entry.getKey();
+                if (entry.getValue() <= 0 || key.getItem() != wantedItem) {
                     continue;
                 }
-                if (avail > pickAmount) {
-                    pickAmount = avail;
-                    pick = key;
+                amountLeft -= reserveFromKey(remaining, key, amountLeft);
+                if (amountLeft <= 0) {
+                    return requestedAmount;
                 }
             }
-            if (pick != null) {
-                remaining.put(pick, pickAmount - 1);
-                return true;
-            }
         }
-        return false;
+        return requestedAmount - amountLeft;
+    }
+
+    private static long reserveFromKey(Map<AEItemKey, Long> remaining, AEItemKey key, long requestedAmount) {
+        long available = remaining.getOrDefault(key, 0L);
+        long reserved = Math.min(Math.max(available, 0), requestedAmount);
+        if (reserved > 0) {
+            remaining.put(key, available - reserved);
+        }
+        return reserved;
     }
 }

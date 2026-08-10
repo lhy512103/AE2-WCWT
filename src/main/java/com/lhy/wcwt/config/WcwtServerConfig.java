@@ -10,11 +10,15 @@ public final class WcwtServerConfig {
     public static final int MIN_TOOLKIT_SLOTS = 11;
     public static final int MAX_TOOLKIT_SLOTS = 640;
     private static final int DEFAULT_TOOLKIT_SLOTS = 64;
+    public static final int MIN_SYNCED_SLOTS_PER_PROVIDER = 1;
+    public static final int MAX_SYNCED_SLOTS_PER_PROVIDER_LIMIT = 32767;
+    private static final int DEFAULT_SYNCED_SLOTS_PER_PROVIDER = 1024;
 
     public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
     public static final ForgeConfigSpec SPEC;
 
     public static final ForgeConfigSpec.IntValue TOOLKIT_SLOT_COUNT;
+    public static final ForgeConfigSpec.IntValue MAX_SYNCED_SLOTS_PER_PROVIDER;
     public static final ForgeConfigSpec.BooleanValue PATTERN_PROVIDER_ACTIVE_REFRESH;
 
     static {
@@ -22,6 +26,11 @@ public final class WcwtServerConfig {
                 .comment("Toolkit slot count. Minimum 11 keeps the dedicated tool slots available.")
                 .translation("wcwt.config.toolkitSlotCount")
                 .defineInRange("toolkitSlotCount", DEFAULT_TOOLKIT_SLOTS, MIN_TOOLKIT_SLOTS, MAX_TOOLKIT_SLOTS);
+        MAX_SYNCED_SLOTS_PER_PROVIDER = BUILDER
+                .comment("Maximum number of non-empty pattern slots synchronized per provider to avoid oversized network packets.")
+                .translation("wcwt.config.maxSyncedSlotsPerProvider")
+                .defineInRange("maxSyncedSlotsPerProvider", DEFAULT_SYNCED_SLOTS_PER_PROVIDER,
+                        MIN_SYNCED_SLOTS_PER_PROVIDER, MAX_SYNCED_SLOTS_PER_PROVIDER_LIMIT);
         PATTERN_PROVIDER_ACTIVE_REFRESH = BUILDER
                 .comment("Actively refresh the pattern management provider list while it is visible. Disabled keeps one-shot refreshes only.")
                 .translation("wcwt.config.patternProviderActiveRefresh")
@@ -34,6 +43,10 @@ public final class WcwtServerConfig {
 
     public static int toolkitSlotCount() {
         return TOOLKIT_SLOT_COUNT.get();
+    }
+
+    public static int maxSyncedSlotsPerProvider() {
+        return MAX_SYNCED_SLOTS_PER_PROVIDER.get();
     }
 
     public static boolean patternProviderActiveRefresh() {
