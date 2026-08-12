@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.6
+
+### English
+
+1. Fixed WCWT causing some modpacks to crash or remain stuck on the startup screen due to duplicate registration of the main, magnet, and trash menu types.
+
+### 中文
+
+1. 修复 WCWT 主菜单、磁力菜单和垃圾桶菜单类型重复注册，导致部分整合包启动崩溃或卡在启动界面的问题。
+
 ## v1.3.5
 
 ### English

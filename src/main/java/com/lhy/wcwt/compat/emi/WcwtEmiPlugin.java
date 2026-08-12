@@ -17,7 +17,7 @@ public class WcwtEmiPlugin implements EmiPlugin {
         for (var hiddenStack : WcwtOptionalFeatureGates.hiddenUpgradeCardStacks()) {
             registry.removeEmiStacks(EmiStack.of(hiddenStack));
         }
-        registry.addRecipeHandler(ModMenus.WCWT_MENU.get(), new WcwtEmiRecipeHandler());
+        registry.addRecipeHandler(ModMenus.WCWT_MENU_TYPE, new WcwtEmiRecipeHandler());
         registry.addExclusionArea(WirelessComprehensiveWorkTerminalScreen.class,
                 (screen, consumer) -> consumer.accept(new Bounds(screen.getGuiLeft(), screen.getGuiTop(),
                         screen.getXSize(), screen.getYSize())));

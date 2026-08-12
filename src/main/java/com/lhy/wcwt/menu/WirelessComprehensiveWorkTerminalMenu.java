@@ -258,7 +258,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private int syncedManualAnvilCost;
 
     public WirelessComprehensiveWorkTerminalMenu(int id, Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) {
-        super(com.lhy.wcwt.init.ModMenus.WCWT_MENU.get(), id, ip, host, false);
+        super(com.lhy.wcwt.init.ModMenus.WCWT_MENU_TYPE, id, ip, host, false);
         this.menuHost = host;
         this.patternEncodingLogic = host.getLogic();
         this.manualSmithingBridge = new ManualSmithingMenuBridge();

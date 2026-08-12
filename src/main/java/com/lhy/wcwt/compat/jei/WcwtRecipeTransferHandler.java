@@ -65,7 +65,7 @@ public class WcwtRecipeTransferHandler
 
     @Override
     public Optional<MenuType<WirelessComprehensiveWorkTerminalMenu>> getMenuType() {
-        return Optional.of(ModMenus.WCWT_MENU.get());
+        return Optional.of(ModMenus.WCWT_MENU_TYPE);
     }
 
     @Override

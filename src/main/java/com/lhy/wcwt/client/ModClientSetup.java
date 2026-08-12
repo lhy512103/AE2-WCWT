@@ -30,7 +30,7 @@ public class ModClientSetup {
 
     @SubscribeEvent
     public static void onRegisterMenuScreens(RegisterMenuScreensEvent event) {
-        event.register(ModMenus.WCWT_MENU.get(), WirelessComprehensiveWorkTerminalScreen::new);
+        event.register(ModMenus.WCWT_MENU_TYPE, WirelessComprehensiveWorkTerminalScreen::new);
         InitScreens.register(event, ModMenus.WCWT_MAGNET_MENU.get(), WcwtMagnetScreen::new,
                 "/screens/wtlib/magnet.json");
         InitScreens.register(event, ModMenus.WCWT_TRASH_MENU.get(), WcwtTrashScreen::new,

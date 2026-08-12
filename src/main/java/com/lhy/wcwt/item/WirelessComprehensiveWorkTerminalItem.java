@@ -45,7 +45,7 @@ public class WirelessComprehensiveWorkTerminalItem extends ItemWT {
 
     @Override
     public MenuType<?> getMenuType(ItemMenuHostLocator locator, Player player) {
-        return ModMenus.WCWT_MENU.get();
+        return ModMenus.WCWT_MENU_TYPE;
     }
 
     @Override
