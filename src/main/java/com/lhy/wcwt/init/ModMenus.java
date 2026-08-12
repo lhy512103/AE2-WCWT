@@ -14,10 +14,23 @@ import appeng.menu.implementations.MenuTypeBuilder;
 public class ModMenus {
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(Registries.MENU, WcwtMod.MOD_ID);
 
-    public static final DeferredHolder<MenuType<?>, MenuType<WirelessComprehensiveWorkTerminalMenu>> WCWT_MENU = MENUS.register("wcwt", 
-            () -> MenuTypeBuilder.create((int id, net.minecraft.world.entity.player.Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) -> new WirelessComprehensiveWorkTerminalMenu(id, ip, host), WirelessComprehensiveWorkTerminalMenuHost.class).build("wcwt"));
-    public static final DeferredHolder<MenuType<?>, MenuType<WcwtMagnetMenu>> WCWT_MAGNET_MENU = MENUS.register("wcwt_magnet",
-            () -> MenuTypeBuilder.create((int id, net.minecraft.world.entity.player.Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) -> new WcwtMagnetMenu(id, ip, host), WirelessComprehensiveWorkTerminalMenuHost.class).build("wcwt_magnet"));
-    public static final DeferredHolder<MenuType<?>, MenuType<WcwtTrashMenu>> WCWT_TRASH_MENU = MENUS.register("wcwt_trash",
-            () -> MenuTypeBuilder.create((int id, net.minecraft.world.entity.player.Inventory ip, WirelessComprehensiveWorkTerminalMenuHost host) -> new WcwtTrashMenu(id, ip, host), WirelessComprehensiveWorkTerminalMenuHost.class).build("wcwt_trash"));
+    public static final MenuType<WirelessComprehensiveWorkTerminalMenu> WCWT_MENU_TYPE =
+            MenuTypeBuilder.create((int id, net.minecraft.world.entity.player.Inventory ip,
+                    WirelessComprehensiveWorkTerminalMenuHost host) -> new WirelessComprehensiveWorkTerminalMenu(id, ip, host),
+                    WirelessComprehensiveWorkTerminalMenuHost.class).build("wcwt");
+    public static final MenuType<WcwtMagnetMenu> WCWT_MAGNET_MENU_TYPE =
+            MenuTypeBuilder.create((int id, net.minecraft.world.entity.player.Inventory ip,
+                    WirelessComprehensiveWorkTerminalMenuHost host) -> new WcwtMagnetMenu(id, ip, host),
+                    WirelessComprehensiveWorkTerminalMenuHost.class).build("wcwt_magnet");
+    public static final MenuType<WcwtTrashMenu> WCWT_TRASH_MENU_TYPE =
+            MenuTypeBuilder.create((int id, net.minecraft.world.entity.player.Inventory ip,
+                    WirelessComprehensiveWorkTerminalMenuHost host) -> new WcwtTrashMenu(id, ip, host),
+                    WirelessComprehensiveWorkTerminalMenuHost.class).build("wcwt_trash");
+
+    public static final DeferredHolder<MenuType<?>, MenuType<WirelessComprehensiveWorkTerminalMenu>> WCWT_MENU =
+            MENUS.register("wcwt", () -> WCWT_MENU_TYPE);
+    public static final DeferredHolder<MenuType<?>, MenuType<WcwtMagnetMenu>> WCWT_MAGNET_MENU =
+            MENUS.register("wcwt_magnet", () -> WCWT_MAGNET_MENU_TYPE);
+    public static final DeferredHolder<MenuType<?>, MenuType<WcwtTrashMenu>> WCWT_TRASH_MENU =
+            MENUS.register("wcwt_trash", () -> WCWT_TRASH_MENU_TYPE);
 }

@@ -13,18 +13,19 @@ import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.init.ModCreativeTabs;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
-import com.lhy.wcwt.init.ModRecipeSerializers;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtStowHotkeyAction;
+import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
-import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
-import com.lhy.wcwt.universal.WcwtItemIds;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.compat.WcwtCuriosCompat;
 import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
 import com.lhy.wcwt.command.WcwtCommands;
+import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
+import de.mari_023.ae2wtlib.api.gui.Icon;
+import de.mari_023.ae2wtlib.api.registration.AddTerminalEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -66,7 +67,22 @@ public class WcwtMod {
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
-        ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
+        AddTerminalEvent.register(event -> {
+            var terminalItem = ModItems.registerWirelessComprehensiveWorkTerminal();
+            event.builder(
+                            "wcwt",
+                            (item, player, locator, returnToMainMenu) -> new WirelessComprehensiveWorkTerminalMenuHost(
+                                    item,
+                                    player,
+                                    locator,
+                                    returnToMainMenu),
+                            ModMenus.WCWT_MENU_TYPE,
+                            terminalItem,
+                            Icon.CRAFTING)
+                    .hotkeyName("wireless_wcwt_terminal")
+                    .upgradeCount(WirelessComprehensiveWorkTerminalItem.UPGRADE_INVENTORY_SIZE)
+                    .addTerminal();
+        });
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::addCreativeTabItems);
         modEventBus.addListener(this::registerCapabilities);
@@ -82,10 +98,6 @@ public class WcwtMod {
                     WcwtToolkitNetworkToolLocator.class,
                     WcwtToolkitNetworkToolLocator::writeToPacket,
                     WcwtToolkitNetworkToolLocator::readFromPacket);
-            MenuLocators.register(
-                    WcwtEmbeddedTerminalLocator.class,
-                    WcwtEmbeddedTerminalLocator::writeToPacket,
-                    WcwtEmbeddedTerminalLocator::readFromPacket);
             GridLinkables.register(
                     ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);
@@ -107,9 +119,10 @@ public class WcwtMod {
             // 注意：所有升级卡的最大数量之和不能超过 WirelessComprehensiveWorkTerminalItem.UPGRADE_INVENTORY_SIZE（当前 20），
             //       超出会导致后注册的升级显示不全。改这个上限去 WirelessComprehensiveWorkTerminalItem 里改 UPGRADE_INVENTORY_SIZE 常量。
             var wcwt = ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
+            var wut = AE2wtlibAPI.getWUT();
             String groupKey = GuiText.WirelessTerminals.getTranslationKey();
             Upgrades.add(AEItems.ENERGY_CARD, wcwt, 10, groupKey);                              // 能源卡 ×10
-            registerExternalUpgradeCard(wcwt, WcwtItemIds.AE2WTLIB_QUANTUM_BRIDGE_CARD, 1, null, false); // 量子桥卡 ×1
+            registerExternalUpgradeCard(wcwt, ResourceLocation.fromNamespaceAndPath("ae2wtlib", "quantum_bridge_card"), 1, null, false); // 量子桥卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "magnet_card", 1, groupKey, false); // 磁力卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true); // 输入卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true); // 输出卡 ×1
@@ -124,6 +137,20 @@ public class WcwtMod {
             Upgrades.add(ModItems.TOOLKIT_CARD, wcwt, 1, groupKey);
             if (WcwtOptionalFeatureGates.isResonatingLightningPatternCodingAvailable()) {
                 Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD, wcwt, 1, groupKey);
+            }
+
+            // WUT 的当前终端模式仍由 WUT 物品承载，因此 WCWT 专属卡也必须注册到 WUT。
+            Upgrades.add(ModItems.ADVANCED_CODING_CARD, wut, 1, groupKey);
+            if (WcwtOptionalFeatureGates.isCosmeticArmorAvailable()) {
+                Upgrades.add(ModItems.COSMETIC_ARMOR_CARD, wut, 1, groupKey);
+            }
+            if (WcwtOptionalFeatureGates.isCuriosAvailable()) {
+                Upgrades.add(ModItems.CURIOS_CARD, wut, 1, groupKey);
+            }
+            Upgrades.add(ModItems.TOOL_SLOTS_BOX_CARD, wut, 1, groupKey);
+            Upgrades.add(ModItems.TOOLKIT_CARD, wut, 1, groupKey);
+            if (WcwtOptionalFeatureGates.isResonatingLightningPatternCodingAvailable()) {
+                Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD, wut, 1, groupKey);
             }
         });
     }
@@ -178,8 +205,12 @@ public class WcwtMod {
     }
 
     private void addCreativeTabItems(BuildCreativeModeTabContentsEvent event) {
-        if (AECreativeTabIds.MAIN.equals(event.getTabKey()) || AE2WTLIB_TAB.equals(event.getTabKey())) {
-            ModCreativeTabs.addWcwtItems(event);
+        if (AECreativeTabIds.MAIN.equals(event.getTabKey())) {
+            ModCreativeTabs.addWcwtItems(event, true);
+        } else if (AE2WTLIB_TAB.equals(event.getTabKey())) {
+            // AE2WTLib already inserts registered terminals into this tab.
+            // Adding the base WCWT stack here would violate NeoForge's duplicate-entry check.
+            ModCreativeTabs.addWcwtItems(event, false);
         }
     }
 }

@@ -15,6 +15,11 @@ public abstract class WcwtNetworkToolItemMixin {
     @Inject(method = "findNetworkToolInv", at = @At("RETURN"), cancellable = true)
     private static void wcwt$findNetworkToolInToolkit(Player player,
             CallbackInfoReturnable<NetworkToolMenuHost<?>> cir) {
+        var cardBackedHost = WcwtToolkitNetworkToolSupport.findCardBackedNetworkToolHost(player);
+        if (cardBackedHost != null) {
+            cir.setReturnValue(cardBackedHost);
+            return;
+        }
         if (cir.getReturnValue() != null) {
             return;
         }

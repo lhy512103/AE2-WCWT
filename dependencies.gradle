@@ -1,7 +1,7 @@
 dependencies {
     // AE2
     compileOnly "org.appliedenergistics:appliedenergistics2:${ae2_version}"
-    compileOnly "de.mari_023:ae2wtlib_api:${ae2wtlib_version}"
+    compileOnly "de.mari_023:ae2wtlib:${ae2wtlib_version}"
 
     // AE2 addons
     compileOnly "curse.maven:advancedae-1084104:${advancedae_file}"
@@ -42,7 +42,9 @@ dependencies {
     localRuntime "curse.maven:advancedae-1084104:${advancedae_file}"
     localRuntime "curse.maven:ae2-crystal-science-1435174:8112039"
     localRuntime "curse.maven:ae2-import-export-card-982512:8033654"
-    localRuntime "curse.maven:ae2-lightning-tech-1527395:8327576"
+    // AE2 Lightning Tech 2.x requires Thunderbolt Core.
+    localRuntime "curse.maven:thunderbolt-core-1631756:8616071"
+    localRuntime "curse.maven:ae2-lightning-tech-1527395:8616068"
     localRuntime "curse.maven:ex-pattern-provider-892005:${extendedae_file}"
     localRuntime "curse.maven:extendedae-plus-1337639:${extendedae_plus_file}"
     localRuntime "curse.maven:applied-energistics-2-wireless-terminals-459929:${ae2wt_terminals_file}"

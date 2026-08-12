@@ -24,11 +24,11 @@ import appeng.api.upgrades.UpgradeInventories;
 import appeng.helpers.IConfigInvHost;
 import appeng.helpers.IPatternTerminalLogicHost;
 import appeng.helpers.IPatternTerminalMenuHost;
-import appeng.helpers.WirelessCraftingTerminalMenuHost;
 import appeng.helpers.externalstorage.GenericStackInv;
 import appeng.menu.ISubMenu;
 import appeng.menu.locator.ItemMenuHostLocator;
 import appeng.parts.encoding.PatternEncodingLogic;
+import appeng.parts.reporting.CraftingTerminalPart;
 import appeng.util.ConfigInventory;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
@@ -36,8 +36,9 @@ import appeng.util.inv.SupplierInternalInventory;
 import com.lhy.wcwt.api.ICraftingLockHost;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.api.IPatternCachingHost;
-import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
+import de.mari_023.ae2wtlib.api.terminal.ItemWT;
+import de.mari_023.ae2wtlib.api.terminal.WTMenuHost;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -61,7 +62,7 @@ import de.mari_023.ae2wtlib.api.results.ActionHostResult;
 import de.mari_023.ae2wtlib.api.results.LongResult;
 import de.mari_023.ae2wtlib.api.results.Status;
 
-public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingTerminalMenuHost<WirelessComprehensiveWorkTerminalItem>
+public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         implements ISegmentedInventory, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost, IViewCellStorage {
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
@@ -119,6 +120,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private String lastRepoDebugState = "";
     private long lastRepoDebugTick = Long.MIN_VALUE;
     private int suppressedRepoDebugLogs;
+    private final SupplierInternalInventory<InternalInventory> craftingGrid;
     // AE2WTLIB装备槽 (头盔, 胸甲, 护腿, 靴子, 副手) - 5个槽位
     private final SupplierInternalInventory<InternalInventory> ae2wtlibArmorInv;
     // 装饰性装备槽 (头盔, 胸甲, 护腿, 靴子) - 4个槽位
@@ -188,10 +190,12 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     /** 左上铁砧工作区当前命名文本。 */
     private String manualAnvilName;
     
-    public WirelessComprehensiveWorkTerminalMenuHost(WirelessComprehensiveWorkTerminalItem item, Player player,
+    public WirelessComprehensiveWorkTerminalMenuHost(ItemWT item, Player player,
                                                       ItemMenuHostLocator locator,
                                                       BiConsumer<Player, ISubMenu> returnToMainMenu) {
         super(item, player, locator, returnToMainMenu);
+        this.craftingGrid = new SupplierInternalInventory<>(
+                new StackDependentSupplier<>(this::getItemStack, stack -> createCraftingInventory(player, stack)));
         // 样板管理区之外，主物品展示区依赖 AE2 的增量仓库同步。
         // 这里若按 ItemStack 引用缓存底层库存，在量子桥/WAP/链接状态切换时可能继续指向旧网格，
         // 导致仓库视图刷新滞后，直到重开菜单才恢复。
@@ -511,7 +515,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     @Override
-    protected void updateLinkStatus() {
+    public void updateLinkStatus() {
         if (getPlayer().level().isClientSide()) {
             super.updateLinkStatus();
             // 客户端只应展示服务端/AE2 同步过来的链路状态。
@@ -553,7 +557,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     @Override
-    protected void updateConnectedAccessPoint() {
+    public void updateConnectedAccessPoint() {
         if (getPlayer().level().isClientSide()) {
             super.updateConnectedAccessPoint();
             debugRepoState("updateConnectedAccessPoint/client-pass-through");
@@ -711,7 +715,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return bridge == null ? ActionHostResult.invalid(Status.BridgeNotFound) : ActionHostResult.valid(bridge);
     }
 
-    private LongResult getQEFrequency() {
+    public LongResult getQEFrequency() {
         ItemStack singularity = getItemStack().getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY);
         if (singularity.isEmpty()) {
             return LongResult.invalid(Status.NoSingularity);
@@ -942,10 +946,29 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         getItemStack().set(ModComponents.MANUAL_ANVIL_NAME.get(), this.manualAnvilName);
     }
     
+    private static InternalInventory createCraftingInventory(Player player, ItemStack stack) {
+        var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
+            @Override
+            public void saveChangedInventory(AppEngInternalInventory changedInventory) {
+                stack.set(AEComponents.CRAFTING_INV, changedInventory.toItemContainerContents());
+            }
+
+            @Override
+            public boolean isClientSide() {
+                return player.level().isClientSide();
+            }
+        }, 9);
+        inventory.fromItemContainerContents(
+                stack.getOrDefault(AEComponents.CRAFTING_INV, ItemContainerContents.EMPTY));
+        return inventory;
+    }
+
     @Nullable
     @Override
     public InternalInventory getSubInventory(ResourceLocation id) {
-        if (id.equals(INV_SINGULARITY)) {
+        if (id.equals(CraftingTerminalPart.INV_CRAFTING)) {
+            return craftingGrid;
+        } else if (id.equals(INV_SINGULARITY)) {
             return singularityInv;
         } else if (id.equals(INV_AE2WTLIB_ARMOR)) {
             return ae2wtlibArmorInv;

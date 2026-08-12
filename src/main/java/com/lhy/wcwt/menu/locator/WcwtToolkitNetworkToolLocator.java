@@ -4,11 +4,13 @@ import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
+import appeng.core.definitions.AEItems;
 import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.menu.locator.ItemMenuHostLocator;
 import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
+import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -28,15 +30,22 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
     @Override
     public ItemStack locateItem(Player player) {
         ItemStack terminalStack = locateTerminalStack(player);
-        if (terminalStack.isEmpty() || !(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
+        if (terminalStack.isEmpty() || !(terminalStack.getItem() instanceof ItemWT)) {
             return ItemStack.EMPTY;
         }
 
+        if (toolkitSlot < 0) {
+            return AEItems.NETWORK_TOOL.stack();
+        }
+
+        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem wcwtItem)) {
+            return ItemStack.EMPTY;
+        }
         ItemMenuHostLocator terminalLocator = switch (sourceKind) {
             case INVENTORY -> MenuLocators.forInventorySlot(sourceSlot);
             case CURIOS -> MenuLocators.forCurioSlot(sourceSlot);
         };
-        var terminalHost = terminalItem.getMenuHost(player, terminalLocator, null);
+        var terminalHost = wcwtItem.getMenuHost(player, terminalLocator, null);
         if (terminalHost == null) {
             return ItemStack.EMPTY;
         }
@@ -71,7 +80,7 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
                 buf.readInt());
     }
 
-    private ItemStack locateTerminalStack(Player player) {
+    public ItemStack locateTerminalStack(Player player) {
         return switch (sourceKind) {
             case INVENTORY -> player.getInventory().getItem(sourceSlot);
             case CURIOS -> locateCurioStack(player, sourceSlot);

@@ -28,12 +28,14 @@ import appeng.client.gui.widgets.NumberEntryWidget;
 import appeng.client.Point;
 import appeng.core.localization.ButtonToolTips;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
-import appeng.integration.abstraction.ItemListMod;
 import appeng.menu.SlotSemantics;
 import appeng.menu.me.common.GridInventoryEntry;
 import appeng.api.stacks.AEKeyType;
 import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
 import de.mari_023.ae2wtlib.api.gui.ScrollingUpgradesPanel;
+import de.mari_023.ae2wtlib.api.terminal.IUniversalTerminalCapable;
+import de.mari_023.ae2wtlib.api.terminal.WTMenuHost;
+import de.mari_023.ae2wtlib.api.terminal.ItemWUT;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
@@ -119,7 +121,8 @@ import com.google.common.primitives.Longs;
  * 无线综合工作终端界面
  * 集成了多个AE2附属模组的功能
  */
-public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<WirelessComprehensiveWorkTerminalMenu> {
+public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<WirelessComprehensiveWorkTerminalMenu>
+        implements IUniversalTerminalCapable {
     private static final String STYLE_PATH = "/screens/wcwt/wireless_comprehensive_work_terminal.json";
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final boolean DEBUG_SLOT_HIT = Boolean.getBoolean("wcwt.debug.slotHit");
@@ -150,7 +153,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedUIButton resonatingLightningPatternCodingButton;
     private FavoriteItemsButton favoriteItemsButton;
     private ViewCellsToggleButton viewCellsToggleButton;
-    private WcwtUniversalTerminalButton universalTerminalButton;
     private boolean viewCellsVisible = WcwtClientConfig.lastViewCellsPanelVisible();
     private @Nullable ViewCellsVisibilityWidget viewCellsVisibilityWidget;
     private @Nullable Renderable viewCellsOverlayRenderable;
@@ -424,6 +426,26 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean attemptedRestoreManagementToolkitOpenState;
     private boolean rebuildingFavoriteRepoView;
     
+    private static boolean isWutHost(WirelessComprehensiveWorkTerminalMenu menu) {
+        var host = menu.getMenuHost();
+        return host != null && host.getItemStack().getItem() instanceof ItemWUT;
+    }
+
+    @Override
+    public WTMenuHost getHost() {
+        return getMenu().getMenuHost();
+    }
+
+    @Override
+    public boolean isHandlingRightClick() {
+        return false;
+    }
+
+    @Override
+    public void storeState() {
+        getMenu().getMenuHost().markForSave();
+    }
+
     public WirelessComprehensiveWorkTerminalScreen(WirelessComprehensiveWorkTerminalMenu menu, 
                                                      Inventory playerInventory, 
                                                      Component title) {
@@ -442,7 +464,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         viewCellsToggleButton = addToLeftToolbar(new ViewCellsToggleButton(
                 () -> viewCellsVisible,
                 btn -> toggleViewCellsPanel()));
-        universalTerminalButton = addToLeftToolbar(new WcwtUniversalTerminalButton());
+        if (isWutHost(menu)) {
+            addToLeftToolbar(cycleTerminalButton());
+        }
         installViewCellsVisibilityWidget();
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
 
@@ -924,6 +948,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 "autoFillPatternProviderSearchWhenUploadDisabled",
                 Component.translatable("wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled"),
                 this::saveClientSettings);
+        private final AECheckbox fillSearchHotkeySyncPatternManagement = widgets.addCheckbox(
+                "fillSearchHotkeySyncPatternManagement",
+                Component.translatable("wcwt.config.fillSearchHotkeySyncPatternManagement"),
+                this::saveClientSettings);
         private final AECheckbox patternMultiplierApplyToEditorProcessing = widgets.addCheckbox(
                 "patternMultiplierApplyToEditorProcessing",
                 Component.translatable("wcwt.config.patternMultiplierApplyToEditorProcessing"),
@@ -952,6 +980,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             patternUploadFailFallbackToEditor.setSelected(WcwtClientConfig.patternUploadFailFallbackToEditor());
             autoFillPatternProviderSearchWhenUploadDisabled
                     .setSelected(WcwtClientConfig.autoFillPatternProviderSearchWhenUploadDisabled());
+            fillSearchHotkeySyncPatternManagement
+                    .setSelected(WcwtClientConfig.fillSearchHotkeySyncPatternManagement());
             patternMultiplierApplyToEditorProcessing
                     .setSelected(WcwtClientConfig.patternMultiplierApplyToEditorProcessing());
             autoSwitchManualWorkspaceOnRecipeTransfer
@@ -995,6 +1025,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     .set(patternUploadFailFallbackToEditor.isSelected());
             WcwtClientConfig.AUTO_FILL_PATTERN_PROVIDER_SEARCH_WHEN_UPLOAD_DISABLED
                     .set(autoFillPatternProviderSearchWhenUploadDisabled.isSelected());
+            WcwtClientConfig.FILL_SEARCH_HOTKEY_SYNC_PATTERN_MANAGEMENT
+                    .set(fillSearchHotkeySyncPatternManagement.isSelected());
             WcwtClientConfig.PATTERN_MULTIPLIER_APPLY_TO_EDITOR_PROCESSING
                     .set(patternMultiplierApplyToEditorProcessing.isSelected());
             WcwtClientConfig.AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER
@@ -1734,9 +1766,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             viewCellsToggleButton.visible = viewCellsVisibilityWidget != null;
             viewCellsToggleButton.active = viewCellsToggleButton.visible;
         }
-        if (universalTerminalButton != null) {
-            universalTerminalButton.refresh(menu);
-        }
         if (resonatingLightningPatternCodingButton != null) {
             resonatingLightningPatternCodingButton.visible = !hideExtendedButtons
                     && isExtendedUIAvailable(IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING);
@@ -1937,7 +1966,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return false;
         }
         applyJeiNameToMeTerminalSearch(name);
-        if (patternManageSearchField != null) {
+        if (WcwtClientConfig.fillSearchHotkeySyncPatternManagement()
+                && patternManageSearchField != null) {
             patternManageSearchField.setValue(name);
         }
         return true;
@@ -1954,7 +1984,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             Method setSearchText = MEStorageScreen.class.getDeclaredMethod("setSearchText", String.class);
             setSearchText.setAccessible(true);
             setSearchText.invoke(this, name);
-            ItemListMod.setSearchText(name);
         } catch (Throwable ignored) {
         }
     }
@@ -2306,9 +2335,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         super.updateBeforeRender();
         if (DEBUG_FRAME_SYNC) {
             recordFrameSyncTick();
-        }
-        if (universalTerminalButton != null) {
-            universalTerminalButton.refresh(menu);
         }
         WcwtFavorites.ensureLoaded();
         refreshRepoViewAfterTransientReconnect();

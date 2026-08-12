@@ -12,6 +12,7 @@ public final class WcwtClientConfig {
 
     public static final ModConfigSpec.BooleanValue PATTERN_UPLOAD_FAIL_FALLBACK_TO_EDITOR;
     public static final ModConfigSpec.BooleanValue AUTO_FILL_PATTERN_PROVIDER_SEARCH_WHEN_UPLOAD_DISABLED;
+    public static final ModConfigSpec.BooleanValue FILL_SEARCH_HOTKEY_SYNC_PATTERN_MANAGEMENT;
     public static final ModConfigSpec.BooleanValue ENABLE_RECIPE_PULL_TRANSFER;
     public static final ModConfigSpec.BooleanValue AUTO_SWITCH_MANUAL_WORKSPACE_ON_RECIPE_TRANSFER;
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_SHIFT_QUICK;
@@ -34,6 +35,10 @@ public final class WcwtClientConfig {
                 .comment("If true: encoding a pattern also fills the pattern-provider search field when pattern upload is disabled. If false: the field is filled only when pattern upload is enabled.")
                 .translation("wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled")
                 .define("autoFillPatternProviderSearchWhenUploadDisabled", true);
+        FILL_SEARCH_HOTKEY_SYNC_PATTERN_MANAGEMENT = BUILDER
+                .comment("If true: the EAEP fill-search hotkey also fills the WCWT pattern-management search field. The terminal search field is always filled.")
+                .translation("wcwt.config.fillSearchHotkeySyncPatternManagement")
+                .define("fillSearchHotkeySyncPatternManagement", true);
         ENABLE_RECIPE_PULL_TRANSFER = BUILDER
                 .comment("If false: disable WCWT JEI/EMI recipe pull and encoding transfer handling, including preview highlights.")
                 .translation("wcwt.config.enableRecipePullTransfer")
@@ -94,6 +99,10 @@ public final class WcwtClientConfig {
 
     public static boolean autoFillPatternProviderSearchWhenUploadDisabled() {
         return AUTO_FILL_PATTERN_PROVIDER_SEARCH_WHEN_UPLOAD_DISABLED.get();
+    }
+
+    public static boolean fillSearchHotkeySyncPatternManagement() {
+        return FILL_SEARCH_HOTKEY_SYNC_PATTERN_MANAGEMENT.get();
     }
 
     public static boolean patternManagementShiftQuickEnabled() {

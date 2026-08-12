@@ -1,7 +1,6 @@
 package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -214,18 +213,6 @@ public class WcwtPackets {
             OpenToolkitHotkeyPacket.TYPE,
             OpenToolkitHotkeyPacket.STREAM_CODEC,
             OpenToolkitHotkeyPacket::handle
-        );
-
-        registrar.playToServer(
-            SwitchUniversalTerminalPacket.TYPE,
-            SwitchUniversalTerminalPacket.STREAM_CODEC,
-            SwitchUniversalTerminalPacket::handle
-        );
-
-        registrar.playToServer(
-            SplitUniversalTerminalPacket.TYPE,
-            SplitUniversalTerminalPacket.STREAM_CODEC,
-            SplitUniversalTerminalPacket::handle
         );
 
         registrar.playToServer(

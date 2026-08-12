@@ -56,6 +56,14 @@ public class ModComponents {
                     .networkSynchronized(ItemContainerContents.STREAM_CODEC));
 
     /**
+     * 网络工具卡槽包模拟的 3×3 升级卡库存。
+     */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemContainerContents>> NETWORK_TOOL_INV =
+            register("network_tool_inv", builder -> builder
+                    .persistent(ItemContainerContents.CODEC)
+                    .networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
+    /**
      * 工具包库存
      */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemContainerContents>> TOOLKIT_INV =
@@ -110,22 +118,6 @@ public class ModComponents {
             register("manual_anvil_inv", builder -> builder
                     .persistent(ItemContainerContents.CODEC)
                     .networkSynchronized(ItemContainerContents.STREAM_CODEC));
-
-    /**
-     * 无线通用综合工作终端内嵌的其它无线终端。
-     */
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemContainerContents>> UNIVERSAL_TERMINALS =
-            register("universal_terminals", builder -> builder
-                    .persistent(ItemContainerContents.CODEC)
-                    .networkSynchronized(ItemContainerContents.STREAM_CODEC));
-
-    /**
-     * 无线综合非通用终端当前打开的子终端。-1 = 综合工作终端，其它值 = 内嵌终端下标。
-     */
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> CURRENT_UNIVERSAL_TERMINAL =
-            register("current_universal_terminal", builder -> builder
-                    .persistent(Codec.INT)
-                    .networkSynchronized(ByteBufCodecs.VAR_INT));
 
     /**
      * JEI 拉取目标锁定状态：false = 样板编码区，true = 手动合成 3x3。

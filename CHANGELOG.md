@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.3.5
+
+### English
+
+1. Integrated WCWT with AE2WTLib's Wireless Universal Terminal, including its official terminal selector and hotkey.
+2. Removed WCWT's legacy embedded-terminal merge, split, switching, recipes, and custom selector systems.
+3. The Network Tool Slot Pack Card now provides a persistent 3×3 upgrade inventory without requiring a physical Network Tool.
+4. Fixed the F-key search linkage and added an option to synchronize it with the pattern management search field.
+
+### 中文
+
+1. 将 WCWT 接入 AE2WTLib 无线通用终端，并使用其官方终端选择器与快捷键。
+2. 移除 WCWT 旧有的内嵌终端合并、拆分、切换、配方及自定义选择器系统。
+3. 网络工具卡槽包卡现在无需实体网络工具即可提供可持久化的 3×3 升级槽。
+4. 修复 F 键搜索联动，并新增是否同步填充样板管理搜索框的配置。
+
 ## v1.3.4
 
 ### English
