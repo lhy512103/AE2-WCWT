@@ -22,10 +22,10 @@ import appeng.api.upgrades.UpgradeInventories;
 import appeng.helpers.IConfigInvHost;
 import appeng.helpers.IPatternTerminalLogicHost;
 import appeng.helpers.IPatternTerminalMenuHost;
-import appeng.helpers.WirelessCraftingTerminalMenuHost;
 import appeng.helpers.externalstorage.GenericStackInv;
 import appeng.menu.ISubMenu;
 import appeng.parts.encoding.PatternEncodingLogic;
+import appeng.parts.reporting.CraftingTerminalPart;
 import appeng.util.ConfigInventory;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
@@ -54,8 +54,9 @@ import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.init.ModComponents;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.TextConstants;
+import de.mari_023.ae2wtlib.terminal.WTMenuHost;
 import appeng.core.localization.PlayerMessages;
-public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingTerminalMenuHost
+public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         implements ISegmentedInventory, IViewCellStorage, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost {
     private static CompoundTag getOrCreateRootTag(ItemStack stack) {
@@ -98,6 +99,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private static final String PICKUP_CONFIG_TAG = "pickup_config";
     private static final String INSERT_CONFIG_TAG = "insert_config";
     private static final String PATTERN_ENCODING_LOGIC_TAG = "pattern_encoding_logic";
+    private static final String CRAFTING_GRID_TAG = "craftingGrid";
 
     private record LinkStatus(boolean connected, @Nullable net.minecraft.network.chat.Component statusDescription) {
         private static LinkStatus ofConnected() {
@@ -218,7 +220,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     // 工具包记忆槽位 - 和工具包槽位一一对应
     private final SupplierInternalInventory toolkitMemoryInv;
     // AE2 原版 VIEW_CELL 槽位 - 5个槽位
-    private final SupplierInternalInventory viewCellInv;
+    private final AppEngInternalInventory viewCellInv;
     // 元件工作台 - 存储元件槽（1个槽位）
     private final SupplierInternalInventory storageCellInv;
     // 谐振样板缓存区 - 21个槽位（3行×7列）
@@ -227,6 +229,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     private final SupplierInternalInventory manualSmithingInv;
     // 左上手动铁砧工作区 - 2个槽位
     private final SupplierInternalInventory manualAnvilInv;
+    private final AppEngInternalInventory craftingGrid;
     private final AppEngInternalInventory trashInv = new AppEngInternalInventory(27);
     private final ConfigInventory magnetPickupConfig = ConfigInventory.configTypes(AEItemKey.filter(), 27,
             this::updateMagnetPickupConfig);
@@ -310,8 +313,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         this.toolkitMemoryInv = new SupplierInternalInventory(
                 memoize(() -> createToolkitMemoryInventory(player, getItemStack())));
 
-        this.viewCellInv = new SupplierInternalInventory(
-                memoize(() -> createInventory(player, getItemStack(), "view_cell", 5)));
+        this.viewCellInv = createInventory(player, getItemStack(), "view_cell", 5);
 
         // 初始化元件工作台存储元件槽位 (1个槽位)
         this.storageCellInv = new SupplierInternalInventory(
@@ -325,6 +327,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
 
         this.manualAnvilInv = new SupplierInternalInventory(
                 memoize(() -> createInventory(player, getItemStack(), "manual_anvil", 2)));
+
+        this.craftingGrid = new AppEngInternalInventory(this, 9);
+        this.craftingGrid.readFromNBT(getItemStack().getOrCreateTag(), CRAFTING_GRID_TAG);
         patternEncodingLogic.readFromNBT(getOrCreateDataTag(PATTERN_ENCODING_LOGIC_TAG));
         magnetPickupConfig.readFromChildTag(getOrCreateDataTag(PICKUP_CONFIG_TAG), "");
         magnetInsertConfig.readFromChildTag(getOrCreateDataTag(INSERT_CONFIG_TAG), "");
@@ -373,7 +378,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
     }
 
     @Override
-    public InternalInventory getViewCellStorage() {
+    public AppEngInternalInventory getViewCellStorage() {
         return viewCellInv;
     }
 
@@ -687,7 +692,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         }
         lastConnectedAccessPointUpdateTick = tick;
         super.rangeCheck();
-        quantumStatus = isQuantumLinked();
+        quantumStatus = resolveQuantumLinkStatus();
         IGridNode preferredNode = resolveCurrentPreferredNode();
         if (preferredNode != null && preferredNode.getGrid() != null) {
             rememberStableConnection(preferredNode, LinkStatus.ofConnected());
@@ -868,7 +873,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         return LongResult.valid(tag.getLong(QuantumBridgeBlockEntity.TAG_FREQUENCY));
     }
 
-    private LinkStatus isQuantumLinked() {
+    private LinkStatus resolveQuantumLinkStatus() {
         Status status = Status.Valid;
         if (!AE2wtlibAPI.hasQuantumBridgeCard(this::getUpgrades)) {
             status = Status.NoUpgrade;
@@ -1151,10 +1156,23 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         }
     }
     
+    @Override
+    public void saveChanges() {
+        super.saveChanges();
+        craftingGrid.writeToNBT(getItemStack().getOrCreateTag(), CRAFTING_GRID_TAG);
+    }
+
+    @Override
+    public void onChangeInventory(InternalInventory inventory, int slot) {
+        super.onChangeInventory(inventory, slot);
+    }
+
     @Nullable
     @Override
     public InternalInventory getSubInventory(ResourceLocation id) {
-        if (id.equals(INV_SINGULARITY)) {
+        if (id.equals(CraftingTerminalPart.INV_CRAFTING)) {
+            return craftingGrid;
+        } else if (id.equals(INV_SINGULARITY)) {
             return singularityInv;
         } else if (id.equals(INV_AE2WTLIB_ARMOR)) {
             return ae2wtlibArmorInv;
@@ -1511,7 +1529,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WirelessCraftingT
         };
     }
 
-    private static InternalInventory createInventory(Player player, ItemStack stack, String inventoryName, int size) {
+    private static AppEngInternalInventory createInventory(Player player, ItemStack stack, String inventoryName, int size) {
         var componentType = switch (inventoryName) {
             case "ae2wtlib_armor" -> ModComponents.AE2WTLIB_ARMOR_INV;
             case "decorative_armor" -> ModComponents.DECORATIVE_ARMOR_INV;

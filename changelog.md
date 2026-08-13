@@ -1,3 +1,19 @@
+# 1.20.1.9
+
+## English
+
+1. Integrated WCWT with AE2WTLib's Wireless Universal Terminal, using its official terminal hotkeys and cycle button.
+2. Removed the Wireless Comprehensive Non-Universal Terminal. Legacy terminals embedded in WCWT are returned to the player's inventory; overflow is safely dropped.
+3. Fixed WCWT clearing the terminal search field after reopening even when AE2's "Remember Last Search" option was enabled.
+
+
+## 中文
+
+1. 将 WCWT 接入 AE2WTLib 无线通用终端，并使用其官方终端快捷键和循环按钮。
+2. 移除无线综合非通用终端，旧版合入的终端会返还至玩家背包；背包已满时会安全掉落。
+3. 修复开启 AE2“记住上次进行的搜索”后，重新打开 WCWT 仍会清空终端搜索框的问题。
+
+
 # 1.20.1.8
 
 ## English

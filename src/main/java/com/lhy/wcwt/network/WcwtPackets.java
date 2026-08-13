@@ -88,11 +88,5 @@ public class WcwtPackets {
         ModNetworking.registerServerbound(id++, ResonatingLightningPatternActionPacket.class,
                 ResonatingLightningPatternActionPacket.TYPE, ResonatingLightningPatternActionPacket.STREAM_CODEC,
                 ResonatingLightningPatternActionPacket::handle);
-        ModNetworking.registerServerbound(id++, SwitchUniversalTerminalPacket.class,
-                SwitchUniversalTerminalPacket.TYPE, SwitchUniversalTerminalPacket.STREAM_CODEC,
-                SwitchUniversalTerminalPacket::handle);
-        ModNetworking.registerServerbound(id++, SplitUniversalTerminalPacket.class,
-                SplitUniversalTerminalPacket.TYPE, SplitUniversalTerminalPacket.STREAM_CODEC,
-                SplitUniversalTerminalPacket::handle);
     }
 }

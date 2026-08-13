@@ -12,6 +12,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
+/** Opens a standalone WCWT without changing the active AE2WTLib universal-terminal mode. */
 public record OpenTerminalHotkeyPacket() implements CustomPacketPayload {
     public static final Type<OpenTerminalHotkeyPacket> TYPE =
             new Type<>(com.lhy.wcwt.util.ResourceLocationCompat.id(WcwtMod.MOD_ID, "open_terminal_hotkey"));
@@ -46,12 +47,11 @@ public record OpenTerminalHotkeyPacket() implements CustomPacketPayload {
     }
 
     private static void openFromCurios(ServerPlayer player) {
-        var curios = CuriosBridge.getEquippedSlots(player);
-        for (var equippedSlot : curios) {
+        for (var equippedSlot : CuriosBridge.getEquippedSlots(player)) {
             ItemStack stack = equippedSlot.handler().getStackInSlot(equippedSlot.slotIndex());
             if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem
                     && terminalItem.openFromCurio(player,
-                    new WcwtCurioLocator(equippedSlot.identifier(), equippedSlot.slotIndex()), stack, false)) {
+                            new WcwtCurioLocator(equippedSlot.identifier(), equippedSlot.slotIndex()), stack, false)) {
                 return;
             }
         }

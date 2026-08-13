@@ -1,0 +1,11 @@
+{
+  "type": "ae2wtlib:combine",
+  "terminalA": {
+    "item": "wcwt:wireless_comprehensive_work_terminal"
+  },
+  "terminalB": {
+    "item": "ae2wtlib:wireless_pattern_access_terminal"
+  },
+  "terminalAName": "wireless_comprehensive_work_terminal",
+  "terminalBName": "pattern_access"
+}

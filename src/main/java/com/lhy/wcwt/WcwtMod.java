@@ -15,20 +15,20 @@ import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
+import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtRestockHotkeyAction;
 import com.lhy.wcwt.init.ModCreativeTabs;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
-import com.lhy.wcwt.init.ModRecipeSerializers;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.locator.WcwtCurioLocator;
-import com.lhy.wcwt.menu.locator.WcwtEmbeddedTerminalLocator;
 import com.lhy.wcwt.menu.locator.WcwtInventoryLocator;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
-import com.lhy.wcwt.universal.WcwtItemIds;
-import com.lhy.wcwt.universal.WcwtUniversalTerminals;
+import de.mari_023.ae2wtlib.AE2wtlib;
+import de.mari_023.ae2wtlib.terminal.IUniversalWirelessTerminalItem;
+import de.mari_023.ae2wtlib.wut.WUTHandler;
 import com.lhy.wcwt.util.ResourceLocationCompat;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -55,12 +55,15 @@ import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.resource.PathPackResources;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegisterEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Mod(WcwtMod.MOD_ID)
 public class WcwtMod {
     public static final String MOD_ID = "wcwt";
+    public static final String WUT_TERMINAL_ID = "wireless_comprehensive_work_terminal";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final String BUILT_IN_1_21_STYLE_PACK = "wcwt_1_21_style";
 
@@ -76,8 +79,7 @@ public class WcwtMod {
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_MODE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
-        ModRecipeSerializers.RECIPE_SERIALIZERS.register(modEventBus);
-
+        modEventBus.addListener(this::registerUniversalTerminal);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(WcwtPacketsBootstrap::register);
         modEventBus.addListener(this::addCreativeTabItems);
@@ -91,7 +93,25 @@ public class WcwtMod {
         });
     }
 
+    private void registerUniversalTerminal(RegisterEvent event) {
+        if (!event.getRegistryKey().equals(ForgeRegistries.MENU_TYPES.getRegistryKey())) {
+            return;
+        }
+
+        var wcwt = (WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
+        IUniversalWirelessTerminalItem universalWcwt = wcwt;
+        WUTHandler.addTerminal(
+                WUT_TERMINAL_ID,
+                wcwt::openFromUniversalLocator,
+                WirelessComprehensiveWorkTerminalMenuHost::new,
+                ModMenus.WCWT_MENU.get(),
+                universalWcwt,
+                "wireless_wcwt_terminal",
+                "item.wcwt.wireless_comprehensive_work_terminal");
+    }
+
     private void commonSetup(FMLCommonSetupEvent event) {
+        var wcwt = ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
         event.enqueueWork(() -> {
             MenuLocators.register(
                     WcwtInventoryLocator.class,
@@ -101,10 +121,6 @@ public class WcwtMod {
                     WcwtCurioLocator.class,
                     WcwtCurioLocator::writeToPacket,
                     WcwtCurioLocator::readFromPacket);
-            MenuLocators.register(
-                    WcwtEmbeddedTerminalLocator.class,
-                    WcwtEmbeddedTerminalLocator::writeToPacket,
-                    WcwtEmbeddedTerminalLocator::readFromPacket);
             MenuLocators.register(
                     WcwtToolkitNetworkToolLocator.class,
                     WcwtToolkitNetworkToolLocator::writeToPacket,
@@ -116,7 +132,6 @@ public class WcwtMod {
             HotkeyActions.register(new WcwtMagnetHotkeyAction(), "ae2wtlib_magnet");
             registerInventorySorterCompat();
 
-            var wcwt = ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
             String groupKey = GuiText.WirelessTerminals.getTranslationKey();
             Upgrades.add(AEItems.ENERGY_CARD, wcwt, 10, groupKey);
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "quantum_bridge_card", 1, groupKey, false);
@@ -129,6 +144,17 @@ public class WcwtMod {
             Upgrades.add(ModItems.TOOL_SLOTS_BOX_CARD.get(), wcwt, 1, groupKey);
             Upgrades.add(ModItems.TOOLKIT_CARD.get(), wcwt, 1, groupKey);
             Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD.get(), wcwt, 1, groupKey);
+
+            var wut = AE2wtlib.UNIVERSAL_TERMINAL;
+            Upgrades.add(AEItems.ENERGY_CARD, wut, 10, groupKey);
+            registerExternalUpgradeCard(wut, "ae2importexportcard", "import_card", 1, groupKey, true);
+            registerExternalUpgradeCard(wut, "ae2importexportcard", "export_card", 1, groupKey, true);
+            Upgrades.add(ModItems.ADVANCED_CODING_CARD.get(), wut, 1, groupKey);
+            Upgrades.add(ModItems.COSMETIC_ARMOR_CARD.get(), wut, 1, groupKey);
+            Upgrades.add(ModItems.CURIOS_CARD.get(), wut, 1, groupKey);
+            Upgrades.add(ModItems.TOOL_SLOTS_BOX_CARD.get(), wut, 1, groupKey);
+            Upgrades.add(ModItems.TOOLKIT_CARD.get(), wut, 1, groupKey);
+            Upgrades.add(ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD.get(), wut, 1, groupKey);
         });
     }
 
@@ -187,26 +213,9 @@ public class WcwtMod {
         return charged;
     }
 
-    public static ItemStack chargedUniversalTerminalStack() {
-        var terminal = (WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
-        var charged = chargedTerminalStack();
-        for (var id : WcwtItemIds.MERGEABLE_TERMINALS) {
-            var item = BuiltInRegistries.ITEM.get(id);
-            if (item != null && item != Items.AIR) {
-                WcwtUniversalTerminals.addTerminal(charged, new ItemStack(item));
-            }
-        }
-        terminal.injectAEPower(charged, terminal.getAEMaxPower(charged), Actionable.MODULATE);
-        return charged;
-    }
-
     public static void acceptTerminalVariants(CreativeModeTab.Output output) {
         output.accept(new ItemStack(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()));
         output.accept(chargedTerminalStack());
-        ItemStack universal = chargedUniversalTerminalStack();
-        if (WcwtUniversalTerminals.isUniversal(universal)) {
-            output.accept(universal);
-        }
         acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.ADVANCED_CODING);
         acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.COSMETIC_ARMOR);
         acceptExtendedUiUpgradeCard(output, IExtendedUIHost.ExtendedUIType.CURIOS);

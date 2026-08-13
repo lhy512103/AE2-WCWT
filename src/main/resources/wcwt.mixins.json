@@ -8,6 +8,8 @@
   "mixins": [
     "WcwtNetworkToolItemMixin",
     "WcwtMenuTypeBuilderMixin",
+    "WcwtWutUpgradeCountMixin",
+    "WcwtWutTerminalMarkerMigrationMixin",
     "WcwtToolboxMenuMixin",
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin",
@@ -17,6 +19,7 @@
     "guideme.GuideMEClientMixin"
   ],
   "client": [
+    "client.WcwtUpgradesPanelLayoutMixin",
     "compat.eaep.WcwtEaepInputEventsMixin",
     "compat.jei.WcwtJeiBookmarkInputHandlerMixin",
     "client.WcwtMinecraftPickBlockMixin"

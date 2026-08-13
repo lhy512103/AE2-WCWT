@@ -37,6 +37,9 @@ import appeng.menu.SlotSemantics;
 import appeng.menu.me.common.GridInventoryEntry;
 import appeng.api.stacks.AEKeyType;
 import de.mari_023.ae2wtlib.AE2wtlibSlotSemantics;
+import de.mari_023.ae2wtlib.wut.CycleTerminalButton;
+import de.mari_023.ae2wtlib.wut.IUniversalTerminalCapable;
+import de.mari_023.ae2wtlib.wut.ItemWUT;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
@@ -124,7 +127,8 @@ import com.google.common.primitives.Longs;
  * 无线综合工作终端界面
  * 集成了多个AE2附属模组的功能
  */
-public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<WirelessComprehensiveWorkTerminalMenu> {
+public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<WirelessComprehensiveWorkTerminalMenu>
+        implements IUniversalTerminalCapable {
     private static final String STYLE_PATH = "/screens/wcwt/wireless_comprehensive_work_terminal.json";
     private static final ResourceLocation MAIN_LAYOUT_ID = com.lhy.wcwt.util.ResourceLocationCompat.id("ae2",
             "screens/wcwt/wireless_comprehensive_work_terminal.json");
@@ -211,10 +215,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ToolkitPanel toolkitPanel;
     private ResonatingLightningPatternCodingPanel resonatingLightningPatternCodingPanel;
 
-    // 滚动升级槽面板（当前恢复为 WTLib 原版实现）
-    // 如果以后想恢复“奇点槽始终占位、不随量子桥卡出现而跳位”的自定义行为：
-    // 1. 把这里改回 `private WcwtScrollingUpgradesPanel upgradesPanel;`
-    // 2. 构造器里把 `new ScrollingUpgradesPanel(...)` 改回 `new WcwtScrollingUpgradesPanel(...)`
+    // 滚动升级槽面板
     private WcwtScrollingUpgradesPanel upgradesPanel;
     /** AE2 原版 VIEW_CELL 面板：替换为 WCWT 自定义皮肤。 */
     private WcwtViewCellsPanel viewCellsPanel;
@@ -410,6 +411,25 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean viewCellsPanelVisible = WcwtClientConfig.lastViewCellsPanelVisible();
     private boolean otherKeyTypesOnly = WcwtClientConfig.lastOtherKeyTypesFilter();
     
+    private static boolean isWutHost(WirelessComprehensiveWorkTerminalMenu menu) {
+        var host = menu.getMenuHost();
+        return host != null && host.getItemStack().getItem() instanceof ItemWUT;
+    }
+
+    @Override
+    public boolean isHandlingRightClick() {
+        return false;
+    }
+
+    @Override
+    public void storeState() {
+        super.storeState();
+        var host = getMenu().getMenuHost();
+        if (host != null) {
+            host.saveChanges();
+        }
+    }
+
     public WirelessComprehensiveWorkTerminalScreen(WirelessComprehensiveWorkTerminalMenu menu, 
                                                      Inventory playerInventory, 
                                                      Component title) {
@@ -428,7 +448,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 btn -> toggleFavoritedItemsFirst()));
         viewCellsToggleButton = addToLeftToolbar(new ViewCellsToggleButton(this::isViewCellsPanelVisible,
                 btn -> toggleViewCellsPanel()));
-        addToLeftToolbar(new WcwtUniversalTerminalButton(menu));
+        if (isWutHost(menu)) {
+            addToLeftToolbar(new CycleTerminalButton(button -> cycleTerminal()));
+        }
         widgets.add("player", new PlayerEntityWidget(Objects.requireNonNull(Minecraft.getInstance().player)));
         var viewCellSlots = new ArrayList<>(menu.getSlots(SlotSemantics.VIEW_CELL));
         if (!viewCellSlots.isEmpty()) {
@@ -439,13 +461,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         var host = menu.getMenuHost();
 
-        // 注册带滑块的滚动升级面板（当前使用 WTLib 原版实现）
-        // 槽位顺序：先放 SINGULARITY 槽（ScrollingUpgradesPanel 约定第一槽为奇点槽），再放普通升级槽
-        //
-        // 如果以后想切回 WCWT 自定义稳定版，请把下面这行：
-        //   upgradesPanel = new ScrollingUpgradesPanel(...)
-        // 改成：
-        //   upgradesPanel = new WcwtScrollingUpgradesPanel(...)
         if (host != null) {
             var allUpgradeSlots = new ArrayList<>(menu.getSlots(AE2wtlibSlotSemantics.SINGULARITY));
             allUpgradeSlots.addAll(menu.getSlots(SlotSemantics.UPGRADE));
