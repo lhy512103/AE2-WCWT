@@ -1,3 +1,15 @@
+# 1.20.1.9-hotfix
+
+## English
+
+1. Fixed a production startup crash caused by the WUT terminal migration mixin failing to find AE2WTLib's obfuscated `ItemWUT` inventory tick method.
+
+
+## 中文
+
+1. 修复 WUT 终端迁移 Mixin 找不到 AE2WTLib 混淆后的 `ItemWUT` 物品 tick 方法，导致生产环境启动崩溃的问题。
+
+
 # 1.20.1.9
 
 ## English
