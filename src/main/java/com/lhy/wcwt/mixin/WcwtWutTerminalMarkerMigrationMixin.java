@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class WcwtWutTerminalMarkerMigrationMixin {
     private static final String CURRENT_TERMINAL_TAG = "currentTerminal";
 
-    @Inject(method = "inventoryTick", at = @At("HEAD"))
+    @Inject(method = {"inventoryTick", "m_6883_"}, at = @At("HEAD"), remap = false)
     private void wcwt$restoreOverwrittenTerminalMarker(ItemStack stack, Level level, Entity entity, int slot,
             boolean selected, CallbackInfo ci) {
         if (level.isClientSide()) {
