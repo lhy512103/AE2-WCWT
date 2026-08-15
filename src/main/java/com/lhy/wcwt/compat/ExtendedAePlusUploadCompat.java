@@ -1,6 +1,7 @@
 package com.lhy.wcwt.compat;
 
 import com.lhy.wcwt.WcwtMod;
+import appeng.helpers.patternprovider.PatternContainer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
@@ -186,6 +187,23 @@ public final class ExtendedAePlusUploadCompat {
         return normalize(legacy);
     }
 
+    @Nullable
+    public static String getProviderDisplayName(@Nullable PatternContainer provider) {
+        if (provider == null) {
+            return null;
+        }
+        String modern = invokeString(RECIPE_TYPE_CONFIG_CLASS, "getProviderDisplayName",
+                new Class<?>[]{PatternContainer.class}, provider);
+        if (normalize(modern) != null) {
+            return normalize(modern);
+        }
+        String legacy = invokeString(LEGACY_UTIL_CLASS, "getProviderDisplayName",
+                new Class<?>[]{PatternContainer.class}, provider);
+        if (normalize(legacy) != null) {
+            return normalize(legacy);
+        }
+        return provider.getTerminalGroup() == null ? null : provider.getTerminalGroup().name().getString();
+    }
     @Nullable
     public static String deriveSearchKeyFromUnknownRecipe(@Nullable Object recipeBase) {
         if (recipeBase == null) {

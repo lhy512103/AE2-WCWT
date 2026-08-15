@@ -75,6 +75,18 @@ public class WcwtRecipeTransferHandler
         if (!WcwtClientConfig.enableRecipePullTransfer()) {
             return null;
         }
+        if (WcwtMultiblockTransferCompat.isSupportedRecipe(recipe, recipeSlots)) {
+            var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
+            if (transfer == null) return transferHelper.createInternalError();
+            if (!doTransfer) {
+                return new WcwtEncodingRecipeTransferError(
+                        findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE));
+            }
+            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
+            PacketDistributor.sendToServer(new JeiCraftingTransferPacket(
+                    transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING));
+            return null;
+        }
         if (shouldSkipTransferAnalysis(recipe)) {
             return null;
         }
@@ -340,13 +352,13 @@ public class WcwtRecipeTransferHandler
     }
 
     @Nullable
-    private static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+    static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                         IRecipeSlotView slotView) {
         return toPreferredGenericStack(priorityContext, slotView, false);
     }
 
     @Nullable
-    private static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+    static GenericStack toPreferredGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                         IRecipeSlotView slotView,
                                                         boolean preserveDisplayedItemCounts) {
         if (priorityContext.hasFavoritePriorities()) {
@@ -406,7 +418,7 @@ public class WcwtRecipeTransferHandler
         return selected;
     }
 
-    private static WcwtIngredientPriorities.PriorityContext createPriorityContext(WirelessComprehensiveWorkTerminalMenu menu) {
+    static WcwtIngredientPriorities.PriorityContext createPriorityContext(WirelessComprehensiveWorkTerminalMenu menu) {
         Map<appeng.api.stacks.AEKey, Integer> bookmarkPriorities = WcwtClientConfig.preferJeiBookmarksForPatternEncoding()
                 ? WcwtJeiBookmarkKeys.getBookmarkPriorities()
                 : Map.of();

@@ -13,6 +13,7 @@ import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.init.ModCreativeTabs;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.init.ModRecipes;
 import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtStowHotkeyAction;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
@@ -67,6 +68,7 @@ public class WcwtMod {
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
+        ModRecipes.SERIALIZERS.register(modEventBus);
         AddTerminalEvent.register(event -> {
             var terminalItem = ModItems.registerWirelessComprehensiveWorkTerminal();
             event.builder(
@@ -115,7 +117,7 @@ public class WcwtMod {
             // 升级卡 Item 的取法：
             //   - AE2 原生：appeng.core.definitions.AEItems.<名称>（如 ENERGY_CARD / CRAFTING_CARD / INVERTER_CARD / FUZZY_CARD ...）
             //   - WTLib 的卡（QUANTUM_BRIDGE_CARD / MAGNET_CARD）：用 registerExternalUpgradeCard(...) 按 ResourceLocation 查找。
-            //   - ae2importexportcard（输入卡 / 输出卡）：同上；模组未安装时自动跳过。
+            //   - ae2importexportcard（输入卡 / 输出卡）：直接引用其 ModItems.IMPORT_CARD/EXPORT_CARD（需 compileOnly 依赖），模组未安装时跳过。
             // 注意：所有升级卡的最大数量之和不能超过 WirelessComprehensiveWorkTerminalItem.UPGRADE_INVENTORY_SIZE（当前 20），
             //       超出会导致后注册的升级显示不全。改这个上限去 WirelessComprehensiveWorkTerminalItem 里改 UPGRADE_INVENTORY_SIZE 常量。
             var wcwt = ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
@@ -124,8 +126,12 @@ public class WcwtMod {
             Upgrades.add(AEItems.ENERGY_CARD, wcwt, 10, groupKey);                              // 能源卡 ×10
             registerExternalUpgradeCard(wcwt, ResourceLocation.fromNamespaceAndPath("ae2wtlib", "quantum_bridge_card"), 1, null, false); // 量子桥卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "magnet_card", 1, groupKey, false); // 磁力卡 ×1
-            registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true); // 输入卡 ×1
-            registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true); // 输出卡 ×1
+            if (ModList.get().isLoaded("ae2importexportcard")) {
+                // 输入/输出卡是第三方模组（com.ultramega.ae2importexportcard）的物品，直接引用其注册表项，
+                // 不再用 ResourceLocation 反查 + namespace/path 字符串匹配。
+                Upgrades.add(com.ultramega.ae2importexportcard.registry.ModItems.IMPORT_CARD.get(), wcwt, 1, groupKey); // 输入卡 ×1
+                Upgrades.add(com.ultramega.ae2importexportcard.registry.ModItems.EXPORT_CARD.get(), wcwt, 1, groupKey); // 输出卡 ×1
+            }
             Upgrades.add(ModItems.ADVANCED_CODING_CARD, wcwt, 1, groupKey);
             if (WcwtOptionalFeatureGates.isCosmeticArmorAvailable()) {
                 Upgrades.add(ModItems.COSMETIC_ARMOR_CARD, wcwt, 1, groupKey);

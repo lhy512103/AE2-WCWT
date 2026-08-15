@@ -1,6 +1,7 @@
 package com.lhy.wcwt;
 
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
+import com.lhy.wcwt.init.ModComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
@@ -11,6 +12,7 @@ import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import net.neoforged.neoforge.event.entity.player.ArrowLooseEvent;
 import net.neoforged.neoforge.event.entity.player.ArrowNockEvent;
 import net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
@@ -67,6 +69,27 @@ public class WcwtWirelessFeatureEvents {
             ItemStack projectile = player.getProjectile(event.getBow());
             WcwtWirelessFeatures.restock(player, projectile, projectile, stack -> {
             });
+        }
+    }
+
+    @SubscribeEvent
+    public static void onItemCrafted(PlayerEvent.ItemCraftedEvent event) {
+        var player = event.getEntity();
+        if (player.level().isClientSide()) {
+            return;
+        }
+
+        ItemStack crafted = event.getCrafting();
+        var leftovers = crafted.remove(ModComponents.CRAFTING_UPGRADE_LEFTOVERS.get());
+        if (leftovers == null) {
+            return;
+        }
+
+        for (ItemStack leftover : leftovers.nonEmptyItems()) {
+            ItemStack returned = leftover.copy();
+            if (!player.addItem(returned)) {
+                player.drop(returned, false);
+            }
         }
     }
 

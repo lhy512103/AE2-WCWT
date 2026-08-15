@@ -16,8 +16,14 @@ public class ModComponents {
             DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, WcwtMod.MOD_ID);
     
     /**
-     * AE2WTLIB装备槽库存 (头盔, 胸甲, 护腿, 靴子, 副手)
+     * 合成综合终端时暂存无法合并的升级卡，合成完成事件会将其转入玩家物品栏。
      */
+    public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemContainerContents>>
+            CRAFTING_UPGRADE_LEFTOVERS = register("crafting_upgrade_leftovers", builder -> builder
+                    .persistent(ItemContainerContents.CODEC)
+                    .networkSynchronized(ItemContainerContents.STREAM_CODEC));
+
+
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<ItemContainerContents>> AE2WTLIB_ARMOR_INV = 
             register("ae2wtlib_armor_inv", builder -> builder
                     .persistent(ItemContainerContents.CODEC)

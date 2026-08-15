@@ -1,5 +1,30 @@
 # Changelog
 
+## v1.3.7
+
+### English
+
+1. Fixed WCWT not restoring the AE2 terminal search text when AE2's "Remember Last Search" option was enabled.
+2. Added client-configurable compact display for empty pattern-provider slots in the pattern management area.
+3. Added an option to open the ExtendedAE Plus provider selection screen when uploading to multiple providers with the same name.
+4. Added JEI support for encoding multiblock structure information pages without real recipe outputs as processing patterns.
+5. Added a top-right hidden-slot count and tooltip to compressed empty-slot summary cells.
+6. Added the missing Simplified Chinese translation for the pattern-management F-key search sync option.
+7. Simplified the wireless terminal's "Other Settings" section by removing four less frequently used checkboxes.
+8. Reworked the WCWT crafting recipe to inherit data from all four input wireless terminals; incompatible or excess upgrade cards are returned to the player's inventory, or dropped at the player's position when the inventory is full.
+
+### 中文
+
+1. 修复 AE2 开启“记住上次搜索”后，重新打开 WCWT 终端搜索框仍被清空的问题。
+2. 新增客户端配置，可将样板管理区中每个供应器的空样板槽压缩为汇总槽显示。
+3. 新增配置选项，上传样板时遇到多个同名供应器可打开 ExtendedAE Plus 供应器选择界面。
+4. 新增 JEI 通用多方块结构样板编码，能够识别没有真实配方产物的多方块结构信息页，并编码为处理样板。
+5. 为压缩显示的空槽汇总格添加右上角未显示槽位数量和悬浮提示。
+6. 补充样板管理 F 键搜索同步配置的简体中文翻译。
+7. 精简无线终端“其他设置”分组，移除四个较少使用的复选框。
+8. 重做 WCWT 合成配方，合成时继承四个输入无线终端中的数据；不兼容或超出容量的升级卡会退回玩家物品栏，物品栏已满时掉落在玩家位置。
+
+
 ## v1.3.6
 
 ### English

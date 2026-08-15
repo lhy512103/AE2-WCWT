@@ -5,6 +5,7 @@ import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
+import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
@@ -261,7 +262,8 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
     }
 
     private static String getMappedProviderDisplayName(PatternContainer provider) {
-        return "";
+        String mappedName = ExtendedAePlusUploadCompat.getProviderDisplayName(provider);
+        return mappedName == null ? "" : mappedName;
     }
 
     private static String normalizeSearchText(String searchText) {

@@ -1,0 +1,7 @@
+{
+  "type": "ae2wtlib:upgrade",
+  "terminal": {
+    "item": "wcwt:wireless_comprehensive_work_terminal"
+  },
+  "terminalName": "wcwt"
+}

@@ -7,6 +7,7 @@ dependencies {
     compileOnly "curse.maven:advancedae-1084104:${advancedae_file}"
     compileOnly "curse.maven:ex-pattern-provider-892005:${extendedae_file}"
     compileOnly "curse.maven:extendedae-plus-1337639:${extendedae_plus_file}"
+    compileOnly "curse.maven:ae2-import-export-card-982512:8033654"
     compileOnly "curse.maven:ae2-jei-integration-1074338:${ae2jei_integration_file}"
     compileOnly "curse.maven:applied-flux-965012:${applied_flux_file}"
     compileOnly "curse.maven:applied-create-1474758:${applied_create_file}"

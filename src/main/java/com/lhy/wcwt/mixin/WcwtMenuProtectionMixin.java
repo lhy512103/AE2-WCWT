@@ -9,7 +9,6 @@ import appeng.menu.AEBaseMenu;
 import appeng.menu.SlotSemantic;
 import appeng.menu.SlotSemantics;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.item.ItemStack;
 
 @Mixin(AEBaseMenu.class)
 public abstract class WcwtMenuProtectionMixin {
@@ -28,34 +27,11 @@ public abstract class WcwtMenuProtectionMixin {
         }
     }
 
-    @Inject(method = "isValidForSlot", at = @At("HEAD"), cancellable = true)
-    private void wcwt$allowImportExportCards(Slot slot, ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
-        AEBaseMenu menu = (AEBaseMenu) (Object) this;
-        SlotSemantic semantic = menu.getSlotSemantic(slot);
-        if (semantic == null || stack.isEmpty()) {
-            return;
-        }
-        if (semantic != SlotSemantics.UPGRADE && !isWcwtUpgradeSemantic(semantic)) {
-            return;
-        }
-        var key = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
-        if (key != null && "ae2importexportcard".equals(key.getNamespace())
-                && (key.getPath().contains("import_card") || key.getPath().contains("export_card"))) {
-            cir.setReturnValue(true);
-        }
-    }
-
     private static boolean isWcwtSpecialSemantic(SlotSemantic semantic) {
         String name = semantic.toString();
         return name.contains("wcwt_cell_upgrade")
                 || name.contains("wcwt_pattern_cache")
                 || name.contains("wcwt_storage_cell")
                 || name.contains("wcwt_pattern_preview");
-    }
-
-    private static boolean isWcwtUpgradeSemantic(SlotSemantic semantic) {
-        String name = semantic.toString();
-        return name.contains("ae2wtlib")
-                || name.contains("wcwt_cell_upgrade");
     }
 }

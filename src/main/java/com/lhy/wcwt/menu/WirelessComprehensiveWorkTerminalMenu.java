@@ -47,6 +47,7 @@ import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.NeoEcoApiCompat;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
 import com.lhy.wcwt.config.WcwtServerConfig;
@@ -54,6 +55,7 @@ import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.network.EncodePatternPacket;
+import com.lhy.wcwt.network.OpenEaepProviderSelectScreenPacket;
 import com.lhy.wcwt.network.PatternEncodingModePacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
 import com.lhy.wcwt.network.PatternModePacket;
@@ -2024,7 +2026,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
                 return MatrixUploadResult.uploaded(ecoDuplicate.providerId(), ecoDuplicate.slot());
             }
-            if (NeoEcoUploadBridge.uploadPatternToEcoStorage(grid, uploadStack.copy())) {
+            if (NeoEcoApiCompat.uploadPatternToEcoStorage(grid, uploadStack.copy())) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
                 return findEcoUploadResult(uploadStack);
             }
@@ -2046,7 +2048,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var providers = listUploadProviders(false);
         for (int i = 0; i < providers.size(); i++) {
             var provider = providers.get(i);
-            if (!NeoEcoUploadBridge.isEcoPatternProvider(provider)) {
+            if (!NeoEcoApiCompat.isEcoPatternProvider(provider)) {
                 continue;
             }
             int duplicateSlot = findMatchingPatternSlot(provider, encodedPattern);
@@ -2061,7 +2063,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var providers = listUploadProviders(false);
         for (int i = 0; i < providers.size(); i++) {
             var provider = providers.get(i);
-            if (!NeoEcoUploadBridge.isEcoPatternProvider(provider)) {
+            if (!NeoEcoApiCompat.isEcoPatternProvider(provider)) {
                 continue;
             }
             int insertedSlot = findMatchingPatternSlot(provider, encodedPattern);
@@ -2446,7 +2448,58 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
-                              long preferredProviderId, String uploadProviderName, boolean fallbackToEditSlot) {
+                               long preferredProviderId, String uploadProviderName, boolean fallbackToEditSlot) {
+        encodePattern(mode, uploadEnabled, providerSearchText, preferredProviderId, uploadProviderName,
+                fallbackToEditSlot, false);
+    }
+
+    private boolean openEaepProviderSelectScreenForEncodedPattern(ItemStack encodedPattern,
+                                                                  boolean consumeEditPattern,
+                                                                  @Nullable String searchText) {
+        if (!ModList.get().isLoaded("extendedae_plus") || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return false;
+        }
+        String query = normalizeProviderSearchText(searchText);
+        List<PatternContainer> providers = listUploadProviders(false).stream()
+                .filter(provider -> query == null || providerNameMatches(getUploadProviderDisplayName(provider), query))
+                .toList();
+        if (providers.size() < 2) {
+            return false;
+        }
+        List<OpenEaepProviderSelectScreenPacket.Entry> entries = new ArrayList<>();
+        for (int index = 0; index < providers.size(); index++) {
+            PatternContainer provider = providers.get(index);
+            int emptySlots = getAvailablePatternSlots(provider);
+            if (emptySlots > 0) {
+                entries.add(new OpenEaepProviderSelectScreenPacket.Entry(-1L - index,
+                        getUploadProviderDisplayName(provider), emptySlots));
+            }
+        }
+        if (entries.size() < 2) {
+            return false;
+        }
+        try {
+            Class<?> uploadUtil = Class.forName("com.extendedae_plus.util.uploadPattern.CtrlQPendingUploadUtil");
+            Method begin = uploadUtil.getMethod("beginPendingCtrlQUpload", ServerPlayer.class, ItemStack.class);
+            Object pendingId = begin.invoke(null, serverPlayer,
+                    PatternUploadMetadata.copyWithoutUploadData(encodedPattern));
+            if (!(pendingId instanceof String) || ((String) pendingId).isBlank()) {
+                return false;
+            }
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return false;
+        }
+        PacketDistributor.sendToPlayer(serverPlayer, new OpenEaepProviderSelectScreenPacket(entries));
+        consumePatternForUpload(consumeEditPattern);
+        patternEncodingLogic.setMode(getPatternEncodingMode());
+        updatePatternPreview(getPatternEncodingMode());
+        broadcastChanges();
+        return true;
+    }
+
+    public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
+                               long preferredProviderId, String uploadProviderName, boolean fallbackToEditSlot,
+                               boolean useEaepUploadScreen) {
         if (isClientSide()) {
             logEncode("client clicked encode, mode={}", mode);
             PacketDistributor.sendToServer(new EncodePatternPacket(mode, uploadEnabled, providerSearchText,
@@ -2521,6 +2574,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         logPatternUploadDebug("server encoded metadata player={}, metadata={}, encoded={}",
                 getPlayer().getScoreboardName(), PatternUploadMetadata.getProviderSearchText(encodedPattern), encodedPattern);
 
+        if (uploadEnabled && useEaepUploadScreen && mode == EncodingMode.PROCESSING
+                && openEaepProviderSelectScreenForEncodedPattern(encodedPattern, consumeEditPattern,
+                resolvedProviderSearchText)) {
+            return;
+        }
         if (uploadEnabled && mode != EncodingMode.PROCESSING) {
             MatrixUploadResult matrixUploadResult = uploadEncodedPatternToMatrix(encodedPattern);
             if (matrixUploadResult.state() == MatrixUploadState.UPLOADED
@@ -4533,18 +4591,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
     }
 
-    @Override
-    public boolean isValidForSlot(Slot slot, ItemStack stack) {
-        if (stack != null && !stack.isEmpty() && getSlots(WcwtSlotSemantics.WCWT_CELL_UPGRADE).contains(slot)) {
-            var key = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
-            if (key != null && "ae2importexportcard".equals(key.getNamespace())
-                    && (key.getPath().contains("import_card") || key.getPath().contains("export_card"))) {
-                return true;
-            }
-        }
-        return super.isValidForSlot(slot, stack);
-    }
-    
     /**
      * 应用样板倍增器操作
      * 基于ExtendedAE的ContainerPatternModifier.modify()实现
@@ -5664,42 +5710,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 return value instanceof String text ? text : null;
             } catch (Throwable ignored) {
                 return null;
-            }
-        }
-    }
-
-    private static final class NeoEcoUploadBridge {
-        private static final String STORAGE_SERVICE_CLASS = "cn.dancingsnow.neoecoae.api.IECOPatternStorageService";
-        private static final String STORAGE_CLASS = "cn.dancingsnow.neoecoae.api.IECOPatternStorage";
-        private static final String PATTERN_BUS_CLASS =
-                "cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingPatternBusBlockEntity";
-
-        static boolean uploadPatternToEcoStorage(appeng.api.networking.IGrid grid, ItemStack pattern) {
-            try {
-                @SuppressWarnings("unchecked")
-                Class<? extends appeng.api.networking.IGridService> serviceClass =
-                        (Class<? extends appeng.api.networking.IGridService>) Class.forName(STORAGE_SERVICE_CLASS);
-                Object storageService = grid.getService(serviceClass);
-                if (storageService == null) {
-                    return false;
-                }
-                Object storage = storageService.getClass().getMethod("getPatternStorage").invoke(storageService);
-                if (storage == null) {
-                    return false;
-                }
-                Class<?> storageClass = Class.forName(STORAGE_CLASS);
-                Object value = storageClass.getMethod("insertPattern", ItemStack.class).invoke(storage, pattern);
-                return value instanceof Boolean uploaded && uploaded;
-            } catch (Throwable ignored) {
-                return false;
-            }
-        }
-
-        static boolean isEcoPatternProvider(PatternContainer provider) {
-            try {
-                return Class.forName(PATTERN_BUS_CLASS).isInstance(provider);
-            } catch (Throwable ignored) {
-                return false;
             }
         }
     }
