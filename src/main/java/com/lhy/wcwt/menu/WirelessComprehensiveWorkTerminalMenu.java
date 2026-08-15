@@ -46,6 +46,7 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.NeoEcoApiCompat;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
 import com.lhy.wcwt.config.WcwtServerConfig;
@@ -2295,7 +2296,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
                 return MatrixUploadResult.uploaded(ecoDuplicate.providerId(), ecoDuplicate.slot());
             }
-            if (NeoEcoUploadBridge.uploadPatternToEcoStorage(grid, uploadStack.copy())) {
+            if (NeoEcoApiCompat.uploadPatternToEcoStorage(grid, uploadStack.copy())) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
                 return findEcoUploadResult(uploadStack);
             }
@@ -2323,7 +2324,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var providers = listUploadProviders(false);
         for (int i = 0; i < providers.size(); i++) {
             var provider = providers.get(i);
-            if (!NeoEcoUploadBridge.isEcoPatternProvider(provider)) {
+            if (!NeoEcoApiCompat.isEcoPatternProvider(provider)) {
                 continue;
             }
             int duplicateSlot = findMatchingPatternSlot(provider, encodedPattern);
@@ -2338,7 +2339,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var providers = listUploadProviders(false);
         for (int i = 0; i < providers.size(); i++) {
             var provider = providers.get(i);
-            if (!NeoEcoUploadBridge.isEcoPatternProvider(provider)) {
+            if (!NeoEcoApiCompat.isEcoPatternProvider(provider)) {
                 continue;
             }
             int insertedSlot = findMatchingPatternSlot(provider, encodedPattern);
@@ -6347,42 +6348,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return ModList.get().isLoaded("extendedae_plus")
                     ? PatternProviderDataUtil.getProviderDisplayName(provider)
                     : null;
-        }
-    }
-
-    private static final class NeoEcoUploadBridge {
-        private static final String STORAGE_SERVICE_CLASS = "cn.dancingsnow.neoecoae.api.IECOPatternStorageService";
-        private static final String STORAGE_CLASS = "cn.dancingsnow.neoecoae.api.IECOPatternStorage";
-        private static final String PATTERN_BUS_CLASS =
-                "cn.dancingsnow.neoecoae.blocks.entity.crafting.ECOCraftingPatternBusBlockEntity";
-
-        static boolean uploadPatternToEcoStorage(appeng.api.networking.IGrid grid, ItemStack pattern) {
-            try {
-                @SuppressWarnings("unchecked")
-                Class<? extends appeng.api.networking.IGridService> serviceClass =
-                        (Class<? extends appeng.api.networking.IGridService>) Class.forName(STORAGE_SERVICE_CLASS);
-                Object storageService = grid.getService(serviceClass);
-                if (storageService == null) {
-                    return false;
-                }
-                Object storage = storageService.getClass().getMethod("getPatternStorage").invoke(storageService);
-                if (storage == null) {
-                    return false;
-                }
-                Class<?> storageClass = Class.forName(STORAGE_CLASS);
-                Object value = storageClass.getMethod("insertPattern", ItemStack.class).invoke(storage, pattern);
-                return value instanceof Boolean uploaded && uploaded;
-            } catch (Throwable ignored) {
-                return false;
-            }
-        }
-
-        static boolean isEcoPatternProvider(PatternContainer provider) {
-            try {
-                return Class.forName(PATTERN_BUS_CLASS).isInstance(provider);
-            } catch (Throwable ignored) {
-                return false;
-            }
         }
     }
 

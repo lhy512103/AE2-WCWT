@@ -24,7 +24,8 @@ dependencies {
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:${v.curios.get()}:api")
     compileOnly "mezz.jei:jei-1.20.1-forge:${v.jei.get()}"
     compileOnly "dev.emi:emi-forge:${v.emi.get()}:api"
-    compileOnly fg.deobf("maven.modrinth:extendedae-plus:${v.extendedae.plus.get()}")
+    compileOnly fg.deobf("maven.modrinth:xr109llC:${v.extendedae.plus.runtime.get()}")
+    compileOnly fg.deobf(libs.neoecoae)
     compileOnly fg.deobf("org.appliedenergistics:guideme:${v.guideme.get()}")
     compileOnly fg.deobf(libs.polymorph)
 
@@ -38,7 +39,7 @@ dependencies {
     runtimeOnly fg.deobf("maven.modrinth:glodium:${v.glodium.get()}")
     runtimeOnly fg.deobf("maven.modrinth:extended-ae:${v.extendedae.epp.get()}")
     runtimeOnly fg.deobf("maven.modrinth:appflux:${v.appflux.get()}")
-    runtimeOnly fg.deobf("maven.modrinth:extendedae-plus:${v.extendedae.plus.get()}")
+    runtimeOnly fg.deobf("maven.modrinth:xr109llC:${v.extendedae.plus.runtime.get()}")
     runtimeOnly fg.deobf("maven.modrinth:ae2-crystal-science:${v.ae2cs.get()}")
     runtimeOnly fg.deobf("maven.modrinth:mekanism:${v.mekanism.get()}")
     runtimeOnly fg.deobf("maven.modrinth:mekanism-generators:${v.mekanism.get()}")

@@ -1,3 +1,15 @@
+# 1.20.1.10
+
+## English
+
+1. Fixed duplicate patterns when uploading crafting patterns to the Neo ECO AE Extension matrix.
+
+
+## 中文
+
+1. 修复上传合成样板至 Neo ECO AE Extension 矩阵时重复样板的问题。
+
+
 # 1.20.1.9-hotfix
 
 ## English
