@@ -223,6 +223,8 @@
   "message.wcwt.pull_shift_hint": "按住 Shift：為非合成配方拉取一組用量",
   "message.wcwt.eco_pattern_duplicate": "ECO 合成子系統已存在相同樣板。",
   "message.wcwt.eco_pattern_uploaded": "樣板已上傳至 ECO 合成子系統。",
+  "message.wcwt.tianshu_pattern_duplicate": "天樞超算陣列已存在相同樣板。",
+  "message.wcwt.tianshu_pattern_uploaded": "樣板已上傳至天樞超算陣列。",
   "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 網路工具槽已滿。",
   "message.wcwt.toolkit_network_tool_not_found": "未發現可放入的網路工具（光標上或背包內）。",
   "gui.wcwt.universal_terminal.next": "切換到下一個終端",

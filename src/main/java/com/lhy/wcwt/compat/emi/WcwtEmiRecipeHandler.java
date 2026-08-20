@@ -61,6 +61,7 @@ import java.util.WeakHashMap;
  */
 public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehensiveWorkTerminalMenu> {
     private static final Map<WirelessComprehensiveWorkTerminalMenu, CachedPreview> LOCKED_PREVIEW_CACHE = new WeakHashMap<>();
+    private static final String EMI_FILL_BUTTON_CLASS = "dev.emi.emi.api.widget.RecipeFillButtonWidget";
 
     private record CachedPreview(EmiRecipe recipe, EncodingMode mode, int inventoryHash, long tick,
             PreviewResult result) {
@@ -100,7 +101,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (!WcwtClientConfig.enableRecipePullTransfer()) {
             return false;
         }
-        if (context.getType() != EmiCraftContext.Type.FILL_BUTTON) {
+        if (!isSupportedCraftType(context.getType())) {
             return false;
         }
 
@@ -175,6 +176,9 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
 
         WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
+        if (isCraftingGridLocked(menu) && WcwtClientConfig.lockedCraftingGridJeiTransferBorder()) {
+            renderLockedFillButtonBorder(widgets, draw);
+        }
         Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
         if (inputSlots.isEmpty()) {
             return;
@@ -242,6 +246,13 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 ? recipe.getBackingRecipe().value() : null, mode);
         PacketDistributor.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         return true;
+    }
+
+    private static boolean isSupportedCraftType(EmiCraftContext.Type type) {
+        if (type == EmiCraftContext.Type.FILL_BUTTON) {
+            return true;
+        }
+        return type == EmiCraftContext.Type.CRAFTABLE && WcwtClientConfig.emiPreviewRecipeFill();
     }
 
     private static boolean isCraftingGridLocked(WirelessComprehensiveWorkTerminalMenu menu) {
@@ -347,8 +358,6 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     private static List<Component> createLockedGridTooltip(PreviewResult preview, boolean allowShiftMaxTransfer) {
         List<Component> tooltip = new ArrayList<>();
-        tooltip.add(ItemModText.MOVE_ITEMS.text());
-
         if (!preview.craftableSlots().isEmpty()) {
             var line = Screen.hasControlDown() ? ItemModText.WILL_CRAFT.text() : ItemModText.CTRL_CLICK_TO_CRAFT.text();
             tooltip.add(line.withStyle(net.minecraft.ChatFormatting.BLUE));
@@ -487,6 +496,27 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return inputSlots;
     }
 
+    private static void renderLockedFillButtonBorder(List<Widget> widgets, GuiGraphics guiGraphics) {
+        for (Widget widget : widgets) {
+            if (!EMI_FILL_BUTTON_CLASS.equals(widget.getClass().getName())) {
+                continue;
+            }
+            Bounds bounds = widget.getBounds();
+            int x = bounds.x();
+            int y = bounds.y();
+            int x2 = bounds.right();
+            int y2 = bounds.bottom();
+            var poseStack = guiGraphics.pose();
+            poseStack.pushPose();
+            poseStack.translate(0, 0, 400);
+            guiGraphics.fill(x, y, x2, y + 1, 0xFFFF0000);
+            guiGraphics.fill(x, y2 - 1, x2, y2, 0xFFFF0000);
+            guiGraphics.fill(x, y, x + 1, y2, 0xFFFF0000);
+            guiGraphics.fill(x2 - 1, y, x2, y2, 0xFFFF0000);
+            poseStack.popPose();
+        }
+    }
+
     private static void renderSlotOverlay(@Nullable SlotWidget slot, GuiGraphics guiGraphics, int color) {
         if (slot == null) {
             return;
@@ -519,6 +549,12 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                                                                       EmiRecipe recipe,
                                                                       List<Widget> widgets) {
         EncodingMode mode = getTransferMode(recipe);
+        if (mode == EncodingMode.CRAFTING) {
+            List<@Nullable GenericStack> visualInputs = collectCraftingInputsFromWidgets(priorityContext, widgets);
+            if (containsAnyStack(visualInputs)) {
+                return visualInputs;
+            }
+        }
         List<@Nullable GenericStack> sparseInputs = new ArrayList<>();
         int limit = mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE;
         int count = Math.min(recipe.getInputs().size(), limit);
@@ -587,11 +623,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         var priorityContext = createPriorityContext(menu);
         if (getTransferMode(recipe) == EncodingMode.CRAFTING) {
             List<Widget> widgets = collectRecipeWidgets(recipe);
-            Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
             List<RequestedIngredient> requested = new ArrayList<>();
-            for (var slotEntry : getOrderedCraftingInputSlots(inputSlots).entrySet()) {
+            for (var slotEntry : getOrderedCraftingInputSlots(widgets).entrySet()) {
                 RequestedIngredient ingredient = toRequestedIngredient(priorityContext,
-                        recipe.getInputs().get(slotEntry.getKey()),
+                        slotEntry.getValue().getStack(),
                         slotEntry.getKey());
                 if (ingredient != null) {
                     requested.add(new RequestedIngredient(ingredient.alternatives(), 1, ingredient.slotIndex()));
@@ -693,23 +728,49 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 count, slotIndex);
     }
 
-    private static Map<Integer, SlotWidget> getOrderedCraftingInputSlots(Map<Integer, SlotWidget> inputSlots) {
-        return inputSlots.values().stream()
-                .filter(slot -> slot != null && slot.getStack() != null && !slot.getStack().isEmpty())
-                .sorted(java.util.Comparator
-                        .comparingInt((SlotWidget slot) -> slot.getBounds().y())
-                        .thenComparingInt(slot -> slot.getBounds().x()))
-                .limit(9)
-                .collect(java.util.stream.Collectors.toMap(
-                        slot -> {
-                            Bounds bounds = slot.getBounds();
-                            int col = Math.max(0, Math.min(2, bounds.x() / 18));
-                            int row = Math.max(0, Math.min(2, bounds.y() / 18));
-                            return row * 3 + col;
-                        },
-                        slot -> slot,
-                        (left, right) -> left,
-                        java.util.LinkedHashMap::new));
+    private static List<@Nullable GenericStack> collectCraftingInputsFromWidgets(
+            WcwtIngredientPriorities.PriorityContext priorityContext, List<Widget> widgets) {
+        List<@Nullable GenericStack> result = new ArrayList<>(java.util.Collections.nCopies(9, null));
+        boolean any = false;
+        for (var slotEntry : getOrderedCraftingInputSlots(widgets).entrySet()) {
+            GenericStack stack = toGenericStack(priorityContext, slotEntry.getValue().getStack());
+            result.set(slotEntry.getKey(), stack);
+            any |= stack != null;
+        }
+        return any ? result : List.of();
+    }
+
+    private static Map<Integer, SlotWidget> getOrderedCraftingInputSlots(List<Widget> widgets) {
+        List<SlotWidget> slots = new ArrayList<>();
+        for (Widget widget : widgets) {
+            if (widget instanceof SlotWidget slot && slot.getRecipe() == null) {
+                slots.add(slot);
+            }
+        }
+        if (slots.isEmpty()) {
+            return Map.of();
+        }
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        for (SlotWidget slot : slots) {
+            Bounds bounds = slot.getBounds();
+            minX = Math.min(minX, bounds.x());
+            minY = Math.min(minY, bounds.y());
+        }
+        Map<Integer, SlotWidget> result = new java.util.LinkedHashMap<>();
+        for (SlotWidget slot : slots) {
+            if (slot.getStack() == null || slot.getStack().isEmpty()) {
+                continue;
+            }
+            Bounds bounds = slot.getBounds();
+            int col = Math.round((bounds.x() - minX) / 18.0F);
+            int row = Math.round((bounds.y() - minY) / 18.0F);
+            if (col < 0 || col > 2 || row < 0 || row > 2) {
+                continue;
+            }
+            result.putIfAbsent(row * 3 + col, slot);
+        }
+        return result;
     }
 
     @Nullable

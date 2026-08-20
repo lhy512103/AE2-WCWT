@@ -29,6 +29,8 @@ public final class ExtendedAePlusUploadCompat {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final Map<String, String> RUNTIME_ALIASES = new ConcurrentHashMap<>();
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
+    @Nullable
+    private static volatile String lastRecipeSearchKey;
 
     private ExtendedAePlusUploadCompat() {
     }
@@ -55,6 +57,7 @@ public final class ExtendedAePlusUploadCompat {
     }
 
     public static void loadRecipeTypeNames() {
+        RUNTIME_ALIASES.clear();
         if (!invokeVoid(RECIPE_TYPE_CONFIG_CLASS, "loadRecipeTypeNames")) {
             invokeVoid(LEGACY_UTIL_CLASS, "loadRecipeTypeNames");
         }
@@ -150,13 +153,33 @@ public final class ExtendedAePlusUploadCompat {
         return normalize(legacy);
     }
 
+    public static void rememberUploadSearchKey(@Nullable String key) {
+        String normalized = normalize(key);
+        if (normalized != null) {
+            lastRecipeSearchKey = normalized;
+            logDebug("remember upload search key={}", normalized);
+        }
+    }
+
+    @Nullable
+    public static String takeProviderSearchKeyForUpload() {
+        String consumed = consumeLastProviderSearchKey();
+        if (normalize(consumed) != null) {
+            lastRecipeSearchKey = normalize(consumed);
+            return lastRecipeSearchKey;
+        }
+        return lastRecipeSearchKey;
+    }
+
     public static void presetCraftingProviderSearchKey() {
+        rememberUploadSearchKey("crafting");
         if (!invokeVoid(RECIPE_TYPE_CONFIG_CLASS, "presetCraftingProviderSearchKey")) {
             invokeVoid(LEGACY_UTIL_CLASS, "presetCraftingProviderSearchKey");
         }
     }
 
     public static void setLastProviderSearchKey(String value) {
+        rememberUploadSearchKey(value);
         if (invokeVoid(RECIPE_TYPE_CONFIG_CLASS, "setLastProviderSearchKey",
                 new Class<?>[]{String.class}, value)) {
             return;

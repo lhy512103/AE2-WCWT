@@ -90,11 +90,11 @@ When the recipe-type key is already known, start at step 4. Crafting patterns us
 3. Enable **Automatic Upload**. This state is stored on the current terminal item.
 4. For processing, transfer the **exact recipe about to be encoded** from JEI or EMI again. This refreshes the pending recipe-type key; do not rely on a different recipe transferred much earlier.
 5. Verify inputs, outputs, substitutions, and quantities. To preflight, enter the source key in Provider Search and confirm that its mapping narrows the list correctly.
-6. Press Encode. WCWT first uses a currently valid selected provider. Without one, it resolves the recipe key or Provider Search text through the mapping.
+6. Press Encode. WCWT first uses a currently valid selected provider. Without one, it resolves the current recipe-type key through the mapping. Provider Search only filters the list; manually typed provider names are not used as an upload query.
 7. Upload proceeds only when one distinct provider group is identified. Physical providers sharing that name are tried in order for an empty slot.
 8. Success displays a message, refreshes the slots, and focuses the inserted slot. The blank pattern is consumed and another can be refilled from ME storage.
 
-Without a JEI or EMI transfer, WCWT uses Provider Search. A crafting pattern with empty search uses **crafting**. A freshly recorded recipe-viewer key takes priority over the text field, so transfer each new machine recipe again before encoding it.
+Without a JEI or EMI transfer, a processing pattern has no recipe-type key and will not use Provider Search text to upload. A crafting pattern uses **crafting**. The last recipe-viewer key is kept until another recipe is transferred, so changing a mapping does not require typing the provider name by hand. Transfer each new machine recipe again before encoding it.
 
 The client option controlling whether encoding populates Provider Search is enabled by default. When disabled, ordinary encoding while upload is off does not rewrite the field. With upload enabled, WCWT still fills and resolves the data required by the upload workflow.
 

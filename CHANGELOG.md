@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.3.8
+
+### English
+
+1. Fixed automatic upload treating manually typed Provider Search text as an upload target.
+2. Added automatic crafting-pattern upload support for Lightning Tech's Tianshu Supercomputing Array.
+3. Assembler-matrix duplicate detection now uses PatternContainer APIs, and matrix upload calls ExtendedAE Plus's public upload method instead of reflection.
+4. Added a red border around JEI/EMI recipe-transfer buttons when the crafting grid is locked. This can be disabled in client config.
+5. Fixed pattern-provider list names showing in English on dedicated servers.
+6. Shift+left-clicking an EMI bookmarked or recipe-context stack now fills the full recipe into the terminal.
+7. Fixed EMI crafting transfers not following the recipe's on-screen ingredient order.
+8. Fixed duplicate tooltips on the EMI fill button when the crafting grid is locked.
+
+### 中文
+
+1. 修复自动上传把供应器搜索框里手动输入的文本当作上传目标的问题。
+2. 新增合成样板自动上传兼容闪电科技天枢超算阵列。
+3. 装配矩阵查重改为 PatternContainer API，写入改为直接调用 ExtendedAE Plus 公开上传方法，不再使用反射。
+4. 新增合成网格锁定时，JEI/EMI 在转移物品按钮边框额外绘制红色边框。可在客户端配置中关闭。
+5. 修复样板供应器列表名称在专用服务器环境下显示英文名称的问题。
+6. 新增 Shift+左键 点击带配方上下文的 EMI 书签/物品会把整份配方填入终端。
+7. 修复 EMI 合成转移物品顺序与配方顺序不符的问题。
+8. 修复 EMI 锁定网格时填充按钮出现重复tooltip的问题。
+
 ## v1.3.7
 
 ### English

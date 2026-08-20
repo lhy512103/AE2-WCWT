@@ -216,6 +216,8 @@
   "message.wcwt.pull_shift_hint": "Shift: получить одну партию для некрафтовых рецептов",
   "message.wcwt.eco_pattern_duplicate": "Подсистема крафта ECO уже содержит этот шаблон.",
   "message.wcwt.eco_pattern_uploaded": "Шаблон загружен в подсистему крафта ECO.",
+  "message.wcwt.tianshu_pattern_duplicate": "Суперкомпьютерный массив Тяньшу уже содержит этот шаблон.",
+  "message.wcwt.tianshu_pattern_uploaded": "Шаблон загружен в суперкомпьютерный массив Тяньшу.",
   "message.wcwt.toolkit_network_slot_occupied": "Слот сетевого инструмента AE в наборе уже занят.",
   "message.wcwt.toolkit_network_tool_not_found": "Не найден сетевой инструмент AE на курсоре или в инвентаре.",
   "gui.wcwt.universal_terminal.next": "Переключить на следующий терминал",

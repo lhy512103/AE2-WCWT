@@ -13,6 +13,7 @@ dependencies {
     compileOnly "curse.maven:applied-create-1474758:${applied_create_file}"
     compileOnly "curse.maven:mega-cells-622112:${mega_cells_file}"
     compileOnly "curse.maven:applied-mekanistics-574300:${applied_mekanistics_file}"
+    compileOnly "curse.maven:ae2-lightning-tech-1527395:8616068"
 
     // Cross-mod APIs used by optional compatibility code
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
@@ -42,6 +43,7 @@ dependencies {
     // Local runtime AE2 addons
     localRuntime "curse.maven:advancedae-1084104:${advancedae_file}"
     localRuntime "curse.maven:ae2-crystal-science-1435174:8112039"
+    localRuntime "curse.maven:ae2-utility-1521605:8655365"
     localRuntime "curse.maven:ae2-import-export-card-982512:8033654"
     // AE2 Lightning Tech 2.x requires Thunderbolt Core.
     localRuntime "curse.maven:thunderbolt-core-1631756:8616071"

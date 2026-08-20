@@ -106,22 +106,22 @@ public class WcwtCraftingRecipeTransferHandler
         }
 
         // Match ae2jeiintegration UseCraftingRecipeTransfer: preview red / blue slot overlays before click.
-        if (!doTransfer && missingSlots.totalSize() != 0) {
-            List<IRecipeSlotView> gridSlots =
-                    recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream().limit(9).toList();
-            return new WcwtPartialRecipeTransferError(missingSlots, gridSlots);
-        }
-
-        if (doTransfer) {
-            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
-            // Use WcwtPullRecipeTransfer for all locked-grid cases, including CRAFTING mode.
-            // CraftingHelper.performTransfer uses AE2's generic item matching (most abundant first,
-            // no NBT preference), which can pull wrong NBT variants. WcwtPullRecipeTransfer
-            // respects NBT-specific alternatives from JEI slot views, preserving exact item matching.
-            return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, true,
+        if (!doTransfer) {
+            if (missingSlots.totalSize() != 0) {
+                List<IRecipeSlotView> gridSlots =
+                        recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream().limit(9).toList();
+                return new WcwtPartialRecipeTransferError(missingSlots, gridSlots);
+            }
+            return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, false,
                     transferHelper, false);
         }
 
-        return null;
+        WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
+        // Use WcwtPullRecipeTransfer for all locked-grid cases, including CRAFTING mode.
+        // CraftingHelper.performTransfer uses AE2's generic item matching (most abundant first,
+        // no NBT preference), which can pull wrong NBT variants. WcwtPullRecipeTransfer
+        // respects NBT-specific alternatives from JEI slot views, preserving exact item matching.
+        return WcwtPullRecipeTransfer.transfer(menu, recipeHolder, recipeSlots, player, maxTransfer, true,
+                transferHelper, false);
     }
 }

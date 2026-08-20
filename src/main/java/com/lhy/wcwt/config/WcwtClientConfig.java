@@ -23,6 +23,8 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS;
     public static final ModConfigSpec.BooleanValue PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN;
+    public static final ModConfigSpec.BooleanValue LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER;
+    public static final ModConfigSpec.BooleanValue EMI_PREVIEW_RECIPE_FILL;
     public static final ModConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
     public static final ModConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
     public static final ModConfigSpec.BooleanValue FAVORITED_ITEMS_FIRST;
@@ -81,6 +83,14 @@ public final class WcwtClientConfig {
                 .comment("If true: uploading to multiple providers with the same name opens the ExtendedAE Plus provider selection screen.")
                 .translation("wcwt.config.patternUploadMultiMatchOpenEaepScreen")
                 .define("patternUploadMultiMatchOpenEaepScreen", true);
+        LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER = BUILDER
+                .comment("If true: when the crafting grid is locked, JEI/EMI recipe-transfer buttons keep their existing highlight and draw a red border.")
+                .translation("wcwt.config.lockedCraftingGridJeiTransferBorder")
+                .define("lockedCraftingGridJeiTransferBorder", true);
+        EMI_PREVIEW_RECIPE_FILL = BUILDER
+                .comment("If true: EMI craftable actions (left-click / Shift+left-click on a bookmarked or recipe-context stack) fill the full recipe into WCWT, same as the recipe-page + button.")
+                .translation("wcwt.config.emiPreviewRecipeFill")
+                .define("emiPreviewRecipeFill", true);
         LAST_MANAGEMENT_TOOLKIT_OPEN = BUILDER
                 .comment("Remembers whether the management-area toolkit was open the last time this client closed the terminal.")
                 .translation("wcwt.config.lastManagementToolkitOpen")
@@ -153,6 +163,14 @@ public final class WcwtClientConfig {
 
     public static boolean patternUploadMultiMatchOpenEaepScreen() {
         return PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN.get();
+    }
+
+    public static boolean lockedCraftingGridJeiTransferBorder() {
+        return LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER.get();
+    }
+
+    public static boolean emiPreviewRecipeFill() {
+        return EMI_PREVIEW_RECIPE_FILL.get();
     }
 
     public static boolean lastManagementToolkitOpen() {

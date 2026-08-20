@@ -62,7 +62,6 @@ public class ModClientSetup {
             event.setCanceled(true);
             return;
         }
-
         if (screen == null) {
             return;
         }

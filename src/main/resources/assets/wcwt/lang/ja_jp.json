@@ -214,6 +214,8 @@
   "message.wcwt.pull_shift_hint": "Shift: 非クラフトレシピ 1 バッチ分を取得",
   "message.wcwt.eco_pattern_duplicate": "ECO クラフトサブシステムには既に同じパターンがあります。",
   "message.wcwt.eco_pattern_uploaded": "パターンを ECO クラフトサブシステムへアップロードしました。",
+  "message.wcwt.tianshu_pattern_duplicate": "天枢スーパーコンピューティングアレイには既に同じパターンがあります。",
+  "message.wcwt.tianshu_pattern_uploaded": "パターンを天枢スーパーコンピューティングアレイへアップロードしました。",
   "message.wcwt.toolkit_network_slot_occupied": "ツールキットの AE ネットワークツール用スロットは既に埋まっています。",
   "message.wcwt.toolkit_network_tool_not_found": "カーソル上またはインベントリ内に AE ネットワークツールが見つかりません。",
   "gui.wcwt.universal_terminal.next": "次の端末へ切り替え",

@@ -12,7 +12,8 @@
   ],
   "client": [
     "GuiMixin",
-    "WcwtMinecraftPickBlockMixin"
+    "WcwtMinecraftPickBlockMixin",
+    "WcwtJeiRecipeTransferButtonMixin"
   ],
   "injectors": {
     "defaultRequire": 1

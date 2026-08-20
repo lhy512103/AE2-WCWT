@@ -30,7 +30,7 @@ MEGA Cells supplies compatible bulk cells, compression upgrades, and the compres
 
 ## AE2 Lightning Tech
 
-Supplies lightning AEKeys and overload patterns. Once loaded, the special encoder shows overload editing and allows strict or ID-only matching per input and output.
+Supplies lightning AEKeys and overload patterns. Once loaded, the special encoder shows overload editing and allows strict or ID-only matching per input and output. With automatic upload enabled, crafting, smithing, and stonecutting patterns are sent to the Matter Warping Matrix used by Tianshu terminals.
 
 ## AE2 Crystal Science
 

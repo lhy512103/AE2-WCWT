@@ -5,7 +5,6 @@ import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
-import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
@@ -217,7 +216,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
             if (truncatedSlots > 0) {
                 WcwtMod.LOGGER.warn(
                         "Pattern provider '{}' has too many pattern slots to sync; {} non-empty slots not shown in the terminal (limit {} per provider, configurable via maxSyncedSlotsPerProvider)",
-                        getMappedProviderDisplayName(container), truncatedSlots, maxSyncedSlots);
+                        providerLogName(container), truncatedSlots, maxSyncedSlots);
             }
             var location = getLocation(container);
             entries.add(new Entry(id++, container.getTerminalGroup(), getMappedProviderDisplayName(container), inv.size(), slots,
@@ -262,8 +261,17 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
     }
 
     private static String getMappedProviderDisplayName(PatternContainer provider) {
-        String mappedName = ExtendedAePlusUploadCompat.getProviderDisplayName(provider);
-        return mappedName == null ? "" : mappedName;
+        // Leave empty so the client renders PatternContainerGroup.name() in the
+        // player's language. Resolving Component.getString() here would freeze
+        // the server language (usually en_us) into the list.
+        return "";
+    }
+
+    private static String providerLogName(PatternContainer provider) {
+        if (provider == null || provider.getTerminalGroup() == null) {
+            return "";
+        }
+        return provider.getTerminalGroup().name().getString();
     }
 
     private static String normalizeSearchText(String searchText) {

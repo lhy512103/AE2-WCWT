@@ -45,8 +45,11 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
+import com.lhy.wcwt.compat.ExtendedAePlusMatrixUploadCompat;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
+import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.LightningTechCraftingUploadCompat;
 import com.lhy.wcwt.compat.NeoEcoApiCompat;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
@@ -2021,6 +2024,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         try {
+            MatrixUploadResult tianshuUpload = uploadEncodedPatternToTianshuCraftingArray(uploadStack, serverPlayer);
+            if (tianshuUpload.state() != MatrixUploadState.FAILURE) {
+                return tianshuUpload;
+            }
+        } catch (Throwable ignored) {
+        }
+        try {
             EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(grid, uploadStack);
             if (ecoDuplicate.duplicate()) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
@@ -2030,13 +2040,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
                 return findEcoUploadResult(uploadStack);
             }
-            if (ExtendedAePlusUploadBridge.matrixContainsPattern(grid, uploadStack)) {
+        } catch (Throwable ignored) {
+        }
+        try {
+            if (assemblerMatrixContainsPattern(uploadStack)) {
                 serverPlayer.sendSystemMessage(Component.translatable("extendedae_plus.message.matrix.duplicate"));
                 return returnBlankPatternFromMatrixUpload(uploadStack.getCount())
                         ? MatrixUploadResult.DUPLICATE_RETURNED
                         : MatrixUploadResult.DUPLICATE_ABORTED;
             }
-            if (ExtendedAePlusUploadBridge.uploadPatternToMatrix(serverPlayer, uploadStack.copy(), grid)) {
+            if (ExtendedAePlusMatrixUploadCompat.uploadPatternToMatrix(serverPlayer, uploadStack.copy(), grid)) {
                 return findMatrixUploadResult(uploadStack);
             }
         } catch (Throwable ignored) {
@@ -2057,6 +2070,42 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
         return EcoUploadDuplicateResult.NONE;
+    }
+
+    private MatrixUploadResult uploadEncodedPatternToTianshuCraftingArray(ItemStack encodedPattern,
+                                                                          ServerPlayer serverPlayer) {
+        if (!LightningTechCraftingUploadCompat.isAvailable()
+                || !LightningTechCraftingUploadCompat.isCraftingPattern(encodedPattern, serverPlayer.level())) {
+            return MatrixUploadResult.FAILURE;
+        }
+        var providers = listUploadProviders(false);
+        int firstTargetIndex = -1;
+        for (int i = 0; i < providers.size(); i++) {
+            var provider = providers.get(i);
+            if (!LightningTechCraftingUploadCompat.isTianshuCraftingArray(provider)) {
+                continue;
+            }
+            int duplicateSlot = LightningTechCraftingUploadCompat.findDuplicateSlot(
+                    provider, encodedPattern, serverPlayer.level());
+            if (duplicateSlot >= 0) {
+                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_duplicate"));
+                return MatrixUploadResult.uploaded(i + 1L, duplicateSlot);
+            }
+            if (firstTargetIndex < 0
+                    && LightningTechCraftingUploadCompat.insertCraftingPattern(provider, encodedPattern, true)) {
+                firstTargetIndex = i;
+            }
+        }
+        if (firstTargetIndex < 0) {
+            return MatrixUploadResult.FAILURE;
+        }
+        var target = providers.get(firstTargetIndex);
+        if (!LightningTechCraftingUploadCompat.insertCraftingPattern(target, encodedPattern, false)) {
+            return MatrixUploadResult.FAILURE;
+        }
+        serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_uploaded"));
+        int insertedSlot = findLastInsertedPatternSlot(target, encodedPattern);
+        return MatrixUploadResult.uploaded(firstTargetIndex + 1L, insertedSlot);
     }
 
     private MatrixUploadResult findEcoUploadResult(ItemStack encodedPattern) {
@@ -2330,10 +2379,23 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return JecSearchCompat.contains(providerName, query);
     }
 
+    private boolean assemblerMatrixContainsPattern(ItemStack encodedPattern) {
+        if (!ExtendedAePlusMatrixUploadCompat.isAssemblerMatrixAvailable()) {
+            return false;
+        }
+        for (var provider : listUploadProviders(false)) {
+            if (ExtendedAePlusMatrixUploadCompat.isAssemblerMatrix(provider)
+                    && findMatchingPatternSlot(provider, encodedPattern) >= 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static String getUploadProviderDisplayName(PatternContainer provider) {
-        String bridgeName = ExtendedAePlusUploadBridge.getProviderDisplayName(provider);
-        if (bridgeName != null && !bridgeName.isBlank()) {
-            return bridgeName;
+        String mappedName = ExtendedAePlusUploadCompat.getProviderDisplayName(provider);
+        if (mappedName != null && !mappedName.isBlank()) {
+            return mappedName;
         }
         return provider.getTerminalGroup().name().getString();
     }
@@ -5672,45 +5734,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         @Override
         public boolean allowInsert(InternalInventory inv, int slot, ItemStack stack) {
             return !stack.isEmpty() && PatternDetailsHelper.isEncodedPattern(stack);
-        }
-    }
-
-    private static final class ExtendedAePlusUploadBridge {
-        private static final String UTIL_CLASS = "com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil";
-
-        static boolean uploadPatternToMatrix(ServerPlayer player, ItemStack pattern,
-                                             appeng.api.networking.IGrid grid) {
-            try {
-                var method = Class.forName(UTIL_CLASS).getMethod("uploadPatternToMatrix",
-                        ServerPlayer.class, ItemStack.class, appeng.api.networking.IGrid.class);
-                Object value = method.invoke(null, player, pattern, grid);
-                return value instanceof Boolean uploaded && uploaded;
-            } catch (Throwable ignored) {
-                return false;
-            }
-        }
-
-        static boolean matrixContainsPattern(appeng.api.networking.IGrid grid, ItemStack pattern) {
-            try {
-                var method = Class.forName(UTIL_CLASS).getDeclaredMethod("matrixContainsPattern",
-                        appeng.api.networking.IGrid.class, ItemStack.class);
-                method.setAccessible(true);
-                Object value = method.invoke(null, grid, pattern);
-                return value instanceof Boolean contains && contains;
-            } catch (Throwable ignored) {
-                return false;
-            }
-        }
-
-        @Nullable
-        static String getProviderDisplayName(PatternContainer provider) {
-            try {
-                var method = Class.forName(UTIL_CLASS).getMethod("getProviderDisplayName", PatternContainer.class);
-                Object value = method.invoke(null, provider);
-                return value instanceof String text ? text : null;
-            } catch (Throwable ignored) {
-                return null;
-            }
         }
     }
 

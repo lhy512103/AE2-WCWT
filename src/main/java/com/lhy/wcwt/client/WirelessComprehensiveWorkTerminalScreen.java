@@ -1865,14 +1865,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void handleEncodePatternButton() {
-        String searchKey = consumeEaepProviderSearchKey();
+        String searchKey = ExtendedAePlusUploadCompat.takeProviderSearchKeyForUpload();
         boolean generatedFallbackSearchKey = false;
-        if ((searchKey == null || searchKey.isBlank()) && patternManageSearchField != null) {
-            String fieldValue = patternManageSearchField.getValue();
-            if (fieldValue != null && !fieldValue.isBlank()) {
-                searchKey = fieldValue.trim();
-            }
-        }
         if ((searchKey == null || searchKey.isBlank()) && patternEncodingMode != EncodingMode.PROCESSING) {
             searchKey = "crafting";
             generatedFallbackSearchKey = true;
@@ -1928,11 +1922,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private static boolean providerNameMatches(String providerName, String query) {
         return JecSearchCompat.contains(providerName, query);
-    }
-
-    @Nullable
-    private String consumeEaepProviderSearchKey() {
-        return ExtendedAePlusUploadCompat.consumeLastProviderSearchKey();
     }
 
     @Nullable
@@ -2960,9 +2949,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private long inferPatternProviderIdFromSearch(@Nullable String searchKey) {
         String[] candidates = {
                 searchKey,
-                searchKey == null ? null : resolveEaepProviderSearchKey(searchKey),
-                currentPatternManagementSearchText(),
-                resolvedPatternManagementSearchText
+                searchKey == null ? null : resolveEaepProviderSearchKey(searchKey)
         };
         for (String candidate : candidates) {
             String normalized = candidate == null ? "" : candidate.trim();
@@ -5287,6 +5274,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     ? "gui.wcwt.pattern_management.mapping_added"
                     : "gui.wcwt.pattern_management.mapping_failed"));
             if (localMappingAdded && patternManageSearchField != null) {
+                ExtendedAePlusUploadCompat.rememberUploadSearchKey(searchText);
                 patternManageSearchField.setValue(mappingText.trim());
                 resolvedPatternManagementSearchText = resolveClientProviderSearchText(mappingText);
             }
