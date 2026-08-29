@@ -19,6 +19,7 @@ bin/
 *.iws
 .classpath
 .project
+.workbuddy/
 
 # OS / misc
 Thumbs.db

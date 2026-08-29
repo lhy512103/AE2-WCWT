@@ -21,6 +21,8 @@ import com.google.common.collect.Maps;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.compat.reflect.WcwtMagnetReflect;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.network.WcwtPickBlockPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
@@ -43,8 +45,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -54,6 +54,7 @@ import java.util.function.Consumer;
 public final class WcwtWirelessFeatures {
     private static final ResourceLocation MAGNET_CARD_ID =
             ResourceLocation.fromNamespaceAndPath("ae2wtlib", "magnet_card");
+    private static final String AE2WTLIB_CONFIG_CLASS = "de.mari_023.ae2wtlib.AE2wtlibConfig";
     private static final double DEFAULT_MAGNET_RANGE = 16.0;
     private static final boolean DEBUG_MAGNET = Boolean.getBoolean("wcwt.debug.magnet");
     private static final WeakHashMap<ServerPlayer, Integer> RESTOCK_SYNC_TICKS = new WeakHashMap<>();
@@ -593,68 +594,32 @@ public final class WcwtWirelessFeatures {
     }
 
     private static String getMagnetModeName(ItemStack terminal) {
-        try {
-            Field componentField = Class.forName("de.mari_023.ae2wtlib.AE2wtlibAdditionalComponents")
-                    .getField("MAGNET_SETTINGS");
-            @SuppressWarnings("rawtypes")
-            net.minecraft.core.component.DataComponentType component =
-                    (net.minecraft.core.component.DataComponentType) componentField.get(null);
-            Class<?> modeClass = Class.forName("de.mari_023.ae2wtlib.wct.magnet_card.MagnetMode");
-            @SuppressWarnings({"rawtypes", "unchecked"})
-            Object fallback = Enum.valueOf((Class<Enum>) modeClass.asSubclass(Enum.class), "OFF");
-            Object mode = terminal.getOrDefault(component, fallback);
-            return mode instanceof Enum<?> enumValue ? enumValue.name() : "OFF";
-        } catch (ReflectiveOperationException e) {
-            return "OFF";
-        }
+        return WcwtMagnetReflect.modeName(terminal);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private static boolean setMagnetMode(ItemStack terminal, String modeName) {
-        try {
-            Field componentField = Class.forName("de.mari_023.ae2wtlib.AE2wtlibAdditionalComponents")
-                    .getField("MAGNET_SETTINGS");
-            net.minecraft.core.component.DataComponentType component =
-                    (net.minecraft.core.component.DataComponentType) componentField.get(null);
-            Class<?> modeClass = Class.forName("de.mari_023.ae2wtlib.wct.magnet_card.MagnetMode");
-            Object mode = Enum.valueOf((Class<Enum>) modeClass.asSubclass(Enum.class), modeName);
-            terminal.set(component, mode);
-            return true;
-        } catch (ReflectiveOperationException e) {
-            return false;
-        }
+        return WcwtMagnetReflect.setMode(terminal, modeName);
     }
 
     private static double getMagnetRange() {
-        try {
-            Field configField = Class.forName("de.mari_023.ae2wtlib.AE2wtlibConfig").getField("CONFIG");
-            Object config = configField.get(null);
-            return ((Number) config.getClass().getMethod("magnetCardRange").invoke(config)).doubleValue();
-        } catch (ReflectiveOperationException e) {
+        Object config = WcwtReflect.readStaticField("ae2wtlib", AE2WTLIB_CONFIG_CLASS, "CONFIG").orElse(null);
+        if (config == null) {
             return DEFAULT_MAGNET_RANGE;
         }
+        return WcwtReflect.findMethod(config.getClass(), "magnetCardRange")
+                .flatMap(method -> WcwtReflect.invoke(config, method))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .map(Number::doubleValue)
+                .orElse(DEFAULT_MAGNET_RANGE);
     }
 
     private static boolean getMagnetSetting(ItemStack terminal, String methodName) {
-        try {
-            Field componentField = Class.forName("de.mari_023.ae2wtlib.AE2wtlibAdditionalComponents")
-                    .getField("MAGNET_SETTINGS");
-            @SuppressWarnings("rawtypes")
-            net.minecraft.core.component.DataComponentType component =
-                    (net.minecraft.core.component.DataComponentType) componentField.get(null);
-            Class<?> modeClass = Class.forName("de.mari_023.ae2wtlib.wct.magnet_card.MagnetMode");
-            @SuppressWarnings({"rawtypes", "unchecked"})
-            Object fallback = Enum.valueOf((Class<Enum>) modeClass.asSubclass(Enum.class), "OFF");
-            Object mode = terminal.getOrDefault(component, fallback);
-            Method method = modeClass.getMethod(methodName);
-            return (boolean) method.invoke(mode);
-        } catch (ReflectiveOperationException e) {
-            if (DEBUG_MAGNET) {
-                WcwtMod.LOGGER.info("WCWT magnet debug: failed reading magnet setting method={}, error={}",
-                        methodName, e.toString());
-            }
-            return false;
+        boolean value = WcwtMagnetReflect.readSetting(terminal, methodName);
+        if (!value && DEBUG_MAGNET) {
+            WcwtMod.LOGGER.info("WCWT magnet debug: magnet setting {} resolved to false", methodName);
         }
+        return value;
     }
 
     private static void debugMagnetTick(ServerPlayer player, ItemStack terminal, boolean sneaking,

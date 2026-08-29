@@ -1,6 +1,7 @@
 package com.lhy.wcwt.compat;
 
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import appeng.helpers.patternprovider.PatternContainer;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -12,12 +13,12 @@ import net.neoforged.fml.loading.FMLPaths;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class ExtendedAePlusUploadCompat {
@@ -254,53 +255,38 @@ public final class ExtendedAePlusUploadCompat {
     @Nullable
     private static Boolean invokeBoolean(String className, String methodName, Class<?>[] parameterTypes,
                                         Object... args) {
-        try {
-            Object value = getMethod(className, methodName, parameterTypes).invoke(null, args);
-            return value instanceof Boolean result ? result : null;
-        } catch (Throwable ignored) {
-            return null;
-        }
+        return typed(invokeStaticValue(className, methodName, parameterTypes, args), Boolean.class);
     }
 
     @Nullable
     private static Integer invokeInt(String className, String methodName, Class<?>[] parameterTypes,
                                      Object... args) {
-        try {
-            Object value = getMethod(className, methodName, parameterTypes).invoke(null, args);
-            return value instanceof Integer result ? result : null;
-        } catch (Throwable ignored) {
-            return null;
-        }
+        return typed(invokeStaticValue(className, methodName, parameterTypes, args), Integer.class);
     }
 
     @Nullable
     private static String invokeString(String className, String methodName, Class<?>[] parameterTypes,
                                        Object... args) {
-        try {
-            Object value = getMethod(className, methodName, parameterTypes).invoke(null, args);
-            return value instanceof String result ? result : null;
-        } catch (Throwable ignored) {
-            return null;
-        }
+        return typed(invokeStaticValue(className, methodName, parameterTypes, args), String.class);
     }
 
     private static boolean invokeVoid(String className, String methodName, Class<?>[] parameterTypes,
                                       Object... args) {
-        try {
-            getMethod(className, methodName, parameterTypes).invoke(null, args);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
+        return WcwtReflect.runStatic("extendedae_plus", className, methodName, parameterTypes, args);
     }
 
     private static boolean invokeVoid(String className, String methodName) {
         return invokeVoid(className, methodName, new Class<?>[]{});
     }
 
-    private static Method getMethod(String className, String methodName, Class<?>[] parameterTypes)
-            throws ReflectiveOperationException {
-        return Class.forName(className).getMethod(methodName, parameterTypes);
+    private static Optional<Object> invokeStaticValue(String className, String methodName,
+                                                      Class<?>[] parameterTypes, Object... args) {
+        return WcwtReflect.invokeStatic("extendedae_plus", className, methodName, parameterTypes, args);
+    }
+
+    @Nullable
+    private static <T> T typed(Optional<Object> value, Class<T> type) {
+        return value.filter(type::isInstance).map(type::cast).orElse(null);
     }
 
     @Nullable

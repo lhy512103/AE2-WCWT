@@ -1,14 +1,14 @@
 package com.lhy.wcwt.compat;
 
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,86 +32,86 @@ public final class CuriosBridge {
             return List.of();
         }
 
-        try {
-            Class<?> curiosApi = Class.forName(CURIOS_API_CLASS);
-            Method getCuriosInventory = curiosApi.getMethod(
-                    "getCuriosInventory", net.minecraft.world.entity.LivingEntity.class);
-            Object optional = getCuriosInventory.invoke(null, player);
-            if (!(optional instanceof Optional<?> maybeHandler) || maybeHandler.isEmpty()) {
-                return List.of();
-            }
-
-            Object curiosHandler = maybeHandler.get();
-            Method getCurios = curiosHandler.getClass().getMethod("getCurios");
-            Object mapObject = getCurios.invoke(curiosHandler);
-            if (!(mapObject instanceof Map<?, ?> curioMap)) {
-                return List.of();
-            }
-
-            var result = new ArrayList<CurioSlotSpec>();
-            for (var entry : curioMap.entrySet()) {
-                if (!(entry.getKey() instanceof String identifier) || entry.getValue() == null) {
-                    continue;
-                }
-                Object stacksHandler = entry.getValue();
-                if (!invokeBoolean(stacksHandler, "isVisible", true)) {
-                    continue;
-                }
-
-                Object stackHandler = invokeObject(stacksHandler, "getStacks");
-                if (!(stackHandler instanceof IItemHandlerModifiable itemHandler)) {
-                    continue;
-                }
-
-                int slots = invokeInt(stackHandler, "getSlots", itemHandler.getSlots());
-                boolean canToggleRendering = invokeBoolean(stacksHandler, "canToggleRendering", true);
-                Object renders = invokeObject(stacksHandler, "getRenders");
-                List<Boolean> renderStatuses = renders instanceof List<?> list
-                        ? list.stream().map(Boolean.class::cast).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
-                        : new ArrayList<>();
-                ResourceLocation icon = getSlotIcon(curiosApi, player, identifier);
-                for (int slot = 0; slot < slots; slot++) {
-                    result.add(new CurioSlotSpec(
-                            identifier,
-                            slot,
-                            itemHandler,
-                            icon,
-                            canToggleRendering,
-                            slot >= renderStatuses.size() || renderStatuses.get(slot)));
-                }
-            }
-            return result;
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        var curiosHandler = WcwtReflect.invokeStatic(MOD_ID, CURIOS_API_CLASS, "getCuriosInventory",
+                        new Class<?>[]{net.minecraft.world.entity.LivingEntity.class}, player)
+                .flatMap(value -> Optional.ofNullable(unwrapOptional(value)))
+                .orElse(null);
+        if (curiosHandler == null) {
             return List.of();
         }
+
+        var mapObject = invokeNamed(curiosHandler, "getCurios").orElse(null);
+        if (!(mapObject instanceof Map<?, ?> curioMap)) {
+            return List.of();
+        }
+
+        var result = new ArrayList<CurioSlotSpec>();
+        for (var entry : curioMap.entrySet()) {
+            if (!(entry.getKey() instanceof String identifier) || entry.getValue() == null) {
+                continue;
+            }
+            Object stacksHandler = entry.getValue();
+            if (!invokeBoolean(stacksHandler, "isVisible", true)) {
+                continue;
+            }
+
+            Object stackHandler = invokeNamed(stacksHandler, "getStacks").orElse(null);
+            if (!(stackHandler instanceof IItemHandlerModifiable itemHandler)) {
+                continue;
+            }
+
+            int slots = invokeInt(stackHandler, "getSlots", itemHandler.getSlots());
+            boolean canToggleRendering = invokeBoolean(stacksHandler, "canToggleRendering", true);
+            Object renders = invokeNamed(stacksHandler, "getRenders").orElse(null);
+            List<Boolean> renderStatuses = renders instanceof List<?> list
+                    ? list.stream().map(Boolean.class::cast)
+                            .collect(java.util.stream.Collectors.toCollection(ArrayList::new))
+                    : new ArrayList<>();
+            ResourceLocation icon = getSlotIcon(player, identifier);
+            for (int slot = 0; slot < slots; slot++) {
+                result.add(new CurioSlotSpec(
+                        identifier,
+                        slot,
+                        itemHandler,
+                        icon,
+                        canToggleRendering,
+                        slot >= renderStatuses.size() || renderStatuses.get(slot)));
+            }
+        }
+        return result;
     }
 
-    private static Object invokeObject(Object target, String methodName) throws ReflectiveOperationException {
-        Method method = target.getClass().getMethod(methodName);
-        return method.invoke(target);
+    private static Optional<Object> invokeNamed(Object target, String methodName) {
+        return WcwtReflect.findMethod(target.getClass(), methodName)
+                .flatMap(method -> WcwtReflect.invoke(target, method));
     }
 
-    private static boolean invokeBoolean(Object target, String methodName, boolean fallback)
-            throws ReflectiveOperationException {
-        Object result = invokeObject(target, methodName);
-        return result instanceof Boolean value ? value : fallback;
+    private static boolean invokeBoolean(Object target, String methodName, boolean fallback) {
+        return invokeNamed(target, methodName)
+                .filter(Boolean.class::isInstance)
+                .map(Boolean.class::cast)
+                .orElse(fallback);
     }
 
-    private static int invokeInt(Object target, String methodName, int fallback) throws ReflectiveOperationException {
-        Object result = invokeObject(target, methodName);
-        return result instanceof Integer value ? value : fallback;
+    private static int invokeInt(Object target, String methodName, int fallback) {
+        return invokeNamed(target, methodName)
+                .filter(Integer.class::isInstance)
+                .map(Integer.class::cast)
+                .orElse(fallback);
     }
 
-    private static ResourceLocation getSlotIcon(Class<?> curiosApi, Player player, String identifier)
-            throws ReflectiveOperationException {
-        Method getSlot = curiosApi.getMethod("getSlot", String.class, net.minecraft.world.level.Level.class);
-        Object optional = getSlot.invoke(null, identifier, player.level());
-        if (optional instanceof Optional<?> maybeSlotType && maybeSlotType.isPresent()) {
-            Object slotType = maybeSlotType.get();
-            Method getIcon = slotType.getClass().getMethod("getIcon");
-            Object icon = getIcon.invoke(slotType);
-            if (icon instanceof ResourceLocation resourceLocation) {
-                return resourceLocation;
+    private static ResourceLocation getSlotIcon(Player player, String identifier) {
+        var slotType = WcwtReflect.invokeStatic(MOD_ID, CURIOS_API_CLASS, "getSlot",
+                        new Class<?>[]{String.class, net.minecraft.world.level.Level.class},
+                        identifier, player.level())
+                .flatMap(value -> Optional.ofNullable(unwrapOptional(value)))
+                .orElse(null);
+        if (slotType != null) {
+            var icon = invokeNamed(slotType, "getIcon")
+                    .filter(ResourceLocation.class::isInstance)
+                    .map(ResourceLocation.class::cast);
+            if (icon.isPresent()) {
+                return icon.get();
             }
         }
         return ResourceLocation.fromNamespaceAndPath("curios", "slot/empty_curio_slot");
@@ -121,16 +121,17 @@ public final class CuriosBridge {
         if (!isLoaded()) {
             return;
         }
-        try {
-            Class<?> payloadClass = Class.forName(TOGGLE_RENDER_PACKET_CLASS);
-            Constructor<?> constructor = payloadClass.getConstructor(String.class, int.class);
-            Object payload = constructor.newInstance(identifier, slotIndex);
-            if (payload instanceof CustomPacketPayload customPayload) {
-                PacketDistributor.sendToServer(customPayload);
-            }
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-            // Optional integration: the slot remains usable even if Curios internals change.
-        }
+        // Curios 内部包改了也不该把槽位整条弄崩，只是渲染开关失效。
+        WcwtReflect.construct(MOD_ID, TOGGLE_RENDER_PACKET_CLASS,
+                        new Class<?>[]{String.class, int.class}, identifier, slotIndex)
+                .filter(CustomPacketPayload.class::isInstance)
+                .map(CustomPacketPayload.class::cast)
+                .ifPresent(payload -> PacketDistributor.sendToServer(payload));
+    }
+
+    @Nullable
+    private static Object unwrapOptional(@Nullable Object value) {
+        return value instanceof Optional<?> optional ? optional.orElse(null) : value;
     }
 
     public record CurioSlotSpec(

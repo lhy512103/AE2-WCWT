@@ -5,6 +5,7 @@ import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import com.lhy.wcwt.client.gui.widgets.DirectionInputButton;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.network.CellConfigSetPacket;
@@ -638,6 +639,9 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     }
 
     // 反射缓存：AAE 的 AdvProcessingPattern 类与 getDirectionMap 方法（避免硬依赖）
+    private static final String ADV_PATTERN_CLASS =
+            "net.pedroksl.advanced_ae.common.patterns.AdvProcessingPattern";
+
     private static volatile boolean advReflectInited = false;
     private static Class<?> advPatternClass;
     private static java.lang.reflect.Method advGetDirectionMap;
@@ -645,13 +649,10 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     private static synchronized void initAdvReflect() {
         if (advReflectInited) return;
         advReflectInited = true;
-        try {
-            advPatternClass = Class.forName("net.pedroksl.advanced_ae.common.patterns.AdvProcessingPattern");
-            advGetDirectionMap = advPatternClass.getMethod("getDirectionMap");
-        } catch (Throwable ignored) {
-            advPatternClass = null;
-            advGetDirectionMap = null;
-        }
+        advPatternClass = WcwtReflect.findClass("advanced_ae", ADV_PATTERN_CLASS).orElse(null);
+        advGetDirectionMap = advPatternClass == null
+                ? null
+                : WcwtReflect.findMethod(advPatternClass, "getDirectionMap").orElse(null);
     }
 
     @SuppressWarnings("unchecked")
@@ -660,11 +661,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         if (detail == null) return null;
         initAdvReflect();
         if (advPatternClass == null || !advPatternClass.isInstance(detail)) return null;
-        try {
-            return (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail);
-        } catch (Throwable t) {
-            return null;
-        }
+        return (LinkedHashMap<AEKey, Direction>) WcwtReflect.invoke(detail, advGetDirectionMap).orElse(null);
     }
 
     /** 调试日志限频：避免每帧刷屏。每隔 60 帧（约 1 秒）打印一次关键状态。 */

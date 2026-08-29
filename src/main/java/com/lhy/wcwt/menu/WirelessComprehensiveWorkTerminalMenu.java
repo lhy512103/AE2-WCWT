@@ -53,6 +53,7 @@ import com.lhy.wcwt.compat.LightningTechCraftingUploadCompat;
 import com.lhy.wcwt.compat.NeoEcoApiCompat;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
@@ -118,7 +119,6 @@ import org.jetbrains.annotations.Nullable;
 import com.google.common.math.LongMath;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -2540,15 +2540,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (entries.size() < 2) {
             return false;
         }
-        try {
-            Class<?> uploadUtil = Class.forName("com.extendedae_plus.util.uploadPattern.CtrlQPendingUploadUtil");
-            Method begin = uploadUtil.getMethod("beginPendingCtrlQUpload", ServerPlayer.class, ItemStack.class);
-            Object pendingId = begin.invoke(null, serverPlayer,
-                    PatternUploadMetadata.copyWithoutUploadData(encodedPattern));
-            if (!(pendingId instanceof String) || ((String) pendingId).isBlank()) {
-                return false;
-            }
-        } catch (ReflectiveOperationException | LinkageError e) {
+        String pendingId = WcwtReflect
+                .invokeStatic("extendedae_plus", "com.extendedae_plus.util.uploadPattern.CtrlQPendingUploadUtil",
+                        "beginPendingCtrlQUpload", new Class<?>[]{ServerPlayer.class, ItemStack.class},
+                        serverPlayer, PatternUploadMetadata.copyWithoutUploadData(encodedPattern))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(id -> !id.isBlank())
+                .orElse(null);
+        if (pendingId == null) {
             return false;
         }
         PacketDistributor.sendToPlayer(serverPlayer, new OpenEaepProviderSelectScreenPacket(entries));
@@ -5073,6 +5073,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      *     - static ItemStack encodeProcessingPattern(List, List, HashMap)
      */
     private static final class AdvAeBridge {
+        private static final String ADV_PATTERN_CLASS =
+                "net.pedroksl.advanced_ae.common.patterns.AdvProcessingPattern";
+        private static final String ADV_ENCODER_CLASS =
+                "net.pedroksl.advanced_ae.common.patterns.AdvPatternDetailsEncoder";
+
         private static volatile boolean inited = false;
         private static Class<?> advPatternClass;
         private static java.lang.reflect.Method advGetSparseInputs;
@@ -5081,26 +5086,23 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         private static java.lang.reflect.Method encoderEncode;
 
         private static synchronized boolean init() {
-            if (inited) return advPatternClass != null && encoderEncode != null;
+            if (inited) {
+                return advPatternClass != null && encoderEncode != null;
+            }
             inited = true;
-            try {
-                advPatternClass = Class.forName(
-                        "net.pedroksl.advanced_ae.common.patterns.AdvProcessingPattern");
-                advGetSparseInputs  = advPatternClass.getMethod("getSparseInputs");
-                advGetSparseOutputs = advPatternClass.getMethod("getSparseOutputs");
-                advGetDirectionMap  = advPatternClass.getMethod("getDirectionMap");
-
-                Class<?> encoderClass = Class.forName(
-                        "net.pedroksl.advanced_ae.common.patterns.AdvPatternDetailsEncoder");
-                encoderEncode = encoderClass.getMethod(
-                        "encodeProcessingPattern",
-                        java.util.List.class, java.util.List.class, HashMap.class);
-                return true;
-            } catch (Throwable t) {
-                advPatternClass = null;
-                encoderEncode = null;
+            advPatternClass = WcwtReflect.findClass("advanced_ae", ADV_PATTERN_CLASS).orElse(null);
+            if (advPatternClass == null) {
                 return false;
             }
+            advGetSparseInputs = WcwtReflect.findMethod(advPatternClass, "getSparseInputs").orElse(null);
+            advGetSparseOutputs = WcwtReflect.findMethod(advPatternClass, "getSparseOutputs").orElse(null);
+            advGetDirectionMap = WcwtReflect.findMethod(advPatternClass, "getDirectionMap").orElse(null);
+            encoderEncode = WcwtReflect.findMethod("advanced_ae", ADV_ENCODER_CLASS, "encodeProcessingPattern",
+                    java.util.List.class, java.util.List.class, HashMap.class).orElse(null);
+            return advGetSparseInputs != null
+                    && advGetSparseOutputs != null
+                    && advGetDirectionMap != null
+                    && encoderEncode != null;
         }
 
         @SuppressWarnings("unchecked")
@@ -5760,11 +5762,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 return encodeMethod != null;
             }
             initAttempted = true;
-            try {
-                encodeMethod = Class.forName(DETAILS_CLASS).getMethod("encode", ItemStack.class);
-            } catch (Throwable ignored) {
-                encodeMethod = null;
-            }
+            encodeMethod = WcwtReflect.findMethod("ae2cs", DETAILS_CLASS, "encode", ItemStack.class).orElse(null);
             return encodeMethod != null;
         }
     }
@@ -5789,34 +5787,50 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                                            int[] inputIdOnlySlots,
                                            int[] outputIdOnlySlots) {
             try {
-                Object resolver = Class.forName(RESOLVER_CLASS)
-                        .getConstructor(net.minecraft.world.level.Level.class)
-                        .newInstance(level);
+                var resolver = WcwtReflect.construct("ae2lt", RESOLVER_CLASS,
+                        new Class<?>[]{net.minecraft.world.level.Level.class}, level).orElse(null);
+                if (resolver == null) {
+                    return ItemStack.EMPTY;
+                }
 
                 ItemStack plainSource = resolvePlainSourceStack(sourcePattern, registries);
                 if (plainSource.isEmpty()) {
                     return ItemStack.EMPTY;
                 }
 
-                Object parsed = resolver.getClass().getMethod("resolve", ItemStack.class).invoke(resolver, plainSource);
+                var parsed = WcwtReflect.findMethod(resolver.getClass(), "resolve", ItemStack.class)
+                        .flatMap(method -> WcwtReflect.invoke(resolver, method, plainSource))
+                        .orElse(null);
                 var details = PatternDetailsHelper.decodePattern(plainSource, level);
-                if (details == null || details instanceof appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern) {
+                if (parsed == null || details == null
+                        || details instanceof appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern) {
                     return ItemStack.EMPTY;
                 }
 
-                Object service = Class.forName(SERVICE_CLASS).getConstructor().newInstance();
-                Class<?> matchModeClass = Class.forName(MATCH_MODE_CLASS);
-                Object strictMode = Enum.valueOf((Class<Enum>) matchModeClass.asSubclass(Enum.class), "STRICT");
-                Object idOnlyMode = Enum.valueOf((Class<Enum>) matchModeClass.asSubclass(Enum.class), "ID_ONLY");
-                Object builder = Class.forName(ENCODED_PATTERN_CLASS).getMethod("builder").invoke(null);
+                var service = WcwtReflect.construct("ae2lt", SERVICE_CLASS, new Class<?>[0]).orElse(null);
+                var matchModeClass = WcwtReflect.findClass("ae2lt", MATCH_MODE_CLASS).orElse(null);
+                var strictMode = WcwtReflect.enumConstant("ae2lt", MATCH_MODE_CLASS, "STRICT").orElse(null);
+                var idOnlyMode = WcwtReflect.enumConstant("ae2lt", MATCH_MODE_CLASS, "ID_ONLY").orElse(null);
+                var builder = WcwtReflect.invokeStatic("ae2lt", ENCODED_PATTERN_CLASS, "builder").orElse(null);
+                if (service == null || matchModeClass == null || strictMode == null
+                        || idOnlyMode == null || builder == null) {
+                    return ItemStack.EMPTY;
+                }
 
-                Method inputMethod = builder.getClass().getMethod("input", int.class, matchModeClass);
-                Method outputMethod = builder.getClass().getMethod("output", int.class, matchModeClass);
+                var inputMethod = WcwtReflect
+                        .findMethod(builder.getClass(), "input", int.class, matchModeClass).orElse(null);
+                var outputMethod = WcwtReflect
+                        .findMethod(builder.getClass(), "output", int.class, matchModeClass).orElse(null);
+                if (inputMethod == null || outputMethod == null) {
+                    return ItemStack.EMPTY;
+                }
 
                 Object existingPayload = readExistingPayload(sourcePattern);
                 Object existingEncodedPattern = existingPayload == null
                         ? null
-                        : existingPayload.getClass().getMethod("encodedPattern").invoke(existingPayload);
+                        : WcwtReflect.findMethod(existingPayload.getClass(), "encodedPattern")
+                                .flatMap(method -> WcwtReflect.invoke(existingPayload, method))
+                                .orElse(null);
 
                 var inputs = details.getInputs();
                 for (int slot = 0; slot < inputs.length; slot++) {
@@ -5828,39 +5842,55 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                         }
                     }
                     if (present) {
-                        Object mode = contains(inputIdOnlySlots, slot)
+                        int inputSlot = slot;
+                        Object mode = contains(inputIdOnlySlots, inputSlot)
                                 ? idOnlyMode
                                 : existingEncodedPattern != null
-                                ? existingEncodedPattern.getClass()
-                                        .getMethod("inputModeOrDefault", int.class)
-                                        .invoke(existingEncodedPattern, slot)
+                                ? WcwtReflect.findMethod(existingEncodedPattern.getClass(),
+                                        "inputModeOrDefault", int.class)
+                                        .flatMap(method -> WcwtReflect.invoke(existingEncodedPattern, method,
+                                                inputSlot))
+                                        .orElse(strictMode)
                                 : strictMode;
-                        inputMethod.invoke(builder, slot, mode);
+                        WcwtReflect.run(builder, inputMethod, inputSlot, mode);
                     }
                 }
 
                 var outputs = details.getOutputs();
                 for (int slot = 0; slot < outputs.size(); slot++) {
                     if (outputs.get(slot) != null && outputs.get(slot).what() instanceof AEItemKey) {
-                        Object mode = contains(outputIdOnlySlots, slot)
+                        int outputSlot = slot;
+                        Object mode = contains(outputIdOnlySlots, outputSlot)
                                 ? idOnlyMode
                                 : existingEncodedPattern != null
-                                ? existingEncodedPattern.getClass()
-                                        .getMethod("outputModeOrDefault", int.class)
-                                        .invoke(existingEncodedPattern, slot)
+                                ? WcwtReflect.findMethod(existingEncodedPattern.getClass(),
+                                        "outputModeOrDefault", int.class)
+                                        .flatMap(method -> WcwtReflect.invoke(existingEncodedPattern, method,
+                                                outputSlot))
+                                        .orElse(strictMode)
                                 : strictMode;
-                        outputMethod.invoke(builder, slot, mode);
+                        WcwtReflect.run(builder, outputMethod, outputSlot, mode);
                     }
                 }
 
-                Object encodedPattern = builder.getClass().getMethod("build").invoke(builder);
-                Object overloadItemHolder = Class.forName(ITEMS_CLASS).getField("OVERLOAD_PATTERN").get(null);
-                Object overloadItem = overloadItemHolder.getClass().getMethod("get").invoke(overloadItemHolder);
-                Object stack = service.getClass().getMethod("createOverloadPatternStack",
-                                overloadItem.getClass(),
-                                parsed.getClass(),
-                                encodedPattern.getClass())
-                        .invoke(service, overloadItem, parsed, encodedPattern);
+                var encodedPattern = WcwtReflect.findMethod(builder.getClass(), "build")
+                        .flatMap(method -> WcwtReflect.invoke(builder, method))
+                        .orElse(null);
+                var overloadItemHolder = WcwtReflect
+                        .readStaticField("ae2lt", ITEMS_CLASS, "OVERLOAD_PATTERN")
+                        .orElse(null);
+                var overloadItem = overloadItemHolder == null
+                        ? null
+                        : WcwtReflect.findMethod(overloadItemHolder.getClass(), "get")
+                                .flatMap(method -> WcwtReflect.invoke(overloadItemHolder, method))
+                                .orElse(null);
+                if (encodedPattern == null || overloadItem == null) {
+                    return ItemStack.EMPTY;
+                }
+                Object stack = WcwtReflect.findMethod(service.getClass(), "createOverloadPatternStack",
+                                overloadItem.getClass(), parsed.getClass(), encodedPattern.getClass())
+                        .flatMap(method -> WcwtReflect.invoke(service, method, overloadItem, parsed, encodedPattern))
+                        .orElse(null);
                 return stack instanceof ItemStack result ? result : ItemStack.EMPTY;
             } catch (Throwable ignored) {
                 return ItemStack.EMPTY;
@@ -5868,11 +5898,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         static boolean isOverloadPattern(ItemStack stack) {
-            try {
-                return Class.forName(OVERLOAD_ITEM_CLASS).isInstance(stack.getItem());
-            } catch (Throwable ignored) {
-                return false;
-            }
+            return WcwtReflect.isInstance("ae2lt", OVERLOAD_ITEM_CLASS, stack.getItem());
         }
 
         @Nullable
@@ -5881,19 +5907,21 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (!isOverloadPattern(sourcePattern)) {
                 return sourcePattern;
             }
-            try {
-                Object payload = readExistingPayload(sourcePattern);
-                if (payload == null) {
-                    return ItemStack.EMPTY;
-                }
-                Object sourceSnapshot = payload.getClass().getMethod("sourcePattern").invoke(payload);
-                Object plain = sourceSnapshot.getClass()
-                        .getMethod("toItemStack", net.minecraft.core.HolderLookup.Provider.class)
-                        .invoke(sourceSnapshot, registries);
-                return plain instanceof ItemStack stack ? stack : ItemStack.EMPTY;
-            } catch (Throwable ignored) {
+            Object payload = readExistingPayload(sourcePattern);
+            if (payload == null) {
                 return ItemStack.EMPTY;
             }
+            var sourceSnapshot = WcwtReflect.findMethod(payload.getClass(), "sourcePattern")
+                    .flatMap(method -> WcwtReflect.invoke(payload, method))
+                    .orElse(null);
+            if (sourceSnapshot == null) {
+                return ItemStack.EMPTY;
+            }
+            Object plain = WcwtReflect.findMethod(sourceSnapshot.getClass(), "toItemStack",
+                            net.minecraft.core.HolderLookup.Provider.class)
+                    .flatMap(method -> WcwtReflect.invoke(sourceSnapshot, method, registries))
+                    .orElse(null);
+            return plain instanceof ItemStack stack ? stack : ItemStack.EMPTY;
         }
 
         @Nullable
@@ -5901,14 +5929,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (!isOverloadPattern(sourcePattern)) {
                 return null;
             }
-            try {
-                Object overloadItem = sourcePattern.getItem();
-                Object optional = overloadItem.getClass().getMethod("readPayload", ItemStack.class)
-                        .invoke(overloadItem, sourcePattern);
-                return optional.getClass().getMethod("orElse", Object.class).invoke(optional, new Object[]{null});
-            } catch (Throwable ignored) {
+            Object overloadItem = sourcePattern.getItem();
+            var optional = WcwtReflect.findMethod(overloadItem.getClass(), "readPayload", ItemStack.class)
+                    .flatMap(method -> WcwtReflect.invoke(overloadItem, method, sourcePattern))
+                    .orElse(null);
+            if (optional == null) {
                 return null;
             }
+            return WcwtReflect.findMethod(optional.getClass(), "orElse", Object.class)
+                    .flatMap(method -> WcwtReflect.invoke(optional, method, (Object) null))
+                    .orElse(null);
         }
 
         private static boolean contains(int[] values, int slot) {
@@ -5924,54 +5954,27 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
     }
 
-    private static volatile Field craftingRecipeHolderField;
-    private static volatile Field craftingTermCurrentRecipeField;
-    private static volatile Field smithingMenuSelectedRecipeField;
-
     @SuppressWarnings("unchecked")
     @Nullable
     private static RecipeHolder<CraftingRecipe> getCraftingRecipe(appeng.crafting.pattern.AECraftingPattern craft) {
-        try {
-            var field = craftingRecipeHolderField;
-            if (field == null) {
-                field = appeng.crafting.pattern.AECraftingPattern.class.getDeclaredField("recipeHolder");
-                field.setAccessible(true);
-                craftingRecipeHolderField = field;
-            }
-            Object value = field.get(craft);
-            return value instanceof RecipeHolder<?> holder
-                    ? (RecipeHolder<CraftingRecipe>) holder
-                    : null;
-        } catch (ReflectiveOperationException ignored) {
-            return null;
-        }
+        var value = WcwtReflect
+                .findDeclaredField(appeng.crafting.pattern.AECraftingPattern.class, "recipeHolder")
+                .flatMap(field -> WcwtReflect.readField(craft, field))
+                .orElse(null);
+        return value instanceof RecipeHolder<?> holder
+                ? (RecipeHolder<CraftingRecipe>) holder
+                : null;
     }
 
     private static void setCraftingTermCurrentRecipe(CraftingTermMenu menu,
                                                      @Nullable RecipeHolder<CraftingRecipe> recipe) {
-        try {
-            var field = craftingTermCurrentRecipeField;
-            if (field == null) {
-                field = CraftingTermMenu.class.getDeclaredField("currentRecipe");
-                field.setAccessible(true);
-                craftingTermCurrentRecipeField = field;
-            }
-            field.set(menu, recipe);
-        } catch (ReflectiveOperationException | SecurityException ignored) {
-        }
+        WcwtReflect.findDeclaredField(CraftingTermMenu.class, "currentRecipe")
+                .ifPresent(field -> WcwtReflect.writeField(menu, field, recipe));
     }
 
     private static void setSmithingMenuSelectedRecipe(SmithingMenu menu,
                                                       @Nullable RecipeHolder<SmithingRecipe> recipe) {
-        try {
-            var field = smithingMenuSelectedRecipeField;
-            if (field == null) {
-                field = SmithingMenu.class.getDeclaredField("selectedRecipe");
-                field.setAccessible(true);
-                smithingMenuSelectedRecipeField = field;
-            }
-            field.set(menu, recipe);
-        } catch (ReflectiveOperationException | SecurityException ignored) {
-        }
+        WcwtReflect.findDeclaredField(SmithingMenu.class, "selectedRecipe")
+                .ifPresent(field -> WcwtReflect.writeField(menu, field, recipe));
     }
 }

@@ -8,6 +8,7 @@ import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -38,11 +39,11 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
+import org.jetbrains.annotations.Nullable;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -933,27 +934,27 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     @Nullable
     private static GenericStack convertMekanismChemical(Object rawKey, long amount) {
-        try {
-            Class<?> chemicalClass = Class.forName("mekanism.api.chemical.Chemical");
-            if (!chemicalClass.isInstance(rawKey)) {
-                return null;
-            }
-            Class<?> chemicalStackClass = Class.forName("mekanism.api.chemical.ChemicalStack");
-            Class<?> keyClass = Class.forName("me.ramidzkh.mekae2.ae2.MekanismKey");
-            Method getStack = chemicalClass.getMethod("getStack", long.class);
-            Object chemicalStack = getStack.invoke(rawKey, Math.max(1L, amount));
-            if (!chemicalStackClass.isInstance(chemicalStack)) {
-                return null;
-            }
-            Method of = keyClass.getMethod("of", chemicalStackClass);
-            Object aeKey = of.invoke(null, chemicalStack);
-            if (!(aeKey instanceof AEKey key)) {
-                return null;
-            }
-            return new GenericStack(key, Math.max(1L, amount));
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        if (!WcwtReflect.isInstance("mekanism", "mekanism.api.chemical.Chemical", rawKey)) {
             return null;
         }
+        var chemicalStack = WcwtReflect.findMethod(rawKey.getClass(), "getStack", long.class)
+                .flatMap(method -> WcwtReflect.invoke(rawKey, method, Math.max(1L, amount)))
+                .orElse(null);
+        if (!WcwtReflect.isInstance("mekanism", "mekanism.api.chemical.ChemicalStack", chemicalStack)) {
+            return null;
+        }
+        var chemicalStackClass = WcwtReflect.findClass("mekanism", "mekanism.api.chemical.ChemicalStack").orElse(null);
+        var keyClass = WcwtReflect.findClass("appmek", "me.ramidzkh.mekae2.ae2.MekanismKey").orElse(null);
+        if (chemicalStackClass == null || keyClass == null) {
+            return null;
+        }
+        Object aeKey = WcwtReflect.findMethod(keyClass, "of", chemicalStackClass)
+                .flatMap(method -> WcwtReflect.invoke(null, method, chemicalStack))
+                .orElse(null);
+        if (!(aeKey instanceof AEKey key)) {
+            return null;
+        }
+        return new GenericStack(key, Math.max(1L, amount));
     }
 
     private record PreviewResult(Set<Integer> missingSlots,

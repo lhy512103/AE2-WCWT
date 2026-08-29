@@ -1,5 +1,6 @@
 package com.lhy.wcwt.compat;
 
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import appeng.api.storage.StorageCells;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
@@ -31,12 +32,11 @@ public final class WcwtMegaCellsCompat {
                 || !invokeBoolean(isCompressionEnabledMethod, bulkCell)) {
             return ItemStack.EMPTY;
         }
-        try {
-            Object value = getCutoffItemMethod.invoke(bulkCell);
-            return value instanceof ItemStack stack ? stack.copy() : ItemStack.EMPTY;
-        } catch (Throwable ignored) {
-            return ItemStack.EMPTY;
-        }
+        return WcwtReflect.invoke(bulkCell, getCutoffItemMethod)
+                .filter(ItemStack.class::isInstance)
+                .map(ItemStack.class::cast)
+                .map(ItemStack::copy)
+                .orElse(ItemStack.EMPTY);
     }
 
     public static boolean switchCompressionCutoff(ItemStack cellStack, boolean towardMoreCompressed) {
@@ -44,12 +44,7 @@ public final class WcwtMegaCellsCompat {
         if (bulkCell == null || !invokeBoolean(hasCompressionChainMethod, bulkCell)) {
             return false;
         }
-        try {
-            switchCompressionCutoffMethod.invoke(bulkCell, towardMoreCompressed);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
+        return WcwtReflect.run(bulkCell, switchCompressionCutoffMethod, towardMoreCompressed);
     }
 
     private static Object getBulkCellInventory(ItemStack cellStack) {
@@ -81,19 +76,16 @@ public final class WcwtMegaCellsCompat {
             if (reflectionInitialized) {
                 return bulkCellInventoryClass != null;
             }
-            try {
-                bulkCellInventoryClass = Class.forName(BULK_CELL_INVENTORY_CLASS);
-                hasCompressionChainMethod = bulkCellInventoryClass.getMethod("hasCompressionChain");
-                isCompressionEnabledMethod = bulkCellInventoryClass.getMethod("isCompressionEnabled");
-                getCutoffItemMethod = bulkCellInventoryClass.getMethod("getCutoffItem");
-                switchCompressionCutoffMethod = bulkCellInventoryClass.getMethod("switchCompressionCutoff",
-                        boolean.class);
-            } catch (Throwable ignored) {
-                bulkCellInventoryClass = null;
-                hasCompressionChainMethod = null;
-                isCompressionEnabledMethod = null;
-                getCutoffItemMethod = null;
-                switchCompressionCutoffMethod = null;
+            bulkCellInventoryClass = WcwtReflect.findClass(MOD_ID, BULK_CELL_INVENTORY_CLASS).orElse(null);
+            if (bulkCellInventoryClass != null) {
+                hasCompressionChainMethod =
+                        WcwtReflect.findMethod(bulkCellInventoryClass, "hasCompressionChain").orElse(null);
+                isCompressionEnabledMethod =
+                        WcwtReflect.findMethod(bulkCellInventoryClass, "isCompressionEnabled").orElse(null);
+                getCutoffItemMethod =
+                        WcwtReflect.findMethod(bulkCellInventoryClass, "getCutoffItem").orElse(null);
+                switchCompressionCutoffMethod = WcwtReflect
+                        .findMethod(bulkCellInventoryClass, "switchCompressionCutoff", boolean.class).orElse(null);
             }
             reflectionInitialized = true;
             return bulkCellInventoryClass != null;

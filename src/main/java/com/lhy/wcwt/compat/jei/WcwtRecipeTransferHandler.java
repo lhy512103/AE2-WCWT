@@ -8,6 +8,7 @@ import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
 import com.simibubi.create.content.processing.basin.BasinRecipe;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.client.WcwtFavorites;
@@ -38,7 +39,6 @@ import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -504,40 +504,41 @@ public class WcwtRecipeTransferHandler
 
     @Nullable
     private static GenericStack convertWithAe2JeiIntegration(ITypedIngredient<?> ingredient) {
-        try {
-            Class<?> convertersClass =
-                    Class.forName("tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverters");
-            Method getConverter = convertersClass.getMethod("getConverter", IIngredientType.class);
-            Object converter = getConverter.invoke(null, ingredient.getType());
-            if (converter == null) {
-                return null;
-            }
-            Method getStackFromIngredient = converter.getClass().getMethod("getStackFromIngredient", Object.class);
-            Object converted = getStackFromIngredient.invoke(converter, ingredient.getIngredient());
-            return converted instanceof GenericStack stack ? stack : null;
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        var converter = WcwtReflect.invokeStatic("ae2jeiintegration",
+                        "tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverters",
+                        "getConverter", new Class<?>[]{IIngredientType.class}, ingredient.getType())
+                .orElse(null);
+        if (converter == null) {
             return null;
         }
+        return WcwtReflect.findMethod(converter.getClass(), "getStackFromIngredient", Object.class)
+                .flatMap(method -> WcwtReflect.invoke(converter, method, ingredient.getIngredient()))
+                .filter(GenericStack.class::isInstance)
+                .map(GenericStack.class::cast)
+                .orElse(null);
     }
 
     @Nullable
     private static GenericStack convertMekanismChemical(Object raw) {
-        try {
-            Class<?> chemicalStackClass = Class.forName("mekanism.api.chemical.ChemicalStack");
-            if (!chemicalStackClass.isInstance(raw)) {
-                return null;
-            }
-            Class<?> keyClass = Class.forName("me.ramidzkh.mekae2.ae2.MekanismKey");
-            Method of = keyClass.getMethod("of", chemicalStackClass);
-            Object key = of.invoke(null, raw);
-            if (!(key instanceof appeng.api.stacks.AEKey aeKey)) {
-                return null;
-            }
-            Method getAmount = chemicalStackClass.getMethod("getAmount");
-            long amount = ((Number) getAmount.invoke(raw)).longValue();
-            return new GenericStack(aeKey, Math.max(1, amount));
-        } catch (ReflectiveOperationException | LinkageError ignored) {
+        if (!WcwtReflect.isInstance("mekanism", "mekanism.api.chemical.ChemicalStack", raw)) {
             return null;
         }
+        var key = WcwtReflect.invokeStatic("appmek", "me.ramidzkh.mekae2.ae2.MekanismKey", "of",
+                        new Class<?>[]{raw.getClass()}, raw)
+                .orElseGet(() -> WcwtReflect.findClass("appmek", "me.ramidzkh.mekae2.ae2.MekanismKey")
+                        .flatMap(keyClass -> WcwtReflect.findClass("mekanism", "mekanism.api.chemical.ChemicalStack")
+                                .flatMap(stackClass -> WcwtReflect.findMethod(keyClass, "of", stackClass)
+                                        .flatMap(method -> WcwtReflect.invoke(null, method, raw))))
+                        .orElse(null));
+        if (!(key instanceof appeng.api.stacks.AEKey aeKey)) {
+            return null;
+        }
+        long amount = WcwtReflect.findMethod(raw.getClass(), "getAmount")
+                .flatMap(method -> WcwtReflect.invoke(raw, method))
+                .filter(Number.class::isInstance)
+                .map(Number.class::cast)
+                .map(Number::longValue)
+                .orElse(1L);
+        return new GenericStack(aeKey, Math.max(1, amount));
     }
 }

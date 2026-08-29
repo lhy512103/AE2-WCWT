@@ -3,6 +3,7 @@ package com.lhy.wcwt.client;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.init.ModMenus;
 import appeng.init.client.InitScreens;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -18,10 +19,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
-import net.neoforged.fml.ModList;
 import org.lwjgl.glfw.GLFW;
-
-import java.lang.reflect.Method;
 
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public class ModClientSetup {
@@ -116,16 +114,16 @@ public class ModClientSetup {
     }
 
     private static boolean matchesFillSearchHotkey(int keyCode, int scanCode) {
-        if (ModList.get().isLoaded("extendedae_plus")) {
-            try {
-                Class<?> kb = Class.forName("com.extendedae_plus.client.ModKeybindings");
-                Object km = kb.getField("FILL_SEARCH_KEY").get(null);
-                Method m = km.getClass().getMethod("matches", int.class, int.class);
-                Object r = m.invoke(km, keyCode, scanCode);
-                if (r instanceof Boolean b) {
-                    return b;
-                }
-            } catch (Throwable ignored) {
+        var keyMapping = WcwtReflect
+                .readStaticField("extendedae_plus", "com.extendedae_plus.client.ModKeybindings", "FILL_SEARCH_KEY")
+                .orElse(null);
+        if (keyMapping != null) {
+            var matched = WcwtReflect.findMethod(keyMapping.getClass(), "matches", int.class, int.class)
+                    .flatMap(method -> WcwtReflect.invoke(keyMapping, method, keyCode, scanCode))
+                    .filter(Boolean.class::isInstance)
+                    .map(Boolean.class::cast);
+            if (matched.isPresent()) {
+                return matched.get();
             }
         }
         return keyCode == GLFW.GLFW_KEY_F;
@@ -182,12 +180,8 @@ public class ModClientSetup {
         }
         String screenClassName = activeScreen.getClass().getName();
         if (screenClassName.equals("mezz.jei.gui.recipes.RecipesGui")) {
-            try {
-                Method updateLayout = activeScreen.getClass().getDeclaredMethod("updateLayout");
-                updateLayout.setAccessible(true);
-                updateLayout.invoke(activeScreen);
-            } catch (Throwable ignored) {
-            }
+            WcwtReflect.findDeclaredMethod(activeScreen.getClass(), "updateLayout")
+                    .ifPresent(method -> WcwtReflect.invoke(activeScreen, method));
             return;
         }
         if (screenClassName.equals("dev.emi.emi.screen.RecipeScreen")) {

@@ -1,6 +1,7 @@
 package com.lhy.wcwt.compat;
 
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.neoforged.fml.ModList;
@@ -19,6 +20,8 @@ import java.nio.file.Path;
 import java.util.IdentityHashMap;
 import java.util.Set;
 
+import org.jetbrains.annotations.Nullable;
+
 /**
  * 为 Inventory Profiles Next 自动写入 WCWT 专用 hints。
  * 不直接依赖 IPN API，避免把 IPN 变成编译期强依赖。
@@ -30,6 +33,10 @@ public final class InventoryProfilesNextCompat {
     private static final int IPN_WIDGET_TRAVERSE_BURST_LIMIT = 2048;
 
     private static final String IPN_MOD_ID = "inventoryprofilesnext";
+    private static final String IPN_HINTS_MANAGER_CLASS = "org.anti_ad.mc.ipnext.integration.HintsManagerNG";
+    private static final String IPN_BUTTON_ENUM_CLASS = "org.anti_ad.mc.ipn.api.IPNButton";
+    private static final String IPN_CONTAINER_SCREEN_HANDLER_CLASS =
+            "org.anti_ad.mc.ipnext.gui.inject.ContainerScreenEventHandler";
     private static final String HINT_FILE_NAME = "wcwt-auto.json";
     private static final int PLAYER_SIDE_BUTTON_X_OFFSET = 180;
     private static final int PLAYER_SIDE_BUTTON_BOTTOM_OFFSET = 1;
@@ -149,30 +156,33 @@ public final class InventoryProfilesNextCompat {
             return;
         }
 
-        try {
-            Class<?> hintsManagerClass = Class.forName("org.anti_ad.mc.ipnext.integration.HintsManagerNG");
-            Object hintsManager = hintsManagerClass.getField("INSTANCE").get(null);
-            Method getHints = hintsManagerClass.getMethod("getHints", Class.class);
-
-            applyHints(getHints.invoke(hintsManager, WirelessComprehensiveWorkTerminalScreen.class), true);
-            applyHints(getHints.invoke(hintsManager, WirelessComprehensiveWorkTerminalMenu.class), false);
-            hideInjectedButtons();
-            WcwtMod.LOGGER.debug(
-                    "Applied WCWT runtime hints for Inventory Profiles Next (sort offset={}, sort bottom={}).",
-                    PLAYER_SIDE_BUTTON_X_OFFSET, PLAYER_SIDE_BUTTON_BOTTOM_OFFSET);
-        } catch (Throwable e) {
-            WcwtMod.LOGGER.debug("Failed to inject WCWT runtime hints into Inventory Profiles Next", e);
+        var hintsManager = WcwtReflect.readStaticField(IPN_MOD_ID, IPN_HINTS_MANAGER_CLASS, "INSTANCE").orElse(null);
+        if (hintsManager == null) {
+            return;
         }
+        var getHints = WcwtReflect.findMethod(hintsManager.getClass(), "getHints", Class.class).orElse(null);
+        if (getHints == null) {
+            return;
+        }
+        applyHints(WcwtReflect.invoke(hintsManager, getHints, WirelessComprehensiveWorkTerminalScreen.class).orElse(null), true);
+        applyHints(WcwtReflect.invoke(hintsManager, getHints, WirelessComprehensiveWorkTerminalMenu.class).orElse(null), false);
+        hideInjectedButtons();
+        WcwtMod.LOGGER.debug(
+                "Applied WCWT runtime hints for Inventory Profiles Next (sort offset={}, sort bottom={}).",
+                PLAYER_SIDE_BUTTON_X_OFFSET, PLAYER_SIDE_BUTTON_BOTTOM_OFFSET);
     }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private static void applyHints(Object hintData, boolean configureButtons) throws ReflectiveOperationException {
+    private static void applyHints(@Nullable Object hintData, boolean configureButtons) {
+        if (hintData == null) {
+            return;
+        }
         setBooleanField(hintData, "force", true);
         setBooleanField(hintData, "playerSideOnly", true);
 
-        Field slotIgnoreField = hintData.getClass().getDeclaredField("slotIgnoreInventoryTypes");
-        slotIgnoreField.setAccessible(true);
-        Object slotIgnoreValue = slotIgnoreField.get(hintData);
+        Object slotIgnoreValue = WcwtReflect.findDeclaredField(hintData.getClass(), "slotIgnoreInventoryTypes")
+                .flatMap(field -> WcwtReflect.readField(hintData, field))
+                .orElse(null);
         if (slotIgnoreValue instanceof Set slotIgnoreTypes) {
             slotIgnoreTypes.addAll(IGNORED_SLOT_TYPES);
         }
@@ -181,8 +191,14 @@ public final class InventoryProfilesNextCompat {
             return;
         }
 
-        Class<?> buttonEnumClass = Class.forName("org.anti_ad.mc.ipn.api.IPNButton");
-        Method hintFor = hintData.getClass().getMethod("hintFor", buttonEnumClass);
+        var buttonEnumClass = WcwtReflect.findClass(IPN_MOD_ID, IPN_BUTTON_ENUM_CLASS).orElse(null);
+        if (buttonEnumClass == null) {
+            return;
+        }
+        var hintFor = WcwtReflect.findMethod(hintData.getClass(), "hintFor", buttonEnumClass).orElse(null);
+        if (hintFor == null) {
+            return;
+        }
 
         configureButtonHint(hintFor, hintData, buttonEnumClass, "SORT",
                 PLAYER_SIDE_BUTTON_X_OFFSET, PLAYER_SIDE_BUTTON_BOTTOM_OFFSET, false);
@@ -202,25 +218,38 @@ public final class InventoryProfilesNextCompat {
     }
 
     private static void configureButtonHint(Method hintFor, Object hintData, Class<?> buttonEnumClass,
-                                            String buttonName, int horizontalOffset, int bottom, boolean hide)
-            throws ReflectiveOperationException {
-        Object button = Enum.valueOf((Class<? extends Enum>) buttonEnumClass.asSubclass(Enum.class), buttonName);
-        Object buttonHint = hintFor.invoke(hintData, button);
+                                            String buttonName, int horizontalOffset, int bottom, boolean hide) {
+        var button = WcwtReflect.enumConstant(IPN_MOD_ID, IPN_BUTTON_ENUM_CLASS, buttonName).orElse(null);
+        if (button == null) {
+            return;
+        }
+        var buttonHint = WcwtReflect.invoke(hintData, hintFor, button).orElse(null);
+        if (buttonHint == null) {
+            return;
+        }
         setIntField(buttonHint, "horizontalOffset", horizontalOffset);
         setIntField(buttonHint, "bottom", bottom);
         setBooleanField(buttonHint, "hide", hide);
     }
 
-    private static void setBooleanField(Object target, String fieldName, boolean value) throws ReflectiveOperationException {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.setBoolean(target, value);
+    private static void setBooleanField(Object target, String fieldName, boolean value) {
+        WcwtReflect.findDeclaredField(target.getClass(), fieldName)
+                .ifPresent(field -> {
+                    try {
+                        field.setBoolean(target, value);
+                    } catch (Throwable ignored) {
+                    }
+                });
     }
 
-    private static void setIntField(Object target, String fieldName, int value) throws ReflectiveOperationException {
-        Field field = target.getClass().getDeclaredField(fieldName);
-        field.setAccessible(true);
-        field.setInt(target, value);
+    private static void setIntField(Object target, String fieldName, int value) {
+        WcwtReflect.findDeclaredField(target.getClass(), fieldName)
+                .ifPresent(field -> {
+                    try {
+                        field.setInt(target, value);
+                    } catch (Throwable ignored) {
+                    }
+                });
     }
 
     /**
@@ -229,9 +258,9 @@ public final class InventoryProfilesNextCompat {
      */
     private static void hideInjectedButtons() {
         try {
-            Class<?> handlerClass = Class.forName("org.anti_ad.mc.ipnext.gui.inject.ContainerScreenEventHandler");
-            Field currentWidgetsField = handlerClass.getField("currentWidgets");
-            Object widgets = currentWidgetsField.get(null);
+            Object widgets = WcwtReflect
+                    .readStaticField(IPN_MOD_ID, IPN_CONTAINER_SCREEN_HANDLER_CLASS, "currentWidgets")
+                    .orElse(null);
             if (!(widgets instanceof List<?> widgetList)) {
                 return;
             }

@@ -1,9 +1,9 @@
 package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.reflect.WcwtMagnetReflect;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
-import net.minecraft.core.component.DataComponentType;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
@@ -11,9 +11,6 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 
 public record WirelessSettingsPacket(boolean pickBlock, boolean restock, boolean magnet, boolean pickupToMe,
                                      boolean craftIfMissing) implements CustomPacketPayload {
@@ -47,19 +44,8 @@ public record WirelessSettingsPacket(boolean pickBlock, boolean restock, boolean
         });
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
     private static void setMagnetSettings(ItemStack stack, boolean magnet, boolean pickupToMe) {
-        try {
-            Field componentField = Class.forName("de.mari_023.ae2wtlib.AE2wtlibAdditionalComponents")
-                    .getField("MAGNET_SETTINGS");
-            DataComponentType component = (DataComponentType) componentField.get(null);
-            Class<?> modeClass = Class.forName("de.mari_023.ae2wtlib.wct.magnet_card.MagnetMode");
-            Object fallback = Enum.valueOf((Class<Enum>) modeClass.asSubclass(Enum.class), "OFF");
-            Object current = stack.getOrDefault(component, fallback);
-            Method set = modeClass.getMethod("set", boolean.class, boolean.class);
-            stack.set(component, set.invoke(current, magnet, pickupToMe));
-        } catch (ReflectiveOperationException ignored) {
-            // WTLib main classes are optional at compile time; missing classes simply disable these two toggles.
-        }
+        // 磁力设置走 WcwtMagnetReflect：AE2WTLib 内部类拿不到时直接跳过，不影响其余四项设置。
+        WcwtMagnetReflect.applySettings(stack, magnet, pickupToMe);
     }
 }

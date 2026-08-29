@@ -41,6 +41,8 @@ import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
+import com.lhy.wcwt.compat.reflect.WcwtMagnetReflect;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -101,8 +103,6 @@ import appeng.api.implementations.blockentities.PatternContainerGroup;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -124,6 +124,17 @@ import com.google.common.primitives.Longs;
 public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<WirelessComprehensiveWorkTerminalMenu>
         implements IUniversalTerminalCapable {
     private static final String STYLE_PATH = "/screens/wcwt/wireless_comprehensive_work_terminal.json";
+
+    // ─── 可选模组的反射目标（统一走 WcwtReflect，缺失时自动降级，不影响进游戏） ───
+    private static final String ESM_SOUND_MUFFLER_COMMON =
+            "com.leobeliik.extremesoundmuffler.SoundMufflerCommon";
+    private static final String EAEP_JEI_RUNTIME_PROXY =
+            "com.extendedae_plus.integration.jei.JeiRuntimeProxy";
+    private static final String EAE_HIGHLIGHT_HANDLER =
+            "com.glodblock.github.extendedae.client.render.EAEHighlightHandler";
+    private static final String EAE_MESSAGE_UTIL =
+            "com.glodblock.github.extendedae.util.MessageUtil";
+
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final boolean DEBUG_SLOT_HIT = Boolean.getBoolean("wcwt.debug.slotHit");
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
@@ -421,8 +432,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private @Nullable Slot lastAeNetworkToolkitDoubleClickSlot;
     private long lastAeNetworkToolkitDoubleClickMs;
     private final Set<AEKey> craftableIndicatorKeys = new HashSet<>();
-    private @Nullable Method meStorageUpdateScrollbarMethod;
-    private static volatile @Nullable Field compositeWidgetsField;
     private ItemStack lastEncodedPatternForUploadSync = ItemStack.EMPTY;
     private @Nullable String lastEncodedPatternUploadSearchText;
     private boolean attemptedRestoreManagementToolkitOpenState;
@@ -813,13 +822,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void openExtremeSoundMuffler() {
-        try {
-            Class<?> common = Class.forName("com.leobeliik.extremesoundmuffler.SoundMufflerCommon");
-            common.getMethod("openMainScreen").invoke(null);
-        } catch (ReflectiveOperationException e) {
-            if (Minecraft.getInstance().player != null) {
-                Minecraft.getInstance().player.displayClientMessage(
-                        Component.translatable("gui.wcwt.top_action.unavailable"), true);
+        boolean opened = WcwtReflect.runStatic("extremesoundmuffler", ESM_SOUND_MUFFLER_COMMON, "openMainScreen");
+        if (!opened) {
+            var player = Minecraft.getInstance().player;
+            if (player != null) {
+                player.displayClientMessage(Component.translatable("gui.wcwt.top_action.unavailable"), true);
             }
         }
     }
@@ -850,36 +857,33 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @SuppressWarnings("unchecked")
     private void installViewCellsVisibilityWidget() {
-        try {
-            Field field = compositeWidgetsField;
-            if (field == null) {
-                field = appeng.client.gui.WidgetContainer.class.getDeclaredField("compositeWidgets");
-                field.setAccessible(true);
-                compositeWidgetsField = field;
-            }
-            Object value = field.get(widgets);
-            if (!(value instanceof Map<?, ?> rawMap)) {
-                return;
-            }
-            Map<String, ICompositeWidget> compositeWidgets = (Map<String, ICompositeWidget>) rawMap;
-            ICompositeWidget viewCells = compositeWidgets.get("viewCells");
-            if (viewCells == null) {
-                viewCellsToggleButton.visible = false;
-                viewCellsToggleButton.active = false;
-                return;
-            }
-            if (!(viewCells instanceof ViewCellsVisibilityWidget)) {
-                viewCellsVisibilityWidget = new ViewCellsVisibilityWidget(viewCells, () -> viewCellsVisible);
-                compositeWidgets.put("viewCells", viewCellsVisibilityWidget);
-            } else {
-                viewCellsVisibilityWidget = (ViewCellsVisibilityWidget) viewCells;
-            }
-            moveCompositeWidgetToEnd(compositeWidgets, "viewCells");
-        } catch (ReflectiveOperationException | SecurityException ignored) {
-            if (viewCellsToggleButton != null) {
-                viewCellsToggleButton.visible = false;
-                viewCellsToggleButton.active = false;
-            }
+        var fieldValue = WcwtReflect
+                .findDeclaredField(appeng.client.gui.WidgetContainer.class, "compositeWidgets")
+                .flatMap(field -> WcwtReflect.readField(widgets, field))
+                .orElse(null);
+        if (!(fieldValue instanceof Map<?, ?> rawMap)) {
+            hideViewCellsToggle();
+            return;
+        }
+        Map<String, ICompositeWidget> compositeWidgets = (Map<String, ICompositeWidget>) rawMap;
+        ICompositeWidget viewCells = compositeWidgets.get("viewCells");
+        if (viewCells == null) {
+            hideViewCellsToggle();
+            return;
+        }
+        if (!(viewCells instanceof ViewCellsVisibilityWidget)) {
+            viewCellsVisibilityWidget = new ViewCellsVisibilityWidget(viewCells, () -> viewCellsVisible);
+            compositeWidgets.put("viewCells", viewCellsVisibilityWidget);
+        } else {
+            viewCellsVisibilityWidget = (ViewCellsVisibilityWidget) viewCells;
+        }
+        moveCompositeWidgetToEnd(compositeWidgets, "viewCells");
+    }
+
+    private void hideViewCellsToggle() {
+        if (viewCellsToggleButton != null) {
+            viewCellsToggleButton.visible = false;
+            viewCellsToggleButton.active = false;
         }
     }
 
@@ -1023,20 +1027,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             WcwtClientConfig.SPEC.save();
         }
 
-        @SuppressWarnings({"rawtypes", "unchecked"})
         private static boolean readMagnetSetting(ItemStack stack, String methodName) {
-            try {
-                Field componentField = Class.forName("de.mari_023.ae2wtlib.AE2wtlibAdditionalComponents")
-                        .getField("MAGNET_SETTINGS");
-                net.minecraft.core.component.DataComponentType component =
-                        (net.minecraft.core.component.DataComponentType) componentField.get(null);
-                Class<?> modeClass = Class.forName("de.mari_023.ae2wtlib.wct.magnet_card.MagnetMode");
-                Object fallback = Enum.valueOf((Class<Enum>) modeClass.asSubclass(Enum.class), "OFF");
-                Object mode = stack.getOrDefault(component, fallback);
-                return (boolean) modeClass.getMethod(methodName).invoke(mode);
-            } catch (ReflectiveOperationException e) {
-                return false;
-            }
+            return WcwtMagnetReflect.readSetting(stack, methodName);
         }
     }
 
@@ -1153,9 +1145,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
 
             @SuppressWarnings("unchecked")
-            var viewField = appeng.client.gui.me.common.Repo.class.getDeclaredField("view");
-            viewField.setAccessible(true);
-            var view = (List<GridInventoryEntry>) viewField.get(repo);
+            var view = (List<GridInventoryEntry>) WcwtReflect
+                    .findDeclaredField(appeng.client.gui.me.common.Repo.class, "view")
+                    .flatMap(field -> WcwtReflect.readField(repo, field))
+                    .orElse(null);
             if (view == null || view.size() < 2) {
                 return;
             }
@@ -1180,7 +1173,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             view.clear();
             view.addAll(favorited);
             view.addAll(normal);
-        } catch (ReflectiveOperationException ignored) {
         } finally {
             rebuildingFavoriteRepoView = false;
         }
@@ -1217,15 +1209,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void invokeMeStorageUpdateScrollbar() {
-        try {
-            if (meStorageUpdateScrollbarMethod == null) {
-                meStorageUpdateScrollbarMethod = MEStorageScreen.class.getDeclaredMethod("updateScrollbar");
-                meStorageUpdateScrollbarMethod.setAccessible(true);
-            }
-            meStorageUpdateScrollbarMethod.invoke(this);
-        } catch (ReflectiveOperationException e) {
-            throw new IllegalStateException("Failed to invoke MEStorageScreen.updateScrollbar()", e);
-        }
+        // AE2 的 updateScrollbar 是私有实现，找不到时只丢一次 warn 并跳过：
+        // 这一路只影响滚动条刷新，不该因为上游改了内部方法名就让收藏功能崩掉。
+        WcwtReflect.findDeclaredMethod(MEStorageScreen.class, "updateScrollbar")
+                .ifPresent(method -> WcwtReflect.run(this, method));
     }
 
     private void rebuildCraftableIndicatorCache() {
@@ -1830,14 +1817,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isMeTerminalSearchFieldFocused() {
-        try {
-            Field sf = MEStorageScreen.class.getDeclaredField("searchField");
-            sf.setAccessible(true);
-            Object field = sf.get(this);
-            return field instanceof AETextField textField && textField.isFocused();
-        } catch (Throwable ignored) {
-            return false;
-        }
+        return WcwtReflect.findDeclaredField(MEStorageScreen.class, "searchField")
+                .flatMap(field -> WcwtReflect.readField(this, field))
+                .filter(AETextField.class::isInstance)
+                .map(AETextField.class::cast)
+                .map(AETextField::isFocused)
+                .orElse(false);
     }
 
     private boolean triggerExtendedUiHotkey(IExtendedUIHost.ExtendedUIType type) {
@@ -1975,67 +1960,63 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void applyJeiNameToMeTerminalSearch(String name) {
-        try {
-            Field sf = MEStorageScreen.class.getDeclaredField("searchField");
-            sf.setAccessible(true);
-            Object field = sf.get(this);
-            if (field instanceof AETextField textField) {
-                textField.setValue(name);
-            }
-            Method setSearchText = MEStorageScreen.class.getDeclaredMethod("setSearchText", String.class);
-            setSearchText.setAccessible(true);
-            setSearchText.invoke(this, name);
-        } catch (Throwable ignored) {
-        }
+        WcwtReflect.findDeclaredField(MEStorageScreen.class, "searchField")
+                .flatMap(field -> WcwtReflect.readField(this, field))
+                .filter(AETextField.class::isInstance)
+                .map(AETextField.class::cast)
+                .ifPresent(searchField -> searchField.setValue(name));
+        WcwtReflect.findDeclaredMethod(MEStorageScreen.class, "setSearchText", String.class)
+                .ifPresent(method -> WcwtReflect.run(this, method, name));
     }
 
     @Nullable
     private String resolveJeiHoveredSearchName() {
-        try {
-            Class<?> proxyClass = Class.forName("com.extendedae_plus.integration.jei.JeiRuntimeProxy");
-            if (proxyClass.getMethod("get").invoke(null) == null) {
-                return null;
-            }
-            Method getName = proxyClass.getMethod("getTypedIngredientDisplayName", Object.class);
-
-            Method getIngredient = proxyClass.getMethod("getIngredientUnderMouse");
-            Object ingResult = getIngredient.invoke(null);
-            if (ingResult instanceof Optional<?> optional && optional.isPresent()) {
-                Object n = getName.invoke(null, optional.get());
-                if (n instanceof String text && !text.isBlank()) {
-                    return text;
-                }
-            }
-
-            Method getRecipeBm = proxyClass.getMethod("getRecipeBookmarkUnderMouse");
-            Object bmOpt = getRecipeBm.invoke(null);
-            if (bmOpt instanceof Optional<?> obm && obm.isPresent()) {
-                String fromRecipe = searchNameFromRecipeBookmark(obm.get());
-                if (fromRecipe != null && !fromRecipe.isBlank()) {
-                    return fromRecipe;
-                }
-            }
-        } catch (ClassNotFoundException e) {
+        if (WcwtReflect.findClass("extendedae_plus", EAEP_JEI_RUNTIME_PROXY).isEmpty()) {
             return null;
-        } catch (Throwable ignored) {
         }
-        return null;
+        if (WcwtReflect.invokeStatic("extendedae_plus", EAEP_JEI_RUNTIME_PROXY, "get").isEmpty()) {
+            return null;
+        }
+        String fromIngredient = WcwtReflect
+                .invokeStatic("extendedae_plus", EAEP_JEI_RUNTIME_PROXY, "getIngredientUnderMouse")
+                .flatMap(value -> Optional.ofNullable(unwrapOptional(value)))
+                .flatMap(ingredient -> WcwtReflect.invokeStatic("extendedae_plus", EAEP_JEI_RUNTIME_PROXY,
+                        "getTypedIngredientDisplayName", new Class<?>[]{Object.class}, ingredient))
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(text -> !text.isBlank())
+                .orElse(null);
+        if (fromIngredient != null) {
+            return fromIngredient;
+        }
+        return WcwtReflect
+                .invokeStatic("extendedae_plus", EAEP_JEI_RUNTIME_PROXY, "getRecipeBookmarkUnderMouse")
+                .flatMap(value -> Optional.ofNullable(unwrapOptional(value)))
+                .map(this::searchNameFromRecipeBookmark)
+                .filter(name -> !name.isBlank())
+                .orElse(null);
+    }
+
+    @Nullable
+    private static Object unwrapOptional(@Nullable Object value) {
+        return value instanceof Optional<?> optional ? optional.orElse(null) : null;
     }
 
     @Nullable
     private String searchNameFromRecipeBookmark(Object recipeBookmark) {
         try {
-            Object holderOpt = recipeBookmark.getClass().getMethod("getRecipe").invoke(recipeBookmark);
+            Object holderOpt = WcwtReflect.findMethod(recipeBookmark.getClass(), "getRecipe")
+                    .flatMap(method -> WcwtReflect.invoke(recipeBookmark, method))
+                    .orElse(null);
             Object recipeBase = null;
             if (holderOpt instanceof Optional<?> ho && ho.isPresent()) {
                 Object holder = ho.get();
                 recipeBase = holder;
-                try {
-                    Object value = holder.getClass().getMethod("value").invoke(holder);
-                    if (value instanceof Recipe<?> r) {
-                        recipeBase = r;
-                    }
-                } catch (Throwable ignored) {
+                Object value = WcwtReflect.findMethod(holder.getClass(), "value")
+                        .flatMap(method -> WcwtReflect.invoke(holder, method))
+                        .orElse(null);
+                if (value instanceof Recipe<?> r) {
+                    recipeBase = r;
                 }
             }
             if (recipeBase instanceof Recipe<?> recipe) {
@@ -2056,7 +2037,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Nullable
     private static String recipeBookmarkFallbackHoverName(Object recipeBookmark) {
         try {
-            Object holderOpt = recipeBookmark.getClass().getMethod("getRecipe").invoke(recipeBookmark);
+            Object holderOpt = WcwtReflect.findMethod(recipeBookmark.getClass(), "getRecipe")
+                    .flatMap(method -> WcwtReflect.invoke(recipeBookmark, method))
+                    .orElse(null);
             if (!(holderOpt instanceof Optional<?> ho) || ho.isEmpty()) {
                 return null;
             }
@@ -3129,21 +3112,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         slot.y = y;
     }
 
-    @SuppressWarnings("unchecked")
     private @Nullable AbstractWidget resolveWidgetById(String id) {
-        try {
-            Field field = appeng.client.gui.WidgetContainer.class.getDeclaredField("widgets");
-            field.setAccessible(true);
-            Object value = field.get(widgets);
-            if (value instanceof Map<?, ?> map) {
-                Object widget = map.get(id);
-                if (widget instanceof AbstractWidget abstractWidget) {
-                    return abstractWidget;
-                }
-            }
-        } catch (ReflectiveOperationException ignored) {
-        }
-        return null;
+        return WcwtReflect.findDeclaredField(appeng.client.gui.WidgetContainer.class, "widgets")
+                .flatMap(field -> WcwtReflect.readField(widgets, field))
+                .filter(Map.class::isInstance)
+                .map(value -> (Map<?, ?>) value)
+                .map(map -> map.get(id))
+                .filter(AbstractWidget.class::isInstance)
+                .map(AbstractWidget.class::cast)
+                .orElse(null);
     }
 
     private void setSemanticSlotsHidden(appeng.menu.SlotSemantic semantic, boolean hidden) {
@@ -5866,28 +5843,28 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     Component.translatable("gui.wcwt.pattern_management.highlight_missing"), false);
             return;
         }
-        try {
-            var handler = Class.forName("com.glodblock.github.extendedae.client.render.EAEHighlightHandler");
-            long until = System.currentTimeMillis() + 3000;
-            if (entry.face() == null) {
-                handler.getMethod("highlight", net.minecraft.core.BlockPos.class,
-                                net.minecraft.resources.ResourceKey.class, long.class)
-                        .invoke(null, entry.pos(), entry.dimension(), until);
-            } else {
-                handler.getMethod("highlight", net.minecraft.core.BlockPos.class, net.minecraft.core.Direction.class,
-                                net.minecraft.resources.ResourceKey.class, long.class, AABB.class)
-                        .invoke(null, entry.pos(), entry.face(), entry.dimension(), until, new AABB(entry.pos()));
-            }
-            var player = Minecraft.getInstance().player;
-            if (player != null) {
-                player.displayClientMessage(
-                        Component.translatable("extendedae_plus.message.provider.selected", entry.providerId()), true);
-            }
-            displayPatternProviderHighlightMessage(entry);
-        } catch (Throwable error) {
-            Minecraft.getInstance().player.displayClientMessage(
-                    Component.translatable("gui.wcwt.pattern_management.highlight_failed"), false);
+        long until = System.currentTimeMillis() + 3000;
+        boolean highlighted = entry.face() == null
+                ? WcwtReflect.runStatic("extendedae", EAE_HIGHLIGHT_HANDLER, "highlight",
+                        new Class<?>[]{net.minecraft.core.BlockPos.class,
+                                net.minecraft.resources.ResourceKey.class, long.class},
+                        entry.pos(), entry.dimension(), until)
+                : WcwtReflect.runStatic("extendedae", EAE_HIGHLIGHT_HANDLER, "highlight",
+                        new Class<?>[]{net.minecraft.core.BlockPos.class, net.minecraft.core.Direction.class,
+                                net.minecraft.resources.ResourceKey.class, long.class, AABB.class},
+                        entry.pos(), entry.face(), entry.dimension(), until, new AABB(entry.pos()));
+        var player = Minecraft.getInstance().player;
+        if (player == null) {
+            return;
         }
+        if (!highlighted) {
+            player.displayClientMessage(
+                    Component.translatable("gui.wcwt.pattern_management.highlight_failed"), false);
+            return;
+        }
+        player.displayClientMessage(
+                Component.translatable("extendedae_plus.message.provider.selected", entry.providerId()), true);
+        displayPatternProviderHighlightMessage(entry);
     }
 
     private void displayPatternProviderHighlightMessage(PatternProviderListPacket.Entry entry) {
@@ -5895,19 +5872,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (player == null || entry.pos() == null || entry.dimension() == null) {
             return;
         }
-        try {
-            var messageUtil = Class.forName("com.glodblock.github.extendedae.util.MessageUtil");
-            var message = messageUtil.getMethod("createEnhancedHighlightMessage",
-                            net.minecraft.world.entity.player.Player.class,
-                            net.minecraft.core.BlockPos.class,
-                            net.minecraft.resources.ResourceKey.class,
-                            String.class)
-                    .invoke(null, player, entry.pos(), entry.dimension(), "chat.ex_pattern_access_terminal.pos");
-            if (message instanceof Component component) {
-                player.displayClientMessage(component, false);
-                return;
-            }
-        } catch (Throwable ignored) {
+        var message = WcwtReflect.invokeStatic("extendedae", EAE_MESSAGE_UTIL, "createEnhancedHighlightMessage",
+                        new Class<?>[]{net.minecraft.world.entity.player.Player.class,
+                                net.minecraft.core.BlockPos.class,
+                                net.minecraft.resources.ResourceKey.class,
+                                String.class},
+                        player, entry.pos(), entry.dimension(), "chat.ex_pattern_access_terminal.pos")
+                .filter(Component.class::isInstance)
+                .map(Component.class::cast);
+        if (message.isPresent()) {
+            player.displayClientMessage(message.get(), false);
+            return;
         }
         player.displayClientMessage(Component.translatable("chat.ex_pattern_access_terminal.pos",
                 Component.literal(entry.pos().toShortString()),
