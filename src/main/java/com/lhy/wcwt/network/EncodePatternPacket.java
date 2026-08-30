@@ -14,10 +14,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record EncodePatternPacket(EncodingMode mode,
                                   boolean uploadEnabled,
                                   String providerSearchText,
-                                  long preferredProviderId,
-                                  String uploadProviderName,
-                                  boolean fallbackToEditSlot,
-                                  boolean useEaepUploadScreen)
+                                  boolean fallbackToEditSlot)
         implements CustomPacketPayload {
     private static final boolean DEBUG_ENCODE = Boolean.getBoolean("wcwt.debug.encode");
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
@@ -30,27 +27,15 @@ public record EncodePatternPacket(EncodingMode mode,
                 MODE_STREAM_CODEC.encode(buf, packet.mode());
                 ByteBufCodecs.BOOL.encode(buf, packet.uploadEnabled());
                 ByteBufCodecs.STRING_UTF8.encode(buf, packet.providerSearchText());
-                ByteBufCodecs.VAR_LONG.encode(buf, packet.preferredProviderId());
-                ByteBufCodecs.STRING_UTF8.encode(buf, packet.uploadProviderName());
                 ByteBufCodecs.BOOL.encode(buf, packet.fallbackToEditSlot());
-                ByteBufCodecs.BOOL.encode(buf, packet.useEaepUploadScreen());
             }, buf -> new EncodePatternPacket(
                     MODE_STREAM_CODEC.decode(buf),
                     ByteBufCodecs.BOOL.decode(buf),
                     ByteBufCodecs.STRING_UTF8.decode(buf),
-                    ByteBufCodecs.VAR_LONG.decode(buf),
-                    ByteBufCodecs.STRING_UTF8.decode(buf),
-                    ByteBufCodecs.BOOL.decode(buf),
                     ByteBufCodecs.BOOL.decode(buf)));
 
     public EncodePatternPacket(EncodingMode mode) {
-        this(mode, false, "", -1, "", false, false);
-    }
-
-    public EncodePatternPacket(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
-                               long preferredProviderId, String uploadProviderName, boolean fallbackToEditSlot) {
-        this(mode, uploadEnabled, providerSearchText, preferredProviderId, uploadProviderName,
-                fallbackToEditSlot, false);
+        this(mode, false, "", false);
     }
 
     @Override
@@ -61,14 +46,14 @@ public record EncodePatternPacket(EncodingMode mode,
     public static void handle(EncodePatternPacket packet, IPayloadContext context) {
         if (DEBUG_ENCODE || DEBUG_PATTERN_UPLOAD) {
             WcwtMod.LOGGER.info(
-                    "WCWT encode debug: packet received, mode={}, uploadEnabled={}, providerSearchText={}, preferredProviderId={}, uploadProviderName={}, fallbackToEditSlot={}, useEaepUploadScreen={}, player={}",
-                    packet.mode(), packet.uploadEnabled(), packet.providerSearchText(), packet.preferredProviderId(),
-                    packet.uploadProviderName(), packet.fallbackToEditSlot(), packet.useEaepUploadScreen(), context.player().getName().getString());
+                    "WCWT encode debug: packet received, mode={}, uploadEnabled={}, providerSearchText={}, fallbackToEditSlot={}, player={}",
+                    packet.mode(), packet.uploadEnabled(), packet.providerSearchText(),
+                    packet.fallbackToEditSlot(), context.player().getName().getString());
         }
         context.enqueueWork(() -> {
             if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 menu.encodePattern(packet.mode(), packet.uploadEnabled(), packet.providerSearchText(),
-                        packet.preferredProviderId(), packet.uploadProviderName(), packet.fallbackToEditSlot(), packet.useEaepUploadScreen());
+                        packet.fallbackToEditSlot());
             } else if (DEBUG_ENCODE) {
                 WcwtMod.LOGGER.info("WCWT encode debug: packet ignored, current menu={}",
                         context.player().containerMenu == null ? "null" : context.player().containerMenu.getClass().getName());

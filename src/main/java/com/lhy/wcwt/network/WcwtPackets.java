@@ -173,12 +173,6 @@ public class WcwtPackets {
             PatternProviderFocusPacket::handle
         );
 
-        registrar.playToClient(
-            OpenEaepProviderSelectScreenPacket.TYPE,
-            OpenEaepProviderSelectScreenPacket.STREAM_CODEC,
-            OpenEaepProviderSelectScreenPacket::handle
-        );
-
         registrar.playToServer(
             PatternProviderSlotSyncPacket.TYPE,
             PatternProviderSlotSyncPacket.STREAM_CODEC,

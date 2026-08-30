@@ -26,18 +26,7 @@ public final class WcwtRecipeTransferCommon {
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
-        if (mode != EncodingMode.PROCESSING) {
-            ExtendedAePlusUploadCompat.presetCraftingProviderSearchKey();
-            return;
-        }
-
-        String name = ExtendedAePlusUploadCompat.mapRecipeTypeToSearchKey(recipe);
-        if ((name == null || name.isBlank()) && recipeBase != null) {
-            name = ExtendedAePlusUploadCompat.deriveSearchKeyFromUnknownRecipe(recipeBase);
-        }
-        if (name != null && !name.isBlank()) {
-            ExtendedAePlusUploadCompat.setLastProviderSearchKey(name);
-        }
+        ExtendedAePlusUploadCompat.captureRecipeSearchKey(recipeBase, recipe, mode);
     }
 
     public static Map<AEKey, Integer> getEmiFavoritePriorities() {

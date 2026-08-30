@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.3.9
+
+### English
+
+1. Reworked encoding auto-upload to call ExtendedAE Plus public APIs instead of WCWT's own matching logic.
+2. Encoding now uploads only on a unique provider-name match; zero or multiple matches fall back to the editor or cache.
+3. Pattern-management mapping add/reload/delete now call ExtendedAE Plus public mapping APIs, and Cancel opens the mapping manager.
+4. Pattern-management search and mapping fields now use ExtendedAE Plus's Chinese-capable text field when it is present.
+5. Removed the option to open the ExtendedAE Plus provider selector for duplicate names.
+6. Aligned pattern-management provider icons and titles with the vanilla pattern access terminal, and inset the list by 1px.
+
+### 中文
+
+1. 编码自动上传改为调用 ExtendedAE Plus 公开 API，不再使用 WCWT 自研匹配上传。
+2. 编码仅在供应器名称唯一匹配时上传；0 个或多名则回退到编辑槽或缓存区。
+3. 样板管理区增加/重载/删除映射改为调用 ExtendedAE Plus 公开 API，取消按钮改为打开映射管理界面。
+4. 安装 ExtendedAE Plus 时，样板管理区搜索框和映射框改用其可输入中文的输入框。
+5. 移除同名供应器上传时打开 ExtendedAE Plus 选择界面的配置。
+6. 样板管理区供应器图标和标题对齐原版样板管理终端，列表上下各内缩 1px。
+
 ## v1.3.8
 
 ### English

@@ -7,7 +7,6 @@ import appeng.integration.modules.itemlists.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
 import com.simibubi.create.content.processing.basin.BasinRecipe;
-import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
@@ -162,18 +161,7 @@ public class WcwtRecipeTransferHandler
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
-        if (mode != EncodingMode.PROCESSING) {
-            ExtendedAePlusUploadCompat.presetCraftingProviderSearchKey();
-            return;
-        }
-
-        String name = ExtendedAePlusUploadCompat.mapRecipeTypeToSearchKey(recipe);
-        if ((name == null || name.isBlank()) && recipeBase != null) {
-            name = ExtendedAePlusUploadCompat.deriveSearchKeyFromUnknownRecipe(recipeBase);
-        }
-        if (name != null && !name.isBlank()) {
-            ExtendedAePlusUploadCompat.setLastProviderSearchKey(name);
-        }
+        WcwtRecipeTransferCommon.updateEaepProviderSearchKey(recipeBase, recipe, mode);
     }
 
     static EncodingMode getTransferMode(@Nullable Object recipeObject, IRecipeSlotsView slotsView) {

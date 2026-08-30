@@ -35,9 +35,7 @@ import appeng.util.ConfigInventory;
 import appeng.util.CraftingRecipeUtil;
 import appeng.util.Platform;
 import appeng.util.inv.CarriedItemInventory;
-import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.PlayerInternalInventory;
-import appeng.util.inv.filter.IAEItemFilter;
 import appeng.util.prioritylist.IPartitionList;
 import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
 import com.lhy.wcwt.api.IExtendedUIHost;
@@ -47,19 +45,18 @@ import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusMatrixUploadCompat;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
-import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
-import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.compat.LightningTechCraftingUploadCompat;
 import com.lhy.wcwt.compat.NeoEcoApiCompat;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
+import com.lhy.wcwt.compat.plus.PlusEncodingUpload;
+import com.lhy.wcwt.compat.plus.PlusPresence;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.network.EncodePatternPacket;
-import com.lhy.wcwt.network.OpenEaepProviderSelectScreenPacket;
 import com.lhy.wcwt.network.PatternEncodingModePacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
 import com.lhy.wcwt.network.PatternModePacket;
@@ -2168,104 +2165,26 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return null;
     }
 
-    private UploadAttemptResult uploadEncodedPatternToMatchingProvider(ItemStack encodedPattern, String searchText,
-                                                                       long preferredProviderId) {
-        String query = normalizeProviderSearchText(resolveUploadSearchTextFromPattern(encodedPattern, searchText));
-        if (query == null) {
-            query = "";
-        }
-        if (encodedPattern.isEmpty() || !PatternDetailsHelper.isEncodedPattern(encodedPattern)) {
-            return UploadAttemptResult.NO_TARGET;
-        }
-
-        var providers = listUploadProviders(false);
-        PatternContainer preferredProvider = getUploadProviderByOrdinal(providers, preferredProviderId);
-        logPatternUploadDebug(
-                "server upload target lookup preferredProviderId={}, preferredFound={}, query={}, providers={}",
-                preferredProviderId, preferredProvider != null, query, providers.size());
-        if (preferredProvider != null) {
-            return uploadEncodedPatternToProviderGroup(encodedPattern, providers, preferredProvider,
-                    getUploadProviderDisplayName(preferredProvider), preferredProviderId);
-        }
-
-        if (query.isEmpty()) {
-            return UploadAttemptResult.NO_TARGET;
-        }
-        var matchingTargets = new ArrayList<ProviderTarget>();
-        for (int i = 0; i < providers.size(); i++) {
-            var provider = providers.get(i);
-            String providerName = getUploadProviderDisplayName(provider);
-            if (providerNameMatches(providerName, query)) {
-                matchingTargets.add(new ProviderTarget(i + 1L, provider, providerName));
-            }
-        }
-
-        var matchingGroupNames = matchingTargets.stream()
-                .map(ProviderTarget::providerName)
-                .distinct()
-                .toList();
-        if (matchingGroupNames.size() != 1 || matchingTargets.isEmpty()) {
-            logPatternUploadDebug("server upload search ambiguous query={}, matchingGroupNames={}, matchingTargets={}",
-                    query, matchingGroupNames, matchingTargets.size());
-            return UploadAttemptResult.NO_TARGET;
-        }
-
-        String targetName = matchingGroupNames.get(0);
-        var candidateTargets = matchingTargets.stream()
-                .filter(target -> targetName.equals(target.providerName()))
-                .toList();
-        return uploadEncodedPatternToTargets(encodedPattern, targetName, candidateTargets);
-    }
-
-    private UploadAttemptResult uploadEncodedPatternToProviderGroup(ItemStack encodedPattern,
-                                                                    List<PatternContainer> providers,
-                                                                    PatternContainer targetProvider,
-                                                                    String targetName,
-                                                                    long targetProviderId) {
-        var candidateTargets = new ArrayList<ProviderTarget>();
-        candidateTargets.add(new ProviderTarget(targetProviderId, targetProvider, targetName));
-        for (int i = 0; i < providers.size(); i++) {
-            var provider = providers.get(i);
-            if (provider == targetProvider) {
-                continue;
-            }
-            String providerName = getUploadProviderDisplayName(provider);
-            if (targetName.equals(providerName)) {
-                candidateTargets.add(new ProviderTarget(i + 1L, provider, providerName));
-            }
-        }
-        logPatternUploadDebug("server upload provider group targetProviderId={}, targetName={}, candidates={}",
-                targetProviderId, targetName, candidateTargets.size());
-        return uploadEncodedPatternToTargets(encodedPattern, targetName, candidateTargets);
-    }
-
-    private UploadAttemptResult uploadEncodedPatternToTargets(ItemStack encodedPattern,
-                                                              String targetName,
-                                                              List<ProviderTarget> candidateTargets) {
-        if (candidateTargets.isEmpty()) {
+    private UploadAttemptResult uploadEncodedPatternToMatchingProvider(ItemStack encodedPattern, String searchText) {
+        if (!PlusPresence.available() || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
             return UploadAttemptResult.NO_TARGET;
         }
         ItemStack uploadStack = PatternUploadMetadata.copyWithoutUploadData(encodedPattern);
-        for (var target : candidateTargets) {
-            if (insertEncodedPattern(target.provider(), uploadStack)) {
-                int insertedSlot = findLastInsertedPatternSlot(target.provider(), uploadStack);
-                logPatternUploadDebug("server upload inserted targetProviderId={}, targetName={}, insertedSlot={}",
-                        target.providerId(), target.providerName(), insertedSlot);
-                return new UploadAttemptResult(true, true, targetName, target.providerId(), insertedSlot);
-            }
-            logPatternUploadDebug("server upload target full/invalid targetProviderId={}, targetName={}",
-                    target.providerId(), target.providerName());
+        PlusEncodingUpload.UniqueUploadResult result = PlusEncodingUpload.uploadUniqueMatch(
+                serverPlayer, getMenuGrid(), uploadStack, searchText);
+        logPatternUploadDebug("server unique upload query={}, uploaded={}, hadTarget={}, providerName={}",
+                searchText, result.uploaded(), result.hadTarget(), result.providerName());
+        if (!result.hadTarget()) {
+            return UploadAttemptResult.NO_TARGET;
         }
-        return new UploadAttemptResult(false, true, targetName, candidateTargets.get(0).providerId(), -1);
-    }
-
-    private String resolveUploadSearchTextFromPattern(ItemStack encodedPattern, @Nullable String fallbackSearchText) {
-        String fromPattern = normalizeProviderSearchText(PatternUploadMetadata.getProviderSearchText(encodedPattern));
-        if (fromPattern != null) {
-            return fromPattern;
+        long providerId = -1L;
+        int slot = -1;
+        if (result.uploaded()) {
+            MatrixUploadResult located = findMatrixUploadResult(uploadStack);
+            providerId = located.providerId();
+            slot = located.slot();
         }
-        String normalizedFallback = normalizeProviderSearchText(fallbackSearchText);
-        return normalizedFallback == null ? "" : normalizedFallback;
+        return new UploadAttemptResult(result.uploaded(), true, result.providerName(), providerId, slot);
     }
 
     private List<PatternContainer> listUploadProviders(boolean requireAvailableSlots) {
@@ -2344,9 +2263,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return -1;
     }
 
-    private record ProviderTarget(long providerId, PatternContainer provider, String providerName) {
-    }
-
     private record EcoUploadDuplicateResult(boolean duplicate, long providerId, int slot) {
         private static final EcoUploadDuplicateResult NONE = new EcoUploadDuplicateResult(false, -1, -1);
     }
@@ -2375,10 +2291,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         private static final UploadAttemptResult NO_TARGET = new UploadAttemptResult(false, false, "", -1, -1);
     }
 
-    private static boolean providerNameMatches(String providerName, String query) {
-        return JecSearchCompat.contains(providerName, query);
-    }
-
     private boolean assemblerMatrixContainsPattern(ItemStack encodedPattern) {
         if (!ExtendedAePlusMatrixUploadCompat.isAssemblerMatrixAvailable()) {
             return false;
@@ -2392,22 +2304,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return false;
     }
 
-    private static String getUploadProviderDisplayName(PatternContainer provider) {
-        String mappedName = ExtendedAePlusUploadCompat.getProviderDisplayName(provider);
-        if (mappedName != null && !mappedName.isBlank()) {
-            return mappedName;
-        }
-        return provider.getTerminalGroup().name().getString();
-    }
-
-    @Nullable
-    private static PatternContainer getUploadProviderByOrdinal(List<PatternContainer> providers, long providerId) {
-        int index = (int) providerId - 1;
-        if (index < 0 || index >= providers.size()) {
-            return null;
-        }
-        return providers.get(index);
-    }
 
     private static int getAvailablePatternSlots(PatternContainer provider) {
         InternalInventory inv = provider.getTerminalPatternInventory();
@@ -2421,17 +2317,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
         return available;
-    }
-
-    private static boolean insertEncodedPattern(PatternContainer provider, ItemStack encodedPattern) {
-        InternalInventory inv = provider.getTerminalPatternInventory();
-        if (inv == null) {
-            return false;
-        }
-        var filtered = new FilteredInternalInventory(inv, new EncodedPatternFilter());
-        ItemStack toInsert = encodedPattern.copy();
-        ItemStack remain = filtered.addItems(toInsert);
-        return remain.getCount() < toInsert.getCount();
     }
 
     private void addPatternEncodingSlots() {
@@ -2495,77 +2380,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         encodePattern(mode, false, "", false);
     }
 
-    public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText) {
-        encodePattern(mode, uploadEnabled, providerSearchText, -1, false);
-    }
-
     public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
                               boolean fallbackToEditSlot) {
-        encodePattern(mode, uploadEnabled, providerSearchText, -1, fallbackToEditSlot);
-    }
-
-    public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
-                              long preferredProviderId, boolean fallbackToEditSlot) {
-        encodePattern(mode, uploadEnabled, providerSearchText, preferredProviderId, "", fallbackToEditSlot);
-    }
-
-    public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
-                               long preferredProviderId, String uploadProviderName, boolean fallbackToEditSlot) {
-        encodePattern(mode, uploadEnabled, providerSearchText, preferredProviderId, uploadProviderName,
-                fallbackToEditSlot, false);
-    }
-
-    private boolean openEaepProviderSelectScreenForEncodedPattern(ItemStack encodedPattern,
-                                                                  boolean consumeEditPattern,
-                                                                  @Nullable String searchText) {
-        if (!ModList.get().isLoaded("extendedae_plus") || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
-            return false;
-        }
-        String query = normalizeProviderSearchText(searchText);
-        List<PatternContainer> providers = listUploadProviders(false).stream()
-                .filter(provider -> query == null || providerNameMatches(getUploadProviderDisplayName(provider), query))
-                .toList();
-        if (providers.size() < 2) {
-            return false;
-        }
-        List<OpenEaepProviderSelectScreenPacket.Entry> entries = new ArrayList<>();
-        for (int index = 0; index < providers.size(); index++) {
-            PatternContainer provider = providers.get(index);
-            int emptySlots = getAvailablePatternSlots(provider);
-            if (emptySlots > 0) {
-                entries.add(new OpenEaepProviderSelectScreenPacket.Entry(-1L - index,
-                        getUploadProviderDisplayName(provider), emptySlots));
-            }
-        }
-        if (entries.size() < 2) {
-            return false;
-        }
-        String pendingId = WcwtReflect
-                .invokeStatic("extendedae_plus", "com.extendedae_plus.util.uploadPattern.CtrlQPendingUploadUtil",
-                        "beginPendingCtrlQUpload", new Class<?>[]{ServerPlayer.class, ItemStack.class},
-                        serverPlayer, PatternUploadMetadata.copyWithoutUploadData(encodedPattern))
-                .filter(String.class::isInstance)
-                .map(String.class::cast)
-                .filter(id -> !id.isBlank())
-                .orElse(null);
-        if (pendingId == null) {
-            return false;
-        }
-        PacketDistributor.sendToPlayer(serverPlayer, new OpenEaepProviderSelectScreenPacket(entries));
-        consumePatternForUpload(consumeEditPattern);
-        patternEncodingLogic.setMode(getPatternEncodingMode());
-        updatePatternPreview(getPatternEncodingMode());
-        broadcastChanges();
-        return true;
-    }
-
-    public void encodePattern(EncodingMode mode, boolean uploadEnabled, String providerSearchText,
-                               long preferredProviderId, String uploadProviderName, boolean fallbackToEditSlot,
-                               boolean useEaepUploadScreen) {
         if (isClientSide()) {
             logEncode("client clicked encode, mode={}", mode);
             PacketDistributor.sendToServer(new EncodePatternPacket(mode, uploadEnabled, providerSearchText,
-                    preferredProviderId, uploadProviderName, fallbackToEditSlot));
+                    fallbackToEditSlot));
             return;
         }
 
@@ -2628,19 +2448,14 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         String rawProviderSearchText = resolvePatternUploadSearchText(mode, providerSearchText, recipeId);
         String resolvedProviderSearchText = normalizeProviderSearchText(rawProviderSearchText);
         logPatternUploadDebug(
-                "server encode resolved player={}, mode={}, uploadEnabled={}, preferredProviderId={}, uploadProviderName={}, fallbackToEditSlot={}, packetSearchText={}, recipeId={}, rawSearchText={}, resolvedSearchText={}",
-                getPlayer().getScoreboardName(), mode, uploadEnabled, preferredProviderId, uploadProviderName,
-                fallbackToEditSlot, providerSearchText, recipeId, rawProviderSearchText, resolvedProviderSearchText);
+                "server encode resolved player={}, mode={}, uploadEnabled={}, fallbackToEditSlot={}, packetSearchText={}, recipeId={}, rawSearchText={}, resolvedSearchText={}",
+                getPlayer().getScoreboardName(), mode, uploadEnabled, fallbackToEditSlot, providerSearchText,
+                recipeId, rawProviderSearchText, resolvedProviderSearchText);
         ExtendedAePlusPatternMetadata.writeEncoder(encodedPattern, getPlayer().getScoreboardName());
         writePatternUploadMetadata(encodedPattern, resolvedProviderSearchText);
         logPatternUploadDebug("server encoded metadata player={}, metadata={}, encoded={}",
                 getPlayer().getScoreboardName(), PatternUploadMetadata.getProviderSearchText(encodedPattern), encodedPattern);
 
-        if (uploadEnabled && useEaepUploadScreen && mode == EncodingMode.PROCESSING
-                && openEaepProviderSelectScreenForEncodedPattern(encodedPattern, consumeEditPattern,
-                resolvedProviderSearchText)) {
-            return;
-        }
         if (uploadEnabled && mode != EncodingMode.PROCESSING) {
             MatrixUploadResult matrixUploadResult = uploadEncodedPatternToMatrix(encodedPattern);
             if (matrixUploadResult.state() == MatrixUploadState.UPLOADED
@@ -2672,15 +2487,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         UploadAttemptResult uploadAttempt = UploadAttemptResult.NO_TARGET;
         if (uploadEnabled) {
-            uploadAttempt = uploadEncodedPatternToMatchingProvider(encodedPattern, resolvedProviderSearchText,
-                    preferredProviderId);
+            uploadAttempt = uploadEncodedPatternToMatchingProvider(encodedPattern, resolvedProviderSearchText);
             logPatternUploadDebug(
-                    "server upload attempt player={}, uploaded={}, hadTarget={}, providerName={}, providerId={}, slot={}, resolvedSearchText={}, preferredProviderId={}",
+                    "server unique upload attempt player={}, uploaded={}, hadTarget={}, providerName={}, providerId={}, slot={}, resolvedSearchText={}",
                     getPlayer().getScoreboardName(), uploadAttempt.uploaded(), uploadAttempt.hadTarget(),
                     uploadAttempt.providerName(), uploadAttempt.providerId(), uploadAttempt.slot(),
-                    resolvedProviderSearchText, preferredProviderId);
+                    resolvedProviderSearchText);
             if (uploadAttempt.uploaded()) {
-                String statusProviderName = uploadStatusProviderName(uploadProviderName, uploadAttempt.providerName());
                 consumePatternForUpload(consumeEditPattern);
                 patternEncodingLogic.setMode(mode);
                 syncedPatternEncodingMode = mode.ordinal();
@@ -2688,7 +2501,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 tryFillBlankPatternFromNetwork();
                 if (getPlayer() instanceof ServerPlayer serverPlayer) {
                     serverPlayer.sendSystemMessage(Component.translatable(
-                            "extendedae_plus.screen.upload.auto_upload_success", statusProviderName));
+                            "extendedae_plus.screen.upload.auto_upload_success", uploadAttempt.providerName()));
                     PacketDistributor.sendToPlayer(serverPlayer,
                             PatternProviderListPacket.buildForPlayer(serverPlayer, resolvedProviderSearchText));
                     if (uploadAttempt.providerId() > 0 && uploadAttempt.slot() >= 0) {
@@ -2705,9 +2518,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         boolean preferEditSlot = uploadEnabled && fallbackToEditSlot;
         if (uploadEnabled && uploadAttempt.hadTarget() && getPlayer() instanceof ServerPlayer serverPlayer) {
-            String statusProviderName = uploadStatusProviderName(uploadProviderName, uploadAttempt.providerName());
             serverPlayer.sendSystemMessage(Component.translatable(
-                    "extendedae_plus.screen.upload.auto_upload_failed", statusProviderName));
+                    "extendedae_plus.screen.upload.auto_upload_failed", uploadAttempt.providerName()));
         }
 
         storeEncodedPatternLocally(mode, encodedPattern, consumeEditPattern, preferEditSlot,
@@ -2716,11 +2528,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private boolean hasBlankPatternForEncoding() {
         return AEItems.BLANK_PATTERN.is(blankPatternSlot.getItem());
-    }
-
-    private static String uploadStatusProviderName(@Nullable String clientProviderName, String fallbackProviderName) {
-        String normalized = normalizeProviderSearchText(clientProviderName);
-        return normalized != null ? normalized : fallbackProviderName;
     }
 
     private void writePatternUploadMetadata(ItemStack encodedPattern,
@@ -5725,18 +5532,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return itemKey.toStack((int) stack.amount());
         }
         return ItemStack.EMPTY;
-    }
-
-    private static class EncodedPatternFilter implements IAEItemFilter {
-        @Override
-        public boolean allowExtract(InternalInventory inv, int slot, int amount) {
-            return true;
-        }
-
-        @Override
-        public boolean allowInsert(InternalInventory inv, int slot, ItemStack stack) {
-            return !stack.isEmpty() && PatternDetailsHelper.isEncodedPattern(stack);
-        }
     }
 
     private static final class CrystalScienceBridge {

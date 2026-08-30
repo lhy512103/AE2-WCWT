@@ -40,6 +40,8 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.plus.PlusMappingClient;
+import com.lhy.wcwt.compat.plus.PlusPresence;
 import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
 import com.lhy.wcwt.compat.reflect.WcwtMagnetReflect;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
@@ -83,6 +85,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.language.I18n;
+import net.minecraft.locale.Language;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -236,8 +239,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     /** 谐振过载编码器面板内的过载条目滑块由面板自身维护，这里只需要终端里的实体槽定位。 */
     /** 样板管理区滑块：按供应器行滚动。 */
     private Scrollbar patternManagementScrollbar;
-    private AETextField patternManageSearchField;
-    private AETextField patternManageMappingField;
+    private EditBox patternManageSearchField;
+    private EditBox patternManageMappingField;
     private int extendedUiAvailabilityMask = -1;
     private int lastExtendedUiButtonMask = -1;
     private IExtendedUIHost.ExtendedUIType lastExtendedUiVisibilityType = null;
@@ -307,13 +310,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedPanelLayout.Rect patternManagementUiButton =
             new ExtendedPanelLayout.Rect(306, 2, 14, 15);
     private ExtendedPanelLayout.Rect patternManagementHighlightButton =
-            new ExtendedPanelLayout.Rect(337, 3, 6, 11);
+            new ExtendedPanelLayout.Rect(337, 4, 5, 10);
     private ExtendedPanelLayout.Rect patternManagementDisplayModeButton =
             new ExtendedPanelLayout.Rect(175, 194, 12, 12);
     private ExtendedPanelLayout.Rect patternManagementDisplaySlotsButton =
             new ExtendedPanelLayout.Rect(189, 194, 12, 12);
     private ExtendedPanelLayout.Rect patternManagementAutoUploadButton =
             new ExtendedPanelLayout.Rect(203, 194, 12, 12);
+    private ExtendedPanelLayout.Rect patternManagementSearchFieldRect =
+            new ExtendedPanelLayout.Rect(230, 185, 60, 12);
+    private ExtendedPanelLayout.Rect patternManagementMappingFieldRect =
+            new ExtendedPanelLayout.Rect(230, 196, 60, 12);
     private ExtendedPanelLayout.Rect patternManagementSearchModeButton =
             new ExtendedPanelLayout.Rect(217, 194, 12, 12);
     private ExtendedPanelLayout.Rect batchItemReplacementButton =
@@ -339,7 +346,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     /** 相对样板缓存区背景的纵向微调（负数 = 整体上移）；槽位绘制与 {@link #isMouseOverPatternCache} 共用。 */
     private static final int PATTERN_CACHE_SLOT_Y_OFFSET = -1;
     private static final int PATTERN_CACHE_SCROLLBAR_HEIGHT = 34;
-    private static final int PATTERN_MANAGEMENT_ROW_H = 18;
+    private static final int PATTERN_MANAGEMENT_SLOT_ROW_H = 18;
+    private static final int PATTERN_MANAGEMENT_HEADER_ROW_H = 18;
     /** 样板管理列表中，单个供应器每行最多显示的样板槽列数。 */
     private static final int PATTERN_MANAGEMENT_COLS = 9;
     /** 样板槽底图为 {@code wcwt_management.png} 单格 18×18（{@link #PATTERN_MANAGEMENT_SLOT_BG_SIZE}）。 */
@@ -354,7 +362,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SLOT_STEP = 18;
     /** 压缩占位槽的槽数量角标缩放系数（字形 8px → 6px，视觉减小 2px）。 */
     private static final float PATTERN_MANAGEMENT_BADGE_SCALE = 6.0F / 8.0F;
-    private static final int PATTERN_MANAGEMENT_HEADER_Y_OFFSET = -1;
+    private static final int PATTERN_MANAGEMENT_HEADER_ICON_SIZE = 8;
+    private static final int PATTERN_MANAGEMENT_HEADER_Y_OFFSET = 0;
     private static final int PATTERN_MANAGEMENT_SLOT_Y_OFFSET = 0;
     private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET = 4;
     private static final int BUTTON_PRESS_OFFSET_Y = 1;
@@ -515,14 +524,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         stonecuttingPatternScrollbar.setRange(0, 0, STONECUTTING_RESULT_COLS);
         stonecuttingPatternScrollbar.setCaptureMouseWheel(false);
 
-        patternManageSearchField = addWcwtManagementTextField("manage_search");
-        patternManageSearchField.setPlaceholder(Component.translatable("gui.wcwt.pattern_management.provider_search"));
-        patternManageSearchField.setResponder(str -> onPatternManagementSearchChanged());
-        patternManageSearchField.setMaxLength(64);
-
-        patternManageMappingField = addWcwtManagementTextField("manage_mapping");
-        patternManageMappingField.setPlaceholder(Component.translatable("gui.wcwt.pattern_management.mapping_input"));
-        patternManageMappingField.setMaxLength(64);
         patternManagementPage = mainLayout.widget("management_page", patternManagementPage, imageWidth, imageHeight);
         patternManagementScrollbarRect = mainLayout.widget("manage_scrollbar", patternManagementScrollbarRect,
                 imageWidth, imageHeight);
@@ -1035,6 +1036,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     public void init() {
         super.init();
+        refreshPatternManagementLayout();
+        relayoutPatternManagementTextFields();
         rebuildCraftableIndicatorCache();
         syncRepoRowSize();
         clearCraftingGridButton = resolveWidgetById("clearCraftingGrid");
@@ -1850,7 +1853,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void handleEncodePatternButton() {
-        String searchKey = ExtendedAePlusUploadCompat.takeProviderSearchKeyForUpload();
+        String searchKey = ExtendedAePlusUploadCompat.consumeLastProviderSearchKey();
         boolean generatedFallbackSearchKey = false;
         if ((searchKey == null || searchKey.isBlank()) && patternEncodingMode != EncodingMode.PROCESSING) {
             searchKey = "crafting";
@@ -1862,12 +1865,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (!resolvedSearchKey.isBlank()) {
             resolvedPatternManagementSearchText = resolvedSearchKey;
         }
-        long preferredProviderId = preferredPatternProviderIdForUpload(searchKey);
-        String uploadProviderName = uploadProviderNameForStatus(preferredProviderId, searchKey);
-        boolean useEaepUploadScreen = patternManagementUploadEnabled
-                && WcwtClientConfig.patternUploadMultiMatchOpenEaepScreen()
-                && net.neoforged.fml.ModList.get().isLoaded("extendedae_plus")
-                && hasMultipleMatchingProvidersWithSameName(searchKey);
         if ((patternManagementUploadEnabled
                 || WcwtClientConfig.autoFillPatternProviderSearchWhenUploadDisabled())
                 && searchKey != null && !searchKey.isBlank()
@@ -1878,40 +1875,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             encodePatternButton.setFocused(false);
         }
         setFocused(null);
-        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, preferredProviderId={}, uploadProviderName={}, field={}, resolvedField={}",
-                patternEncodingMode, patternManagementUploadEnabled, searchKey, resolvedSearchKey, preferredProviderId,
-                uploadProviderName, currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
+        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, field={}, resolvedField={}",
+                patternEncodingMode, patternManagementUploadEnabled, searchKey, resolvedSearchKey,
+                currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
         PacketDistributor.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
                 resolvedSearchKey,
-                preferredProviderId,
-                uploadProviderName,
-                WcwtClientConfig.patternUploadFailFallbackToEditor(),
-                useEaepUploadScreen));
-    }
-
-    private boolean hasMultipleMatchingProvidersWithSameName(@Nullable String searchKey) {
-        if (searchKey == null || searchKey.isBlank()) {
-            return false;
-        }
-        String query = resolveClientProviderSearchText(searchKey);
-        var matches = patternProviders.stream()
-                .filter(entry -> providerNameMatches(providerDisplayText(entry), query))
-                .map(this::providerDisplayText)
-                .distinct()
-                .toList();
-        return patternProviders.stream()
-                .filter(entry -> providerNameMatches(providerDisplayText(entry), query))
-                .filter(entry -> matches.contains(providerDisplayText(entry)))
-                .count() > 1 && matches.size() == 1;
-    }
-
-    private static boolean providerNameMatches(String providerName, String query) {
-        return JecSearchCompat.contains(providerName, query);
-    }
-
-    @Nullable
-    private String resolveEaepProviderSearchKey(String rawKey) {
-        return resolveClientProviderSearchText(rawKey);
+                WcwtClientConfig.patternUploadFailFallbackToEditor()));
     }
 
     private String resolveClientProviderSearchText(@Nullable String rawKey) {
@@ -1922,7 +1891,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (normalized.isEmpty()) {
             return "";
         }
-        String resolved = ExtendedAePlusUploadCompat.resolveSearchKeyAlias(normalized);
+        String resolved = ExtendedAePlusUploadCompat.resolveProviderSearchKey(normalized);
         return resolved == null || resolved.isBlank() ? normalized : resolved.trim();
     }
 
@@ -2624,10 +2593,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         patternProviders.clear();
         patternProviders.addAll(entries);
         String incomingResolvedSearchText = resolvedSearchText == null ? "" : resolvedSearchText.trim();
-        String currentSearchText = currentPatternManagementSearchText().trim();
-        if (!incomingResolvedSearchText.isEmpty() && !currentSearchText.isEmpty()) {
-            ExtendedAePlusUploadCompat.rememberAliasMapping(currentSearchText, incomingResolvedSearchText);
-        }
         if (!incomingResolvedSearchText.isEmpty() || currentPatternManagementSearchText().trim().isEmpty()) {
             resolvedPatternManagementSearchText = incomingResolvedSearchText;
         }
@@ -2861,8 +2826,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         var matchingEntries = findPatternProvidersBySearch(normalizedQuery);
         if (matchingEntries.isEmpty()) {
-            String resolved = resolveEaepProviderSearchKey(normalizedQuery);
-            if (resolved != null && !resolved.equals(normalizedQuery)) {
+            String resolved = resolveClientProviderSearchText(normalizedQuery);
+            if (!resolved.isEmpty() && !resolved.equals(normalizedQuery)) {
                 matchingEntries = findPatternProvidersBySearch(resolved);
             }
         }
@@ -2878,77 +2843,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             selectedPatternProviderId = providerId;
             selectedPatternProviderSlot = -1;
         }
-    }
-
-    private long preferredPatternProviderIdForUpload(@Nullable String searchKey) {
-        long inferred = inferPatternProviderIdFromSearch(searchKey);
-        if (inferred > 0) {
-            logPatternUploadDebug("client inferred provider from search searchKey={}, providerId={}", searchKey, inferred);
-            selectedPatternProviderId = inferred;
-            selectedPatternProviderSlot = -1;
-            return inferred;
-        }
-
-        if (containsPatternProvider(selectedPatternProviderId)) {
-            logPatternUploadDebug("client using selected provider providerId={}, searchKey={}", selectedPatternProviderId, searchKey);
-            return selectedPatternProviderId;
-        }
-
-        if (containsPatternProvider(focusedPatternProviderId)) {
-            logPatternUploadDebug("client using focused provider providerId={}, searchKey={}", focusedPatternProviderId, searchKey);
-            return focusedPatternProviderId;
-        }
-
-        logPatternUploadDebug("client no preferred provider searchKey={}", searchKey);
-        return -1L;
-    }
-
-    private String uploadProviderNameForStatus(long providerId, @Nullable String searchKey) {
-        if (providerId <= 0) {
-            return "";
-        }
-        String resolvedSearch = searchKey == null ? "" : resolveEaepProviderSearchKey(searchKey);
-        if (resolvedSearch != null && !resolvedSearch.isBlank()) {
-            var matchingEntries = findPatternProvidersBySearch(resolvedSearch.trim());
-            var distinctIds = matchingEntries.stream()
-                    .map(PatternProviderListPacket.Entry::providerId)
-                    .distinct()
-                    .toList();
-            var distinctNames = matchingEntries.stream()
-                    .map(this::providerDisplayText)
-                    .distinct()
-                    .toList();
-            if (distinctIds.size() == 1 && distinctIds.get(0) == providerId && distinctNames.size() == 1) {
-                return resolvedSearch.trim();
-            }
-        }
-        return patternProviders.stream()
-                .filter(entry -> entry.providerId() == providerId)
-                .map(this::providerDisplayText)
-                .findFirst()
-                .orElse("");
-    }
-
-    private long inferPatternProviderIdFromSearch(@Nullable String searchKey) {
-        String[] candidates = {
-                searchKey,
-                searchKey == null ? null : resolveEaepProviderSearchKey(searchKey)
-        };
-        for (String candidate : candidates) {
-            String normalized = candidate == null ? "" : candidate.trim();
-            if (normalized.isEmpty()) {
-                continue;
-            }
-            var matchingEntries = findPatternProvidersBySearch(normalized);
-            var distinctNames = matchingEntries.stream()
-                    .map(this::providerDisplayText)
-                    .distinct()
-                    .toList();
-            if (distinctNames.size() == 1 && !matchingEntries.isEmpty()) {
-                return matchingEntries.get(0).providerId();
-            }
-        }
-        return -1L;
     }
 
     private List<PatternProviderListPacket.Entry> findPatternProvidersBySearch(String query) {
@@ -3274,14 +3168,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
         keepPatternProviderSubscriptionAlive();
         int visibleRows = toolkitInManagementArea ? getManagementToolkitVisibleRows()
-                : Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
+                : patternManagementVisibleRowCount(patternManagementScrollbar != null
+                        ? patternManagementScrollbar.getCurrentScroll() : 0);
         int maxScroll;
         if (toolkitInManagementArea) {
             int columns = getManagementToolkitColumns();
             int totalRows = (getToolkitSlots().size() + columns - 1) / columns;
             maxScroll = Math.max(0, totalRows - visibleRows);
         } else {
-            maxScroll = Math.max(0, patternManagementRows.size() - visibleRows);
+            maxScroll = patternManagementMaxScroll();
         }
         if (patternManagementScrollbar != null) {
             patternManagementScrollbar.setHeight(toolkitInManagementArea
@@ -3340,16 +3235,20 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
 
-        int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
+        int visibleRows = patternManagementVisibleRowCount(scroll);
         int visibleSlotIndex = 0;
-        int rowStart = patternManagementPage.top();
+        int rowStart = patternManagementListTop();
+        int listBottom = rowStart + patternManagementListHeight();
 
         for (int rowOffset = 0; rowOffset < visibleRows; rowOffset++) {
             int rowIndex = scroll + rowOffset;
             if (rowIndex < 0 || rowIndex >= patternManagementRows.size()) {
                 break;
             }
-            int rowY = rowStart + rowOffset * PATTERN_MANAGEMENT_ROW_H;
+            int rowY = patternManagementRowY(scroll, rowOffset);
+            if (rowY >= listBottom) {
+                break;
+            }
             var row = patternManagementRows.get(rowIndex);
             if (!(row instanceof PatternManagementSlotsRow slotsRow)) {
                 continue;
@@ -3466,6 +3365,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         patternManagementDisplaySlotsButton = mainLayout.widget("manage_displays_slots", patternManagementDisplaySlotsButton, imageWidth, imageHeight);
         patternManagementAutoUploadButton = mainLayout.widget("manage_output_mode", patternManagementAutoUploadButton, imageWidth, imageHeight);
         patternManagementSearchModeButton = mainLayout.widget("automatic_upload", patternManagementSearchModeButton, imageWidth, imageHeight);
+        patternManagementSearchFieldRect = mainLayout.widget("manage_search", patternManagementSearchFieldRect,
+                imageWidth, imageHeight);
+        patternManagementMappingFieldRect = mainLayout.widget("manage_mapping", patternManagementMappingFieldRect,
+                imageWidth, imageHeight);
         batchItemReplacementButton = mainLayout.widget("pattern_Replace1", batchItemReplacementButton, imageWidth, imageHeight);
         batchFluidReplacementButton = mainLayout.widget("pattern_Replace2", batchFluidReplacementButton, imageWidth, imageHeight);
     }
@@ -4196,8 +4099,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void renderPatternManagement(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
         int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
+        int visibleRows = patternManagementVisibleRowCount(scroll);
         int textColor = WcwtTextRendering.defaultTextColor();
 
         renderPatternManagementBackground(guiGraphics);
@@ -4235,12 +4138,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
 
+        int listBottom = patternManagementListTop() + patternManagementListHeight();
         for (int i = 0; i < visibleRows; i++) {
             int rowIndex = scroll + i;
             if (rowIndex >= patternManagementRows.size()) {
                 break;
             }
-            int rowY = patternManagementPage.top() + i * PATTERN_MANAGEMENT_ROW_H;
+            int rowY = patternManagementRowY(scroll, i);
+            if (rowY >= listBottom) {
+                break;
+            }
             var row = patternManagementRows.get(rowIndex);
             if (row instanceof PatternManagementHeaderRow header) {
                 renderPatternManagementHeader(guiGraphics, header, rowY, textColor, mouseX, mouseY);
@@ -4347,19 +4254,25 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (patternManagementShowSlots && row.containsProvider(selectedPatternProviderId)) {
             guiGraphics.fill(patternManagementPage.left(), rowY,
                     patternManagementPage.left() + patternManagementPage.width(),
-                    rowY + PATTERN_MANAGEMENT_ROW_H, 0x44FFFFFF);
+                    rowY + PATTERN_MANAGEMENT_HEADER_ROW_H, 0x44FFFFFF);
         }
+        int contentY = rowY + (PATTERN_MANAGEMENT_HEADER_ROW_H - PATTERN_MANAGEMENT_HEADER_ICON_SIZE) / 2;
         var icon = row.group().icon();
         if (icon != null) {
-            guiGraphics.renderItem(icon.toStack(), patternManagementPage.left() + 2,
-                    rowY + 1 + PATTERN_MANAGEMENT_HEADER_Y_OFFSET);
+            var pose = guiGraphics.pose();
+            pose.pushPose();
+            pose.translate(patternManagementPage.left() + 2, contentY, 0);
+            pose.scale(PATTERN_MANAGEMENT_HEADER_ICON_SIZE / 16.0F, PATTERN_MANAGEMENT_HEADER_ICON_SIZE / 16.0F, 1.0F);
+            guiGraphics.renderItem(icon.toStack(), 0, 0);
+            pose.popPose();
         }
         Component displayName = row.entries().size() > 1
                 ? Component.empty().append(row.displayName()).append(Component.literal(" (" + row.entries().size() + ")"))
                 : row.displayName();
-        WcwtTextRendering.drawString(guiGraphics, font,
-                font.substrByWidth(displayName, 94).getString(),
-                patternManagementPage.left() + 20, rowY + 5 + PATTERN_MANAGEMENT_HEADER_Y_OFFSET,
+        guiGraphics.drawString(font,
+                Language.getInstance().getVisualOrder(font.substrByWidth(displayName, 94)),
+                patternManagementPage.left() + 12,
+                rowY + (PATTERN_MANAGEMENT_HEADER_ROW_H - font.lineHeight) / 2,
                 textColor, false);
 
         renderPatternManagementButton(guiGraphics, rowButton(patternManagementUploadButton, rowY),
@@ -4387,18 +4300,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (drawW <= 0) {
                 continue;
             }
-            guiGraphics.blit(WCWT_MANAGEMENT_TEXTURE, x, y, 0, 0,
-                    drawW, PATTERN_MANAGEMENT_SLOT_BG_SIZE,
+            int cropTop = y <= patternManagementListTop() ? 1 : 0;
+            int cropBottom = y + PATTERN_MANAGEMENT_SLOT_BG_SIZE >= patternManagementListTop()
+                    + patternManagementListHeight() ? 1 : 0;
+            int drawH = PATTERN_MANAGEMENT_SLOT_BG_SIZE - cropTop - cropBottom;
+            if (drawH <= 0) {
+                continue;
+            }
+            guiGraphics.blit(WCWT_MANAGEMENT_TEXTURE, x, y + cropTop, 0, cropTop,
+                    drawW, drawH,
                     256, 256);
-            if (isMouseOverPatternManagementSlot(mouseX, mouseY, x, y)) {
-                renderPatternManagementSlotHighlight(guiGraphics, x, y);
-            }
-            if (shouldHighlightPatternManagementSearchResult(row.entry().providerId(), slot)) {
-                renderPatternManagementSearchSlotHighlight(guiGraphics, x, y);
-            }
-            if (shouldHighlightFocusedPatternSlot(row.entry().providerId(), slot)) {
-                renderFocusedPatternManagementSlotHighlight(guiGraphics, x, y);
-            }
+            int scissorX = leftPos + x;
+            int scissorY = topPos + y + cropTop;
+            guiGraphics.enableScissor(scissorX, scissorY, scissorX + drawW, scissorY + drawH);
             ItemStack stack = slot < 0 ? ItemStack.EMPTY : getPatternProviderSlotDisplayStack(row.entry(), slot);
             if (!stack.isEmpty()) {
                 ItemStack displayStack = getPatternDisplayStack(stack);
@@ -4410,7 +4324,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (slot < 0) {
                 int hiddenSlots = Math.max(0, row.entry().inventorySize() - row.entry().slots().size());
                 String count = Integer.toString(hiddenSlots);
-                // MC 字体字形固定 8px 高，减小 2px 只能整体缩放（8px → 6px = 0.75）。右对齐锚点取槽位右上角。
                 var pose = guiGraphics.pose();
                 pose.pushPose();
                 pose.translate(
@@ -4420,6 +4333,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 pose.scale(PATTERN_MANAGEMENT_BADGE_SCALE, PATTERN_MANAGEMENT_BADGE_SCALE, 1.0F);
                 guiGraphics.drawString(font, count, -font.width(count), 0, 0xFFFFFF, true);
                 pose.popPose();
+            }
+            guiGraphics.disableScissor();
+            if (isMouseOverPatternManagementSlot(mouseX, mouseY, x, y)) {
+                renderPatternManagementSlotHighlight(guiGraphics, x, y);
+            }
+            if (shouldHighlightPatternManagementSearchResult(row.entry().providerId(), slot)) {
+                renderPatternManagementSearchSlotHighlight(guiGraphics, x, y);
+            }
+            if (shouldHighlightFocusedPatternSlot(row.entry().providerId(), slot)) {
+                renderFocusedPatternManagementSlotHighlight(guiGraphics, x, y);
             }
         }
         if (row.slots().contains(0) || row.slots().contains(-1)) {
@@ -4599,7 +4522,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (patternManagementScrollbar == null) {
             return;
         }
-        int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
         int targetRow = -1;
         int providerHeaderRow = -1;
         for (int i = 0; i < patternManagementRows.size(); i++) {
@@ -4629,10 +4551,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int desired = current;
         if (targetRow < current) {
             desired = targetRow;
-        } else if (targetRow >= current + visibleRows) {
-            desired = targetRow - visibleRows + 1;
+        } else if (targetRow >= current + patternManagementVisibleRowCount(current)) {
+            desired = targetRow;
         }
-        int clampedDesired = Math.max(0, desired);
+        int clampedDesired = Math.max(0, Math.min(desired, patternManagementMaxScroll()));
         if (clampedDesired != current) {
             patternManagementScrollbar.setCurrentScroll(clampedDesired);
             patternProviderSlotLayoutDirty = true;
@@ -4701,15 +4623,132 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         pose.popPose();
     }
 
-    private AETextField addWcwtManagementTextField(String id) {
-        var field = new WcwtScaledPlaceholderTextField(getStyle(), font, 0, 0, 0, 0);
-        field.setBordered(false);
-        field.setMaxLength(25);
-        field.setTextColor(0xFFFFFF);
-        field.setSelectionColor(0xFF000080);
+    private int patternManagementListTop() {
+        return patternManagementPage.top();
+    }
+
+    private int patternManagementListHeight() {
+        return patternManagementPage.height();
+    }
+
+    private int patternManagementRowHeight(PatternManagementRow row) {
+        return row instanceof PatternManagementHeaderRow
+                ? PATTERN_MANAGEMENT_HEADER_ROW_H
+                : PATTERN_MANAGEMENT_SLOT_ROW_H;
+    }
+
+    private int patternManagementVisibleRowCount(int scroll) {
+        int remaining = patternManagementListHeight();
+        int count = 0;
+        for (int index = scroll; index < patternManagementRows.size(); index++) {
+            int height = patternManagementRowHeight(patternManagementRows.get(index));
+            boolean slotRow = !(patternManagementRows.get(index) instanceof PatternManagementHeaderRow);
+            int needed = slotRow ? Math.max(1, height - 1) : height;
+            if (needed > remaining) {
+                break;
+            }
+            remaining -= height;
+            count++;
+        }
+        return Math.max(1, count);
+    }
+
+    private int patternManagementMaxScroll() {
+        int listHeight = patternManagementListHeight();
+        if (patternManagementRows.isEmpty() || listHeight <= 0) {
+            return 0;
+        }
+        int totalHeight = 0;
+        for (var row : patternManagementRows) {
+            totalHeight += patternManagementRowHeight(row);
+        }
+        if (totalHeight <= listHeight) {
+            return 0;
+        }
+        int maxScroll = patternManagementRows.size() - 1;
+        while (maxScroll > 0) {
+            int height = 0;
+            for (int index = maxScroll; index < patternManagementRows.size(); index++) {
+                height += patternManagementRowHeight(patternManagementRows.get(index));
+            }
+            if (height >= listHeight) {
+                break;
+            }
+            maxScroll--;
+        }
+        return maxScroll;
+    }
+
+    private int patternManagementRowY(int scroll, int visibleRow) {
+        int rowY = patternManagementListTop();
+        for (int index = 0; index < visibleRow; index++) {
+            int rowIndex = scroll + index;
+            if (rowIndex < 0 || rowIndex >= patternManagementRows.size()) {
+                break;
+            }
+            rowY += patternManagementRowHeight(patternManagementRows.get(rowIndex));
+        }
+        return rowY;
+    }
+
+    private int patternManagementVisibleRowAt(int relY, int scroll) {
+        int rowY = patternManagementListTop();
+        int listBottom = rowY + patternManagementListHeight();
+        if (relY < rowY || relY >= listBottom) {
+            return -1;
+        }
+        for (int visibleRow = 0; ; visibleRow++) {
+            int rowIndex = scroll + visibleRow;
+            if (rowIndex < 0 || rowIndex >= patternManagementRows.size()) {
+                return -1;
+            }
+            int height = patternManagementRowHeight(patternManagementRows.get(rowIndex));
+            if (relY < rowY + height) {
+                return visibleRow;
+            }
+            rowY += height;
+            if (rowY >= listBottom) {
+                return -1;
+            }
+        }
+    }
+
+    private EditBox createPatternManagementTextField(ExtendedPanelLayout.Rect rect, Component placeholder) {
+        int x = leftPos + rect.left();
+        int y = topPos + rect.top();
+        EditBox field;
+        if (PlusPresence.available()) {
+            field = PlusMappingClient.createTextField(getStyle(), font, x, y, rect.width(), rect.height(), placeholder);
+        } else {
+            var fallback = new WcwtScaledPlaceholderTextField(getStyle(), font, x, y, rect.width(), rect.height());
+            fallback.setPlaceholder(placeholder);
+            fallback.setBordered(false);
+            fallback.setMaxLength(64);
+            fallback.setTextColor(0xFFFFFF);
+            fallback.setSelectionColor(0xFF000080);
+            field = fallback;
+        }
         field.setVisible(true);
-        widgets.add(id, field);
+        addRenderableWidget(field);
         return field;
+    }
+
+    private void relayoutPatternManagementTextFields() {
+        String searchValue = patternManageSearchField != null ? patternManageSearchField.getValue() : "";
+        String mappingValue = patternManageMappingField != null ? patternManageMappingField.getValue() : "";
+        if (patternManageSearchField != null) {
+            removeWidget(patternManageSearchField);
+        }
+        if (patternManageMappingField != null) {
+            removeWidget(patternManageMappingField);
+        }
+        patternManageSearchField = createPatternManagementTextField(patternManagementSearchFieldRect,
+                Component.translatable("gui.wcwt.pattern_management.provider_search"));
+        patternManageSearchField.setValue(searchValue);
+        patternManageSearchField.setResponder(str -> onPatternManagementSearchChanged());
+        patternManageMappingField = createPatternManagementTextField(patternManagementMappingFieldRect,
+                Component.translatable("gui.wcwt.pattern_management.mapping_input"));
+        patternManageMappingField.setValue(mappingValue);
     }
 
     private void renderBatchProcessingLabels(GuiGraphics guiGraphics, int color) {
@@ -5197,6 +5236,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (patternManageSearchField != null && patternManageSearchField.isFocused()
+                && patternManageSearchField.charTyped(codePoint, modifiers)) {
+            return true;
+        }
+        if (patternManageMappingField != null && patternManageMappingField.isFocused()
+                && patternManageMappingField.charTyped(codePoint, modifiers)) {
+            return true;
+        }
+        return super.charTyped(codePoint, modifiers);
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if ((patternManageSearchField != null && patternManageSearchField.isFocused()
                 && patternManageSearchField.keyPressed(keyCode, scanCode, modifiers))
@@ -5251,7 +5303,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     ? "gui.wcwt.pattern_management.mapping_added"
                     : "gui.wcwt.pattern_management.mapping_failed"));
             if (localMappingAdded && patternManageSearchField != null) {
-                ExtendedAePlusUploadCompat.rememberUploadSearchKey(searchText);
                 patternManageSearchField.setValue(mappingText.trim());
                 resolvedPatternManagementSearchText = resolveClientProviderSearchText(mappingText);
             }
@@ -5280,6 +5331,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (inRect(relX, relY, patternManagementCancelButton)) {
             playPatternManagementClickSound();
+            if (PlusPresence.available()) {
+                minecraft.setScreen(PlusMappingClient.openMappingScreen(this));
+                return true;
+            }
             if (patternManageSearchField != null) {
                 patternManageSearchField.setValue("");
             }
@@ -5384,7 +5439,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (search.isEmpty() || mapping.isEmpty()) {
             return false;
         }
-        return ExtendedAePlusUploadCompat.addOrUpdateAliasMapping(search, mapping);
+        return ExtendedAePlusUploadCompat.addOrUpdateRecipeTypeMapping(search, mapping);
     }
 
     private void displayPatternManagementMessage(Component message) {
@@ -5428,16 +5483,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return getFirstVisiblePatternProviderId();
     }
 
-    private boolean containsPatternProvider(long providerId) {
-        return providerId > 0 && patternProviders.stream().anyMatch(entry -> entry.providerId() == providerId);
-    }
-
     private boolean isPatternProviderVisible(long providerId) {
-        if (providerId <= 0 || patternManagementRows.isEmpty() || patternManagementPage.height() <= 0) {
+        if (providerId <= 0 || patternManagementRows.isEmpty() || patternManagementListHeight() <= 0) {
             return false;
         }
-        int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
         int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
+        int visibleRows = patternManagementVisibleRowCount(scroll);
         int end = Math.min(patternManagementRows.size(), scroll + visibleRows);
         for (int rowIndex = scroll; rowIndex < end; rowIndex++) {
             var row = patternManagementRows.get(rowIndex);
@@ -5454,12 +5505,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private long getFirstVisiblePatternProviderId() {
-        if (patternManagementRows.isEmpty() || patternManagementPage.height() <= 0) {
+        if (patternManagementRows.isEmpty() || patternManagementListHeight() <= 0) {
             return -1L;
         }
 
-        int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
         int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
+        int visibleRows = patternManagementVisibleRowCount(scroll);
         int end = Math.min(patternManagementRows.size(), scroll + visibleRows);
         for (int rowIndex = scroll; rowIndex < end; rowIndex++) {
             var row = patternManagementRows.get(rowIndex);
@@ -5724,15 +5775,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (relX < patternManagementPage.left()
                 || relX >= patternManagementPage.left() + patternManagementPage.width()
-                || relY < patternManagementPage.top()
-                || relY >= patternManagementPage.top() + patternManagementPage.height()) {
+                || relY < patternManagementListTop()
+                || relY >= patternManagementListTop() + patternManagementListHeight()) {
             return null;
         }
-        int visibleRow = (relY - patternManagementPage.top()) / PATTERN_MANAGEMENT_ROW_H;
-        int rowIndex = (patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0) + visibleRow;
-        if (rowIndex < 0 || rowIndex >= patternManagementRows.size()) {
+        int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
+        int visibleRow = patternManagementVisibleRowAt(relY, scroll);
+        if (visibleRow < 0) {
             return null;
         }
+        int rowIndex = scroll + visibleRow;
         if (patternManagementRows.get(rowIndex) instanceof PatternManagementHeaderRow header) {
             return new PatternManagementHeaderHit(header, visibleRow);
         }
@@ -5744,14 +5796,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return null;
         }
         int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
-        int visibleRows = Math.max(1, patternManagementPage.height() / PATTERN_MANAGEMENT_ROW_H);
+        int visibleRows = patternManagementVisibleRowCount(scroll);
         for (int visibleRow = 0; visibleRow < visibleRows; visibleRow++) {
             int rowIndex = scroll + visibleRow;
             if (rowIndex < 0 || rowIndex >= patternManagementRows.size()) {
                 break;
             }
             var row = patternManagementRows.get(rowIndex);
-            int rowY = patternManagementPage.top() + visibleRow * PATTERN_MANAGEMENT_ROW_H;
+            int rowY = patternManagementRowY(scroll, visibleRow);
             if (row instanceof PatternManagementHeaderRow header) {
                 if (inRect(relX, relY, rowButton(patternManagementUploadButton, rowY))) {
                     return new PatternManagementHeaderButtonHit(header.firstEntry(), PatternManagementHeaderButton.UPLOAD);
@@ -5773,11 +5825,22 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private PatternManagementSlotHit getPatternManagementSlotAt(int relX, int relY) {
-        var activeRect = isToolkitExpandedInManagementArea() ? managementToolkitBackgroundRect : patternManagementPage;
-        if (relX < activeRect.left()
-                || relX >= activeRect.left() + activeRect.width()
-                || relY < activeRect.top()
-                || relY >= activeRect.top() + activeRect.height()) {
+        int listLeft = isToolkitExpandedInManagementArea()
+                ? managementToolkitBackgroundRect.left()
+                : patternManagementPage.left();
+        int listTop = isToolkitExpandedInManagementArea()
+                ? managementToolkitBackgroundRect.top()
+                : patternManagementListTop();
+        int listWidth = isToolkitExpandedInManagementArea()
+                ? managementToolkitBackgroundRect.width()
+                : patternManagementPage.width();
+        int listHeight = isToolkitExpandedInManagementArea()
+                ? managementToolkitBackgroundRect.height()
+                : patternManagementListHeight();
+        if (relX < listLeft
+                || relX >= listLeft + listWidth
+                || relY < listTop
+                || relY >= listTop + listHeight) {
             return null;
         }
         if (isToolkitExpandedInManagementArea()) {
@@ -5802,8 +5865,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     ? new PatternManagementSlotHit(null, slot)
                     : null;
         }
-        int visibleRow = (relY - patternManagementPage.top()) / PATTERN_MANAGEMENT_ROW_H;
-        int rowIndex = (patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0) + visibleRow;
+        int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
+        int visibleRow = patternManagementVisibleRowAt(relY, scroll);
+        if (visibleRow < 0) {
+            return null;
+        }
+        int rowIndex = scroll + visibleRow;
         if (rowIndex < 0 || rowIndex >= patternManagementRows.size()) {
             return null;
         }
@@ -5813,8 +5880,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int relSlotX = relX - patternManagementPage.left();
         int col = relSlotX / PATTERN_MANAGEMENT_SLOT_STEP;
         int slotX = patternManagementPage.left() + col * PATTERN_MANAGEMENT_SLOT_STEP;
-        int slotY = patternManagementPage.top() + visibleRow * PATTERN_MANAGEMENT_ROW_H
-                + PATTERN_MANAGEMENT_SLOT_Y_OFFSET;
+        int slotY = patternManagementRowY(scroll, visibleRow) + PATTERN_MANAGEMENT_SLOT_Y_OFFSET;
         int hitX = patternManagementSlotHitMinX(slotX);
         int hitY = patternManagementSlotHitMinY(slotY);
         if (col < 0 || col >= row.slots().size()
@@ -5968,9 +6034,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         int relX = mouseX - leftPos;
         int relY = mouseY - topPos;
-        int visibleRow = (relY - patternManagementPage.top()) / PATTERN_MANAGEMENT_ROW_H;
-        int rowIndex = (patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0)
-                + visibleRow;
+        int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
+        int visibleRow = patternManagementVisibleRowAt(relY, scroll);
+        if (visibleRow < 0) {
+            return null;
+        }
+        int rowIndex = scroll + visibleRow;
         if (rowIndex < 0 || rowIndex >= patternManagementRows.size()
                 || !(patternManagementRows.get(rowIndex) instanceof PatternManagementSlotsRow row)) {
             return null;
@@ -5980,8 +6049,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return null;
         }
         int slotX = patternManagementPage.left() + col * PATTERN_MANAGEMENT_SLOT_STEP;
-        int slotY = patternManagementPage.top() + visibleRow * PATTERN_MANAGEMENT_ROW_H
-                + PATTERN_MANAGEMENT_SLOT_Y_OFFSET;
+        int slotY = patternManagementRowY(scroll, visibleRow) + PATTERN_MANAGEMENT_SLOT_Y_OFFSET;
         if (!isMouseOverPatternManagementSlot(mouseX, mouseY, slotX, slotY)) {
             return null;
         }
