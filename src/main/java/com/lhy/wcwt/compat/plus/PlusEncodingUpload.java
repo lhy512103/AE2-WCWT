@@ -50,8 +50,7 @@ public final class PlusEncodingUpload {
         }
         ItemStack remaining = encodedPattern.copy();
         EncodedPatternFilter filter = new EncodedPatternFilter();
-        for (int index = 0; index < matches.size(); index++) {
-            PatternContainer provider = matches.get(index);
+        for (PatternContainer provider : matches) {
             InternalInventory inv = provider.getTerminalPatternInventory();
             if (inv == null) {
                 continue;
@@ -60,7 +59,8 @@ public final class PlusEncodingUpload {
             remaining = ExtendedAEPatternUploadUtil.insertIntoAccessiblePatternSlots(provider, remaining, filter);
             int slot = firstChangedSlot(inv, before);
             if (slot >= 0) {
-                ExtendedAEPatternUploadUtil.recordProviderUpload(player, -1L - index, provider, slot);
+                ExtendedAEPatternUploadUtil.recordProviderUpload(
+                        player, encodeProviderIndex(providers, provider), provider, slot);
             }
             if (remaining.isEmpty()) {
                 return UniqueUploadResult.uploaded(targetName, slot);
@@ -71,6 +71,11 @@ public final class PlusEncodingUpload {
 
     public static void requestReturnLastPattern() {
         PacketDistributor.sendToServer(ReturnLastPatternC2SPacket.INSTANCE);
+    }
+
+    private static long encodeProviderIndex(List<PatternContainer> providers, PatternContainer provider) {
+        int index = providers.indexOf(provider);
+        return index >= 0 ? -1L - index : Long.MIN_VALUE;
     }
 
     private static ItemStack[] snapshot(InternalInventory inv) {

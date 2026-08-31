@@ -41,6 +41,7 @@ import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
+import com.lhy.wcwt.compat.AdvancedAePatternCompat;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusMatrixUploadCompat;
@@ -119,7 +120,6 @@ import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -212,6 +212,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             new PatternProviderSlot[PATTERN_PROVIDER_VISIBLE_SLOTS];
     private int syncedPatternEncodingMode = EncodingMode.PROCESSING.ordinal();
     private final List<RecipeHolder<StonecutterRecipe>> stonecuttingRecipes = new ArrayList<>();
+    @Nullable
+    private RecipeHolder<CraftingRecipe> currentPatternCraftingRecipe;
 
     /** 处理样板：合并相同输入材料（JEI 编码与手动编辑时行为对齐 AE2 EncodingHelper）。 */
     private boolean processingMaterialsMerge;
@@ -2391,8 +2393,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         tryFillBlankPatternFromNetwork();
 
-        if (patternEncodingLogic == null || blankPatternSlot == null) {
-            logEncode("missing patternEncodingLogic or blankPatternSlot, mode={}", mode);
+        if (patternEncodingLogic == null || blankPatternSlot == null || encodedPatternSlot == null) {
+            logEncode("missing patternEncodingLogic or pattern slots, mode={}", mode);
             return;
         }
 
@@ -2400,48 +2402,36 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 mode, blankPatternSlot.getItem(), summarizeConfig(patternEncodingLogic.getEncodedInputInv()),
                 summarizeConfig(patternEncodingLogic.getEncodedOutputInv()));
 
-        // 不在此处调用 patternEncodingLogic.setMode(mode)：
-        // setMode() 会触发 fixCraftingRecipes()，切换到 CRAFTING 模式时会清除
-        // encodedInputInv 中所有非 AEItemKey 的物品（如流体），
-        // 导致 PROCESSING 模式下已放置的流体输入丢失，使 PROCESSING 编码也失败。
-        // 这里只需要根据传入的 mode 参数分发编码逻辑即可。
         ItemStack encodedPattern;
         try {
-            encodedPattern = switch (mode) {
-                case CRAFTING -> encodeCraftingPattern();
-                case PROCESSING -> createProcessingPattern();
-                case SMITHING_TABLE -> encodeSmithingTablePattern();
-                case STONECUTTING -> encodeStonecuttingPattern();
-            };
+            encodedPattern = createEncodedPattern(mode);
         } catch (Exception e) {
             if (DEBUG_ENCODE) {
                 com.lhy.wcwt.WcwtMod.LOGGER.warn("WCWT encode debug: exception mode={}", mode, e);
             }
             return;
         }
-        if (encodedPattern.isEmpty()) {
+        if (encodedPattern == null || encodedPattern.isEmpty()) {
             logEncode("encoded pattern is empty, mode={}", mode);
+            clearEncodedPatternOnly();
             return;
         }
 
-        if (encodedPatternSlot == null || blankPatternSlot == null) {
-            logEncode("missing encoded or blank pattern slot, mode={}, encoded={}",
-                    mode, encodedPattern);
-            return;
-        }
-
-        ItemStack editSlotStack = encodedPatternSlot.getItem();
-        boolean consumeEditPattern = PatternDetailsHelper.isEncodedPattern(editSlotStack);
-        if (!editSlotStack.isEmpty() && !consumeEditPattern) {
+        ItemStack encodeOutput = encodedPatternSlot.getItem();
+        if (!encodeOutput.isEmpty()
+                && !PatternDetailsHelper.isEncodedPattern(encodeOutput)
+                && !AEItems.BLANK_PATTERN.is(encodeOutput)) {
             logEncode("encoded pattern slot contains invalid item, mode={}, existing={}",
-                    mode, editSlotStack);
+                    mode, encodeOutput);
             return;
         }
-
-        if (!consumeEditPattern && !hasBlankPatternForEncoding()) {
-            logEncode("no consumable pattern source, mode={}, blank={}, edit={}",
-                    mode, blankPatternSlot.getItem(), editSlotStack);
-            return;
+        if (encodeOutput.isEmpty()) {
+            if (!hasBlankPatternForEncoding()) {
+                logEncode("no consumable pattern source, mode={}, blank={}",
+                        mode, blankPatternSlot.getItem());
+                return;
+            }
+            consumeBlankPatternForEncoding();
         }
 
         ResourceLocation recipeId = resolveEncodedPatternRecipeId(mode);
@@ -2456,74 +2446,108 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         logPatternUploadDebug("server encoded metadata player={}, metadata={}, encoded={}",
                 getPlayer().getScoreboardName(), PatternUploadMetadata.getProviderSearchText(encodedPattern), encodedPattern);
 
-        if (uploadEnabled && mode != EncodingMode.PROCESSING) {
-            MatrixUploadResult matrixUploadResult = uploadEncodedPatternToMatrix(encodedPattern);
-            if (matrixUploadResult.state() == MatrixUploadState.UPLOADED
-                    || matrixUploadResult.state() == MatrixUploadState.DUPLICATE_RETURNED) {
-                consumePatternForUpload(consumeEditPattern);
-                patternEncodingLogic.setMode(mode);
-                syncedPatternEncodingMode = mode.ordinal();
-                updatePatternPreview(mode);
-                tryFillBlankPatternFromNetwork();
-                if (getPlayer() instanceof ServerPlayer serverPlayer) {
-                    PacketDistributor.sendToPlayer(serverPlayer,
-                            PatternProviderListPacket.buildForPlayer(serverPlayer, resolvedProviderSearchText));
-                    if (matrixUploadResult.providerId() > 0 && matrixUploadResult.slot() >= 0) {
-                        PacketDistributor.sendToPlayer(serverPlayer,
-                                new PatternProviderFocusPacket(matrixUploadResult.providerId(), matrixUploadResult.slot()));
-                    }
-                }
-                logEncode("matrix upload result={}, mode={}, encoded={}",
-                        matrixUploadResult.state(), mode, encodedPattern);
-                broadcastChanges();
-                return;
-            }
-            if (matrixUploadResult.state() == MatrixUploadState.DUPLICATE_ABORTED) {
-                logEncode("matrix duplicate detected but blank return failed, mode={}, encoded={}",
-                        mode, encodedPattern);
-                return;
-            }
-        }
+        boolean editingExisting = PatternDetailsHelper.isEncodedPattern(encodeOutput);
+        encodedPatternSlot.set(encodedPattern);
+        updatePatternPreview(mode);
 
-        UploadAttemptResult uploadAttempt = UploadAttemptResult.NO_TARGET;
         if (uploadEnabled) {
-            uploadAttempt = uploadEncodedPatternToMatchingProvider(encodedPattern, resolvedProviderSearchText);
-            logPatternUploadDebug(
-                    "server unique upload attempt player={}, uploaded={}, hadTarget={}, providerName={}, providerId={}, slot={}, resolvedSearchText={}",
-                    getPlayer().getScoreboardName(), uploadAttempt.uploaded(), uploadAttempt.hadTarget(),
-                    uploadAttempt.providerName(), uploadAttempt.providerId(), uploadAttempt.slot(),
-                    resolvedProviderSearchText);
-            if (uploadAttempt.uploaded()) {
-                consumePatternForUpload(consumeEditPattern);
-                patternEncodingLogic.setMode(mode);
-                syncedPatternEncodingMode = mode.ordinal();
-                updatePatternPreview(mode);
+            if (tryUploadEncodedPattern(mode, encodedPattern, resolvedProviderSearchText)) {
+                encodedPatternSlot.set(ItemStack.EMPTY);
                 tryFillBlankPatternFromNetwork();
-                if (getPlayer() instanceof ServerPlayer serverPlayer) {
-                    serverPlayer.sendSystemMessage(Component.translatable(
-                            "extendedae_plus.screen.upload.auto_upload_success", uploadAttempt.providerName()));
-                    PacketDistributor.sendToPlayer(serverPlayer,
-                            PatternProviderListPacket.buildForPlayer(serverPlayer, resolvedProviderSearchText));
-                    if (uploadAttempt.providerId() > 0 && uploadAttempt.slot() >= 0) {
-                        PacketDistributor.sendToPlayer(serverPlayer,
-                                new PatternProviderFocusPacket(uploadAttempt.providerId(), uploadAttempt.slot()));
-                    }
-                }
-                logEncode("uploaded mode={}, search={}, provider={}, encoded={}",
-                        mode, resolvedProviderSearchText, uploadAttempt.providerName(), encodedPattern);
                 broadcastChanges();
                 return;
             }
         }
 
         boolean preferEditSlot = uploadEnabled && fallbackToEditSlot;
-        if (uploadEnabled && uploadAttempt.hadTarget() && getPlayer() instanceof ServerPlayer serverPlayer) {
+        if (!preferEditSlot && !editingExisting) {
+            Slot cacheSlot = findEmptyPatternCacheSlot();
+            if (cacheSlot != null) {
+                cacheSlot.set(encodedPatternSlot.getItem());
+                encodedPatternSlot.set(ItemStack.EMPTY);
+                logEncode("success mode={}, targetSlot=pattern_cache_{}, encoded={}",
+                        mode, cacheSlot.index, encodedPattern);
+            }
+        }
+        tryFillBlankPatternFromNetwork();
+        logEncode("success mode={}, targetSlot=encoded_edit_slot, encoded={}", mode, encodedPattern);
+        broadcastChanges();
+    }
+
+    @Nullable
+    private ItemStack createEncodedPattern(EncodingMode mode) {
+        return switch (mode) {
+            case CRAFTING -> encodeCraftingPattern();
+            case PROCESSING -> encodeProcessingPattern();
+            case SMITHING_TABLE -> encodeSmithingTablePattern();
+            case STONECUTTING -> encodeStonecuttingPattern();
+        };
+    }
+
+    private boolean tryUploadEncodedPattern(EncodingMode mode, ItemStack encodedPattern,
+                                            @Nullable String resolvedProviderSearchText) {
+        if (mode != EncodingMode.PROCESSING) {
+            MatrixUploadResult matrixUploadResult = uploadEncodedPatternToMatrix(encodedPattern);
+            if (matrixUploadResult.state() == MatrixUploadState.UPLOADED
+                    || matrixUploadResult.state() == MatrixUploadState.DUPLICATE_RETURNED) {
+                notifyEncodedPatternUpload(resolvedProviderSearchText, matrixUploadResult.providerId(),
+                        matrixUploadResult.slot(), null);
+                logEncode("matrix upload result={}, mode={}, encoded={}",
+                        matrixUploadResult.state(), mode, encodedPattern);
+                return true;
+            }
+            if (matrixUploadResult.state() == MatrixUploadState.DUPLICATE_ABORTED) {
+                logEncode("matrix duplicate detected but blank return failed, mode={}, encoded={}",
+                        mode, encodedPattern);
+                return false;
+            }
+        }
+
+        UploadAttemptResult uploadAttempt = uploadEncodedPatternToMatchingProvider(
+                encodedPattern, resolvedProviderSearchText);
+        logPatternUploadDebug(
+                "server unique upload attempt player={}, uploaded={}, hadTarget={}, providerName={}, providerId={}, slot={}, resolvedSearchText={}",
+                getPlayer().getScoreboardName(), uploadAttempt.uploaded(), uploadAttempt.hadTarget(),
+                uploadAttempt.providerName(), uploadAttempt.providerId(), uploadAttempt.slot(),
+                resolvedProviderSearchText);
+        if (uploadAttempt.uploaded()) {
+            notifyEncodedPatternUpload(resolvedProviderSearchText, uploadAttempt.providerId(),
+                    uploadAttempt.slot(), uploadAttempt.providerName());
+            logEncode("uploaded mode={}, search={}, provider={}, encoded={}",
+                    mode, resolvedProviderSearchText, uploadAttempt.providerName(), encodedPattern);
+            return true;
+        }
+        if (uploadAttempt.hadTarget() && getPlayer() instanceof ServerPlayer serverPlayer) {
             serverPlayer.sendSystemMessage(Component.translatable(
                     "extendedae_plus.screen.upload.auto_upload_failed", uploadAttempt.providerName()));
         }
+        return false;
+    }
 
-        storeEncodedPatternLocally(mode, encodedPattern, consumeEditPattern, preferEditSlot,
-                uploadAttempt.hadTarget() ? "upload_failed_local_fallback" : "local_encode");
+    private void notifyEncodedPatternUpload(@Nullable String resolvedProviderSearchText, long providerId, int slot,
+                                            @Nullable String providerName) {
+        if (!(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        if (providerName != null) {
+            serverPlayer.sendSystemMessage(Component.translatable(
+                    "extendedae_plus.screen.upload.auto_upload_success", providerName));
+        }
+        PacketDistributor.sendToPlayer(serverPlayer,
+                PatternProviderListPacket.buildForPlayer(serverPlayer, resolvedProviderSearchText));
+        if (providerId > 0 && slot >= 0) {
+            PacketDistributor.sendToPlayer(serverPlayer, new PatternProviderFocusPacket(providerId, slot));
+        }
+    }
+
+    private void clearEncodedPatternOnly() {
+        if (encodedPatternSlot == null) {
+            return;
+        }
+        ItemStack encodedPattern = encodedPatternSlot.getItem();
+        if (PatternDetailsHelper.isEncodedPattern(encodedPattern)) {
+            encodedPatternSlot.set(AEItems.BLANK_PATTERN.stack(encodedPattern.getCount()));
+        }
     }
 
     private boolean hasBlankPatternForEncoding() {
@@ -2565,30 +2589,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     @Nullable
     private ResourceLocation resolveCraftingRecipeId() {
-        if (patternEncodingLogic == null) {
-            return null;
-        }
-        var ingredients = new ItemStack[9];
-        boolean valid = false;
-        for (int slot = 0; slot < ingredients.length; slot++) {
-            GenericStack stack = patternEncodingLogic.getEncodedInputInv().getStack(slot);
-            if (stack == null) {
-                ingredients[slot] = ItemStack.EMPTY;
-                continue;
-            }
-            if (!(stack.what() instanceof AEItemKey itemKey)) {
-                return null;
-            }
-            ingredients[slot] = itemKey.toStack(1);
-            valid = true;
-        }
-        if (!valid) {
-            return null;
-        }
-        var input = CraftingInput.of(3, 3, java.util.Arrays.asList(ingredients));
-        var level = getPlayer().level();
-        var recipe = WcwtPolymorphCompat.getCraftingRecipe(this, input, level, getPlayer()).orElse(null);
-        return recipe != null ? recipe.id() : null;
+        getCraftingPatternPreview();
+        return currentPatternCraftingRecipe == null ? null : currentPatternCraftingRecipe.id();
     }
 
     @Nullable
@@ -2622,63 +2624,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
     }
 
-    private void consumePatternForUpload(boolean consumeEditPattern) {
-        if (consumeEditPattern) {
-            encodedPatternSlot.set(ItemStack.EMPTY);
-        } else {
-            consumeBlankPatternForEncoding();
-        }
-    }
 
-    private void storeEncodedPatternLocally(EncodingMode mode,
-                                            ItemStack encodedPattern,
-                                            boolean consumeEditPattern,
-                                            boolean preferEditSlot,
-                                            String reason) {
-        boolean storedInCache = false;
-
-        if (preferEditSlot) {
-            if (!consumeEditPattern) {
-                consumeBlankPatternForEncoding();
-            }
-            encodedPatternSlot.set(encodedPattern);
-            patternEncodingLogic.setMode(mode);
-            syncedPatternEncodingMode = mode.ordinal();
-            updatePatternPreview(mode);
-            tryFillBlankPatternFromNetwork();
-            logEncode("success mode={}, targetSlot=encoded_edit_slot, reason={}, encoded={}",
-                    mode, reason, encodedPattern);
-            broadcastChanges();
-            return;
-        }
-
-        Slot targetSlot = findEmptyPatternCacheSlot();
-        if (targetSlot != null && !consumeEditPattern) {
-            consumeBlankPatternForEncoding();
-            targetSlot.set(encodedPattern);
-            patternEncodingLogic.setMode(mode);
-            syncedPatternEncodingMode = mode.ordinal();
-            updatePatternPreview(mode);
-            tryFillBlankPatternFromNetwork();
-            logEncode("success mode={}, targetSlot=pattern_cache_{}, reason={}, encoded={}",
-                    mode, targetSlot.index, reason, encodedPattern);
-            storedInCache = true;
-        }
-
-        if (!storedInCache) {
-            if (!consumeEditPattern) {
-                consumeBlankPatternForEncoding();
-            }
-            encodedPatternSlot.set(encodedPattern);
-            syncedPatternEncodingMode = patternEncodingLogic.getMode().ordinal();
-            updatePatternPreview(getPatternEncodingMode());
-            tryFillBlankPatternFromNetwork();
-            logEncode("success mode={}, targetSlot=encoded_edit_slot, reason={}, encoded={}",
-                    mode, reason, encodedPattern);
-        }
-
-        broadcastChanges();
-    }
 
     private void tryFillBlankPatternFromNetwork() {
         if (isClientSide() || patternEncodingLogic == null || blankPatternSlot == null) {
@@ -3000,26 +2946,34 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private ItemStack getCraftingPatternPreview() {
         var ingredients = new ItemStack[9];
+        boolean invalidIngredients = false;
         boolean valid = false;
         for (int slot = 0; slot < ingredients.length; slot++) {
-            GenericStack stack = patternEncodingLogic.getEncodedInputInv().getStack(slot);
+            ItemStack stack = getEncodedCraftingIngredient(slot);
             if (stack == null) {
+                invalidIngredients = true;
                 ingredients[slot] = ItemStack.EMPTY;
-            } else if (stack.what() instanceof AEItemKey itemKey) {
-                ingredients[slot] = itemKey.toStack(1);
-                valid = true;
             } else {
-                return ItemStack.EMPTY;
+                ingredients[slot] = stack;
+                if (!stack.isEmpty()) {
+                    valid = true;
+                }
             }
         }
-        if (!valid) {
+        if (!valid || invalidIngredients) {
+            currentPatternCraftingRecipe = null;
             return ItemStack.EMPTY;
         }
 
         var input = CraftingInput.of(3, 3, java.util.Arrays.asList(ingredients));
         var level = getPlayer().level();
-        var recipe = WcwtPolymorphCompat.getCraftingRecipe(this, input, level, getPlayer()).orElse(null);
-        return recipe == null ? ItemStack.EMPTY : recipe.value().assemble(input, level.registryAccess());
+        if (currentPatternCraftingRecipe == null || !currentPatternCraftingRecipe.value().matches(input, level)) {
+            currentPatternCraftingRecipe = WcwtPolymorphCompat.getCraftingRecipe(this, input, level, getPlayer())
+                    .orElse(null);
+        }
+        return currentPatternCraftingRecipe == null
+                ? ItemStack.EMPTY
+                : currentPatternCraftingRecipe.value().assemble(input, level.registryAccess());
     }
 
     private ItemStack getSmithingPatternPreview() {
@@ -3042,67 +2996,55 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         updateStonecuttingRecipes();
         var selectedRecipeId = patternEncodingLogic.getStonecuttingRecipeId();
-        if (selectedRecipeId == null && !stonecuttingRecipes.isEmpty()) {
-            selectedRecipeId = stonecuttingRecipes.get(0).id();
-            patternEncodingLogic.setStonecuttingRecipeId(selectedRecipeId);
+        if (selectedRecipeId == null) {
+            return ItemStack.EMPTY;
         }
 
         var input = new SingleRecipeInput(inputKey.toStack());
         var level = getPlayer().level();
-        var recipe = selectedRecipeId == null ? null : level.getRecipeManager()
+        var recipe = level.getRecipeManager()
                 .getRecipeFor(RecipeType.STONECUTTING, input, level, selectedRecipeId)
                 .orElse(null);
         return recipe == null ? ItemStack.EMPTY : recipe.value().getResultItem(level.registryAccess()).copy();
     }
 
+    @Nullable
     private ItemStack encodeCraftingPattern() {
         var ingredients = new ItemStack[9];
         boolean valid = false;
         for (int slot = 0; slot < ingredients.length; slot++) {
-            GenericStack stack = patternEncodingLogic.getEncodedInputInv().getStack(slot);
-            if (stack == null) {
-                ingredients[slot] = ItemStack.EMPTY;
-                continue;
+            ingredients[slot] = getEncodedCraftingIngredient(slot);
+            if (ingredients[slot] == null) {
+                logEncode("crafting slot {} is not an item key", slot);
+                return null;
             }
-            if (!(stack.what() instanceof AEItemKey itemKey)) {
-                logEncode("crafting slot {} is not an item key: {}", slot, stack);
-                return ItemStack.EMPTY;
+            if (!ingredients[slot].isEmpty()) {
+                valid = true;
             }
-            ingredients[slot] = itemKey.toStack(1);
-            valid = true;
         }
         if (!valid) {
             logEncode("crafting has no valid inputs");
-            return ItemStack.EMPTY;
+            return null;
         }
 
-        var input = CraftingInput.of(3, 3, java.util.Arrays.asList(ingredients));
-        var level = getPlayer().level();
-        RecipeHolder<CraftingRecipe> recipe =
-                WcwtPolymorphCompat.getCraftingRecipe(this, input, level, getPlayer()).orElse(null);
-        if (recipe == null) {
-            logEncode("crafting recipe not found, ingredients={}",
-                    java.util.Arrays.toString(ingredients));
-            return ItemStack.EMPTY;
+        ItemStack result = getCraftingPatternPreview();
+        if (result.isEmpty() || currentPatternCraftingRecipe == null) {
+            logEncode("crafting recipe not found, ingredients={}", java.util.Arrays.toString(ingredients));
+            return null;
         }
-
-        ItemStack result = recipe.value().assemble(input, level.registryAccess());
-        if (result.isEmpty()) {
-            logEncode("crafting recipe assembled empty, recipe={}", recipe.id());
-            return ItemStack.EMPTY;
-        }
-        logEncode("crafting recipe found id={}, result={}", recipe.id(), result);
-        return PatternDetailsHelper.encodeCraftingPattern(recipe, ingredients, result,
+        logEncode("crafting recipe found id={}, result={}", currentPatternCraftingRecipe.id(), result);
+        return PatternDetailsHelper.encodeCraftingPattern(currentPatternCraftingRecipe, ingredients, result,
                 patternEncodingLogic.isSubstitution(), patternEncodingLogic.isFluidSubstitution());
     }
 
+    @Nullable
     private ItemStack encodeSmithingTablePattern() {
         if (!(patternEncodingLogic.getEncodedInputInv().getKey(0) instanceof AEItemKey template)
                 || !(patternEncodingLogic.getEncodedInputInv().getKey(1) instanceof AEItemKey base)
                 || !(patternEncodingLogic.getEncodedInputInv().getKey(2) instanceof AEItemKey addition)) {
             logEncode("smithing missing item inputs, inputs={}",
                     summarizeConfig(patternEncodingLogic.getEncodedInputInv()));
-            return ItemStack.EMPTY;
+            return null;
         }
 
         var input = new SmithingRecipeInput(template.toStack(), base.toStack(), addition.toStack());
@@ -3111,7 +3053,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (recipe == null) {
             logEncode("smithing recipe not found, template={}, base={}, addition={}",
                     template, base, addition);
-            return ItemStack.EMPTY;
+            return null;
         }
         var output = AEItemKey.of(recipe.value().assemble(input, level.registryAccess()));
         logEncode("smithing recipe found id={}, output={}", recipe.id(), output);
@@ -3119,28 +3061,26 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 patternEncodingLogic.isSubstitution());
     }
 
+    @Nullable
     private ItemStack encodeStonecuttingPattern() {
+        if (patternEncodingLogic.getStonecuttingRecipeId() == null) {
+            logEncode("stonecutting recipe id is missing");
+            return null;
+        }
         if (!(patternEncodingLogic.getEncodedInputInv().getKey(0) instanceof AEItemKey inputKey)) {
             logEncode("stonecutting missing item input, inputs={}",
                     summarizeConfig(patternEncodingLogic.getEncodedInputInv()));
-            return ItemStack.EMPTY;
-        }
-
-        updateStonecuttingRecipes();
-        var selectedRecipeId = patternEncodingLogic.getStonecuttingRecipeId();
-        if (selectedRecipeId == null && !stonecuttingRecipes.isEmpty()) {
-            selectedRecipeId = stonecuttingRecipes.get(0).id();
-            patternEncodingLogic.setStonecuttingRecipeId(selectedRecipeId);
+            return null;
         }
 
         var input = new SingleRecipeInput(inputKey.toStack());
         var level = getPlayer().level();
-        var recipe = selectedRecipeId == null ? null : level.getRecipeManager()
-                .getRecipeFor(RecipeType.STONECUTTING, input, level, selectedRecipeId)
+        var recipe = level.getRecipeManager()
+                .getRecipeFor(RecipeType.STONECUTTING, input, level, patternEncodingLogic.getStonecuttingRecipeId())
                 .orElse(null);
         if (recipe == null) {
             logEncode("stonecutting recipe not found, input={}", inputKey);
-            return ItemStack.EMPTY;
+            return null;
         }
         var output = AEItemKey.of(recipe.value().getResultItem(level.registryAccess()));
         logEncode("stonecutting recipe found id={}, output={}", recipe.id(), output);
@@ -3148,10 +3088,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 patternEncodingLogic.isSubstitution());
     }
 
-    private ItemStack createProcessingPattern() {
-        if (patternEncodingLogic == null || blankPatternSlot == null) {
-            logEncode("processing missing patternEncodingLogic or blankPatternSlot");
-            return ItemStack.EMPTY;
+    @Nullable
+    private ItemStack encodeProcessingPattern() {
+        if (patternEncodingLogic == null) {
+            logEncode("processing missing patternEncodingLogic");
+            return null;
         }
 
         var inputs = new GenericStack[patternEncodingLogic.getEncodedInputInv().size()];
@@ -3164,32 +3105,42 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         if (!valid) {
             logEncode("processing has no inputs");
-            return ItemStack.EMPTY;
+            return null;
         }
 
         var outputs = new GenericStack[patternEncodingLogic.getEncodedOutputInv().size()];
-        valid = false;
         for (int slot = 0; slot < outputs.length; slot++) {
             outputs[slot] = patternEncodingLogic.getEncodedOutputInv().getStack(slot);
-            if (outputs[slot] != null) {
-                valid = true;
-            }
-        }
-        if (!valid) {
-            logEncode("processing has no outputs");
-            return ItemStack.EMPTY;
         }
         if (outputs[0] == null) {
             logEncode("processing primary output is empty, outputs={}",
                     summarizeConfig(patternEncodingLogic.getEncodedOutputInv()));
-            return ItemStack.EMPTY;
+            return null;
         }
 
         logEncode("processing encode inputs={}, outputs={}",
                 java.util.Arrays.toString(inputs), java.util.Arrays.toString(outputs));
-        return PatternDetailsHelper.encodeProcessingPattern(
-                java.util.Arrays.stream(inputs).toList(),
-                java.util.Arrays.stream(outputs).toList());
+        var inputList = java.util.Arrays.asList(inputs);
+        var outputList = java.util.Arrays.asList(outputs);
+        ItemStack encodedSlotPattern = encodedPatternSlot == null ? ItemStack.EMPTY : encodedPatternSlot.getItem();
+        ItemStack advPattern = AdvancedAePatternCompat.encodeProcessingPattern(
+                encodedSlotPattern, inputList, outputList, getPlayer().level());
+        if (advPattern != null && !advPattern.isEmpty()) {
+            return advPattern;
+        }
+        return PatternDetailsHelper.encodeProcessingPattern(inputList, outputList);
+    }
+
+    @Nullable
+    private ItemStack getEncodedCraftingIngredient(int slot) {
+        AEKey what = patternEncodingLogic.getEncodedInputInv().getKey(slot);
+        if (what == null) {
+            return ItemStack.EMPTY;
+        }
+        if (what instanceof AEItemKey itemKey) {
+            return itemKey.toStack(1);
+        }
+        return null;
     }
 
     private static String summarizeConfig(appeng.util.ConfigInventory inventory) {
@@ -4525,9 +4476,20 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             var stack = slot.getItem();
             var detail = PatternDetailsHelper.decodePattern(stack, getPlayer().level());
 
-            var advPattern = AdvAeBridge.applyScale(stack, getPlayer().level(), scale, divide);
-            if (advPattern != null && !advPattern.isEmpty()) {
-                slot.set(advPattern);
+            var advView = AdvancedAePatternCompat.view(stack, getPlayer().level(), false);
+            if (advView != null) {
+                var input = advView.inputs().toArray(new GenericStack[0]);
+                var output = advView.outputs().toArray(new GenericStack[0]);
+                if (checkCanModify(input, scale, divide) && checkCanModify(output, scale, divide)) {
+                    var scaledInput = new GenericStack[input.length];
+                    var scaledOutput = new GenericStack[output.length];
+                    modifyStacks(input, scaledInput, scale, divide);
+                    modifyStacks(output, scaledOutput, scale, divide);
+                    slot.set(AdvancedAePatternCompat.encode(
+                            java.util.Arrays.asList(scaledInput),
+                            java.util.Arrays.asList(scaledOutput),
+                            advView.dirMap()));
+                }
                 continue;
             }
             
@@ -4828,7 +4790,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      * 仅在装载 advanced_ae 模组时才生效；否则忽略（避免 NoClassDefFoundError）。
      */
     public void updateCopyPatternDirection(AEKey key, @Nullable Direction dir) {
-        if (!ModList.get().isLoaded("advanced_ae")) {
+        if (!AdvancedAePatternCompat.available()) {
             logAdvanced("direction advanced_ae not loaded");
             return;
         }
@@ -4855,7 +4817,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
 
-        var newStack = AdvAeBridge.applyDirection(stack, getPlayer().level(), key, dir);
+        var advView = AdvancedAePatternCompat.view(stack, getPlayer().level(), true);
+        ItemStack newStack = ItemStack.EMPTY;
+        if (advView != null) {
+            advView.dirMap().put(key, dir);
+            newStack = AdvancedAePatternCompat.encode(advView.inputs(), advView.outputs(), advView.dirMap());
+        }
         if (newStack != null && !newStack.isEmpty()) {
             slot.set(newStack);
             logAdvanced("direction updated selectedIndex={} key={} dir={} old={} new={}",
@@ -4867,206 +4834,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
     }
 
-    /**
-     * AAE 桥接（反射调用，避免 compile-time 依赖 AAE jar）。
-     * 把样板（普通 AEProcessingPattern 或 AAE 的 AdvProcessingPattern）按方向重编码为 Adv 样板。
-     *
-     * 调用的目标 API：
-     *   net.pedroksl.advanced_ae.common.patterns.AdvProcessingPattern
-     *     - List&lt;GenericStack&gt; getSparseInputs()
-     *     - List&lt;GenericStack&gt; getSparseOutputs()
-     *     - LinkedHashMap&lt;AEKey,Direction&gt; getDirectionMap()
-     *   net.pedroksl.advanced_ae.common.patterns.AdvPatternDetailsEncoder
-     *     - static ItemStack encodeProcessingPattern(List, List, HashMap)
-     */
-    private static final class AdvAeBridge {
-        private static final String ADV_PATTERN_CLASS =
-                "net.pedroksl.advanced_ae.common.patterns.AdvProcessingPattern";
-        private static final String ADV_ENCODER_CLASS =
-                "net.pedroksl.advanced_ae.common.patterns.AdvPatternDetailsEncoder";
-
-        private static volatile boolean inited = false;
-        private static Class<?> advPatternClass;
-        private static java.lang.reflect.Method advGetSparseInputs;
-        private static java.lang.reflect.Method advGetSparseOutputs;
-        private static java.lang.reflect.Method advGetDirectionMap;
-        private static java.lang.reflect.Method encoderEncode;
-
-        private static synchronized boolean init() {
-            if (inited) {
-                return advPatternClass != null && encoderEncode != null;
-            }
-            inited = true;
-            advPatternClass = WcwtReflect.findClass("advanced_ae", ADV_PATTERN_CLASS).orElse(null);
-            if (advPatternClass == null) {
-                return false;
-            }
-            advGetSparseInputs = WcwtReflect.findMethod(advPatternClass, "getSparseInputs").orElse(null);
-            advGetSparseOutputs = WcwtReflect.findMethod(advPatternClass, "getSparseOutputs").orElse(null);
-            advGetDirectionMap = WcwtReflect.findMethod(advPatternClass, "getDirectionMap").orElse(null);
-            encoderEncode = WcwtReflect.findMethod("advanced_ae", ADV_ENCODER_CLASS, "encodeProcessingPattern",
-                    java.util.List.class, java.util.List.class, HashMap.class).orElse(null);
-            return advGetSparseInputs != null
-                    && advGetSparseOutputs != null
-                    && advGetDirectionMap != null
-                    && encoderEncode != null;
-        }
-
-        @SuppressWarnings("unchecked")
-        @Nullable
-        static ItemStack applyDirection(ItemStack stack, net.minecraft.world.level.Level level,
-                                        AEKey key, @Nullable Direction dir) {
-            if (!init()) return null;
-            try {
-                var detail = PatternDetailsHelper.decodePattern(stack, level);
-                if (detail == null) return null;
-
-                java.util.List<GenericStack> sparseInputs;
-                java.util.List<GenericStack> sparseOutputs;
-                LinkedHashMap<AEKey, Direction> dirMap;
-
-                if (advPatternClass.isInstance(detail)) {
-                    sparseInputs  = (java.util.List<GenericStack>) advGetSparseInputs.invoke(detail);
-                    sparseOutputs = (java.util.List<GenericStack>) advGetSparseOutputs.invoke(detail);
-                    dirMap = (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail);
-                } else if (detail instanceof appeng.crafting.pattern.AEProcessingPattern proc) {
-                    sparseInputs  = proc.getSparseInputs();
-                    sparseOutputs = proc.getSparseOutputs();
-                    dirMap = new LinkedHashMap<>();
-                    for (var input : sparseInputs) {
-                        if (input != null) dirMap.putIfAbsent(input.what(), null);
-                    }
-                } else {
-                    return null; // 合成 / 锻造 / 切石样板不支持方向编码
-                }
-
-                dirMap.put(key, dir);
-
-                Object result = encoderEncode.invoke(
-                        null, sparseInputs, sparseOutputs, new HashMap<>(dirMap));
-                return result instanceof ItemStack is ? is : null;
-            } catch (Throwable t) {
-                return null;
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        @Nullable
-        static ItemStack applyReplace(ItemStack stack, net.minecraft.world.level.Level level,
-                                      AEKey replaceWhat, @Nullable AEKey replaceWith) {
-            if (!init()) return null;
-            try {
-                var detail = PatternDetailsHelper.decodePattern(stack, level);
-                if (detail == null || !advPatternClass.isInstance(detail)) return null;
-
-                var sparseInputs = replaceInStacks(
-                        (List<GenericStack>) advGetSparseInputs.invoke(detail), replaceWhat, replaceWith);
-                var sparseOutputs = replaceInStacks(
-                        (List<GenericStack>) advGetSparseOutputs.invoke(detail), replaceWhat, replaceWith);
-                var dirMap = new LinkedHashMap<>(
-                        (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail));
-                if (dirMap.containsKey(replaceWhat)) {
-                    var dir = dirMap.remove(replaceWhat);
-                    if (replaceWith != null) {
-                        dirMap.put(replaceWith, dir);
-                    }
-                }
-
-                Object result = encoderEncode.invoke(
-                        null, sparseInputs, sparseOutputs, new HashMap<>(dirMap));
-                return result instanceof ItemStack is ? is : null;
-            } catch (Throwable t) {
-                return null;
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        @Nullable
-        static ItemStack applyScale(ItemStack stack, net.minecraft.world.level.Level level,
-                                    int scale, boolean divide) {
-            if (!init()) return null;
-            try {
-                var detail = PatternDetailsHelper.decodePattern(stack, level);
-                if (detail == null || !advPatternClass.isInstance(detail)) return null;
-
-                var input = ((List<GenericStack>) advGetSparseInputs.invoke(detail)).toArray(new GenericStack[0]);
-                var output = ((List<GenericStack>) advGetSparseOutputs.invoke(detail)).toArray(new GenericStack[0]);
-                if (!checkCanModify(input, scale, divide) || !checkCanModify(output, scale, divide)) {
-                    return null;
-                }
-
-                var scaledInput = new GenericStack[input.length];
-                var scaledOutput = new GenericStack[output.length];
-                modifyStacks(input, scaledInput, scale, divide);
-                modifyStacks(output, scaledOutput, scale, divide);
-                var dirMap = new LinkedHashMap<>(
-                        (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail));
-
-                Object result = encoderEncode.invoke(
-                        null,
-                        java.util.Arrays.stream(scaledInput).toList(),
-                        java.util.Arrays.stream(scaledOutput).toList(),
-                        new HashMap<>(dirMap));
-                return result instanceof ItemStack is ? is : null;
-            } catch (Throwable t) {
-                return null;
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        @Nullable
-        static ItemStack applyRestoreRatio(ItemStack stack, net.minecraft.world.level.Level level) {
-            if (!init()) return null;
-            try {
-                var detail = PatternDetailsHelper.decodePattern(stack, level);
-                if (detail == null || !advPatternClass.isInstance(detail)) return null;
-
-                var input = (List<GenericStack>) advGetSparseInputs.invoke(detail);
-                var output = (List<GenericStack>) advGetSparseOutputs.invoke(detail);
-                long gcd = computeSharedGcd(input, output);
-                if (gcd <= 1L) {
-                    return null;
-                }
-                var dirMap = new LinkedHashMap<>(
-                        (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail));
-
-                Object result = encoderEncode.invoke(
-                        null,
-                        divideStacks(input, gcd),
-                        divideStacks(output, gcd),
-                        new HashMap<>(dirMap));
-                return result instanceof ItemStack is ? is : null;
-            } catch (Throwable t) {
-                return null;
-            }
-        }
-
-        @SuppressWarnings("unchecked")
-        @Nullable
-        static ItemStack applyRotateOutputs(ItemStack stack, net.minecraft.world.level.Level level) {
-            if (!init()) return null;
-            try {
-                var detail = PatternDetailsHelper.decodePattern(stack, level);
-                if (detail == null || !advPatternClass.isInstance(detail)) return null;
-
-                var input = (List<GenericStack>) advGetSparseInputs.invoke(detail);
-                var output = ((List<GenericStack>) advGetSparseOutputs.invoke(detail)).toArray(new GenericStack[0]);
-                var rotatedOutput = rotateOutputs(output);
-                var dirMap = new LinkedHashMap<>(
-                        (LinkedHashMap<AEKey, Direction>) advGetDirectionMap.invoke(detail));
-
-                Object result = encoderEncode.invoke(
-                        null,
-                        input,
-                        java.util.Arrays.stream(rotatedOutput).toList(),
-                        new HashMap<>(dirMap));
-                return result instanceof ItemStack is ? is : null;
-            } catch (Throwable t) {
-                return null;
-            }
-        }
-    }
-    
     /**
      * 批量替换样板中的输入/输出。左侧 ghost 为空时不执行；右侧 ghost 为空表示删除匹配项。
      */
@@ -5082,9 +4849,17 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 continue;
             }
 
-            var advPattern = AdvAeBridge.applyReplace(stack, getPlayer().level(), replaceWhat, replaceWith);
-            if (advPattern != null && !advPattern.isEmpty()) {
-                slot.set(advPattern);
+            var advView = AdvancedAePatternCompat.view(stack, getPlayer().level(), false);
+            if (advView != null) {
+                var replacedInputs = replaceInStacks(advView.inputs(), replaceWhat, replaceWith);
+                var replacedOutputs = replaceInStacks(advView.outputs(), replaceWhat, replaceWith);
+                if (advView.dirMap().containsKey(replaceWhat)) {
+                    var dir = advView.dirMap().remove(replaceWhat);
+                    if (replaceWith != null) {
+                        advView.dirMap().put(replaceWith, dir);
+                    }
+                }
+                slot.set(AdvancedAePatternCompat.encode(replacedInputs, replacedOutputs, advView.dirMap()));
                 continue;
             }
 
@@ -5147,9 +4922,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             var stack = slot.getItem();
             var detail = PatternDetailsHelper.decodePattern(stack, getPlayer().level());
 
-            var advPattern = AdvAeBridge.applyRestoreRatio(stack, getPlayer().level());
-            if (advPattern != null && !advPattern.isEmpty()) {
-                slot.set(advPattern);
+            var advView = AdvancedAePatternCompat.view(stack, getPlayer().level(), false);
+            if (advView != null) {
+                long gcd = computeSharedGcd(advView.inputs(), advView.outputs());
+                if (gcd > 1L) {
+                    slot.set(AdvancedAePatternCompat.encode(
+                            divideStacks(advView.inputs(), gcd),
+                            divideStacks(advView.outputs(), gcd),
+                            advView.dirMap()));
+                }
                 continue;
             }
 
@@ -5240,9 +5021,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             var stack = slot.getItem();
             var detail = PatternDetailsHelper.decodePattern(stack, getPlayer().level());
 
-            var advPattern = AdvAeBridge.applyRotateOutputs(stack, getPlayer().level());
-            if (advPattern != null && !advPattern.isEmpty()) {
-                slot.set(advPattern);
+            var advView = AdvancedAePatternCompat.view(stack, getPlayer().level(), false);
+            if (advView != null) {
+                slot.set(AdvancedAePatternCompat.encode(
+                        advView.inputs(),
+                        java.util.Arrays.stream(rotateOutputs(advView.outputs().toArray(new GenericStack[0]))).toList(),
+                        advView.dirMap()));
                 continue;
             }
 

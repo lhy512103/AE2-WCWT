@@ -4294,7 +4294,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagementButtonIcon(guiGraphics, rowButton(patternManagementUiButton, rowY),
                 161, 0, 177, 0,
                 WCWT_STATES_TEXTURE, 52, 5, 8, 7, 256, 256, mouseX, mouseY);
-        if (!patternManagementShowSlots) {
+        if (!patternManagementShowSlots && ExtendedAePresence.available()) {
             renderPatternManagementHighlightButton(guiGraphics, rowButton(patternManagementHighlightButton, rowY));
         }
     }
@@ -4355,7 +4355,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 renderFocusedPatternManagementSlotHighlight(guiGraphics, x, y);
             }
         }
-        if (row.slots().contains(0) || row.slots().contains(-1)) {
+        if (ExtendedAePresence.available()
+                && (row.slots().contains(0) || row.slots().contains(-1))) {
             renderPatternManagementHighlightButton(guiGraphics, slotRowButton(patternManagementHighlightButton, rowY));
         }
     }
@@ -5832,10 +5833,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     return new PatternManagementHeaderButtonHit(header.firstEntry(), PatternManagementHeaderButton.UI);
                 }
                 if (!patternManagementShowSlots
+                        && ExtendedAePresence.available()
                         && inRect(relX, relY, rowButton(patternManagementHighlightButton, rowY))) {
                     return new PatternManagementHeaderButtonHit(header.firstEntry(), PatternManagementHeaderButton.HIGHLIGHT);
                 }
             } else if (row instanceof PatternManagementSlotsRow slotsRow
+                    && ExtendedAePresence.available()
                     && (slotsRow.slots().contains(0) || slotsRow.slots().contains(-1))
                     && inRect(relX, relY, slotRowButton(patternManagementHighlightButton, rowY))) {
                 return new PatternManagementHeaderButtonHit(slotsRow.entry(), PatternManagementHeaderButton.HIGHLIGHT);
