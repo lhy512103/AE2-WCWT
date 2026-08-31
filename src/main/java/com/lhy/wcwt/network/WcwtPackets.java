@@ -24,12 +24,6 @@ public class WcwtPackets {
         );
         
         registrar.playToServer(
-            CraftingLockPacket.TYPE,
-            CraftingLockPacket.STREAM_CODEC,
-            CraftingLockPacket::handle
-        );
-        
-        registrar.playToServer(
             PatternSelectionPacket.TYPE,
             PatternSelectionPacket.STREAM_CODEC,
             PatternSelectionPacket::handle

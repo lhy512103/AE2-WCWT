@@ -33,7 +33,6 @@ import appeng.util.ConfigInventory;
 import appeng.util.inv.AppEngInternalInventory;
 import appeng.util.inv.InternalInventoryHost;
 import appeng.util.inv.SupplierInternalInventory;
-import com.lhy.wcwt.api.ICraftingLockHost;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.api.IPatternCachingHost;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
@@ -63,7 +62,7 @@ import de.mari_023.ae2wtlib.api.results.LongResult;
 import de.mari_023.ae2wtlib.api.results.Status;
 
 public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
-        implements ISegmentedInventory, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
+        implements ISegmentedInventory, IExtendedUIHost, IPatternCachingHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost, IViewCellStorage {
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
@@ -168,9 +167,6 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
     private ExtendedUIType currentExtendedUI = ExtendedUIType.NONE;
     // 样板选中索引（用于高级编码）
     private int selectedPatternIndex = -1;
-    // 合成网格锁定状态
-    /** 默认未锁定：JEI 工作台类配方先进入样板编码区；锁定后再进手动合成 3×3，并由 AE2 配方包从 ME/背包取料 */
-    private boolean craftingGridLocked;
     /** 样板管理区“启用上传样板功能”开关，持久化到终端物品自身。 */
     private boolean patternManagementUploadEnabled;
     /** 样板管理区显示模式，持久化到终端物品自身。 */
@@ -276,7 +272,6 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 "", player.registryAccess());
         magnetInsertConfig.readFromChildTag(getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag()),
                 "", player.registryAccess());
-        this.craftingGridLocked = getItemStack().getOrDefault(ModComponents.CRAFTING_GRID_LOCKED.get(), false);
         this.patternManagementUploadEnabled = getItemStack().getOrDefault(
                 ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED.get(), true);
         this.patternManagementDisplayMode = getItemStack().getOrDefault(
@@ -853,18 +848,6 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         this.selectedPatternIndex = index;
     }
     
-    // 实现ICraftingLockHost接口
-    @Override
-    public boolean isCraftingGridLocked() {
-        return craftingGridLocked;
-    }
-    
-    @Override
-    public void setCraftingGridLocked(boolean locked) {
-        this.craftingGridLocked = locked;
-        getItemStack().set(ModComponents.CRAFTING_GRID_LOCKED.get(), locked);
-    }
-
     public boolean isPatternManagementUploadEnabled() {
         return patternManagementUploadEnabled;
     }

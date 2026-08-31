@@ -53,10 +53,6 @@ public class WcwtRecipeTransferHandler
         this.transferHelper = transferHelper;
     }
 
-    private static boolean isCraftingGridLocked(WirelessComprehensiveWorkTerminalMenu menu) {
-        return menu.getMenuHost() != null && menu.getMenuHost().isCraftingGridLocked();
-    }
-
     @Override
     public Class<? extends WirelessComprehensiveWorkTerminalMenu> getContainerClass() {
         return WirelessComprehensiveWorkTerminalMenu.class;
@@ -95,15 +91,6 @@ public class WcwtRecipeTransferHandler
                 : recipe instanceof Recipe<?> directRecipe ? directRecipe
                 : null;
         EncodingMode mode = getTransferMode(minecraftRecipe, recipeSlots);
-
-        if (isCraftingGridLocked(menu)) {
-            if (doTransfer) {
-                WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
-            }
-            return WcwtPullRecipeTransfer.transfer(menu, recipe, recipeSlots, player, maxTransfer, doTransfer,
-                    transferHelper, mode != EncodingMode.CRAFTING);
-        }
-
         boolean encodingRecipe = mode != EncodingMode.PROCESSING;
 
         if (!doTransfer) {
@@ -432,7 +419,7 @@ public class WcwtRecipeTransferHandler
         return priorities;
     }
 
-    private static boolean shouldSkipTransferAnalysis(Object recipe) {
+    public static boolean shouldSkipTransferAnalysis(Object recipe) {
         return recipe instanceof ITagInfoRecipe || recipe instanceof IngredientInfoRecipe;
     }
 

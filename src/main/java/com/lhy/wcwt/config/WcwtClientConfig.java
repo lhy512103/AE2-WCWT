@@ -22,7 +22,6 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec.BooleanValue PREFER_WCWT_FAVORITES_FOR_RECIPE_TRANSFER;
     public static final ModConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS;
-    public static final ModConfigSpec.BooleanValue LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER;
     public static final ModConfigSpec.BooleanValue EMI_PREVIEW_RECIPE_FILL;
     public static final ModConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
     public static final ModConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
@@ -78,10 +77,6 @@ public final class WcwtClientConfig {
                 .comment("If true: empty pattern-provider slots are collapsed into one summary slot in the management area.")
                 .translation("wcwt.config.patternManagementAutoCompactEmptySlots")
                 .define("patternManagementAutoCompactEmptySlots", true);
-        LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER = BUILDER
-                .comment("If true: when the crafting grid is locked, JEI/EMI recipe-transfer buttons keep their existing highlight and draw a red border.")
-                .translation("wcwt.config.lockedCraftingGridJeiTransferBorder")
-                .define("lockedCraftingGridJeiTransferBorder", true);
         EMI_PREVIEW_RECIPE_FILL = BUILDER
                 .comment("If true: EMI craftable actions (left-click / Shift+left-click on a bookmarked or recipe-context stack) fill the full recipe into WCWT, same as the recipe-page + button.")
                 .translation("wcwt.config.emiPreviewRecipeFill")
@@ -154,10 +149,6 @@ public final class WcwtClientConfig {
 
     public static boolean patternManagementAutoCompactEmptySlots() {
         return PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS.get();
-    }
-
-    public static boolean lockedCraftingGridJeiTransferBorder() {
-        return LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER.get();
     }
 
     public static boolean emiPreviewRecipeFill() {

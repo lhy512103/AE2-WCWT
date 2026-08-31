@@ -1,10 +1,6 @@
 {
   "pack.wcwt.dark_ae_ui": "WCWT 暗色AE-UI擴展材質（作者：fish_dan_）",
   "gui.wcwt.wireless_settings.other_settings_title": "其他設置",
-  "gui.wcwt.crafting_lock.locked": "合成網格已鎖定",
-  "gui.wcwt.crafting_lock.locked.desc": "JEI 配方將傳輸到手動合成 3x3",
-  "gui.wcwt.crafting_lock.unlocked": "合成網格未鎖定",
-  "gui.wcwt.crafting_lock.unlocked.desc": "JEI 配方將傳輸到樣板編碼網格",
 
   "gui.wcwt.processing_merge.on": "合併材料：開",
   "gui.wcwt.processing_merge.off": "合併材料：關",
@@ -28,7 +24,6 @@
   "key.wcwt.open_terminal": "独立 ME 綜合工作終端",
   "key.wcwt.open_toolkit": "打開工具包",
   "key.wcwt.open_resonating_lightning_pattern_coding": "打開諧振過載編碼器",
-  "key.wcwt.toggle_crafting_grid_lock": "切換合成網格鎖定",
   "key.wcwt.toggle_favorite_item": "切換收藏網路物品",
   "gui.wcwt.favorite_items_first.enabled": "收藏物品優先顯示：開",
   "gui.wcwt.favorite_items_first.disabled": "收藏物品優先顯示：關",

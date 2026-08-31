@@ -126,14 +126,6 @@ public class ModComponents {
                     .networkSynchronized(ItemContainerContents.STREAM_CODEC));
 
     /**
-     * JEI 拉取目标锁定状态：false = 样板编码区，true = 手动合成 3x3。
-     */
-    public static final DeferredHolder<DataComponentType<?>, DataComponentType<Boolean>> CRAFTING_GRID_LOCKED =
-            register("crafting_grid_locked", builder -> builder
-                    .persistent(com.mojang.serialization.Codec.BOOL)
-                    .networkSynchronized(ByteBufCodecs.BOOL));
-
-    /**
      * 左上手动工作区当前模式。0 = 工作台，1 = 锻造台，2 = 铁砧。
      */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> MANUAL_WORKSPACE_MODE =

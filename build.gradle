@@ -43,13 +43,23 @@ configurations {
         exclude group: "curse.maven", module: "just-enough-characters-250702"
     }
     clientLocalRuntime
+    jeiRuntime
+    emiRuntime
     runtimeClasspath.extendsFrom localRuntime
 }
 
 sourceSets {
     clientRuntime {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath + configurations.clientLocalRuntime
+        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath + configurations.clientLocalRuntime + configurations.jeiRuntime
+    }
+    clientRuntimeEmi {
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += output + sourceSets.main.runtimeClasspath
+                .filter { file ->
+                    def n = file.name.toLowerCase()
+                    !n.contains("jei") && !n.contains("ae2-jei-integration")
+                } + configurations.clientLocalRuntime + configurations.emiRuntime
     }
 }
 
@@ -69,6 +79,12 @@ neoForge {
             client()
             gameDirectory = file('run/client')
             sourceSet = sourceSets.clientRuntime
+            jvmArguments.add("-Dwcwt.debug.patternUpload=false")
+        }
+        clientEMI {
+            client()
+            gameDirectory = file('run/clientEMI')
+            sourceSet = sourceSets.clientRuntimeEmi
             jvmArguments.add("-Dwcwt.debug.patternUpload=false")
         }
         server {
@@ -212,6 +228,10 @@ tasks.named("compileJava").configure {
 }
 
 tasks.named("prepareClientRun").configure {
+    dependsOn("sanitizeNeoEcoJar")
+}
+
+tasks.named("prepareClientEMIRun").configure {
     dependsOn("sanitizeNeoEcoJar")
 }
 

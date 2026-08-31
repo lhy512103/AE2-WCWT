@@ -59,7 +59,6 @@ import com.lhy.wcwt.client.gui.panels.*;
 import com.lhy.wcwt.client.gui.widgets.*;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
-import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.EncodePatternPacket;
 import com.lhy.wcwt.network.ExtendedUIPacket;
 import com.lhy.wcwt.network.ManualAnvilNamePacket;
@@ -182,9 +181,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private TabButton tabStonecutting;
     private EncodingMode patternEncodingMode = EncodingMode.PROCESSING;
     private EncodingMode lastSyncedPatternEncodingMode = EncodingMode.PROCESSING;
-    
-    // 合成锁定按钮
-    private CraftingLockButton craftingLockButton;
+
     private IconButton manualCraftingButton;
     private IconButton manualSmithingButton;
     private IconButton manualAnvilButton;
@@ -572,14 +569,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         // 以下所有 widgets.add() 必须在构造函数中完成，确保 populateScreen() 在 init() 中运行时
         // compositeWidgets 已有内容，才能被正确定位显示。（AE2 的约定：composite widget 在构造函数注册）
-        if (host != null) {
-            craftingLockButton = new CraftingLockButton(host, btn -> {
-                host.toggleCraftingGridLock();
-                PacketDistributor.sendToServer(new CraftingLockPacket(host.isCraftingGridLocked()));
-            });
-            widgets.add("CRAFTING_Locking", craftingLockButton);
-        }
-
         manualCraftingButton = new IconButton(0, 0, 12, 12,
                 0, 32, 0, 32, 8, 8,
                 WCWT_STATES_TEXTURE,
@@ -2116,11 +2105,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void updateManualCraftingControls(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode mode) {
-        if (craftingLockButton != null) {
-            craftingLockButton.visible = true;
-            craftingLockButton.active = true;
-        }
-
         var clearGridRect = mainLayout.widget("clearCraftingGrid",
                 new ExtendedPanelLayout.Rect(134, imageHeight - 214, 8, 8), imageWidth, imageHeight);
         var clearToPlayerRect = mainLayout.widget("clearToPlayerInv",

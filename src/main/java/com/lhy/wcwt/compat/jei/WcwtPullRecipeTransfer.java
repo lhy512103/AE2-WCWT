@@ -38,7 +38,7 @@ import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtStackMatching;
 import appeng.parts.encoding.EncodingMode;
 
-/** JEI「+」从 ME 拉配方原料：锁定合成网格时生效；编码逻辑见 {@link WcwtRecipeTransferHandler}。 */
+/** JEI 锤子按钮从 ME 拉配方原料；编码逻辑见 {@link WcwtRecipeTransferHandler}。 */
 public final class WcwtPullRecipeTransfer {
 
     private WcwtPullRecipeTransfer() {
@@ -48,6 +48,9 @@ public final class WcwtPullRecipeTransfer {
             IRecipeSlotsView recipeSlots, Player player,
             boolean maxTransfer, boolean doTransfer, IRecipeTransferHandlerHelper transferHelper,
             boolean allowShiftMaxTransfer) {
+        if (WcwtRecipeTransferHandler.shouldSkipTransferAnalysis(recipeIgnored)) {
+            return null;
+        }
         boolean effectiveMaxTransfer = allowShiftMaxTransfer && (maxTransfer || Screen.hasShiftDown());
         boolean craftMissing = Screen.hasControlDown();
 
@@ -74,6 +77,14 @@ public final class WcwtPullRecipeTransfer {
         PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(effectiveMaxTransfer, craftMissing, requestedIngredients,
                 menu.getManualWorkspaceMode().ordinal()));
         return null;
+    }
+
+    public static boolean hasPullableInputs(IRecipeSlotsView recipeSlots) {
+        return hasAnyInput(recipeSlots);
+    }
+
+    public static boolean canActivate(IRecipeTransferError error) {
+        return error instanceof TerminalPullTransferError pull && !pull.allMissing();
     }
 
     private static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,
@@ -163,6 +174,7 @@ public final class WcwtPullRecipeTransfer {
         var reservedTerminalAmounts = new Object2IntOpenHashMap<AEItemKey>();
         var playerItems = container.getPlayerInventory().items;
         var reservedPlayerItems = new int[playerItems.size()];
+        var repoIndex = WcwtStackMatching.ClientRepoIndex.of(container);
         boolean anyResolved = false;
 
         for (int idx = 0; idx < inputs.size(); idx++) {
@@ -196,13 +208,13 @@ public final class WcwtPullRecipeTransfer {
                 anyResolved = true;
             }
 
-            int terminalReserved = WcwtStackMatching.reserveClientRepoStoredIngredient(container, alternatives, ingredient,
+            int terminalReserved = WcwtStackMatching.reserveFromIndex(repoIndex, alternatives, ingredient,
                     reservedTerminalAmounts, remaining);
             remaining -= terminalReserved;
             anyResolved |= terminalReserved > 0;
 
             if (remaining > 0
-                    && WcwtStackMatching.hasClientRepoCraftableIngredient(container, alternatives, ingredient)) {
+                    && WcwtStackMatching.hasCraftableFromIndex(repoIndex, alternatives, ingredient)) {
                 craftable = true;
                 anyResolved = true;
                 remaining = 0;
@@ -295,20 +307,15 @@ public final class WcwtPullRecipeTransfer {
     }
 
     private static List<ItemStack> getAlternativeStacks(IRecipeSlotView slotView) {
-        List<ItemStack> visibleAlternatives = new ArrayList<>();
+        var unique = new WcwtStackMatching.UniqueStacks();
         ItemStack displayed = getDisplayedStack(slotView);
         if (!displayed.isEmpty()) {
-            visibleAlternatives.add(displayed.copy());
+            unique.add(displayed.copy());
         }
         slotView.getItemStacks()
                 .filter(stack -> !stack.isEmpty())
-                .forEach(stack -> {
-                    ItemStack copy = stack.copy();
-                    if (!containsEquivalentStack(visibleAlternatives, copy)) {
-                        visibleAlternatives.add(copy);
-                    }
-                });
-        return visibleAlternatives;
+                .forEach(stack -> unique.add(stack.copy()));
+        return unique.list();
     }
 
     private static List<ItemStack> narrowSpecificAlternativesToDisplayed(List<ItemStack> alternatives) {
@@ -334,29 +341,18 @@ public final class WcwtPullRecipeTransfer {
         return List.of();
     }
 
-    private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
-        for (ItemStack existing : stacks) {
-            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static List<ItemStack> orderAlternativesWithPreferredFirst(
             WcwtIngredientPriorities.PriorityContext priorityContext,
             ItemStack preferred,
             List<ItemStack> alternatives) {
-        List<ItemStack> ordered = new ArrayList<>();
+        var unique = new WcwtStackMatching.UniqueStacks();
         if (!preferred.isEmpty()) {
-            ordered.add(preferred.copy());
+            unique.add(preferred.copy());
         }
         for (ItemStack alternative : WcwtIngredientPriorities.sortItemAlternatives(priorityContext, alternatives)) {
-            if (!containsEquivalentStack(ordered, alternative)) {
-                ordered.add(alternative.copy());
-            }
+            unique.add(alternative.copy());
         }
-        return ordered;
+        return unique.list();
     }
 
     private static Map<appeng.api.stacks.AEKey, Integer> getWcwtFavoritePriorities() {
@@ -435,7 +431,7 @@ public final class WcwtPullRecipeTransfer {
         @Override
         public int getButtonHighlightColor() {
             if (!preview.anyMissingOrCraftable()) {
-                return BLUE_BUTTON_HIGHLIGHT_COLOR;
+                return 0;
             }
             return preview.anyMissing() ? ORANGE_BUTTON_HIGHLIGHT_COLOR : BLUE_BUTTON_HIGHLIGHT_COLOR;
         }
@@ -478,6 +474,10 @@ public final class WcwtPullRecipeTransfer {
         @Override
         public int getMissingCountHint() {
             return 0;
+        }
+
+        private boolean allMissing() {
+            return preview.anyMissing() && !preview.anyResolved;
         }
     }
 }

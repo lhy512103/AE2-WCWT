@@ -99,11 +99,10 @@ Modes:
 - Smithing table
 - Anvil (with name field and XP cost)
 
-Crafting-grid lock:
+JEI/EMI:
 
-- Unlocked: JEI/EMI filling prefers the pattern encoding area
-- Locked: workbench recipes prefer the manual 3×3
-- Independent hotkey to toggle lock; JEI/EMI transfer buttons can draw a red border while locked (client config)
+- `+` encodes the recipe into the pattern encoding area
+- A separate hammer button pulls items into the manual 3×3 and then returns to the terminal
 
 Crafting-table extras:
 
@@ -174,7 +173,7 @@ OP-only (`permission level 2`):
 
 ## Configuration
 
-Client (`config/wcwt-client.toml`) covers recipe-transfer behaviour, pattern-upload fallback, JEI/EMI bookmark/favorite priority, toolkit embedding, empty-slot compacting, locked-grid JEI border, and similar UI options. Most of these also appear in the in-game Wireless Terminal Settings screen.
+Client (`config/wcwt-client.toml`) covers recipe-transfer behaviour, pattern-upload fallback, JEI/EMI bookmark/favorite priority, toolkit embedding, empty-slot compacting, and similar UI options. Most of these also appear in the in-game Wireless Terminal Settings screen.
 
 Server (`config/wcwt-server.toml`):
 
@@ -294,7 +293,7 @@ AdvancedAE、ExtendedAE、ExtendedAE Plus、Curios、Cosmetic Armor Reworked、E
 
 ### 3. 手动合成区
 
-工作台 / 锻造台 / 铁砧。合成网格锁定后，JEI/EMI 工作台配方优先填入手动 3×3；未锁定时优先进入样板编码区。工作台模式有独立的物品替换与流体替换（例如用 ME 网络里的水把空桶接回水桶）。兼容 Polymorph。
+工作台 / 锻造台 / 铁砧。JEI/EMI 的 `+` 编码到样板编码区；锤子按钮把物品拉入手动 3×3 后返回终端。工作台模式有独立的物品替换与流体替换（例如用 ME 网络里的水把空桶接回水桶）。兼容 Polymorph。
 
 ### 4. 样板编码区
 
@@ -323,7 +322,7 @@ Shift 快取/快放是客户端选项。服务端 `maxSyncedSlotsPerProvider`（
 
 ## 快捷键
 
-控制设置中可改：独立开启终端、各扩展 UI、切换合成网格锁定、收藏当前悬停物品。工具包快捷键在终端关闭时也可使用。
+控制设置中可改：独立开启终端、各扩展 UI、收藏当前悬停物品。工具包快捷键在终端关闭时也可使用。
 
 ## 指令
 
@@ -336,7 +335,7 @@ Shift 快取/快放是客户端选项。服务端 `maxSyncedSlotsPerProvider`（
 
 ## 配置
 
-客户端 `config/wcwt-client.toml`：配方拉取、上传失败回退、书签/收藏优先、工具包嵌入样板管理区、空槽压缩、锁定网格时 JEI/EMI 红框等。大部分也可在游戏内“无线终端设置”里改。
+客户端 `config/wcwt-client.toml`：配方拉取、上传失败回退、书签/收藏优先、工具包嵌入样板管理区、空槽压缩等。大部分也可在游戏内“无线终端设置”里改。
 
 服务端 `config/wcwt-server.toml`：
 

@@ -16,6 +16,10 @@
 10. Pattern encoding now follows AE2's encode flow: write the encoded slot first, then upload. Stonecutting requires a selected recipe, and Advanced AE directional patterns use its public encoder.
 11. Unique-match uploads now record the EAEP full-list provider index so Shift+Encode can return the last processing pattern.
 12. Optional upgrade-card recipes now require their companion mods, and JEI/EMI hide those cards and their recipes when the mods are missing.
+13. JEI/EMI + now always encodes the recipe; a separate hammer button pulls items into the crafting grid and then returns to the terminal.
+14. Removed the unused crafting-grid lock button, hotkey, config, and related transfer-border mixin.
+15. JEI/EMI hammer buttons skip tag/info pages, and pull previews reuse a hashed ME-network index instead of scanning every slot.
+16. EMI hammer buttons sit directly above the fill button on short recipes.
 
 ### 中文
 
@@ -31,6 +35,10 @@
 10. 样板编码对齐 AE2 原版流程：先写入编码槽再上传；切石机必须选手动配方；Advanced AE 方向样板改用其公开编码器。
 11. 唯一匹配上传改为记录 EAEP 全表供应器下标，Shift+编写可撤回上次处理样板。
 12. 可选升级卡配方增加对应模组条件；缺模组时 JEI/EMI 不再显示这些卡及其配方。
+13. JEI/EMI 的 + 固定编码配方；另增锤子按钮从网络拉取物品到合成格，并返回终端界面。
+14. 移除已无用的合成网格锁定按钮、快捷键、配置及相关转移边框 mixin。
+15. JEI/EMI 锤子按钮不再处理标签/信息页；拉取预览改为哈希去重并复用一次 ME 仓库索引。
+16. EMI 矮配方页的锤子按钮改到填充按钮正上方。
 
 ## v1.3.8
 

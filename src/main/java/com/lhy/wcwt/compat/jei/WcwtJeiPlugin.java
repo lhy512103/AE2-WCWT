@@ -16,6 +16,7 @@ import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.recipe.RecipeIngredientRole;
+import mezz.jei.api.registration.IAdvancedRegistration;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.renderer.Rect2i;
@@ -39,6 +40,11 @@ public class WcwtJeiPlugin implements IModPlugin {
     }
 
     @Override
+    public void registerAdvanced(IAdvancedRegistration registration) {
+        registration.addRecipeButtonFactory(new WcwtJeiPullItemsButton());
+    }
+
+    @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
         registration.addGuiContainerHandler(WirelessComprehensiveWorkTerminalScreen.class,
                 new IGuiContainerHandler<>() {
@@ -53,6 +59,7 @@ public class WcwtJeiPlugin implements IModPlugin {
 
     @Override
     public void registerRecipeTransferHandlers(IRecipeTransferRegistration registration) {
+        WcwtJeiPullItemsButton.helper = registration.getTransferHelper();
         registration.addRecipeTransferHandler(
                 new WcwtCraftingRecipeTransferHandler(registration.getTransferHelper()),
                 RecipeTypes.CRAFTING);

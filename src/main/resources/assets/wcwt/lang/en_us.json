@@ -1,10 +1,6 @@
 {
   "pack.wcwt.dark_ae_ui": "WCWT Dark AE-UI Textures (by fish_dan_)",
   "gui.wcwt.wireless_settings.other_settings_title": "Other Settings",
-  "gui.wcwt.crafting_lock.locked": "Crafting Grid Locked",
-  "gui.wcwt.crafting_lock.locked.desc": "JEI recipes transfer to manual crafting 3x3",
-  "gui.wcwt.crafting_lock.unlocked": "Crafting Grid Unlocked",
-  "gui.wcwt.crafting_lock.unlocked.desc": "JEI recipes will be transferred to the pattern encoding grid",
 
   "gui.wcwt.processing_merge": "Merge inputs",
   "gui.wcwt.processing_merge.desc": "Combine identical inputs into one slot",
@@ -30,7 +26,6 @@
   "key.wcwt.open_terminal": "Open independent ME WCWT",
   "key.wcwt.open_toolkit": "Open Toolkit",
   "key.wcwt.open_resonating_lightning_pattern_coding": "Open Resonating Overload Encoder",
-  "key.wcwt.toggle_crafting_grid_lock": "Toggle Crafting Grid Lock",
   "key.wcwt.toggle_favorite_item": "Toggle Favorite Network Item",
   "gui.wcwt.favorite_items_first.enabled": "Favorited items first: On",
   "gui.wcwt.favorite_items_first.disabled": "Favorited items first: Off",
@@ -210,8 +205,6 @@
   "wcwt.config.expandToolkitInManagementArea.tooltip": "On: opening the toolkit shows it in the pattern management area and hides provider rows. Off: keep the original right-side toolkit panel.",
   "wcwt.config.patternManagementAutoCompactEmptySlots": "Compact empty pattern-provider slots",
   "wcwt.config.patternManagementAutoCompactEmptySlots.tooltip": "On: collapse empty slots for each provider into one summary slot in pattern management.",
-  "wcwt.config.lockedCraftingGridJeiTransferBorder": "Red border on JEI/EMI transfer when crafting grid is locked",
-  "wcwt.config.lockedCraftingGridJeiTransferBorder.tooltip": "On: while the crafting grid is locked, JEI/EMI recipe-transfer buttons keep their existing highlight and add a red border. Off: no extra border.",
   "wcwt.config.emiPreviewRecipeFill": "Fill EMI craftable/bookmarked recipes into WCWT",
   "wcwt.config.emiPreviewRecipeFill.tooltip": "On: left-click or Shift+left-click an EMI bookmarked/recipe-context stack while WCWT is open fills the full recipe, same as the recipe-page + button. Off: only the + button fills.",
   "gui.wcwt.pattern_management.hidden_slots": "%s slots not displayed",

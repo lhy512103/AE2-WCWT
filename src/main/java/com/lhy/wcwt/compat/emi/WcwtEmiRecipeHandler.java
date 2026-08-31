@@ -17,6 +17,8 @@ import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtStackMatching;
+import dev.emi.emi.api.recipe.EmiInfoRecipe;
+import dev.emi.emi.api.recipe.EmiIngredientRecipe;
 import dev.emi.emi.api.recipe.EmiPlayerInventory;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import dev.emi.emi.api.recipe.VanillaEmiRecipeCategories;
@@ -56,15 +58,13 @@ import java.util.WeakHashMap;
 /**
  * EMI 对 WCWT 的官方 recipe handler 接入。
  *
- * <p>保持改动尽量小，优先复用现有 JEI/WCWT 传输链路：
- * 未锁定合成网格 -> 走编码区填充；
- * 锁定合成网格 -> 走 WCWT 现有从 ME 拉料的网络包。
+ * <p>EMI `+` 走样板编码；锤子按钮走从 ME 拉料的网络包。
  */
 public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehensiveWorkTerminalMenu> {
-    private static final Map<WirelessComprehensiveWorkTerminalMenu, CachedPreview> LOCKED_PREVIEW_CACHE = new WeakHashMap<>();
-    private static final String EMI_FILL_BUTTON_CLASS = "dev.emi.emi.api.widget.RecipeFillButtonWidget";
+    private static final Map<EmiRecipe, CachedPreview> LOCKED_PREVIEW_CACHE = new WeakHashMap<>();
+    private static final long PREVIEW_TTL_TICKS = 10L;
 
-    private record CachedPreview(EmiRecipe recipe, EncodingMode mode, int inventoryHash, long tick,
+    private record CachedPreview(EncodingMode mode, int inventoryHash, long computedAtTick,
             PreviewResult result) {
     }
 
@@ -87,7 +87,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
     @Override
     public boolean supportsRecipe(EmiRecipe recipe) {
-        if (!WcwtClientConfig.enableRecipePullTransfer()) {
+        if (!WcwtClientConfig.enableRecipePullTransfer() || shouldSkipPullPreview(recipe)) {
             return false;
         }
         EncodingMode mode = getTransferMode(recipe);
@@ -115,10 +115,6 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return false;
         }
 
-        if (isCraftingGridLocked(menu)) {
-            return hasNonEmptyIngredients(recipe.getInputs(), Integer.MAX_VALUE);
-        }
-
         if (mode == EncodingMode.PROCESSING) {
             return hasNonEmptyIngredients(recipe.getInputs(), Integer.MAX_VALUE)
                     || hasNonEmptyIngredients(recipe.getOutputs(), Integer.MAX_VALUE);
@@ -140,19 +136,11 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
 
         WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
         List<Component> tooltip = null;
-
-        if (isCraftingGridLocked(menu)) {
-            PreviewResult preview = buildLockedGridPreview(menu, recipe);
-            if (preview.inputCount() > 0) {
-                tooltip = createLockedGridTooltip(preview, getTransferMode(recipe) != EncodingMode.CRAFTING);
-            }
-        } else {
-            Set<AEKey> availableNetworkKeys = collectAvailableNetworkKeys(menu);
-            boolean anyHighlighted = recipe.getInputs().stream()
-                    .anyMatch(ingredient -> isAvailableFromNetwork(availableNetworkKeys, ingredient));
-            if (anyHighlighted) {
-                tooltip = TransferHelper.createEncodingTooltip(true, true);
-            }
+        Set<AEKey> availableNetworkKeys = collectAvailableNetworkKeys(menu);
+        boolean anyHighlighted = recipe.getInputs().stream()
+                .anyMatch(ingredient -> isAvailableFromNetwork(availableNetworkKeys, ingredient));
+        if (anyHighlighted) {
+            tooltip = TransferHelper.createEncodingTooltip(true, true);
         }
 
         if (tooltip == null) {
@@ -177,17 +165,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
 
         WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
-        if (isCraftingGridLocked(menu) && WcwtClientConfig.lockedCraftingGridJeiTransferBorder()) {
-            renderLockedFillButtonBorder(widgets, draw);
-        }
         Map<Integer, SlotWidget> inputSlots = getRecipeInputSlots(recipe, widgets);
         if (inputSlots.isEmpty()) {
-            return;
-        }
-
-        if (isCraftingGridLocked(menu)) {
-            PreviewResult preview = buildLockedGridPreview(menu, recipe);
-            renderMissingAndCraftableSlotOverlays(inputSlots, draw, preview.missingSlots(), preview.craftableSlots());
             return;
         }
 
@@ -213,26 +192,6 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return false;
         }
 
-        if (isCraftingGridLocked(menu)) {
-            EncodingMode mode = getTransferMode(recipe);
-            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
-            List<RequestedIngredient> requestedIngredients = collectRequestedIngredients(menu, recipe);
-            if (mode == EncodingMode.PROCESSING
-                    && menu.getManualWorkspaceMode() == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING) {
-                requestedIngredients = mergeProcessingIngredients(requestedIngredients);
-            }
-            if (requestedIngredients.isEmpty()) {
-                return false;
-            }
-            boolean allowShiftMaxTransfer = mode != EncodingMode.CRAFTING;
-            boolean maxTransfer = allowShiftMaxTransfer && (context.getAmount() > 1 || Screen.hasShiftDown());
-            boolean craftMissing = Screen.hasControlDown()
-                    || context.getDestination() != EmiCraftContext.Destination.NONE;
-            PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
-                    requestedIngredients, menu.getManualWorkspaceMode().ordinal()));
-            return true;
-        }
-
         EncodingMode mode = getTransferMode(recipe);
         WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
         List<Widget> widgets = collectRecipeWidgets(recipe);
@@ -256,22 +215,19 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return type == EmiCraftContext.Type.CRAFTABLE && WcwtClientConfig.emiPreviewRecipeFill();
     }
 
-    private static boolean isCraftingGridLocked(WirelessComprehensiveWorkTerminalMenu menu) {
-        return menu.getMenuHost() != null && menu.getMenuHost().isCraftingGridLocked();
-    }
-
-    private static PreviewResult buildLockedGridPreview(WirelessComprehensiveWorkTerminalMenu menu, EmiRecipe recipe) {
+    static PreviewResult buildLockedGridPreview(WirelessComprehensiveWorkTerminalMenu menu, EmiRecipe recipe) {
         EncodingMode mode = getTransferMode(recipe);
         int inventoryHash = playerInventoryHash(menu);
         long tick = currentClientTick();
-        CachedPreview cached = LOCKED_PREVIEW_CACHE.get(menu);
-        if (cached != null && cached.recipe == recipe && cached.mode == mode
-                && cached.inventoryHash == inventoryHash && cached.tick == tick) {
+        CachedPreview cached = LOCKED_PREVIEW_CACHE.get(recipe);
+        if (cached != null && cached.mode == mode
+                && cached.inventoryHash == inventoryHash
+                && tick - cached.computedAtTick < PREVIEW_TTL_TICKS) {
             return cached.result;
         }
 
         PreviewResult result = computeLockedGridPreview(menu, recipe, mode);
-        LOCKED_PREVIEW_CACHE.put(menu, new CachedPreview(recipe, mode, inventoryHash, tick, result));
+        LOCKED_PREVIEW_CACHE.put(recipe, new CachedPreview(mode, inventoryHash, tick, result));
         return result;
     }
 
@@ -280,6 +236,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         var reservedTerminalAmounts = new Object2IntOpenHashMap<AEItemKey>();
         var playerItems = menu.getPlayerInventory().items;
         var reservedPlayerItems = new int[playerItems.size()];
+        var repoIndex = WcwtStackMatching.ClientRepoIndex.of(menu);
         Set<Integer> missingSlots = new HashSet<>();
         Set<Integer> craftableSlots = new HashSet<>();
         boolean anyResolved = false;
@@ -317,12 +274,12 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 anyResolved = true;
             }
 
-            int terminalReserved = WcwtStackMatching.reserveClientRepoStoredIngredient(menu, alternatives, ingredient,
+            int terminalReserved = WcwtStackMatching.reserveFromIndex(repoIndex, alternatives, ingredient,
                     reservedTerminalAmounts, remaining);
             remaining -= terminalReserved;
             anyResolved |= terminalReserved > 0;
 
-            if (remaining > 0 && WcwtStackMatching.hasClientRepoCraftableIngredient(menu, alternatives, ingredient)) {
+            if (remaining > 0 && WcwtStackMatching.hasCraftableFromIndex(repoIndex, alternatives, ingredient)) {
                 craftable = true;
                 anyResolved = true;
                 remaining = 0;
@@ -357,7 +314,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return level != null ? level.getGameTime() : 0L;
     }
 
-    private static List<Component> createLockedGridTooltip(PreviewResult preview, boolean allowShiftMaxTransfer) {
+    static List<Component> createLockedGridTooltip(PreviewResult preview, boolean allowShiftMaxTransfer) {
         List<Component> tooltip = new ArrayList<>();
         if (!preview.craftableSlots().isEmpty()) {
             var line = Screen.hasControlDown() ? ItemModText.WILL_CRAFT.text() : ItemModText.CTRL_CLICK_TO_CRAFT.text();
@@ -389,7 +346,11 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return false;
     }
 
-    private static EncodingMode getTransferMode(EmiRecipe recipe) {
+    static boolean shouldSkipPullPreview(EmiRecipe recipe) {
+        return recipe instanceof EmiInfoRecipe || recipe instanceof EmiIngredientRecipe;
+    }
+
+    static EncodingMode getTransferMode(EmiRecipe recipe) {
         if (recipe.getCategory() == VanillaEmiRecipeCategories.CRAFTING && recipe.supportsRecipeTree()) {
             return EncodingMode.CRAFTING;
         }
@@ -425,19 +386,11 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     }
 
     private static List<ItemStack> getAlternativeStacks(EmiIngredient ingredient) {
-        List<ItemStack> alternatives = new ArrayList<>();
+        var unique = new WcwtStackMatching.UniqueStacks();
         for (var emiStack : ingredient.getEmiStacks()) {
-            ItemStack stack = emiStack.getItemStack();
-            if (stack.isEmpty()) {
-                continue;
-            }
-
-            ItemStack copy = stack.copy();
-            if (!containsEquivalentStack(alternatives, copy)) {
-                alternatives.add(copy);
-            }
+            unique.add(emiStack.getItemStack().copy());
         }
-        return alternatives;
+        return unique.list();
     }
 
     private static List<ItemStack> narrowSpecificAlternativesToDisplayed(List<ItemStack> alternatives) {
@@ -463,7 +416,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return List.of();
     }
 
-    private static Map<Integer, SlotWidget> getRecipeInputSlots(EmiRecipe recipe, List<Widget> widgets) {
+    static Map<Integer, SlotWidget> getRecipeInputSlots(EmiRecipe recipe, List<Widget> widgets) {
         Map<Integer, SlotWidget> inputSlots = new IdentityHashMap<>();
         for (int i = 0; i < recipe.getInputs().size(); i++) {
             EmiIngredient ingredient = recipe.getInputs().get(i);
@@ -497,27 +450,6 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return inputSlots;
     }
 
-    private static void renderLockedFillButtonBorder(List<Widget> widgets, GuiGraphics guiGraphics) {
-        for (Widget widget : widgets) {
-            if (!EMI_FILL_BUTTON_CLASS.equals(widget.getClass().getName())) {
-                continue;
-            }
-            Bounds bounds = widget.getBounds();
-            int x = bounds.x();
-            int y = bounds.y();
-            int x2 = bounds.right();
-            int y2 = bounds.bottom();
-            var poseStack = guiGraphics.pose();
-            poseStack.pushPose();
-            poseStack.translate(0, 0, 400);
-            guiGraphics.fill(x, y, x2, y + 1, 0xFFFF0000);
-            guiGraphics.fill(x, y2 - 1, x2, y2, 0xFFFF0000);
-            guiGraphics.fill(x, y, x + 1, y2, 0xFFFF0000);
-            guiGraphics.fill(x2 - 1, y, x2, y2, 0xFFFF0000);
-            poseStack.popPose();
-        }
-    }
-
     private static void renderSlotOverlay(@Nullable SlotWidget slot, GuiGraphics guiGraphics, int color) {
         if (slot == null) {
             return;
@@ -531,7 +463,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         poseStack.popPose();
     }
 
-    private static void renderMissingAndCraftableSlotOverlays(Map<Integer, SlotWidget> inputSlots,
+    static void renderMissingAndCraftableSlotOverlays(Map<Integer, SlotWidget> inputSlots,
                                                               GuiGraphics guiGraphics,
                                                               Set<Integer> missingSlots,
                                                               Set<Integer> craftableSlots) {
@@ -619,8 +551,8 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return stacks.stream().anyMatch(Objects::nonNull);
     }
 
-    private static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,
-                                                                         EmiRecipe recipe) {
+    static List<RequestedIngredient> collectRequestedIngredients(WirelessComprehensiveWorkTerminalMenu menu,
+                                                                EmiRecipe recipe) {
         var priorityContext = createPriorityContext(menu);
         if (getTransferMode(recipe) == EncodingMode.CRAFTING) {
             List<Widget> widgets = collectRecipeWidgets(recipe);
@@ -644,7 +576,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 .toList();
     }
 
-    private static List<RequestedIngredient> mergeProcessingIngredients(List<RequestedIngredient> ingredients) {
+    static List<RequestedIngredient> mergeProcessingIngredients(List<RequestedIngredient> ingredients) {
         List<RequestedIngredient> merged = new ArrayList<>();
         for (RequestedIngredient ingredient : ingredients) {
             if (ingredient.alternatives().isEmpty()) {
@@ -672,7 +604,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
     private static RequestedIngredient toRequestedIngredient(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                              EmiIngredient ingredient,
                                                              int slotIndex) {
-        List<ItemStack> visibleAlternatives = new ArrayList<>();
+        var unique = new WcwtStackMatching.UniqueStacks();
         ItemStack displayed = ingredient.getEmiStacks().stream()
                 .map(EmiStack::getItemStack)
                 .filter(stack -> !stack.isEmpty())
@@ -680,20 +612,12 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 .map(ItemStack::copy)
                 .orElse(ItemStack.EMPTY);
         if (!displayed.isEmpty()) {
-            visibleAlternatives.add(displayed);
+            unique.add(displayed);
         }
         for (var emiStack : ingredient.getEmiStacks()) {
-            ItemStack stack = emiStack.getItemStack();
-            if (stack.isEmpty()) {
-                continue;
-            }
-
-            ItemStack copy = stack.copy();
-            if (containsEquivalentStack(visibleAlternatives, copy)) {
-                continue;
-            }
-            visibleAlternatives.add(copy);
+            unique.add(emiStack.getItemStack().copy());
         }
+        List<ItemStack> visibleAlternatives = unique.list();
         if (visibleAlternatives.isEmpty()) {
             return null;
         }
@@ -892,29 +816,18 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         }
     }
 
-    private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
-        for (var existing : stacks) {
-            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     private static List<ItemStack> orderAlternativesWithPreferredFirst(
             WcwtIngredientPriorities.PriorityContext priorityContext,
             ItemStack preferred,
             List<ItemStack> alternatives) {
-        List<ItemStack> ordered = new ArrayList<>();
+        var unique = new WcwtStackMatching.UniqueStacks();
         if (!preferred.isEmpty()) {
-            ordered.add(preferred.copy());
+            unique.add(preferred.copy());
         }
         for (ItemStack alternative : WcwtIngredientPriorities.sortItemAlternatives(priorityContext, alternatives)) {
-            if (!containsEquivalentStack(ordered, alternative)) {
-                ordered.add(alternative.copy());
-            }
+            unique.add(alternative.copy());
         }
-        return ordered;
+        return unique.list();
     }
 
     @Nullable
@@ -957,10 +870,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return new GenericStack(key, Math.max(1L, amount));
     }
 
-    private record PreviewResult(Set<Integer> missingSlots,
-                                 Set<Integer> craftableSlots,
-                                 boolean anyResolved,
-                                 int inputCount) {
+    record PreviewResult(Set<Integer> missingSlots,
+                         Set<Integer> craftableSlots,
+                         boolean anyResolved,
+                         int inputCount) {
         private static PreviewResult previewOnly() {
             return new PreviewResult(Set.of(), Set.of(), false, 0);
         }

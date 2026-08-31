@@ -19,7 +19,6 @@ public final class WcwtKeybindings {
     public static final KeyMapping OPEN_TOOLKIT = create("open_toolkit", KeyConflictContext.IN_GAME);
     public static final KeyMapping OPEN_RESONATING_LIGHTNING_PATTERN_CODING =
             create("open_resonating_lightning_pattern_coding");
-    public static final KeyMapping TOGGLE_CRAFTING_GRID_LOCK = create("toggle_crafting_grid_lock", KeyConflictContext.IN_GAME);
     public static final KeyMapping TOGGLE_FAVORITE_ITEM = create("toggle_favorite_item", KeyConflictContext.IN_GAME);
 
     private WcwtKeybindings() {

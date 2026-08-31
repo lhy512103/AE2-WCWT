@@ -375,13 +375,6 @@
       "left": 88,
       "bottom": 168
     },
-    "CRAFTING_Locking": {
-      "$comment": "合成网格锁定按钮。",
-      "left": 132,
-      "bottom": 196,
-      "width": 16,
-      "height": 16
-    },
     "manual_workspace_background": {
       "$comment": "左上手动工作区扩展背景（锻造台/铁砧）。",
       "left": 78,

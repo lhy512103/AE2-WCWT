@@ -36,14 +36,13 @@ dependencies {
     localRuntime "curse.maven:patchouli-306770:7730942"
     localRuntime "curse.maven:titanium-287342:7951516"
 
-    // Local runtime recipe viewers
-    localRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
-    // localRuntime "dev.emi:emi-neoforge:${emi_version}"
+    // Local runtime recipe viewers. runClient uses JEI; runClientEMI uses EMI.
+    jeiRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+    emiRuntime "dev.emi:emi-neoforge:${emi_version}"
 
     // Local runtime AE2 addons
     localRuntime "curse.maven:advancedae-1084104:${advancedae_file}"
     localRuntime "curse.maven:ae2-crystal-science-1435174:8112039"
-    localRuntime "curse.maven:ae2-utility-1521605:8698335"
     localRuntime "curse.maven:ae2-import-export-card-982512:8033654"
     // AE2 Lightning Tech 2.x requires Thunderbolt Core.
     localRuntime "curse.maven:thunderbolt-core-1631756:8616071"
@@ -106,7 +105,6 @@ dependencies {
     localRuntime "thedarkcolour:kotlinforforge-neoforge:${kotlinforforge_version}"
 
     // Client-only local runtime UI and input helpers
-    clientLocalRuntime "curse.maven:ae2-jei-integration-1074338:${ae2jei_integration_file}"
     clientLocalRuntime "curse.maven:modern-ui-352491:${modern_ui_file}"
     clientLocalRuntime "curse.maven:mouse-tweaks-60089:${mouse_tweaks_file}"
     clientLocalRuntime "curse.maven:configured-457570:${configured_file}"
@@ -114,4 +112,6 @@ dependencies {
     clientLocalRuntime "curse.maven:controlling-250398:${controlling_file}"
     clientLocalRuntime "curse.maven:imblocker-483760:${imblocker_file}"
     clientLocalRuntime "curse.maven:just-enough-characters-250702:${jech_file}"
+    jeiRuntime "curse.maven:ae2-jei-integration-1074338:${ae2jei_integration_file}"
+    jeiRuntime "curse.maven:ae2-utility-1521605:8698335"
 }
