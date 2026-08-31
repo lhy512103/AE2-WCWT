@@ -9,7 +9,10 @@
 3. Pattern-management mapping add/reload/delete now call ExtendedAE Plus public mapping APIs, and Cancel opens the mapping manager.
 4. Pattern-management search and mapping fields now use ExtendedAE Plus's Chinese-capable text field when it is present.
 5. Removed the option to open the ExtendedAE Plus provider selector for duplicate names.
-6. Aligned pattern-management provider icons and titles with the vanilla pattern access terminal, and inset the list by 1px.
+6. Restored 18px pattern-management header and slot rows, cropping only slot backgrounds and item icons by 1px at the list edges.
+7. Slot hover highlights now draw after items and are no longer cropped.
+8. Shift-clicking Encode returns the last uploaded pattern through ExtendedAE Plus when it is installed, and the arrow icon flips 180°.
+9. World-highlight now calls ExtendedAE's public highlight APIs instead of reflection, and the pin button is drawn at 5×10.
 
 ### 中文
 
@@ -18,7 +21,10 @@
 3. 样板管理区增加/重载/删除映射改为调用 ExtendedAE Plus 公开 API，取消按钮改为打开映射管理界面。
 4. 安装 ExtendedAE Plus 时，样板管理区搜索框和映射框改用其可输入中文的输入框。
 5. 移除同名供应器上传时打开 ExtendedAE Plus 选择界面的配置。
-6. 样板管理区供应器图标和标题对齐原版样板管理终端，列表上下各内缩 1px。
+6. 样板管理区标题行和槽位行改回 18px，仅在列表上下边缘裁切槽位底图和图标 1px。
+7. 槽位悬停高亮改为在物品之后绘制，且不再被裁切。
+8. 安装 ExtendedAE Plus 时，Shift+编写可撤回上次上传的样板，箭头图标翻转 180°。
+9. 世界高亮改为直接调用 ExtendedAE 公开 API，定位针按钮绘制为 5×10。
 
 ## v1.3.8
 

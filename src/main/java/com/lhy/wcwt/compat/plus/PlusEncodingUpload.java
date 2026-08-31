@@ -5,10 +5,12 @@ import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.IGrid;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.util.inv.filter.IAEItemFilter;
+import com.extendedae_plus.network.ReturnLastPatternC2SPacket;
 import com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -48,24 +50,55 @@ public final class PlusEncodingUpload {
         }
         ItemStack remaining = encodedPattern.copy();
         EncodedPatternFilter filter = new EncodedPatternFilter();
-        for (PatternContainer provider : matches) {
+        for (int index = 0; index < matches.size(); index++) {
+            PatternContainer provider = matches.get(index);
+            InternalInventory inv = provider.getTerminalPatternInventory();
+            if (inv == null) {
+                continue;
+            }
+            ItemStack[] before = snapshot(inv);
             remaining = ExtendedAEPatternUploadUtil.insertIntoAccessiblePatternSlots(provider, remaining, filter);
+            int slot = firstChangedSlot(inv, before);
+            if (slot >= 0) {
+                ExtendedAEPatternUploadUtil.recordProviderUpload(player, -1L - index, provider, slot);
+            }
             if (remaining.isEmpty()) {
-                return UniqueUploadResult.uploaded(targetName);
+                return UniqueUploadResult.uploaded(targetName, slot);
             }
         }
         return UniqueUploadResult.failed(targetName);
     }
 
-    public record UniqueUploadResult(boolean uploaded, boolean hadTarget, String providerName) {
-        private static final UniqueUploadResult NO_TARGET = new UniqueUploadResult(false, false, "");
+    public static void requestReturnLastPattern() {
+        PacketDistributor.sendToServer(ReturnLastPatternC2SPacket.INSTANCE);
+    }
 
-        private static UniqueUploadResult uploaded(String providerName) {
-            return new UniqueUploadResult(true, true, providerName);
+    private static ItemStack[] snapshot(InternalInventory inv) {
+        ItemStack[] before = new ItemStack[inv.size()];
+        for (int i = 0; i < inv.size(); i++) {
+            before[i] = inv.getStackInSlot(i).copy();
+        }
+        return before;
+    }
+
+    private static int firstChangedSlot(InternalInventory inv, ItemStack[] before) {
+        for (int i = 0; i < before.length && i < inv.size(); i++) {
+            if (!ItemStack.matches(before[i], inv.getStackInSlot(i))) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public record UniqueUploadResult(boolean uploaded, boolean hadTarget, String providerName, int slot) {
+        private static final UniqueUploadResult NO_TARGET = new UniqueUploadResult(false, false, "", -1);
+
+        private static UniqueUploadResult uploaded(String providerName, int slot) {
+            return new UniqueUploadResult(true, true, providerName, slot);
         }
 
         private static UniqueUploadResult failed(String providerName) {
-            return new UniqueUploadResult(false, true, providerName);
+            return new UniqueUploadResult(false, true, providerName, -1);
         }
     }
 

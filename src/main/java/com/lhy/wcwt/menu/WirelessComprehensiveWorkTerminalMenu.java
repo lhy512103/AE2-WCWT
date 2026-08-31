@@ -2182,7 +2182,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (result.uploaded()) {
             MatrixUploadResult located = findMatrixUploadResult(uploadStack);
             providerId = located.providerId();
-            slot = located.slot();
+            slot = result.slot() >= 0 ? result.slot() : located.slot();
         }
         return new UploadAttemptResult(result.uploaded(), true, result.providerName(), providerId, slot);
     }

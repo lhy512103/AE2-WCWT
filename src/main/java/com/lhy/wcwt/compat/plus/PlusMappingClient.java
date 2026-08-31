@@ -24,4 +24,8 @@ public final class PlusMappingClient {
     public static Screen openMappingScreen(Screen parent) {
         return new RecipeTypeMappingScreen(parent);
     }
+
+    public static void requestReturnLastPattern() {
+        PlusEncodingUpload.requestReturnLastPattern();
+    }
 }

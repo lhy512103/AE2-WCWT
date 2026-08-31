@@ -17,6 +17,8 @@ import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.slot.AppEngSlot;
 import appeng.client.gui.widgets.ActionButton;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.TabButton;
@@ -40,6 +42,8 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.extendedae.ExtendedAeHighlight;
+import com.lhy.wcwt.compat.extendedae.ExtendedAePresence;
 import com.lhy.wcwt.compat.plus.PlusMappingClient;
 import com.lhy.wcwt.compat.plus.PlusPresence;
 import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
@@ -80,6 +84,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu.WcwtActivatableSl
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Renderable;
@@ -97,7 +102,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
-import net.minecraft.world.phys.AABB;
 import net.neoforged.fml.ModList;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -133,10 +137,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             "com.leobeliik.extremesoundmuffler.SoundMufflerCommon";
     private static final String EAEP_JEI_RUNTIME_PROXY =
             "com.extendedae_plus.integration.jei.JeiRuntimeProxy";
-    private static final String EAE_HIGHLIGHT_HANDLER =
-            "com.glodblock.github.extendedae.client.render.EAEHighlightHandler";
-    private static final String EAE_MESSAGE_UTIL =
-            "com.glodblock.github.extendedae.util.MessageUtil";
 
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final boolean DEBUG_SLOT_HIT = Boolean.getBoolean("wcwt.debug.slotHit");
@@ -310,7 +310,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ExtendedPanelLayout.Rect patternManagementUiButton =
             new ExtendedPanelLayout.Rect(306, 2, 14, 15);
     private ExtendedPanelLayout.Rect patternManagementHighlightButton =
-            new ExtendedPanelLayout.Rect(337, 4, 5, 10);
+            new ExtendedPanelLayout.Rect(338, 4, 5, 10);
     private ExtendedPanelLayout.Rect patternManagementDisplayModeButton =
             new ExtendedPanelLayout.Rect(175, 194, 12, 12);
     private ExtendedPanelLayout.Rect patternManagementDisplaySlotsButton =
@@ -365,7 +365,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_HEADER_ICON_SIZE = 8;
     private static final int PATTERN_MANAGEMENT_HEADER_Y_OFFSET = 0;
     private static final int PATTERN_MANAGEMENT_SLOT_Y_OFFSET = 0;
-    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET = 4;
+    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_W = 5;
+    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_H = 10;
+    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_W = 6;
+    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_H = 11;
+    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_U = 48;
+    private static final int PATTERN_MANAGEMENT_HIGHLIGHT_ICON_V = 32;
     private static final int BUTTON_PRESS_OFFSET_Y = 1;
     private static final int TOOLKIT_MEMORY_TOGGLE_OFF_U = 0;
     private static final int TOOLKIT_MEMORY_TOGGLE_ON_U = 16;
@@ -619,7 +624,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         manualAnvilNameField.setFocused(false);
         widgets.add("manual_anvil_name", manualAnvilNameField);
 
-        encodePatternButton = new ActionButton(appeng.api.config.ActionItems.ENCODE, this::handleEncodePatternButton);
+        encodePatternButton = new EncodePatternButton(this::handleEncodePatternButton);
         encodePatternButton.setMessage(Component.translatable("gui.tooltips.ae2.Encode"));
         widgets.add("wcwtEncodePattern", encodePatternButton);
 
@@ -1853,6 +1858,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void handleEncodePatternButton() {
+        if (PlusPresence.available() && Screen.hasShiftDown()) {
+            PlusMappingClient.requestReturnLastPattern();
+            if (encodePatternButton != null) {
+                encodePatternButton.setFocused(false);
+            }
+            setFocused(null);
+            return;
+        }
         String searchKey = ExtendedAePlusUploadCompat.consumeLastProviderSearchKey();
         boolean generatedFallbackSearchKey = false;
         if ((searchKey == null || searchKey.isBlank()) && patternEncodingMode != EncodingMode.PROCESSING) {
@@ -4282,10 +4295,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 161, 0, 177, 0,
                 WCWT_STATES_TEXTURE, 52, 5, 8, 7, 256, 256, mouseX, mouseY);
         if (!patternManagementShowSlots) {
-            renderPatternManagementButton(guiGraphics, rowButton(patternManagementHighlightButton, rowY),
-                    192, 160, 224, 160,
-                    EAE_ICONS_TEXTURE, 48, 32, 64, 64, mouseX, mouseY,
-                    PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET, 0);
+            renderPatternManagementHighlightButton(guiGraphics, rowButton(patternManagementHighlightButton, rowY));
         }
     }
 
@@ -4346,10 +4356,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             }
         }
         if (row.slots().contains(0) || row.slots().contains(-1)) {
-            renderPatternManagementButton(guiGraphics, slotRowButton(patternManagementHighlightButton, rowY),
-                    192, 160, 224, 160,
-                    EAE_ICONS_TEXTURE, 48, 32, 64, 64, mouseX, mouseY,
-                    PATTERN_MANAGEMENT_HIGHLIGHT_ICON_X_OFFSET, 0);
+            renderPatternManagementHighlightButton(guiGraphics, slotRowButton(patternManagementHighlightButton, rowY));
         }
     }
 
@@ -4846,12 +4853,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         boolean hover = mouseX >= leftPos + x && mouseX < leftPos + x + w
                 && mouseY >= topPos + y && mouseY < topPos + y + h;
         int pressOffsetY = hover ? BUTTON_PRESS_OFFSET_Y : 0;
-        guiGraphics.blit(WCWT_STATES_TEXTURE, x, y, hover ? hoverU : normalU, hover ? hoverV : normalV,
+        guiGraphics.blit(WCWT_STATES_TEXTURE, x, y, w, h, hover ? hoverU : normalU, hover ? hoverV : normalV,
                 Math.min(w, 23), Math.min(h, 16), 256, 256);
         if (iconTexture != null) {
-            int iconX = x + (w - iconW) / 2 + iconOffsetX;
-            int iconY = y + (h - iconH) / 2 + iconOffsetY + pressOffsetY;
-            guiGraphics.blit(iconTexture, iconX, iconY, iconU, iconV, iconW, iconH,
+            int drawIconW = Math.min(iconW, w);
+            int drawIconH = Math.min(iconH, h);
+            int iconX = x + (w - drawIconW) / 2 + iconOffsetX;
+            int iconY = y + (h - drawIconH) / 2 + iconOffsetY + pressOffsetY;
+            guiGraphics.blit(iconTexture, iconX, iconY, drawIconW, drawIconH, iconU, iconV, iconW, iconH,
                     iconTextureWidth, iconTextureHeight);
         }
     }
@@ -4882,6 +4891,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagementButton(guiGraphics, rect.left(), rect.top(), normalU, normalV, hoverU, hoverV,
                 rect.width(), rect.height(), iconTexture, iconU, iconV, iconTextureWidth, iconTextureHeight,
                 mouseX, mouseY, iconOffsetX, iconOffsetY);
+    }
+
+    private void renderPatternManagementHighlightButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect) {
+        var pose = guiGraphics.pose();
+        pose.pushPose();
+        pose.translate(0, 0, 3);
+        guiGraphics.blit(EAE_ICONS_TEXTURE, rect.left(), rect.top(),
+                PATTERN_MANAGEMENT_HIGHLIGHT_ICON_W, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_H,
+                PATTERN_MANAGEMENT_HIGHLIGHT_ICON_U, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_V,
+                PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_W, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_H, 64, 64);
+        pose.popPose();
     }
 
     private void renderPatternManagementButtonIcon(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
@@ -5904,56 +5924,25 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void highlightPatternProvider(PatternProviderListPacket.Entry entry) {
-        if (entry.pos() == null || entry.dimension() == null) {
-            Minecraft.getInstance().player.displayClientMessage(
-                    Component.translatable("gui.wcwt.pattern_management.highlight_missing"), false);
-            return;
-        }
-        long until = System.currentTimeMillis() + 3000;
-        boolean highlighted = entry.face() == null
-                ? WcwtReflect.runStatic("extendedae", EAE_HIGHLIGHT_HANDLER, "highlight",
-                        new Class<?>[]{net.minecraft.core.BlockPos.class,
-                                net.minecraft.resources.ResourceKey.class, long.class},
-                        entry.pos(), entry.dimension(), until)
-                : WcwtReflect.runStatic("extendedae", EAE_HIGHLIGHT_HANDLER, "highlight",
-                        new Class<?>[]{net.minecraft.core.BlockPos.class, net.minecraft.core.Direction.class,
-                                net.minecraft.resources.ResourceKey.class, long.class, AABB.class},
-                        entry.pos(), entry.face(), entry.dimension(), until, new AABB(entry.pos()));
         var player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
-        if (!highlighted) {
+        if (entry.pos() == null || entry.dimension() == null) {
+            player.displayClientMessage(
+                    Component.translatable("gui.wcwt.pattern_management.highlight_missing"), false);
+            return;
+        }
+        if (!ExtendedAePresence.available()
+                || !ExtendedAeHighlight.highlight(player, entry.pos(), entry.dimension(), entry.face())) {
             player.displayClientMessage(
                     Component.translatable("gui.wcwt.pattern_management.highlight_failed"), false);
             return;
         }
-        player.displayClientMessage(
-                Component.translatable("extendedae_plus.message.provider.selected", entry.providerId()), true);
-        displayPatternProviderHighlightMessage(entry);
-    }
-
-    private void displayPatternProviderHighlightMessage(PatternProviderListPacket.Entry entry) {
-        var player = Minecraft.getInstance().player;
-        if (player == null || entry.pos() == null || entry.dimension() == null) {
-            return;
+        if (PlusPresence.available()) {
+            player.displayClientMessage(
+                    Component.translatable("extendedae_plus.message.provider.selected", entry.providerId()), true);
         }
-        var message = WcwtReflect.invokeStatic("extendedae", EAE_MESSAGE_UTIL, "createEnhancedHighlightMessage",
-                        new Class<?>[]{net.minecraft.world.entity.player.Player.class,
-                                net.minecraft.core.BlockPos.class,
-                                net.minecraft.resources.ResourceKey.class,
-                                String.class},
-                        player, entry.pos(), entry.dimension(), "chat.ex_pattern_access_terminal.pos")
-                .filter(Component.class::isInstance)
-                .map(Component.class::cast);
-        if (message.isPresent()) {
-            player.displayClientMessage(message.get(), false);
-            return;
-        }
-        player.displayClientMessage(Component.translatable("chat.ex_pattern_access_terminal.pos",
-                Component.literal(entry.pos().toShortString()),
-                Component.literal(entry.dimension().location().toString()),
-                (int) Math.sqrt(player.blockPosition().distSqr(entry.pos()))), false);
     }
 
     private WirelessComprehensiveWorkTerminalMenu.WcwtCurioSlot getCurioToggleSlotAt(double mouseX, double mouseY) {
@@ -6449,6 +6438,50 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         PatternManagementSearchMode next() {
             var values = values();
             return values[(ordinal() + 1) % values.length];
+        }
+    }
+
+    private static final class EncodePatternButton extends ActionButton {
+        private EncodePatternButton(Runnable onPress) {
+            super(appeng.api.config.ActionItems.ENCODE, onPress);
+        }
+
+        @Override
+        public List<Component> getTooltipMessage() {
+            if (PlusPresence.available() && Screen.hasShiftDown()) {
+                return List.of(Component.translatable("extendedae_plus.button.return_last_pattern"));
+            }
+            return super.getTooltipMessage();
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+            if (!PlusPresence.available() || !Screen.hasShiftDown()) {
+                super.renderWidget(guiGraphics, mouseX, mouseY, partial);
+                return;
+            }
+            if (!this.visible) {
+                return;
+            }
+            var icon = this.getIcon();
+            int yOffset = isHovered() ? 1 : 0;
+            if (!isDisableBackground()) {
+                Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER
+                        : isFocused() ? Icon.TOOLBAR_BUTTON_BACKGROUND_FOCUS : Icon.TOOLBAR_BUTTON_BACKGROUND;
+                bgIcon.getBlitter()
+                        .dest(getX() - 1, getY() + yOffset, 18, 20)
+                        .zOffset(2)
+                        .blit(guiGraphics);
+            }
+            if (icon != null) {
+                PoseStack pose = guiGraphics.pose();
+                pose.pushPose();
+                pose.translate(getX() + 8, getY() + 1 + yOffset + 8, 3);
+                pose.mulPose(Axis.ZP.rotationDegrees(180.0F));
+                pose.translate(-8, -8, 0);
+                icon.getBlitter().dest(0, 0).zOffset(3).blit(guiGraphics);
+                pose.popPose();
+            }
         }
     }
 }

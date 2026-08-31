@@ -810,8 +810,8 @@
       "height": 15
     },
     "manage_highlight_provider": {
-      "$comment": "样板管理区每个供应器第一行样板右侧的世界高亮按钮；top 是相对第一行样板顶部的偏移。",
-      "left": 337,
+      "$comment": "样板管理区每个供应器第一行样板右侧的世界高亮按钮；ExtendedAE HighlightButtonSmall 源图 6×11，绘制缩小 1px 为 5×10。",
+      "left": 338,
       "top": 4,
       "width": 5,
       "height": 10
