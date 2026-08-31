@@ -25,6 +25,8 @@
 19. The F-key fill-search now also reads JEI hover and WCWT hovered slots when EAEP's JEI proxy is missing.
 20. Overload-pattern conversion now uses Lightning Tech / Thunderbolt public APIs, and the runtime jars are updated to 2.1.0-beta.2 / 2.0.0-beta.2.
 21. Resonating-pattern conversion now calls Crystal Science's public encode API instead of reflection.
+22. JEI ingredient conversion now uses AE2 JEI Integration's public converter API, with converters cached by ingredient type.
+23. Optional Curios, Applied Mekanistics, MEGA Cells, AE2WTLib magnet-range, JECH, and Advanced AE direction-map calls now use public APIs instead of reflection.
 
 ### 中文
 
@@ -49,6 +51,8 @@
 19. F 键填充搜索在 EAEP JEI 代理缺失时，回退到 JEI 悬停和 WCWT 当前悬停槽。
 20. 过载样板转换改用闪电科技 / Thunderbolt 公开 API，运行时依赖更新到 2.1.0-beta.2 / 2.0.0-beta.2。
 21. 谐振样板转换改为调用水晶科技公开 encode API，不再反射。
+22. JEI 原料转换改为调用 AE2 JEI Integration 公开 converter API，并按原料类型缓存。
+23. Curios、应用通用机械、MEGA 元件、AE2WTLib 磁力范围、JECH 与 Advanced AE 方向图改为调用公开 API，不再反射。
 
 ## v1.3.8
 

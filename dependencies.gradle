@@ -26,6 +26,7 @@ dependencies {
     compileOnly "mekanism:Mekanism:${mekanism_version}"
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
     compileOnly "curse.maven:polymorph-388800:${polymorph_file}"
+    compileOnly "curse.maven:just-enough-characters-250702:${jech_file}"
 
     // Local runtime core mods
     localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"

@@ -4,6 +4,7 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.parts.encoding.EncodingMode;
+import com.lhy.wcwt.compat.emi.EmiStackCompat;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
@@ -181,20 +182,8 @@ public final class WcwtRecipeTransferCommon {
             var ingredient = WcwtReflect.findMethod(favorite.getClass(), "getStack")
                     .flatMap(method -> WcwtReflect.invoke(favorite, method))
                     .orElse(null);
-            if (ingredient == null) {
-                continue;
-            }
-            var rawEmiStacks = WcwtReflect.findMethod(ingredient.getClass(), "getEmiStacks")
-                    .flatMap(method -> WcwtReflect.invoke(ingredient, method))
-                    .orElse(null);
-            if (!(rawEmiStacks instanceof List<?> emiStacks)) {
-                continue;
-            }
-            for (Object emiStack : emiStacks) {
-                GenericStack stack = convertEmiStackToGenericStack(emiStack);
-                if (stack != null && stack.what() != null) {
-                    keys.add(stack.what());
-                }
+            for (GenericStack stack : EmiStackCompat.stacksFromIngredient(ingredient)) {
+                keys.add(stack.what());
             }
         }
         return List.copyOf(keys);
@@ -211,32 +200,5 @@ public final class WcwtRecipeTransferCommon {
             }
             target.add(candidate.copy());
         }
-    }
-
-    @Nullable
-    private static GenericStack convertEmiStackToGenericStack(Object emiStack) {
-        if (!WcwtReflect.isInstance("emi", "dev.emi.emi.api.stack.EmiStack", emiStack)) {
-            return null;
-        }
-        var key = WcwtReflect.findMethod(emiStack.getClass(), "getKey")
-                .flatMap(method -> WcwtReflect.invoke(emiStack, method))
-                .orElse(null);
-        if (key instanceof net.minecraft.world.level.material.Fluid fluid
-                && fluid != net.minecraft.world.level.material.Fluids.EMPTY) {
-            long amount = WcwtReflect.findMethod(emiStack.getClass(), "getAmount")
-                    .flatMap(method -> WcwtReflect.invoke(emiStack, method))
-                    .filter(Number.class::isInstance)
-                    .map(Number.class::cast)
-                    .map(Number::longValue)
-                    .orElse(1L);
-            return GenericStack.fromFluidStack(new FluidStack(fluid, (int) Math.max(1L, amount)));
-        }
-        var rawItemStack = WcwtReflect.findMethod(emiStack.getClass(), "getItemStack")
-                .flatMap(method -> WcwtReflect.invoke(emiStack, method))
-                .orElse(null);
-        if (rawItemStack instanceof ItemStack itemStack && !itemStack.isEmpty()) {
-            return GenericStack.fromItemStack(itemStack.copyWithCount(1));
-        }
-        return null;
     }
 }

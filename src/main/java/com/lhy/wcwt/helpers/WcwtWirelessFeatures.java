@@ -22,7 +22,6 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.compat.reflect.WcwtMagnetReflect;
-import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.network.WcwtPickBlockPacket;
 import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
@@ -54,7 +53,6 @@ import java.util.function.Consumer;
 public final class WcwtWirelessFeatures {
     private static final ResourceLocation MAGNET_CARD_ID =
             ResourceLocation.fromNamespaceAndPath("ae2wtlib", "magnet_card");
-    private static final String AE2WTLIB_CONFIG_CLASS = "de.mari_023.ae2wtlib.AE2wtlibConfig";
     private static final double DEFAULT_MAGNET_RANGE = 16.0;
     private static final boolean DEBUG_MAGNET = Boolean.getBoolean("wcwt.debug.magnet");
     private static final WeakHashMap<ServerPlayer, Integer> RESTOCK_SYNC_TICKS = new WeakHashMap<>();
@@ -602,16 +600,11 @@ public final class WcwtWirelessFeatures {
     }
 
     private static double getMagnetRange() {
-        Object config = WcwtReflect.readStaticField("ae2wtlib", AE2WTLIB_CONFIG_CLASS, "CONFIG").orElse(null);
-        if (config == null) {
+        try {
+            return de.mari_023.ae2wtlib.AE2wtlibConfig.CONFIG.magnetCardRange();
+        } catch (Throwable ignored) {
             return DEFAULT_MAGNET_RANGE;
         }
-        return WcwtReflect.findMethod(config.getClass(), "magnetCardRange")
-                .flatMap(method -> WcwtReflect.invoke(config, method))
-                .filter(Number.class::isInstance)
-                .map(Number.class::cast)
-                .map(Number::doubleValue)
-                .orElse(DEFAULT_MAGNET_RANGE);
     }
 
     private static boolean getMagnetSetting(ItemStack terminal, String methodName) {

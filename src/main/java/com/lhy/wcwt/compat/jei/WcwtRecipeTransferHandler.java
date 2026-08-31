@@ -7,7 +7,7 @@ import appeng.integration.modules.itemlists.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
 import com.simibubi.create.content.processing.basin.BasinRecipe;
-import com.lhy.wcwt.compat.reflect.WcwtReflect;
+import com.lhy.wcwt.compat.AppliedMekanisticsCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.client.WcwtFavorites;
@@ -18,7 +18,6 @@ import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
-import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
@@ -462,7 +461,7 @@ public class WcwtRecipeTransferHandler
         if (ingredient == null) {
             return null;
         }
-        GenericStack converted = convertWithAe2JeiIntegration(ingredient);
+        GenericStack converted = Ae2JeiIntegrationCompat.convert(ingredient);
         if (converted != null) {
             return converted;
         }
@@ -474,46 +473,6 @@ public class WcwtRecipeTransferHandler
         if (raw instanceof FluidStack fluid && !fluid.isEmpty()) {
             return GenericStack.fromFluidStack(fluid.copy());
         }
-        return convertMekanismChemical(raw);
-    }
-
-    @Nullable
-    private static GenericStack convertWithAe2JeiIntegration(ITypedIngredient<?> ingredient) {
-        var converter = WcwtReflect.invokeStatic("ae2jeiintegration",
-                        "tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverters",
-                        "getConverter", new Class<?>[]{IIngredientType.class}, ingredient.getType())
-                .orElse(null);
-        if (converter == null) {
-            return null;
-        }
-        return WcwtReflect.findMethod(converter.getClass(), "getStackFromIngredient", Object.class)
-                .flatMap(method -> WcwtReflect.invoke(converter, method, ingredient.getIngredient()))
-                .filter(GenericStack.class::isInstance)
-                .map(GenericStack.class::cast)
-                .orElse(null);
-    }
-
-    @Nullable
-    private static GenericStack convertMekanismChemical(Object raw) {
-        if (!WcwtReflect.isInstance("mekanism", "mekanism.api.chemical.ChemicalStack", raw)) {
-            return null;
-        }
-        var key = WcwtReflect.invokeStatic("appmek", "me.ramidzkh.mekae2.ae2.MekanismKey", "of",
-                        new Class<?>[]{raw.getClass()}, raw)
-                .orElseGet(() -> WcwtReflect.findClass("appmek", "me.ramidzkh.mekae2.ae2.MekanismKey")
-                        .flatMap(keyClass -> WcwtReflect.findClass("mekanism", "mekanism.api.chemical.ChemicalStack")
-                                .flatMap(stackClass -> WcwtReflect.findMethod(keyClass, "of", stackClass)
-                                        .flatMap(method -> WcwtReflect.invoke(null, method, raw))))
-                        .orElse(null));
-        if (!(key instanceof appeng.api.stacks.AEKey aeKey)) {
-            return null;
-        }
-        long amount = WcwtReflect.findMethod(raw.getClass(), "getAmount")
-                .flatMap(method -> WcwtReflect.invoke(raw, method))
-                .filter(Number.class::isInstance)
-                .map(Number.class::cast)
-                .map(Number::longValue)
-                .orElse(1L);
-        return new GenericStack(aeKey, Math.max(1, amount));
+        return AppliedMekanisticsCompat.fromChemicalStack(raw);
     }
 }

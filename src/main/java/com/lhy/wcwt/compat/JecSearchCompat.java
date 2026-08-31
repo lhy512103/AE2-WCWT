@@ -1,18 +1,10 @@
 package com.lhy.wcwt.compat;
 
-import com.lhy.wcwt.compat.reflect.WcwtReflect;
+import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Method;
-
-/**
- * Optional compatibility with JustEnoughCharacters.
- * Falls back to plain case-insensitive substring matching when JEC is absent.
- */
 public final class JecSearchCompat {
-    private static final String MATCH_CLASS = "me.towdium.jecharacters.utils.Match";
-    private static @Nullable Boolean available;
-    private static @Nullable Method containsMethod;
+    private static final String MOD_ID = "jecharacters";
 
     private JecSearchCompat() {
     }
@@ -24,33 +16,26 @@ public final class JecSearchCompat {
         if (query == null || query.isEmpty()) {
             return true;
         }
-
-        tryInit();
-        if (Boolean.TRUE.equals(available) && containsMethod != null) {
-            if (invokeContains(text, query) || invokeContains(
-                    text.toLowerCase(java.util.Locale.ROOT),
-                    query.toLowerCase(java.util.Locale.ROOT))) {
-                return true;
-            }
+        if (ModList.get().isLoaded(MOD_ID) && Impl.contains(text, query)) {
+            return true;
         }
-
         return text.toLowerCase(java.util.Locale.ROOT)
                 .contains(query.toLowerCase(java.util.Locale.ROOT));
     }
 
-    private static boolean invokeContains(String text, String query) {
-        return WcwtReflect.invoke(null, containsMethod, text, query)
-                .filter(Boolean.class::isInstance)
-                .map(Boolean.class::cast)
-                .orElse(false);
-    }
-
-    private static void tryInit() {
-        if (available != null) {
-            return;
+    private static final class Impl {
+        private Impl() {
         }
-        containsMethod = WcwtReflect.findMethod("jecharacters", MATCH_CLASS, "contains",
-                CharSequence.class, CharSequence.class).orElse(null);
-        available = containsMethod != null;
+
+        static boolean contains(String text, String query) {
+            try {
+                return me.towdium.jecharacters.utils.Match.contains(text, (CharSequence) query)
+                        || me.towdium.jecharacters.utils.Match.contains(
+                                text.toLowerCase(java.util.Locale.ROOT),
+                                (CharSequence) query.toLowerCase(java.util.Locale.ROOT));
+            } catch (Throwable ignored) {
+                return false;
+            }
+        }
     }
 }

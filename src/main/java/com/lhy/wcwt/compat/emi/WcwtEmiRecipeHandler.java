@@ -7,8 +7,8 @@ import appeng.core.localization.ItemModText;
 import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.client.WcwtFavorites;
+import com.lhy.wcwt.compat.AppliedMekanisticsCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
-import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -782,7 +782,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (fluid != null) {
             return fluid;
         }
-        GenericStack chemical = convertMekanismChemical(stack.getKey(), amount);
+        GenericStack chemical = AppliedMekanisticsCompat.fromChemicalKey(stack.getKey(), amount);
         if (chemical != null) {
             return chemical;
         }
@@ -843,31 +843,6 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return null;
         }
         return GenericStack.fromFluidStack(neoFluidStack);
-    }
-
-    @Nullable
-    private static GenericStack convertMekanismChemical(Object rawKey, long amount) {
-        if (!WcwtReflect.isInstance("mekanism", "mekanism.api.chemical.Chemical", rawKey)) {
-            return null;
-        }
-        var chemicalStack = WcwtReflect.findMethod(rawKey.getClass(), "getStack", long.class)
-                .flatMap(method -> WcwtReflect.invoke(rawKey, method, Math.max(1L, amount)))
-                .orElse(null);
-        if (!WcwtReflect.isInstance("mekanism", "mekanism.api.chemical.ChemicalStack", chemicalStack)) {
-            return null;
-        }
-        var chemicalStackClass = WcwtReflect.findClass("mekanism", "mekanism.api.chemical.ChemicalStack").orElse(null);
-        var keyClass = WcwtReflect.findClass("appmek", "me.ramidzkh.mekae2.ae2.MekanismKey").orElse(null);
-        if (chemicalStackClass == null || keyClass == null) {
-            return null;
-        }
-        Object aeKey = WcwtReflect.findMethod(keyClass, "of", chemicalStackClass)
-                .flatMap(method -> WcwtReflect.invoke(null, method, chemicalStack))
-                .orElse(null);
-        if (!(aeKey instanceof AEKey key)) {
-            return null;
-        }
-        return new GenericStack(key, Math.max(1L, amount));
     }
 
     record PreviewResult(Set<Integer> missingSlots,
