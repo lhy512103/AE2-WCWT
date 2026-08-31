@@ -42,6 +42,7 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusUploadCompat;
 import com.lhy.wcwt.compat.JecSearchCompat;
+import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
 import com.lhy.wcwt.compat.extendedae.ExtendedAeHighlight;
 import com.lhy.wcwt.compat.extendedae.ExtendedAePresence;
 import com.lhy.wcwt.compat.plus.PlusMappingClient;
@@ -1920,6 +1921,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     public boolean fillProviderSearchFromJeiIngredient() {
         String name = resolveJeiHoveredSearchName();
         if (name == null || name.isBlank()) {
+            name = resolveJeiRuntimeHoveredName();
+        }
+        if (name == null || name.isBlank()) {
+            name = resolveLocalHoveredSearchName();
+        }
+        if (name == null || name.isBlank()) {
             return false;
         }
         applyJeiNameToMeTerminalSearch(name);
@@ -1928,6 +1935,37 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             patternManageSearchField.setValue(name);
         }
         return true;
+    }
+
+    @Nullable
+    private String resolveJeiRuntimeHoveredName() {
+        if (!net.neoforged.fml.ModList.get().isLoaded("jei")) {
+            return null;
+        }
+        return JeiHover.get();
+    }
+
+    private static final class JeiHover {
+        @Nullable
+        static String get() {
+            return WcwtJeiBookmarkKeys.getHoveredIngredientDisplayName();
+        }
+    }
+
+    @Nullable
+    private String resolveLocalHoveredSearchName() {
+        if (hoveredSlot instanceof RepoSlot repoSlot) {
+            GridInventoryEntry entry = getDisplayedRepoEntry(repoSlot);
+            if (entry != null && entry.getWhat() != null) {
+                String name = entry.getWhat().getDisplayName().getString();
+                return name == null || name.isBlank() ? null : name;
+            }
+        }
+        if (hoveredSlot != null && hoveredSlot.hasItem()) {
+            String name = hoveredSlot.getItem().getHoverName().getString();
+            return name == null || name.isBlank() ? null : name;
+        }
+        return null;
     }
 
     private void applyJeiNameToMeTerminalSearch(String name) {

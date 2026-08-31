@@ -21,6 +21,10 @@
 15. JEI/EMI hammer buttons skip tag/info pages, and pull previews reuse a hashed ME-network index instead of scanning every slot.
 16. EMI hammer buttons sit directly above the fill button on short recipes.
 17. Shift+Encode can now return non-processing patterns uploaded to ECO or Lightning Tech.
+18. Ctrl+hammer on a crafting recipe now arms ae2helpers auto-insert for missing craftable slots.
+19. The F-key fill-search now also reads JEI hover and WCWT hovered slots when EAEP's JEI proxy is missing.
+20. Overload-pattern conversion now uses Lightning Tech / Thunderbolt public APIs, and the runtime jars are updated to 2.1.0-beta.2 / 2.0.0-beta.2.
+21. Resonating-pattern conversion now calls Crystal Science's public encode API instead of reflection.
 
 ### 中文
 
@@ -41,6 +45,10 @@
 15. JEI/EMI 锤子按钮不再处理标签/信息页；拉取预览改为哈希去重并复用一次 ME 仓库索引。
 16. EMI 矮配方页的锤子按钮改到填充按钮正上方。
 17. 上传到 ECO / 闪电科技的非处理样板可用 Shift+编写撤回。
+18. Ctrl+锤子拉取工作台配方时，接入 ae2helpers 对缺料可合成格的自动填入。
+19. F 键填充搜索在 EAEP JEI 代理缺失时，回退到 JEI 悬停和 WCWT 当前悬停槽。
+20. 过载样板转换改用闪电科技 / Thunderbolt 公开 API，运行时依赖更新到 2.1.0-beta.2 / 2.0.0-beta.2。
+21. 谐振样板转换改为调用水晶科技公开 encode API，不再反射。
 
 ## v1.3.8
 

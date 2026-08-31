@@ -13,6 +13,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -31,6 +33,7 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
+import com.lhy.wcwt.compat.Ae2HelpersCompat;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -76,6 +79,12 @@ public final class WcwtPullRecipeTransfer {
 
         PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(effectiveMaxTransfer, craftMissing, requestedIngredients,
                 menu.getManualWorkspaceMode().ordinal()));
+        if (craftMissing && WcwtRecipeTransferHandler.getTransferMode(recipeIgnored, recipeSlots) == EncodingMode.CRAFTING) {
+            Recipe<?> recipe = recipeIgnored instanceof RecipeHolder<?> holder ? holder.value()
+                    : recipeIgnored instanceof Recipe<?> direct ? direct
+                    : null;
+            Ae2HelpersCompat.watchMissingCraftingSlots(menu, recipe);
+        }
         return null;
     }
 

@@ -4,7 +4,7 @@ import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.Scrollbar;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
-import com.lhy.wcwt.compat.reflect.WcwtReflect;
+import com.lhy.wcwt.compat.LightningTechOverloadCompat;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -536,7 +536,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     }
 
     private static boolean isOverloadPattern(ItemStack stack) {
-        return WcwtReflect.isInstance("ae2lt", "com.moakiee.ae2lt.item.OverloadPatternItem", stack.getItem());
+        return LightningTechOverloadCompat.isOverloadPattern(stack);
     }
 
     private static ItemStack firstItemTemplate(GenericStack[] possibleInputs) {
@@ -587,51 +587,12 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
         @Nullable
         static OverloadModeReader read(ItemStack stack) {
-            if (!WcwtReflect.isInstance("ae2lt", "com.moakiee.ae2lt.item.OverloadPatternItem", stack.getItem())) {
-                return null;
-            }
-            var optional = WcwtReflect.findMethod(stack.getItem().getClass(), "readEncodedPattern", ItemStack.class)
-                    .flatMap(method -> WcwtReflect.invoke(stack.getItem(), method, stack))
-                    .orElse(null);
-            if (optional == null) {
-                return null;
-            }
-            var encodedPattern = WcwtReflect.findMethod(optional.getClass(), "orElse", Object.class)
-                    .flatMap(method -> WcwtReflect.invoke(optional, method, (Object) null))
-                    .orElse(null);
-            if (encodedPattern == null) {
+            if (!LightningTechOverloadCompat.isOverloadPattern(stack)) {
                 return null;
             }
             return new OverloadModeReader(
-                    collectIdOnlySlots(encodedPattern, "inputSlots"),
-                    collectIdOnlySlots(encodedPattern, "outputSlots"));
-        }
-
-        private static Set<Integer> collectIdOnlySlots(Object encodedPattern, String slotsMethod) {
-            Set<Integer> result = new HashSet<>();
-            var slots = WcwtReflect.findMethod(encodedPattern.getClass(), slotsMethod)
-                    .flatMap(method -> WcwtReflect.invoke(encodedPattern, method))
-                    .orElse(null);
-            if (!(slots instanceof Iterable<?> iterable)) {
-                return result;
-            }
-            for (Object slot : iterable) {
-                var matchMode = WcwtReflect.findMethod(slot.getClass(), "matchMode")
-                        .flatMap(method -> WcwtReflect.invoke(slot, method))
-                        .orElse(null);
-                boolean idOnly = matchMode != null && Boolean.TRUE.equals(
-                        WcwtReflect.findMethod(matchMode.getClass(), "ignoresComponents")
-                                .flatMap(method -> WcwtReflect.invoke(matchMode, method))
-                                .orElse(false));
-                if (idOnly) {
-                    WcwtReflect.findMethod(slot.getClass(), "slotIndex")
-                            .flatMap(method -> WcwtReflect.invoke(slot, method))
-                            .filter(Integer.class::isInstance)
-                            .map(Integer.class::cast)
-                            .ifPresent(result::add);
-                }
-            }
-            return result;
+                    LightningTechOverloadCompat.inputIdOnlySlots(stack),
+                    LightningTechOverloadCompat.outputIdOnlySlots(stack));
         }
     }
 }

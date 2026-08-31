@@ -28,6 +28,41 @@ public final class WcwtJeiBookmarkKeys {
         jeiRuntime = runtime;
     }
 
+    @Nullable
+    public static String getHoveredIngredientDisplayName() {
+        IJeiRuntime runtime = jeiRuntime;
+        if (runtime == null) {
+            return null;
+        }
+        var overlay = runtime.getIngredientListOverlay();
+        if (overlay != null) {
+            String name = displayName(runtime, overlay.getIngredientUnderMouse().orElse(null));
+            if (name != null) {
+                return name;
+            }
+        }
+        var bookmarkOverlay = runtime.getBookmarkOverlay();
+        if (bookmarkOverlay != null) {
+            return displayName(runtime, bookmarkOverlay.getIngredientUnderMouse().orElse(null));
+        }
+        return null;
+    }
+
+    @Nullable
+    private static <T> String displayName(IJeiRuntime runtime, @Nullable ITypedIngredient<T> ingredient) {
+        if (ingredient == null) {
+            return null;
+        }
+        try {
+            String name = runtime.getIngredientManager()
+                    .getIngredientHelper(ingredient.getType())
+                    .getDisplayName(ingredient.getIngredient());
+            return name == null || name.isBlank() ? null : name;
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
     public static List<AEKey> getBookmarkKeys() {
         List<AEKey> merged = new ArrayList<>();
         addUniqueKeys(merged, loadJeiBookmarkKeys());

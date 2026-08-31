@@ -88,3 +88,10 @@ type="optional"
 versionRange="[0,)"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="ae2helpers"
+type="optional"
+versionRange="[0,)"
+ordering="AFTER"
+side="BOTH"

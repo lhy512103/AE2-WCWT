@@ -46,7 +46,9 @@ import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.ExtendedAePlusMatrixUploadCompat;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
+import com.lhy.wcwt.compat.CrystalScienceCompat;
 import com.lhy.wcwt.compat.LightningTechCraftingUploadCompat;
+import com.lhy.wcwt.compat.LightningTechOverloadCompat;
 import com.lhy.wcwt.compat.NeoEcoApiCompat;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
@@ -117,7 +119,7 @@ import org.jetbrains.annotations.Nullable;
 import com.google.common.math.LongMath;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 
-import java.lang.reflect.Method;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -4726,7 +4728,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (source.isEmpty()) {
                 continue;
             }
-            ItemStack resonating = CrystalScienceBridge.encodeResonating(source);
+            ItemStack resonating = CrystalScienceCompat.encodeResonating(source);
             if (resonating.isEmpty()) {
                 continue;
             }
@@ -4775,8 +4777,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
 
-        boolean sourceWasOverload = LightningTechBridge.isOverloadPattern(source);
-        ItemStack overload = LightningTechBridge.convertToOverload(
+        boolean sourceWasOverload = LightningTechOverloadCompat.isOverloadPattern(source);
+        ItemStack overload = LightningTechOverloadCompat.convertToOverload(
                 source,
                 getPlayer().level(),
                 getPlayer().registryAccess(),
@@ -5328,221 +5330,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return itemKey.toStack((int) stack.amount());
         }
         return ItemStack.EMPTY;
-    }
-
-    private static final class CrystalScienceBridge {
-        private static final String DETAILS_CLASS =
-                "io.github.lounode.ae2cs.common.me.crafting.ResonatingPatternDetails";
-        private static volatile Method encodeMethod;
-        private static volatile boolean initAttempted;
-
-        static ItemStack encodeResonating(ItemStack sourcePattern) {
-            if (!init()) {
-                return ItemStack.EMPTY;
-            }
-            try {
-                Object result = encodeMethod.invoke(null, sourcePattern);
-                return result instanceof ItemStack stack ? stack : ItemStack.EMPTY;
-            } catch (Throwable ignored) {
-                return ItemStack.EMPTY;
-            }
-        }
-
-        private static synchronized boolean init() {
-            if (initAttempted) {
-                return encodeMethod != null;
-            }
-            initAttempted = true;
-            encodeMethod = WcwtReflect.findMethod("ae2cs", DETAILS_CLASS, "encode", ItemStack.class).orElse(null);
-            return encodeMethod != null;
-        }
-    }
-
-    private static final class LightningTechBridge {
-        private static final String RESOLVER_CLASS =
-                "com.moakiee.ae2lt.overload.pattern.Ae2PlainPatternResolver";
-        private static final String SERVICE_CLASS =
-                "com.moakiee.ae2lt.overload.pattern.PatternConversionService";
-        private static final String ENCODED_PATTERN_CLASS =
-                "com.moakiee.ae2lt.overload.model.EncodedOverloadPattern";
-        private static final String MATCH_MODE_CLASS =
-                "com.moakiee.ae2lt.overload.model.MatchMode";
-        private static final String ITEMS_CLASS =
-                "com.moakiee.ae2lt.registry.ModItems";
-        private static final String OVERLOAD_ITEM_CLASS =
-                "com.moakiee.ae2lt.item.OverloadPatternItem";
-
-        static ItemStack convertToOverload(ItemStack sourcePattern,
-                                           net.minecraft.world.level.Level level,
-                                           net.minecraft.core.HolderLookup.Provider registries,
-                                           int[] inputIdOnlySlots,
-                                           int[] outputIdOnlySlots) {
-            try {
-                var resolver = WcwtReflect.construct("ae2lt", RESOLVER_CLASS,
-                        new Class<?>[]{net.minecraft.world.level.Level.class}, level).orElse(null);
-                if (resolver == null) {
-                    return ItemStack.EMPTY;
-                }
-
-                ItemStack plainSource = resolvePlainSourceStack(sourcePattern, registries);
-                if (plainSource.isEmpty()) {
-                    return ItemStack.EMPTY;
-                }
-
-                var parsed = WcwtReflect.findMethod(resolver.getClass(), "resolve", ItemStack.class)
-                        .flatMap(method -> WcwtReflect.invoke(resolver, method, plainSource))
-                        .orElse(null);
-                var details = PatternDetailsHelper.decodePattern(plainSource, level);
-                if (parsed == null || details == null
-                        || details instanceof appeng.blockentity.crafting.IMolecularAssemblerSupportedPattern) {
-                    return ItemStack.EMPTY;
-                }
-
-                var service = WcwtReflect.construct("ae2lt", SERVICE_CLASS, new Class<?>[0]).orElse(null);
-                var matchModeClass = WcwtReflect.findClass("ae2lt", MATCH_MODE_CLASS).orElse(null);
-                var strictMode = WcwtReflect.enumConstant("ae2lt", MATCH_MODE_CLASS, "STRICT").orElse(null);
-                var idOnlyMode = WcwtReflect.enumConstant("ae2lt", MATCH_MODE_CLASS, "ID_ONLY").orElse(null);
-                var builder = WcwtReflect.invokeStatic("ae2lt", ENCODED_PATTERN_CLASS, "builder").orElse(null);
-                if (service == null || matchModeClass == null || strictMode == null
-                        || idOnlyMode == null || builder == null) {
-                    return ItemStack.EMPTY;
-                }
-
-                var inputMethod = WcwtReflect
-                        .findMethod(builder.getClass(), "input", int.class, matchModeClass).orElse(null);
-                var outputMethod = WcwtReflect
-                        .findMethod(builder.getClass(), "output", int.class, matchModeClass).orElse(null);
-                if (inputMethod == null || outputMethod == null) {
-                    return ItemStack.EMPTY;
-                }
-
-                Object existingPayload = readExistingPayload(sourcePattern);
-                Object existingEncodedPattern = existingPayload == null
-                        ? null
-                        : WcwtReflect.findMethod(existingPayload.getClass(), "encodedPattern")
-                                .flatMap(method -> WcwtReflect.invoke(existingPayload, method))
-                                .orElse(null);
-
-                var inputs = details.getInputs();
-                for (int slot = 0; slot < inputs.length; slot++) {
-                    boolean present = false;
-                    for (var possible : inputs[slot].getPossibleInputs()) {
-                        if (possible != null && possible.what() instanceof AEItemKey) {
-                            present = true;
-                            break;
-                        }
-                    }
-                    if (present) {
-                        int inputSlot = slot;
-                        Object mode = contains(inputIdOnlySlots, inputSlot)
-                                ? idOnlyMode
-                                : existingEncodedPattern != null
-                                ? WcwtReflect.findMethod(existingEncodedPattern.getClass(),
-                                        "inputModeOrDefault", int.class)
-                                        .flatMap(method -> WcwtReflect.invoke(existingEncodedPattern, method,
-                                                inputSlot))
-                                        .orElse(strictMode)
-                                : strictMode;
-                        WcwtReflect.run(builder, inputMethod, inputSlot, mode);
-                    }
-                }
-
-                var outputs = details.getOutputs();
-                for (int slot = 0; slot < outputs.size(); slot++) {
-                    if (outputs.get(slot) != null && outputs.get(slot).what() instanceof AEItemKey) {
-                        int outputSlot = slot;
-                        Object mode = contains(outputIdOnlySlots, outputSlot)
-                                ? idOnlyMode
-                                : existingEncodedPattern != null
-                                ? WcwtReflect.findMethod(existingEncodedPattern.getClass(),
-                                        "outputModeOrDefault", int.class)
-                                        .flatMap(method -> WcwtReflect.invoke(existingEncodedPattern, method,
-                                                outputSlot))
-                                        .orElse(strictMode)
-                                : strictMode;
-                        WcwtReflect.run(builder, outputMethod, outputSlot, mode);
-                    }
-                }
-
-                var encodedPattern = WcwtReflect.findMethod(builder.getClass(), "build")
-                        .flatMap(method -> WcwtReflect.invoke(builder, method))
-                        .orElse(null);
-                var overloadItemHolder = WcwtReflect
-                        .readStaticField("ae2lt", ITEMS_CLASS, "OVERLOAD_PATTERN")
-                        .orElse(null);
-                var overloadItem = overloadItemHolder == null
-                        ? null
-                        : WcwtReflect.findMethod(overloadItemHolder.getClass(), "get")
-                                .flatMap(method -> WcwtReflect.invoke(overloadItemHolder, method))
-                                .orElse(null);
-                if (encodedPattern == null || overloadItem == null) {
-                    return ItemStack.EMPTY;
-                }
-                Object stack = WcwtReflect.findMethod(service.getClass(), "createOverloadPatternStack",
-                                overloadItem.getClass(), parsed.getClass(), encodedPattern.getClass())
-                        .flatMap(method -> WcwtReflect.invoke(service, method, overloadItem, parsed, encodedPattern))
-                        .orElse(null);
-                return stack instanceof ItemStack result ? result : ItemStack.EMPTY;
-            } catch (Throwable ignored) {
-                return ItemStack.EMPTY;
-            }
-        }
-
-        static boolean isOverloadPattern(ItemStack stack) {
-            return WcwtReflect.isInstance("ae2lt", OVERLOAD_ITEM_CLASS, stack.getItem());
-        }
-
-        @Nullable
-        private static ItemStack resolvePlainSourceStack(ItemStack sourcePattern,
-                                                         net.minecraft.core.HolderLookup.Provider registries) {
-            if (!isOverloadPattern(sourcePattern)) {
-                return sourcePattern;
-            }
-            Object payload = readExistingPayload(sourcePattern);
-            if (payload == null) {
-                return ItemStack.EMPTY;
-            }
-            var sourceSnapshot = WcwtReflect.findMethod(payload.getClass(), "sourcePattern")
-                    .flatMap(method -> WcwtReflect.invoke(payload, method))
-                    .orElse(null);
-            if (sourceSnapshot == null) {
-                return ItemStack.EMPTY;
-            }
-            Object plain = WcwtReflect.findMethod(sourceSnapshot.getClass(), "toItemStack",
-                            net.minecraft.core.HolderLookup.Provider.class)
-                    .flatMap(method -> WcwtReflect.invoke(sourceSnapshot, method, registries))
-                    .orElse(null);
-            return plain instanceof ItemStack stack ? stack : ItemStack.EMPTY;
-        }
-
-        @Nullable
-        private static Object readExistingPayload(ItemStack sourcePattern) {
-            if (!isOverloadPattern(sourcePattern)) {
-                return null;
-            }
-            Object overloadItem = sourcePattern.getItem();
-            var optional = WcwtReflect.findMethod(overloadItem.getClass(), "readPayload", ItemStack.class)
-                    .flatMap(method -> WcwtReflect.invoke(overloadItem, method, sourcePattern))
-                    .orElse(null);
-            if (optional == null) {
-                return null;
-            }
-            return WcwtReflect.findMethod(optional.getClass(), "orElse", Object.class)
-                    .flatMap(method -> WcwtReflect.invoke(optional, method, (Object) null))
-                    .orElse(null);
-        }
-
-        private static boolean contains(int[] values, int slot) {
-            if (values == null) {
-                return false;
-            }
-            for (int value : values) {
-                if (value == slot) {
-                    return true;
-                }
-            }
-            return false;
-        }
     }
 
     @SuppressWarnings("unchecked")

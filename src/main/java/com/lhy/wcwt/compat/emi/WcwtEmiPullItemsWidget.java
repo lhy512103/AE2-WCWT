@@ -7,6 +7,7 @@ import appeng.client.gui.Icon;
 import appeng.core.localization.ItemModText;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
+import com.lhy.wcwt.compat.Ae2HelpersCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtPullItemsSupport;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -108,8 +109,12 @@ final class WcwtEmiPullItemsWidget extends Widget {
         }
         boolean allowShiftMaxTransfer = mode != EncodingMode.CRAFTING;
         boolean maxTransfer = allowShiftMaxTransfer && Screen.hasShiftDown();
-        PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, Screen.hasControlDown(),
+        boolean craftMissing = Screen.hasControlDown();
+        PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing,
                 requested, menu.getManualWorkspaceMode().ordinal()));
+        if (craftMissing && mode == EncodingMode.CRAFTING && recipe.getBackingRecipe() != null) {
+            Ae2HelpersCompat.watchMissingCraftingSlots(menu, recipe.getBackingRecipe().value());
+        }
         Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0F));
         Screen screen = Minecraft.getInstance().screen;
         if (screen != null && !(screen instanceof WirelessComprehensiveWorkTerminalScreen)) {
