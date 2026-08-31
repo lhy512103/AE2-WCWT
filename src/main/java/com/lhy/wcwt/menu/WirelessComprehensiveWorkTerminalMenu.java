@@ -2033,6 +2033,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(grid, uploadStack);
             if (ecoDuplicate.duplicate()) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
+                recordEaepProviderUpload(ecoDuplicate.provider(), ecoDuplicate.slot());
                 return MatrixUploadResult.uploaded(ecoDuplicate.providerId(), ecoDuplicate.slot());
             }
             if (NeoEcoApiCompat.uploadPatternToEcoStorage(grid, uploadStack.copy())) {
@@ -2065,7 +2066,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             int duplicateSlot = findMatchingPatternSlot(provider, encodedPattern);
             if (duplicateSlot >= 0) {
-                return new EcoUploadDuplicateResult(true, i + 1L, duplicateSlot);
+                return new EcoUploadDuplicateResult(true, i + 1L, duplicateSlot, provider);
             }
         }
         return EcoUploadDuplicateResult.NONE;
@@ -2088,6 +2089,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     provider, encodedPattern, serverPlayer.level());
             if (duplicateSlot >= 0) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_duplicate"));
+                recordEaepProviderUpload(provider, duplicateSlot);
                 return MatrixUploadResult.uploaded(i + 1L, duplicateSlot);
             }
             if (firstTargetIndex < 0
@@ -2104,6 +2106,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_uploaded"));
         int insertedSlot = findLastInsertedPatternSlot(target, encodedPattern);
+        recordEaepProviderUpload(target, insertedSlot);
         return MatrixUploadResult.uploaded(firstTargetIndex + 1L, insertedSlot);
     }
 
@@ -2116,6 +2119,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             int insertedSlot = findMatchingPatternSlot(provider, encodedPattern);
             if (insertedSlot >= 0) {
+                recordEaepProviderUpload(provider, insertedSlot);
                 return MatrixUploadResult.uploaded(i + 1L, insertedSlot);
             }
         }
@@ -2265,8 +2269,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return -1;
     }
 
-    private record EcoUploadDuplicateResult(boolean duplicate, long providerId, int slot) {
-        private static final EcoUploadDuplicateResult NONE = new EcoUploadDuplicateResult(false, -1, -1);
+    private void recordEaepProviderUpload(PatternContainer provider, int slot) {
+        if (!PlusPresence.available() || slot < 0 || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+        PlusEncodingUpload.recordLastProviderUpload(serverPlayer, getMenuGrid(), provider, slot);
+    }
+
+    private record EcoUploadDuplicateResult(boolean duplicate, long providerId, int slot,
+                                            PatternContainer provider) {
+        private static final EcoUploadDuplicateResult NONE = new EcoUploadDuplicateResult(false, -1, -1, null);
     }
 
     private record MatrixUploadResult(MatrixUploadState state, long providerId, int slot) {

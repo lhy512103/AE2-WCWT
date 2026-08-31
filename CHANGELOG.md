@@ -20,6 +20,7 @@
 14. Removed the unused crafting-grid lock button, hotkey, config, and related transfer-border mixin.
 15. JEI/EMI hammer buttons skip tag/info pages, and pull previews reuse a hashed ME-network index instead of scanning every slot.
 16. EMI hammer buttons sit directly above the fill button on short recipes.
+17. Shift+Encode can now return non-processing patterns uploaded to ECO or Lightning Tech.
 
 ### 中文
 
@@ -39,6 +40,7 @@
 14. 移除已无用的合成网格锁定按钮、快捷键、配置及相关转移边框 mixin。
 15. JEI/EMI 锤子按钮不再处理标签/信息页；拉取预览改为哈希去重并复用一次 ME 仓库索引。
 16. EMI 矮配方页的锤子按钮改到填充按钮正上方。
+17. 上传到 ECO / 闪电科技的非处理样板可用 Shift+编写撤回。
 
 ## v1.3.8
 

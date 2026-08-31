@@ -69,6 +69,16 @@ public final class PlusEncodingUpload {
         return UniqueUploadResult.failed(targetName);
     }
 
+    public static void recordLastProviderUpload(ServerPlayer player, @Nullable IGrid grid,
+                                                PatternContainer provider, int slot) {
+        if (player == null || grid == null || provider == null || slot < 0) {
+            return;
+        }
+        List<PatternContainer> providers = ExtendedAEPatternUploadUtil.listAvailableProvidersFromGrid(grid);
+        ExtendedAEPatternUploadUtil.recordProviderUpload(
+                player, encodeProviderIndex(providers, provider), provider, slot);
+    }
+
     public static void requestReturnLastPattern() {
         PacketDistributor.sendToServer(ReturnLastPatternC2SPacket.INSTANCE);
     }
