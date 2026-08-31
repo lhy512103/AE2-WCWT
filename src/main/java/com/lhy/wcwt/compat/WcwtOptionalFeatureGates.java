@@ -43,17 +43,25 @@ public final class WcwtOptionalFeatureGates {
         return true;
     }
 
-    public static List<ItemStack> hiddenUpgradeCardStacks() {
-        List<ItemStack> hidden = new ArrayList<>();
+    public static List<Item> hiddenUpgradeCardItems() {
+        List<Item> hidden = new ArrayList<>();
         addHiddenIfUnavailable(hidden, ModItems.CURIOS_CARD.get());
         addHiddenIfUnavailable(hidden, ModItems.COSMETIC_ARMOR_CARD.get());
         addHiddenIfUnavailable(hidden, ModItems.RESONATING_LIGHTNING_PATTERN_CODING_CARD.get());
         return hidden;
     }
 
-    private static void addHiddenIfUnavailable(List<ItemStack> hidden, Item item) {
-        if (!isUpgradeCardVisible(item)) {
+    public static List<ItemStack> hiddenUpgradeCardStacks() {
+        List<ItemStack> hidden = new ArrayList<>();
+        for (Item item : hiddenUpgradeCardItems()) {
             hidden.add(new ItemStack(item));
+        }
+        return hidden;
+    }
+
+    private static void addHiddenIfUnavailable(List<Item> hidden, Item item) {
+        if (!isUpgradeCardVisible(item)) {
+            hidden.add(item);
         }
     }
 }

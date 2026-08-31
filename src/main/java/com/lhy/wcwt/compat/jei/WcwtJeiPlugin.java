@@ -15,10 +15,12 @@ import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.runtime.IJeiRuntime;
+import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.jetbrains.annotations.Nullable;
@@ -62,8 +64,22 @@ public class WcwtJeiPlugin implements IModPlugin {
     public void onRuntimeAvailable(IJeiRuntime jeiRuntime) {
         WcwtJeiBookmarkKeys.setRuntime(jeiRuntime);
         var hiddenStacks = WcwtOptionalFeatureGates.hiddenUpgradeCardStacks();
-        if (!hiddenStacks.isEmpty()) {
-            jeiRuntime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, hiddenStacks);
+        if (hiddenStacks.isEmpty()) {
+            return;
+        }
+        jeiRuntime.getIngredientManager().removeIngredientsAtRuntime(VanillaTypes.ITEM_STACK, hiddenStacks);
+        var recipeManager = jeiRuntime.getRecipeManager();
+        var focusFactory = jeiRuntime.getJeiHelpers().getFocusFactory();
+        for (ItemStack stack : hiddenStacks) {
+            var focus = focusFactory.createFocus(RecipeIngredientRole.OUTPUT, VanillaTypes.ITEM_STACK, stack);
+            var recipes = recipeManager.createRecipeLookup(RecipeTypes.CRAFTING)
+                    .limitFocus(List.of(focus))
+                    .includeHidden()
+                    .get()
+                    .toList();
+            if (!recipes.isEmpty()) {
+                recipeManager.hideRecipes(RecipeTypes.CRAFTING, recipes);
+            }
         }
     }
 
