@@ -30,6 +30,8 @@
 24. The wireless-terminal settings screen now sizes itself to its options instead of using a fixed 200×201 background.
 25. Added an optional toolkit HUD with left/right hotbars for slots 0-8 and 9-17, while retaining the right-panel/management-area setting.
 26. ExtendedAE Plus integration now requires 1.6.0 or newer.
+27. Updated the JEI compile and runtime dependency to 19.44.0.403.
+28. JEI now keeps a continuous left bookmark area, reports only visible right-side overflow, reserves two ingredient columns around narrow widgets, and uses full extended-panel bounds so the list does not overlap open side panels.
 
 ### 中文
 
@@ -59,6 +61,8 @@
 24. 无线终端设置界面改为按选项内容自动调整高度，不再使用固定 200×201 背景。
 25. 工具包容量下限调整为 18 格；新增独立的左右 HUD 扩展快捷栏开关，保留右侧面板/管理区二选一设置。
 26. ExtendedAE Plus 兼容要求改为 1.6.0 及以上。
+27. JEI 编译与运行时依赖更新到 19.44.0.403。
+28. JEI 现在为左侧书签保留连续区域；窄控件预留两列原料，打开的扩展面板按完整尺寸上报，避免列表叠在面板上。
 
 ## v1.3.8
 

@@ -142,6 +142,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final boolean DEBUG_SLOT_HIT = Boolean.getBoolean("wcwt.debug.slotHit");
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
+    private static final int JEI_TOP_NAVIGATION = 28;
+    private static final int JEI_BOTTOM_SEARCH = 28;
+    private static final int JEI_RESERVED_COLUMNS_PX = 2 * 18 + 12;
     /**
      * 诊断「工具包界面关闭时存取延迟极高」用：每秒聚合一次每帧驱动服务端同步的几个动作的触发次数，
      * 同时打印工具包面板状态，方便对比开/关时哪个动作在每帧翻转。开关：-Dwcwt.debug.frameSync=true
@@ -1573,36 +1576,77 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     public List<Rect2i> getExclusionZones() {
-        var zones = super.getExclusionZones();
-
-        addExtendedButtonExclusion(zones, advancedCodingButton);
-        addExtendedButtonExclusion(zones, cosmeticArmorButton);
-        addExtendedButtonExclusion(zones, curiosButton);
-        addExtendedButtonExclusion(zones, toolboxButton);
-        addExtendedButtonExclusion(zones, toolkitButton);
-        addExtendedButtonExclusion(zones, resonatingLightningPatternCodingButton);
-
-        addExtendedPanelExclusion(zones, advancedCodingPanel);
-        addExtendedPanelExclusion(zones, cosmeticArmorPanel);
-        addExtendedPanelExclusion(zones, curiosPanel);
-        addExtendedPanelExclusion(zones, toolboxPanel);
-        addExtendedPanelExclusion(zones, toolkitPanel);
-        addExtendedPanelExclusion(zones, resonatingLightningPatternCodingPanel);
-
+        var zones = new ArrayList<Rect2i>();
+        addRelativeOverflowZone(zones, upgradesPanel != null ? upgradesPanel.getBounds() : null);
+        addRelativeOverflowZone(zones, cellUpgradesPanel != null && cellUpgradesPanel.isVisible()
+                ? cellUpgradesPanel.getBounds() : null);
+        addRelativeOverflowZone(zones, viewCellsVisibilityWidget != null && viewCellsVisibilityWidget.isVisible()
+                ? viewCellsVisibilityWidget.getBounds() : null);
+        addScreenOverflowZone(zones, advancedCodingButton);
+        addScreenOverflowZone(zones, cosmeticArmorButton);
+        addScreenOverflowZone(zones, curiosButton);
+        addScreenOverflowZone(zones, toolboxButton);
+        addScreenOverflowZone(zones, toolkitButton);
+        addScreenOverflowZone(zones, resonatingLightningPatternCodingButton);
+        addScreenOverflowZone(zones, advancedCodingPanel);
+        addScreenOverflowZone(zones, cosmeticArmorPanel);
+        addScreenOverflowZone(zones, curiosPanel);
+        addScreenOverflowZone(zones, toolboxPanel);
+        addScreenOverflowZone(zones, toolkitPanel);
+        addScreenOverflowZone(zones, resonatingLightningPatternCodingPanel);
         return zones;
     }
 
-    private static void addExtendedButtonExclusion(List<Rect2i> zones, ExtendedUIButton button) {
+    public Rect2i getJeiGuiBounds() {
+        int guiLeft = leftPos;
+        for (var zone : super.getExclusionZones()) {
+            int top = Math.max(0, zone.getY());
+            int bottom = Math.min(height, zone.getY() + zone.getHeight());
+            int left = Math.max(0, zone.getX());
+            int right = Math.min(leftPos, zone.getX() + zone.getWidth());
+            if (bottom <= top || right <= left || right - left > 40) {
+                continue;
+            }
+            guiLeft = Math.min(guiLeft, left);
+        }
+        return new Rect2i(guiLeft, topPos, leftPos + imageWidth - guiLeft, imageHeight);
+    }
+
+    private void addRelativeOverflowZone(List<Rect2i> zones, @Nullable Rect2i relativeBounds) {
+        if (relativeBounds == null || relativeBounds.getWidth() <= 0 || relativeBounds.getHeight() <= 0) {
+            return;
+        }
+        addOverflowZone(zones, leftPos + relativeBounds.getX(), topPos + relativeBounds.getY(),
+                relativeBounds.getWidth(), relativeBounds.getHeight(), true);
+    }
+
+    private void addScreenOverflowZone(List<Rect2i> zones, @Nullable ExtendedUIButton button) {
         if (button != null && button.visible) {
-            zones.add(new Rect2i(button.getX() - 6, button.getY() - 6, 32, 31));
+            addOverflowZone(zones, button.getX() - 4, button.getY() - 4, 28, 27, true);
         }
     }
 
-    private static void addExtendedPanelExclusion(List<Rect2i> zones, ExtendedUIPanel panel) {
+    private void addScreenOverflowZone(List<Rect2i> zones, @Nullable ExtendedUIPanel panel) {
         if (panel != null && panel.isVisible()) {
             var bounds = panel.getBounds();
-            zones.add(new Rect2i(bounds.getX() - 2, bounds.getY() - 2, bounds.getWidth() + 4, bounds.getHeight() + 4));
+            addOverflowZone(zones, bounds.getX(), bounds.getY(), bounds.getWidth(), bounds.getHeight(), false);
         }
+    }
+
+    private void addOverflowZone(List<Rect2i> zones, int x, int y, int w, int h, boolean reserveJeiColumns) {
+        int guiRight = leftPos + imageWidth;
+        int left = Math.max(guiRight, x);
+        int rightLimit = reserveJeiColumns ? Math.min(width, jeiReservedRight()) : width;
+        int right = Math.min(rightLimit, x + w);
+        int top = Math.max(reserveJeiColumns ? JEI_TOP_NAVIGATION : 0, y);
+        int bottom = Math.min(reserveJeiColumns ? height - JEI_BOTTOM_SEARCH : height, y + h);
+        if (right > left && bottom > top) {
+            zones.add(new Rect2i(left, top, right - left, bottom - top));
+        }
+    }
+
+    private int jeiReservedRight() {
+        return width - JEI_RESERVED_COLUMNS_PX;
     }
 
     private static final class ViewCellsVisibilityWidget implements ICompositeWidget {

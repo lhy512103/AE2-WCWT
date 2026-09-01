@@ -13,6 +13,7 @@ import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
+import mezz.jei.api.gui.handlers.IGuiProperties;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.recipe.RecipeIngredientRole;
@@ -46,6 +47,45 @@ public class WcwtJeiPlugin implements IModPlugin {
 
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
+        registration.addGuiScreenHandler(WirelessComprehensiveWorkTerminalScreen.class, screen -> {
+            var bounds = screen.getJeiGuiBounds();
+            return new IGuiProperties() {
+                @Override
+                public Class<? extends net.minecraft.client.gui.screens.Screen> screenClass() {
+                    return WirelessComprehensiveWorkTerminalScreen.class;
+                }
+
+                @Override
+                public int guiLeft() {
+                    return bounds.getX();
+                }
+
+                @Override
+                public int guiTop() {
+                    return bounds.getY();
+                }
+
+                @Override
+                public int guiXSize() {
+                    return bounds.getWidth();
+                }
+
+                @Override
+                public int guiYSize() {
+                    return bounds.getHeight();
+                }
+
+                @Override
+                public int screenWidth() {
+                    return screen.width;
+                }
+
+                @Override
+                public int screenHeight() {
+                    return screen.height;
+                }
+            };
+        });
         registration.addGuiContainerHandler(WirelessComprehensiveWorkTerminalScreen.class,
                 new IGuiContainerHandler<>() {
                     @Override
