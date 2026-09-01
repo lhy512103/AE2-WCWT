@@ -1,6 +1,12 @@
 package com.lhy.wcwt.config;
 
+import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.ModConfigSpec;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * {@code config/wcwt-client.toml} 客户端个人配置。
@@ -21,9 +27,8 @@ public final class WcwtClientConfig {
     public static final ModConfigSpec.BooleanValue PREFER_JEI_BOOKMARKS_FOR_PATTERN_ENCODING;
     public static final ModConfigSpec.BooleanValue PREFER_WCWT_FAVORITES_FOR_RECIPE_TRANSFER;
     public static final ModConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
+    public static final ModConfigSpec.BooleanValue SHOW_TOOLKIT_HOTBARS;
     public static final ModConfigSpec.BooleanValue PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS;
-    public static final ModConfigSpec.BooleanValue PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN;
-    public static final ModConfigSpec.BooleanValue LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER;
     public static final ModConfigSpec.BooleanValue EMI_PREVIEW_RECIPE_FILL;
     public static final ModConfigSpec.BooleanValue LAST_MANAGEMENT_TOOLKIT_OPEN;
     public static final ModConfigSpec.BooleanValue LAST_VIEW_CELLS_PANEL_VISIBLE;
@@ -72,21 +77,17 @@ public final class WcwtClientConfig {
                 .translation("wcwt.config.preferWcwtFavoritesForRecipeTransfer")
                 .define("preferWcwtFavoritesForRecipeTransfer", false);
         EXPAND_TOOLKIT_IN_MANAGEMENT_AREA = BUILDER
-                .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel. Saving wcwt-client.toml usually reloads without restart.")
+                .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel.")
                 .translation("wcwt.config.expandToolkitInManagementArea")
                 .define("expandToolkitInManagementArea", false);
+        SHOW_TOOLKIT_HOTBARS = BUILDER
+                .comment("If true: show the first two toolkit rows as left and right HUD hotbars while in the world.")
+                .translation("wcwt.config.showToolkitHotbars")
+                .define("showToolkitHotbars", true);
         PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS = BUILDER
                 .comment("If true: empty pattern-provider slots are collapsed into one summary slot in the management area.")
                 .translation("wcwt.config.patternManagementAutoCompactEmptySlots")
                 .define("patternManagementAutoCompactEmptySlots", true);
-        PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN = BUILDER
-                .comment("If true: uploading to multiple providers with the same name opens the ExtendedAE Plus provider selection screen.")
-                .translation("wcwt.config.patternUploadMultiMatchOpenEaepScreen")
-                .define("patternUploadMultiMatchOpenEaepScreen", true);
-        LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER = BUILDER
-                .comment("If true: when the crafting grid is locked, JEI/EMI recipe-transfer buttons keep their existing highlight and draw a red border.")
-                .translation("wcwt.config.lockedCraftingGridJeiTransferBorder")
-                .define("lockedCraftingGridJeiTransferBorder", true);
         EMI_PREVIEW_RECIPE_FILL = BUILDER
                 .comment("If true: EMI craftable actions (left-click / Shift+left-click on a bookmarked or recipe-context stack) fill the full recipe into WCWT, same as the recipe-page + button.")
                 .translation("wcwt.config.emiPreviewRecipeFill")
@@ -153,20 +154,23 @@ public final class WcwtClientConfig {
         return PREFER_WCWT_FAVORITES_FOR_RECIPE_TRANSFER.get();
     }
 
+    public static boolean showToolkitHotbars() {
+        migrateLegacyToolkitSettings();
+        return SHOW_TOOLKIT_HOTBARS.get();
+    }
+
+    public static void setShowToolkitHotbars(boolean enabled) {
+        SHOW_TOOLKIT_HOTBARS.set(enabled);
+        SPEC.save();
+    }
+
     public static boolean expandToolkitInManagementArea() {
+        migrateLegacyToolkitSettings();
         return EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.get();
     }
 
     public static boolean patternManagementAutoCompactEmptySlots() {
         return PATTERN_MANAGEMENT_AUTO_COMPACT_EMPTY_SLOTS.get();
-    }
-
-    public static boolean patternUploadMultiMatchOpenEaepScreen() {
-        return PATTERN_UPLOAD_MULTI_MATCH_OPEN_EAEP_SCREEN.get();
-    }
-
-    public static boolean lockedCraftingGridJeiTransferBorder() {
-        return LOCKED_CRAFTING_GRID_JEI_TRANSFER_BORDER.get();
     }
 
     public static boolean emiPreviewRecipeFill() {
@@ -180,6 +184,47 @@ public final class WcwtClientConfig {
     public static void setLastManagementToolkitOpen(boolean open) {
         LAST_MANAGEMENT_TOOLKIT_OPEN.set(open);
         SPEC.save();
+    }
+
+    private static boolean toolkitSettingsMigrationChecked;
+    private static final Pattern CONFIG_KEY = Pattern.compile("^\\s*([A-Za-z0-9_]+)\\s*=\\s*(.+?)\\s*$");
+
+    /** Convert the temporary display-mode setting used during development once. */
+    private static void migrateLegacyToolkitSettings() {
+        if (toolkitSettingsMigrationChecked) {
+            return;
+        }
+        toolkitSettingsMigrationChecked = true;
+        var path = FMLPaths.CONFIGDIR.get().resolve("wcwt-client.toml");
+        if (!Files.isRegularFile(path)) {
+            return;
+        }
+        boolean hasNew = false;
+        Integer temporaryMode = null;
+        try {
+            for (String line : Files.readAllLines(path)) {
+                Matcher matcher = CONFIG_KEY.matcher(line);
+                if (!matcher.matches()) {
+                    continue;
+                }
+                if ("showToolkitHotbars".equals(matcher.group(1))) {
+                    hasNew = true;
+                } else if ("toolkitDisplayMode".equals(matcher.group(1))) {
+                    try {
+                        temporaryMode = Integer.parseInt(matcher.group(2).split("#", 2)[0].trim());
+                    } catch (NumberFormatException ignored) {
+                        temporaryMode = null;
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+            return;
+        }
+        if (temporaryMode != null && !hasNew) {
+            EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.set(temporaryMode == 1);
+            SHOW_TOOLKIT_HOTBARS.set(temporaryMode == 2);
+            SPEC.save();
+        }
     }
 
     public static boolean lastViewCellsPanelVisible() {

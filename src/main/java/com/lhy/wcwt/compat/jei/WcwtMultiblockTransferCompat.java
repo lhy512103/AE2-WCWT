@@ -2,6 +2,7 @@ package com.lhy.wcwt.compat.jei;
 
 import appeng.api.stacks.GenericStack;
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
@@ -15,9 +16,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
-
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -68,7 +66,7 @@ final class WcwtMultiblockTransferCompat {
                 }
             }
             return inputs.isEmpty() ? null : new TransferData(inputs, List.of(createDraftOutput(recipe)));
-        } catch (ReflectiveOperationException | LinkageError e) {
+        } catch (RuntimeException e) {
             UNSUPPORTED_RECIPE_CLASSES.add(recipe.getClass());
             WcwtMod.LOGGER.warn("WCWT failed to read multiblock structure metadata from {}", recipe.getClass().getName(), e);
             return null;
@@ -101,85 +99,82 @@ final class WcwtMultiblockTransferCompat {
         if (!ModList.get().isLoaded(GTLCORE_MOD_ID)) {
             return cachedGtlHatchFilters = new String[0];
         }
-        try {
-            Class<?> config = Class.forName(GTL_CONFIG_CLASS);
-            Object instance = getField(config, "INSTANCE").get(null);
-            Object value = getField(config, "filterHatch").get(instance);
-            if (value instanceof String[] filters) {
-                cachedGtlHatchFilters = filters.clone();
-            } else if (value instanceof List<?> list) {
-                cachedGtlHatchFilters = list.stream().filter(String.class::isInstance)
-                        .map(String.class::cast).toArray(String[]::new);
-            } else {
-                cachedGtlHatchFilters = new String[0];
-            }
-        } catch (ReflectiveOperationException | LinkageError e) {
+        var instance = WcwtReflect.readStaticField(GTLCORE_MOD_ID, GTL_CONFIG_CLASS, "INSTANCE").orElse(null);
+        Object value = instance == null ? null : readMember(instance, "filterHatch");
+        if (value instanceof String[] filters) {
+            cachedGtlHatchFilters = filters.clone();
+        } else if (value instanceof List<?> list) {
+            cachedGtlHatchFilters = list.stream().filter(String.class::isInstance)
+                    .map(String.class::cast).toArray(String[]::new);
+        } else {
             cachedGtlHatchFilters = new String[0];
         }
         return cachedGtlHatchFilters;
     }
 
-    private static GenericStack createDraftOutput(Object recipe) throws ReflectiveOperationException {
+    private static GenericStack createDraftOutput(Object recipe) {
         ItemStack draft = new ItemStack(Items.ENCHANTED_BOOK);
         draft.set(DataComponents.CUSTOM_NAME, Component.literal(resolveStructureName(recipe).getString())
                 .withStyle(Style.EMPTY.withColor(0xFC5AFC)));
         return GenericStack.fromItemStack(draft);
     }
 
-    private static Component resolveStructureName(Object recipe) throws ReflectiveOperationException {
-        ResourceLocation id = tryReadId(tryReadField(recipe, "definition"));
-        if (id == null) id = tryReadId(recipe);
-        if (id != null) return Component.translatable(id.toLanguageKey("block"));
+    private static Component resolveStructureName(Object recipe) {
+        ResourceLocation id = tryReadId(readMember(recipe, "definition"));
+        if (id == null) {
+            id = tryReadId(recipe);
+        }
+        if (id != null) {
+            return Component.translatable(id.toLanguageKey("block"));
+        }
         Component component = tryReadComponent(recipe, "getDisplayName", "getTitle", "getName");
-        if (component != null) return component;
+        if (component != null) {
+            return component;
+        }
         String fallback = recipe.getClass().getSimpleName().replaceAll("(?i)multiblock|wrapper|recipe|info|page", " ")
                 .replaceAll("([a-z])([A-Z])", "$1 $2").trim();
         return Component.literal(fallback.isEmpty() ? "Multiblock Structure" : fallback);
     }
 
     @Nullable
-    private static ResourceLocation tryReadId(@Nullable Object target) throws ReflectiveOperationException {
-        if (target == null) return null;
+    private static ResourceLocation tryReadId(@Nullable Object target) {
+        if (target == null) {
+            return null;
+        }
         for (String name : List.of("getId", "getRegistryName")) {
-            try {
-                Object value = target.getClass().getMethod(name).invoke(target);
-                if (value instanceof ResourceLocation id) return id;
-            } catch (NoSuchMethodException ignored) {
+            Object value = WcwtReflect.findMethod(target.getClass(), name)
+                    .flatMap(method -> WcwtReflect.invoke(target, method))
+                    .orElse(null);
+            if (value instanceof ResourceLocation id) {
+                return id;
             }
         }
-        Object value = tryReadField(target, "id");
+        Object value = readMember(target, "id");
         return value instanceof ResourceLocation id ? id : null;
     }
 
     @Nullable
-    private static Component tryReadComponent(Object target, String... names) throws ReflectiveOperationException {
+    private static Component tryReadComponent(Object target, String... names) {
         for (String name : names) {
-            try {
-                Object value = target.getClass().getMethod(name).invoke(target);
-                if (value instanceof Component component) return component;
-            } catch (NoSuchMethodException ignored) {
+            Object value = WcwtReflect.findMethod(target.getClass(), name)
+                    .flatMap(method -> WcwtReflect.invoke(target, method))
+                    .orElse(null);
+            if (value instanceof Component component) {
+                return component;
             }
         }
         return null;
     }
 
     @Nullable
-    private static Object tryReadField(Object target, String name) throws IllegalAccessException {
-        try {
-            return getField(target.getClass(), name).get(target);
-        } catch (NoSuchFieldException ignored) {
+    private static Object readMember(Object target, String name) {
+        if (target == null) {
             return null;
         }
-    }
-
-    private static Field getField(Class<?> owner, String name) throws NoSuchFieldException {
-        try {
-            return owner.getField(name);
-        } catch (NoSuchFieldException ignored) {
-            Field field = owner.getDeclaredField(name);
-            field.setAccessible(true);
-            return field;
-        }
+        return WcwtReflect.findField(target.getClass(), name)
+                .or(() -> WcwtReflect.findDeclaredField(target.getClass(), name))
+                .flatMap(field -> WcwtReflect.readField(target, field))
+                .orElse(null);
     }
 
     record TransferData(List<GenericStack> inputs, List<GenericStack> outputs) {

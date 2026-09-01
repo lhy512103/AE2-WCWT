@@ -1,12 +1,10 @@
 package com.lhy.wcwt.client;
 
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.init.ModMenus;
 import appeng.init.client.InitScreens;
-import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
-import com.lhy.wcwt.network.CraftingLockPacket;
 import com.lhy.wcwt.network.OpenTerminalHotkeyPacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import net.minecraft.client.Minecraft;
@@ -18,14 +16,10 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
-import net.neoforged.fml.ModList;
 import org.lwjgl.glfw.GLFW;
-
-import java.lang.reflect.Method;
 
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public class ModClientSetup {
-    private static boolean ipnCompatInitialized;
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
 
     @SubscribeEvent
@@ -47,8 +41,9 @@ public class ModClientSetup {
         event.register(WcwtKeybindings.OPEN_INDEPENDENT_TERMINAL);
         event.register(WcwtKeybindings.OPEN_TOOLKIT);
         event.register(WcwtKeybindings.OPEN_RESONATING_LIGHTNING_PATTERN_CODING);
-        event.register(WcwtKeybindings.TOGGLE_CRAFTING_GRID_LOCK);
         event.register(WcwtKeybindings.TOGGLE_FAVORITE_ITEM);
+        event.register(WcwtKeybindings.TOOLKIT_BAR_LEFT);
+        event.register(WcwtKeybindings.TOOLKIT_BAR_RIGHT);
     }
 
     @SubscribeEvent
@@ -58,10 +53,6 @@ public class ModClientSetup {
         WirelessComprehensiveWorkTerminalScreen screen =
                 activeScreen instanceof WirelessComprehensiveWorkTerminalScreen wcwtScreen ? wcwtScreen : null;
 
-        if (handleCraftingGridLockHotkey(event.getKeyCode(), event.getScanCode(), minecraft, activeScreen)) {
-            event.setCanceled(true);
-            return;
-        }
         if (screen == null) {
             return;
         }
@@ -86,10 +77,6 @@ public class ModClientSetup {
     @SubscribeEvent
     public static void onClientTickPost(ClientTickEvent.Post event) {
         var minecraft = Minecraft.getInstance();
-        if (!ipnCompatInitialized) {
-            ipnCompatInitialized = true;
-            InventoryProfilesNextCompat.ensureHintsInstalled();
-        }
         if (minecraft.player == null) {
             return;
         }
@@ -116,83 +103,18 @@ public class ModClientSetup {
     }
 
     private static boolean matchesFillSearchHotkey(int keyCode, int scanCode) {
-        if (ModList.get().isLoaded("extendedae_plus")) {
-            try {
-                Class<?> kb = Class.forName("com.extendedae_plus.client.ModKeybindings");
-                Object km = kb.getField("FILL_SEARCH_KEY").get(null);
-                Method m = km.getClass().getMethod("matches", int.class, int.class);
-                Object r = m.invoke(km, keyCode, scanCode);
-                if (r instanceof Boolean b) {
-                    return b;
-                }
-            } catch (Throwable ignored) {
+        var keyMapping = WcwtReflect
+                .readStaticField("extendedae_plus", "com.extendedae_plus.client.ModKeybindings", "FILL_SEARCH_KEY")
+                .orElse(null);
+        if (keyMapping != null) {
+            var matched = WcwtReflect.findMethod(keyMapping.getClass(), "matches", int.class, int.class)
+                    .flatMap(method -> WcwtReflect.invoke(keyMapping, method, keyCode, scanCode))
+                    .filter(Boolean.class::isInstance)
+                    .map(Boolean.class::cast);
+            if (matched.isPresent()) {
+                return matched.get();
             }
         }
         return keyCode == GLFW.GLFW_KEY_F;
-    }
-
-    private static boolean matchesCraftingGridLockHotkey(int keyCode, int scanCode) {
-        return WcwtKeybindings.TOGGLE_CRAFTING_GRID_LOCK.matches(keyCode, scanCode);
-    }
-
-    private static boolean handleCraftingGridLockHotkey(int keyCode, int scanCode, Minecraft minecraft,
-                                                        Screen activeScreen) {
-        return matchesCraftingGridLockHotkey(keyCode, scanCode)
-                && isCraftingGridLockHotkeyContext(minecraft, activeScreen)
-                && toggleCraftingGridLock(minecraft);
-    }
-
-    private static boolean isCraftingGridLockHotkeyContext(Minecraft minecraft, Screen activeScreen) {
-        if (!(minecraft.player != null
-                && minecraft.player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu)) {
-            return false;
-        }
-        if (activeScreen instanceof WirelessComprehensiveWorkTerminalScreen) {
-            return true;
-        }
-        if (activeScreen == null) {
-            return false;
-        }
-        String screenClassName = activeScreen.getClass().getName();
-        return screenClassName.startsWith("mezz.jei.")
-                || screenClassName.startsWith("mezz.jei.library.")
-                || screenClassName.startsWith("dev.emi.emi.screen.");
-    }
-
-    private static boolean toggleCraftingGridLock(Minecraft minecraft) {
-        if (!(minecraft.player != null
-                && minecraft.player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)) {
-            return false;
-        }
-        var host = menu.getMenuHost();
-        if (host == null) {
-            return false;
-        }
-        host.toggleCraftingGridLock();
-        refreshRecipeViewerIfPresent(minecraft);
-        net.neoforged.neoforge.network.PacketDistributor
-                .sendToServer(new CraftingLockPacket(host.isCraftingGridLocked()));
-        return true;
-    }
-
-    private static void refreshRecipeViewerIfPresent(Minecraft minecraft) {
-        Screen activeScreen = minecraft.screen;
-        if (activeScreen == null) {
-            return;
-        }
-        String screenClassName = activeScreen.getClass().getName();
-        if (screenClassName.equals("mezz.jei.gui.recipes.RecipesGui")) {
-            try {
-                Method updateLayout = activeScreen.getClass().getDeclaredMethod("updateLayout");
-                updateLayout.setAccessible(true);
-                updateLayout.invoke(activeScreen);
-            } catch (Throwable ignored) {
-            }
-            return;
-        }
-        if (screenClassName.equals("dev.emi.emi.screen.RecipeScreen")) {
-            activeScreen.resize(minecraft, minecraft.getWindow().getGuiScaledWidth(),
-                    minecraft.getWindow().getGuiScaledHeight());
-        }
     }
 }

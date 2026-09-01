@@ -31,6 +31,7 @@ public record ToolkitMemorySlotPacket(int slotIndex, boolean remember) implement
             if (context.player() instanceof ServerPlayer player
                     && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 menu.setToolkitMemorySlot(packet.slotIndex(), packet.remember());
+                WcwtToolkitHotbarSyncPacket.send(player);
             }
         });
     }

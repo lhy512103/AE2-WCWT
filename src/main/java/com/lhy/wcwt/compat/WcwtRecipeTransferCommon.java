@@ -4,6 +4,8 @@ import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.parts.encoding.EncodingMode;
+import com.lhy.wcwt.compat.emi.EmiStackCompat;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import net.minecraft.world.item.ItemStack;
@@ -13,8 +15,6 @@ import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -27,18 +27,7 @@ public final class WcwtRecipeTransferCommon {
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
-        if (mode != EncodingMode.PROCESSING) {
-            ExtendedAePlusUploadCompat.presetCraftingProviderSearchKey();
-            return;
-        }
-
-        String name = ExtendedAePlusUploadCompat.mapRecipeTypeToSearchKey(recipe);
-        if ((name == null || name.isBlank()) && recipeBase != null) {
-            name = ExtendedAePlusUploadCompat.deriveSearchKeyFromUnknownRecipe(recipeBase);
-        }
-        if (name != null && !name.isBlank()) {
-            ExtendedAePlusUploadCompat.setLastProviderSearchKey(name);
-        }
+        ExtendedAePlusUploadCompat.captureRecipeSearchKey(recipeBase, recipe, mode);
     }
 
     public static Map<AEKey, Integer> getEmiFavoritePriorities() {
@@ -177,43 +166,27 @@ public final class WcwtRecipeTransferCommon {
     }
 
     private static List<AEKey> loadEmiFavoriteKeys() {
-        try {
-            Class<?> favoritesClass = Class.forName("dev.emi.emi.runtime.EmiFavorites");
-            Field favoritesField = favoritesClass.getDeclaredField("favorites");
-            Object rawFavorites = favoritesField.get(null);
-            if (!(rawFavorites instanceof List<?> favorites)) {
-                return List.of();
-            }
-
-            List<AEKey> keys = new ArrayList<>(favorites.size());
-            for (Object favorite : favorites) {
-                if (favorite == null) {
-                    continue;
-                }
-
-                Method getStack = favorite.getClass().getMethod("getStack");
-                Object ingredient = getStack.invoke(favorite);
-                if (ingredient == null) {
-                    continue;
-                }
-
-                Method getEmiStacks = ingredient.getClass().getMethod("getEmiStacks");
-                Object rawEmiStacks = getEmiStacks.invoke(ingredient);
-                if (!(rawEmiStacks instanceof List<?> emiStacks)) {
-                    continue;
-                }
-
-                for (Object emiStack : emiStacks) {
-                    GenericStack stack = convertEmiStackToGenericStack(emiStack);
-                    if (stack != null && stack.what() != null) {
-                        keys.add(stack.what());
-                    }
-                }
-            }
-            return List.copyOf(keys);
-        } catch (Throwable ignored) {
+        var rawFavorites = WcwtReflect.findClass("emi", "dev.emi.emi.runtime.EmiFavorites")
+                .flatMap(owner -> WcwtReflect.findDeclaredField(owner, "favorites")
+                        .flatMap(field -> WcwtReflect.readField(null, field)))
+                .orElse(null);
+        if (!(rawFavorites instanceof List<?> favorites)) {
             return List.of();
         }
+
+        List<AEKey> keys = new ArrayList<>(favorites.size());
+        for (Object favorite : favorites) {
+            if (favorite == null) {
+                continue;
+            }
+            var ingredient = WcwtReflect.findMethod(favorite.getClass(), "getStack")
+                    .flatMap(method -> WcwtReflect.invoke(favorite, method))
+                    .orElse(null);
+            for (GenericStack stack : EmiStackCompat.stacksFromIngredient(ingredient)) {
+                keys.add(stack.what());
+            }
+        }
+        return List.copyOf(keys);
     }
 
     private static void addCandidates(List<ItemStack> target, LinkedHashSet<AEKey> seen, List<ItemStack> source) {
@@ -227,32 +200,5 @@ public final class WcwtRecipeTransferCommon {
             }
             target.add(candidate.copy());
         }
-    }
-
-    @Nullable
-    private static GenericStack convertEmiStackToGenericStack(Object emiStack) {
-        try {
-            Class<?> emiStackClass = Class.forName("dev.emi.emi.api.stack.EmiStack");
-            if (!emiStackClass.isInstance(emiStack)) {
-                return null;
-            }
-
-            Method getKey = emiStackClass.getMethod("getKey");
-            Object key = getKey.invoke(emiStack);
-            if (key instanceof net.minecraft.world.level.material.Fluid fluid
-                    && fluid != net.minecraft.world.level.material.Fluids.EMPTY) {
-                Method getAmount = emiStackClass.getMethod("getAmount");
-                long amount = ((Number) getAmount.invoke(emiStack)).longValue();
-                return GenericStack.fromFluidStack(new FluidStack(fluid, (int) Math.max(1L, amount)));
-            }
-
-            Method getItemStack = emiStackClass.getMethod("getItemStack");
-            Object rawItemStack = getItemStack.invoke(emiStack);
-            if (rawItemStack instanceof ItemStack itemStack && !itemStack.isEmpty()) {
-                return GenericStack.fromItemStack(itemStack.copyWithCount(1));
-            }
-        } catch (Throwable ignored) {
-        }
-        return null;
     }
 }

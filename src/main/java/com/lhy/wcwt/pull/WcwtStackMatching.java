@@ -1,17 +1,80 @@
 package com.lhy.wcwt.pull;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.menu.me.common.MEStorageMenu;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 
 public final class WcwtStackMatching {
     private WcwtStackMatching() {
+    }
+
+    public static final class UniqueStacks {
+        private final List<ItemStack> stacks = new ArrayList<>();
+        private final LongOpenHashSet hashes = new LongOpenHashSet();
+
+        public boolean add(ItemStack stack) {
+            if (stack == null || stack.isEmpty()) {
+                return false;
+            }
+            long hash = ItemStack.hashItemAndComponents(stack);
+            if (!hashes.add(hash)) {
+                for (ItemStack existing : stacks) {
+                    if (ItemStack.isSameItemSameComponents(existing, stack)) {
+                        return false;
+                    }
+                }
+            }
+            stacks.add(stack);
+            return true;
+        }
+
+        public List<ItemStack> list() {
+            return stacks;
+        }
+    }
+
+    public static final class ClientRepoIndex {
+        private final Object2LongOpenHashMap<AEItemKey> stored = new Object2LongOpenHashMap<>();
+        private final ObjectOpenHashSet<AEItemKey> craftable = new ObjectOpenHashSet<>();
+        private final ObjectOpenHashSet<Item> storedItems = new ObjectOpenHashSet<>();
+        private final ObjectOpenHashSet<Item> craftableItems = new ObjectOpenHashSet<>();
+
+        private ClientRepoIndex() {
+            stored.defaultReturnValue(0L);
+        }
+
+        public static ClientRepoIndex of(MEStorageMenu menu) {
+            ClientRepoIndex index = new ClientRepoIndex();
+            var clientRepo = menu.getClientRepo();
+            if (clientRepo == null) {
+                return index;
+            }
+            for (var entry : clientRepo.getAllEntries()) {
+                if (!(entry.getWhat() instanceof AEItemKey itemKey)) {
+                    continue;
+                }
+                if (entry.getStoredAmount() > 0) {
+                    index.stored.addTo(itemKey, entry.getStoredAmount());
+                    index.storedItems.add(itemKey.getItem());
+                }
+                if (entry.isCraftable()) {
+                    index.craftable.add(itemKey);
+                    index.craftableItems.add(itemKey.getItem());
+                }
+            }
+            return index;
+        }
     }
 
     public static boolean hasSpecificData(ItemStack stack) {
@@ -84,29 +147,40 @@ public final class WcwtStackMatching {
     public static int reserveClientRepoStoredIngredient(MEStorageMenu menu, List<ItemStack> alternatives,
             @Nullable Ingredient wideIngredient, Object2IntOpenHashMap<AEItemKey> reservedAmounts,
             int requestedAmount) {
-        var clientRepo = menu.getClientRepo();
-        if (clientRepo == null || requestedAmount <= 0) {
+        return reserveFromIndex(ClientRepoIndex.of(menu), alternatives, wideIngredient, reservedAmounts, requestedAmount);
+    }
+
+    public static int reserveFromIndex(ClientRepoIndex index, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient, Object2IntOpenHashMap<AEItemKey> reservedAmounts,
+            int requestedAmount) {
+        if (index == null || requestedAmount <= 0) {
             return 0;
         }
         int reserved = 0;
-        for (var entry : clientRepo.getAllEntries()) {
-            if (entry.getStoredAmount() <= 0 || !(entry.getWhat() instanceof AEItemKey itemKey)) {
+        for (ItemStack alternative : alternatives) {
+            AEItemKey key = AEItemKey.of(alternative);
+            if (key == null) {
                 continue;
             }
+            reserved += takeStored(index, key, reservedAmounts, requestedAmount - reserved);
+            if (reserved >= requestedAmount) {
+                return reserved;
+            }
+        }
+        if (requiresExactItemKeyMatch(alternatives)) {
+            return reserved;
+        }
+        if (!mayMatchStored(index, alternatives, wideIngredient)) {
+            return reserved;
+        }
+        for (var entry : index.stored.object2LongEntrySet()) {
+            AEItemKey itemKey = entry.getKey();
             if (!matchesItemKey(itemKey, alternatives, wideIngredient)) {
                 continue;
             }
-
-            long available = entry.getStoredAmount() - reservedAmounts.getInt(itemKey);
-            int remaining = requestedAmount - reserved;
-            if (available <= 0 || remaining <= 0) {
-                continue;
-            }
-            int amount = (int) Math.min(available, remaining);
-            reservedAmounts.addTo(itemKey, amount);
-            reserved += amount;
+            reserved += takeStored(index, itemKey, reservedAmounts, requestedAmount - reserved);
             if (reserved >= requestedAmount) {
-                break;
+                return reserved;
             }
         }
         return reserved;
@@ -114,15 +188,68 @@ public final class WcwtStackMatching {
 
     public static boolean hasClientRepoCraftableIngredient(MEStorageMenu menu, List<ItemStack> alternatives,
             @Nullable Ingredient wideIngredient) {
-        var clientRepo = menu.getClientRepo();
-        if (clientRepo == null) {
+        return hasCraftableFromIndex(ClientRepoIndex.of(menu), alternatives, wideIngredient);
+    }
+
+    public static boolean hasCraftableFromIndex(ClientRepoIndex index, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient) {
+        if (index == null) {
             return false;
         }
-        for (var entry : clientRepo.getAllEntries()) {
-            if (!entry.isCraftable() || !(entry.getWhat() instanceof AEItemKey itemKey)) {
-                continue;
+        for (ItemStack alternative : alternatives) {
+            AEItemKey key = AEItemKey.of(alternative);
+            if (key != null && index.craftable.contains(key)) {
+                return true;
             }
+        }
+        if (requiresExactItemKeyMatch(alternatives)) {
+            return false;
+        }
+        if (!mayMatchCraftable(index, alternatives, wideIngredient)) {
+            return false;
+        }
+        for (AEItemKey itemKey : index.craftable) {
             if (matchesItemKey(itemKey, alternatives, wideIngredient)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static int takeStored(ClientRepoIndex index, AEItemKey itemKey,
+            Object2IntOpenHashMap<AEItemKey> reservedAmounts, int remaining) {
+        if (remaining <= 0) {
+            return 0;
+        }
+        long available = index.stored.getLong(itemKey) - reservedAmounts.getInt(itemKey);
+        if (available <= 0) {
+            return 0;
+        }
+        int amount = (int) Math.min(available, remaining);
+        reservedAmounts.addTo(itemKey, amount);
+        return amount;
+    }
+
+    private static boolean mayMatchStored(ClientRepoIndex index, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient) {
+        if (wideIngredient != null && !wideIngredient.isEmpty()) {
+            return true;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (alternative != null && !alternative.isEmpty() && index.storedItems.contains(alternative.getItem())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean mayMatchCraftable(ClientRepoIndex index, List<ItemStack> alternatives,
+            @Nullable Ingredient wideIngredient) {
+        if (wideIngredient != null && !wideIngredient.isEmpty()) {
+            return true;
+        }
+        for (ItemStack alternative : alternatives) {
+            if (alternative != null && !alternative.isEmpty() && index.craftableItems.contains(alternative.getItem())) {
                 return true;
             }
         }

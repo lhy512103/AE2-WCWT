@@ -24,12 +24,6 @@ public class WcwtPackets {
         );
         
         registrar.playToServer(
-            CraftingLockPacket.TYPE,
-            CraftingLockPacket.STREAM_CODEC,
-            CraftingLockPacket::handle
-        );
-        
-        registrar.playToServer(
             PatternSelectionPacket.TYPE,
             PatternSelectionPacket.STREAM_CODEC,
             PatternSelectionPacket::handle
@@ -173,12 +167,6 @@ public class WcwtPackets {
             PatternProviderFocusPacket::handle
         );
 
-        registrar.playToClient(
-            OpenEaepProviderSelectScreenPacket.TYPE,
-            OpenEaepProviderSelectScreenPacket.STREAM_CODEC,
-            OpenEaepProviderSelectScreenPacket::handle
-        );
-
         registrar.playToServer(
             PatternProviderSlotSyncPacket.TYPE,
             PatternProviderSlotSyncPacket.STREAM_CODEC,
@@ -207,6 +195,24 @@ public class WcwtPackets {
             ToolkitMemorySlotPacket.TYPE,
             ToolkitMemorySlotPacket.STREAM_CODEC,
             ToolkitMemorySlotPacket::handle
+        );
+
+        registrar.playToServer(
+            WcwtToolkitHotbarSelectionPacket.TYPE,
+            WcwtToolkitHotbarSelectionPacket.STREAM_CODEC,
+            WcwtToolkitHotbarSelectionPacket::handle
+        );
+
+        registrar.playToServer(
+            WcwtToolkitHotbarActionPacket.TYPE,
+            WcwtToolkitHotbarActionPacket.STREAM_CODEC,
+            WcwtToolkitHotbarActionPacket::handle
+        );
+
+        registrar.playToClient(
+            WcwtToolkitHotbarSyncPacket.TYPE,
+            WcwtToolkitHotbarSyncPacket.STREAM_CODEC,
+            WcwtToolkitHotbarSyncPacket::handle
         );
 
         registrar.playToServer(

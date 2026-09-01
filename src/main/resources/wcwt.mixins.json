@@ -8,12 +8,13 @@
     "WcwtMenuProtectionMixin",
     "WcwtRemoteMenuMixin",
     "WcwtServerPlayerRestockMixin",
-    "WcwtServerPlayerGameModeMixin"
+    "WcwtServerPlayerGameModeMixin",
+    "WcwtInventoryMixin",
+    "WcwtPlayerMixin"
   ],
   "client": [
     "GuiMixin",
-    "WcwtMinecraftPickBlockMixin",
-    "WcwtJeiRecipeTransferButtonMixin"
+    "WcwtMinecraftPickBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

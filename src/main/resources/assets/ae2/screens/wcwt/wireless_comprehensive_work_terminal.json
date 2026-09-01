@@ -375,13 +375,6 @@
       "left": 88,
       "bottom": 168
     },
-    "CRAFTING_Locking": {
-      "$comment": "合成网格锁定按钮。",
-      "left": 132,
-      "bottom": 196,
-      "width": 16,
-      "height": 16
-    },
     "manual_workspace_background": {
       "$comment": "左上手动工作区扩展背景（锻造台/铁砧）。",
       "left": 78,
@@ -810,11 +803,11 @@
       "height": 15
     },
     "manage_highlight_provider": {
-      "$comment": "样板管理区每个供应器第一行样板右侧的世界高亮按钮；top 是相对第一行样板顶部的偏移。",
-      "left": 337,
-      "top": 3,
-      "width": 6,
-      "height": 11
+      "$comment": "样板管理区每个供应器第一行样板右侧的世界高亮按钮；ExtendedAE HighlightButtonSmall 源图 6×11，绘制缩小 1px 为 5×10。",
+      "left": 338,
+      "top": 4,
+      "width": 5,
+      "height": 10
     },
     "extended_functions": {
       "$comment": "扩展功能占位按钮；当前隐藏。",

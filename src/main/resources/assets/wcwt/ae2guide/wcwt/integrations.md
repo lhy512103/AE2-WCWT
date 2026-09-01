@@ -50,4 +50,4 @@ ExtendedAE is an active integration, not only a runtime test mod. Its extended p
 
 ## ExtendedAE Plus
 
-WCWT integrates with ExtendedAE Plus recipe-viewer search data, recipe-type search keys, its fill-search hotkey, and mapping configuration APIs. When installed, WCWT prefers those APIs; otherwise WCWT can still read and write the same client mapping path. Provider listing, slot movement, automatic-upload target selection, and opening the provider's output-side target container are implemented by WCWT and do not require ExtendedAE Plus.
+WCWT integrates with ExtendedAE Plus 1.6.0+ recipe-viewer search data, recipe-type search keys, its fill-search hotkey, and mapping configuration APIs. When that version is installed, WCWT prefers those APIs; otherwise WCWT can still read and write the same client mapping path. Older ExtendedAE Plus versions are not supported. Provider listing, slot movement, automatic-upload target selection, and opening the provider's output-side target container are implemented by WCWT and do not require ExtendedAE Plus.

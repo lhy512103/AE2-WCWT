@@ -13,8 +13,6 @@ import net.minecraft.resources.ResourceLocation;
 public class ToolkitPanel extends ExtendedUIPanel {
     private static final ResourceLocation PANEL_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_curios.png");
-    private static final ResourceLocation STATES_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
 
     public static final int SLOT_SIZE = 18;
     public static final int VISIBLE_ROWS = 9;
@@ -33,16 +31,6 @@ public class ToolkitPanel extends ExtendedUIPanel {
     private ExtendedPanelLayout.Rect memoryButton =
             new ExtendedPanelLayout.Rect(110, 2, 12, 12);
     private int columns = DEFAULT_COLUMNS;
-    private int firstVisibleSlot;
-    private int slotIconCount = 11;
-    private int slotIconOffsetX;
-    private int slotIconOffsetY;
-    private int slotIconTextureU = 48;
-    private int slotIconTextureV = 16;
-    private int slotIconWidth = 16;
-    private int slotIconHeight = 16;
-    private int slotIconTextureStepX = 16;
-    private int slotIconTextureStepY;
 
     public ToolkitPanel(int x, int y) {
         super(x, y, 134, 186);
@@ -58,15 +46,6 @@ public class ToolkitPanel extends ExtendedUIPanel {
         scrollbar = layout.widget("toolkit_scrollbar", scrollbar);
         memoryButton = layout.widget("toolkit_memory", memoryButton);
         columns = layout.slotColumns("WCWT_TOOLKIT", DEFAULT_COLUMNS);
-        slotIconCount = layout.widgetInt("toolkit_slot_icons", "count", slotIconCount);
-        slotIconOffsetX = layout.widgetInt("toolkit_slot_icons", "offsetX", slotIconOffsetX);
-        slotIconOffsetY = layout.widgetInt("toolkit_slot_icons", "offsetY", slotIconOffsetY);
-        slotIconTextureU = layout.widgetInt("toolkit_slot_icons", "textureU", slotIconTextureU);
-        slotIconTextureV = layout.widgetInt("toolkit_slot_icons", "textureV", slotIconTextureV);
-        slotIconWidth = layout.widgetInt("toolkit_slot_icons", "width", slotIconWidth);
-        slotIconHeight = layout.widgetInt("toolkit_slot_icons", "height", slotIconHeight);
-        slotIconTextureStepX = layout.widgetInt("toolkit_slot_icons", "stepX", slotIconTextureStepX);
-        slotIconTextureStepY = layout.widgetInt("toolkit_slot_icons", "stepY", slotIconTextureStepY);
         createReturnButton();
     }
 
@@ -81,26 +60,6 @@ public class ToolkitPanel extends ExtendedUIPanel {
         WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.extended_ui.toolkit"),
                 x + 4, y + 3, WcwtTextRendering.defaultTextColor(), false);
-        renderSlotIcons(guiGraphics);
-    }
-
-    private void renderSlotIcons(GuiGraphics guiGraphics) {
-        int visibleSlots = columns * VISIBLE_ROWS;
-        for (int slotIndex = 0; slotIndex < slotIconCount; slotIndex++) {
-            if (slotIndex < firstVisibleSlot || slotIndex >= firstVisibleSlot + visibleSlots) {
-                continue;
-            }
-            int visibleIndex = slotIndex - firstVisibleSlot;
-            int iconX = x + getSlotAnchorX() + (visibleIndex % columns) * SLOT_SIZE + slotIconOffsetX;
-            int iconY = y + getSlotAnchorY() + (visibleIndex / columns) * SLOT_SIZE + slotIconOffsetY;
-            int iconU = slotIconTextureU + slotIndex * slotIconTextureStepX;
-            int iconV = slotIconTextureV + slotIndex * slotIconTextureStepY;
-            guiGraphics.blit(STATES_TEXTURE, iconX, iconY, iconU, iconV, slotIconWidth, slotIconHeight, 256, 256);
-        }
-    }
-
-    public void setFirstVisibleSlot(int firstVisibleSlot) {
-        this.firstVisibleSlot = Math.max(0, firstVisibleSlot);
     }
 
     public int getColumns() {

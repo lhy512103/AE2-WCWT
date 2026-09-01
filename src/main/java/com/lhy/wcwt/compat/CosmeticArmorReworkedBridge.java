@@ -1,5 +1,6 @@
 package com.lhy.wcwt.compat;
 
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
@@ -10,9 +11,6 @@ import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.UUID;
 
 public final class CosmeticArmorReworkedBridge {
@@ -41,13 +39,11 @@ public final class CosmeticArmorReworkedBridge {
         if (inventory == null) {
             return ItemStack.EMPTY;
         }
-        try {
-            Method method = inventory.getClass().getMethod("getStackInSlot", int.class);
-            Object result = method.invoke(inventory, slot);
-            return result instanceof ItemStack stack ? stack : ItemStack.EMPTY;
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-            return ItemStack.EMPTY;
-        }
+        return WcwtReflect.findMethod(inventory.getClass(), "getStackInSlot", int.class)
+                .flatMap(method -> WcwtReflect.invoke(inventory, method, slot))
+                .filter(ItemStack.class::isInstance)
+                .map(ItemStack.class::cast)
+                .orElse(ItemStack.EMPTY);
     }
 
     public static boolean isSkinArmor(Player player, int slot) {
@@ -55,13 +51,11 @@ public final class CosmeticArmorReworkedBridge {
         if (inventory == null) {
             return false;
         }
-        try {
-            Method method = inventory.getClass().getMethod("isSkinArmor", int.class);
-            Object result = method.invoke(inventory, slot);
-            return result instanceof Boolean value && value;
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-            return false;
-        }
+        return WcwtReflect.findMethod(inventory.getClass(), "isSkinArmor", int.class)
+                .flatMap(method -> WcwtReflect.invoke(inventory, method, slot))
+                .filter(Boolean.class::isInstance)
+                .map(Boolean.class::cast)
+                .orElse(false);
     }
 
     public static void setSkinArmor(Player player, int slot, boolean enabled) {
@@ -69,12 +63,13 @@ public final class CosmeticArmorReworkedBridge {
         if (inventory == null) {
             return;
         }
-        try {
-            Method method = inventory.getClass().getMethod("setSkinArmor", int.class, boolean.class);
-            method.invoke(inventory, slot, enabled);
+        // 可选联动：目标模组改了内部结构时，WCWT 界面保持可用，只是这项开关失效。
+        boolean applied = WcwtReflect
+                .findMethod(inventory.getClass(), "setSkinArmor", int.class, boolean.class)
+                .map(method -> WcwtReflect.run(inventory, method, slot, enabled))
+                .orElse(false);
+        if (applied) {
             sendSkinArmorPacket(slot, enabled);
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-            // Optional integration: leave the WCWT screen usable if the other mod changes internals.
         }
     }
 
@@ -86,18 +81,15 @@ public final class CosmeticArmorReworkedBridge {
         if (inventory == null) {
             return;
         }
-        try {
-            boolean skinArmor = isSkinArmor(player, slot);
-            ItemStack stack = getStack(player, slot);
-            Class<?> payloadClass = Class.forName(PAYLOAD_SYNC_COS_ARMOR_CLASS);
-            Constructor<?> constructor = payloadClass.getConstructor(UUID.class, int.class, boolean.class, ItemStack.class);
-            Object payload = constructor.newInstance(player.getUUID(), slot, skinArmor, stack);
-            if (payload instanceof CustomPacketPayload customPayload) {
-                PacketDistributor.sendToPlayer(serverPlayer, customPayload);
-            }
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
-            // Cosmetic Armor Reworked will still sync future changes through its own listeners.
-        }
+        boolean skinArmor = isSkinArmor(player, slot);
+        ItemStack stack = getStack(player, slot);
+        WcwtReflect.construct(MOD_ID, PAYLOAD_SYNC_COS_ARMOR_CLASS,
+                        new Class<?>[]{UUID.class, int.class, boolean.class, ItemStack.class},
+                        player.getUUID(), slot, skinArmor, stack)
+                .filter(CustomPacketPayload.class::isInstance)
+                .map(CustomPacketPayload.class::cast)
+                // 同步失败也不影响游戏：Cosmetic Armor 自己的监听器会在下次变更时补上。
+                .ifPresent(payload -> PacketDistributor.sendToPlayer(serverPlayer, payload));
     }
 
     @Nullable
@@ -105,32 +97,29 @@ public final class CosmeticArmorReworkedBridge {
         if (!isLoaded() || player == null) {
             return null;
         }
-        try {
-            Object manager = getInventoryManager();
-            UUID uuid = player.getUUID();
-            String methodName = player.level().isClientSide ? "getCosArmorInventoryClient" : "getCosArmorInventory";
-            Method method = manager.getClass().getMethod(methodName, UUID.class);
-            return method.invoke(manager, uuid);
-        } catch (ReflectiveOperationException | RuntimeException ignored) {
+        Object manager = getInventoryManager();
+        if (manager == null) {
             return null;
         }
+        String methodName = player.level().isClientSide ? "getCosArmorInventoryClient" : "getCosArmorInventory";
+        return WcwtReflect.findMethod(manager.getClass(), methodName, UUID.class)
+                .flatMap(method -> WcwtReflect.invoke(manager, method, player.getUUID()))
+                .orElse(null);
     }
 
-    private static Object getInventoryManager() throws ReflectiveOperationException {
-        Class<?> modObjects = Class.forName(MOD_OBJECTS_CLASS);
-        Field field = modObjects.getField("invMan");
-        return field.get(null);
+    @Nullable
+    private static Object getInventoryManager() {
+        return WcwtReflect.readStaticField(MOD_ID, MOD_OBJECTS_CLASS, "invMan").orElse(null);
     }
 
-    private static void sendSkinArmorPacket(int slot, boolean enabled) throws ReflectiveOperationException {
+    private static void sendSkinArmorPacket(int slot, boolean enabled) {
         if (!FMLEnvironment.dist.isClient()) {
             return;
         }
-        Class<?> payloadClass = Class.forName(PAYLOAD_SET_SKIN_ARMOR_CLASS);
-        Constructor<?> constructor = payloadClass.getConstructor(int.class, boolean.class);
-        Object payload = constructor.newInstance(slot, enabled);
-        if (payload instanceof CustomPacketPayload customPayload) {
-            PacketDistributor.sendToServer(customPayload);
-        }
+        WcwtReflect.construct(MOD_ID, PAYLOAD_SET_SKIN_ARMOR_CLASS,
+                        new Class<?>[]{int.class, boolean.class}, slot, enabled)
+                .filter(CustomPacketPayload.class::isInstance)
+                .map(CustomPacketPayload.class::cast)
+                .ifPresent(payload -> PacketDistributor.sendToServer(payload));
     }
 }

@@ -5,13 +5,13 @@ import appeng.api.stacks.GenericStack;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.runtime.IBookmarkOverlay;
+import com.lhy.wcwt.compat.emi.EmiStackCompat;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -27,6 +27,41 @@ public final class WcwtJeiBookmarkKeys {
 
     static void setRuntime(@Nullable IJeiRuntime runtime) {
         jeiRuntime = runtime;
+    }
+
+    @Nullable
+    public static String getHoveredIngredientDisplayName() {
+        IJeiRuntime runtime = jeiRuntime;
+        if (runtime == null) {
+            return null;
+        }
+        var overlay = runtime.getIngredientListOverlay();
+        if (overlay != null) {
+            String name = displayName(runtime, overlay.getIngredientUnderMouse().orElse(null));
+            if (name != null) {
+                return name;
+            }
+        }
+        var bookmarkOverlay = runtime.getBookmarkOverlay();
+        if (bookmarkOverlay != null) {
+            return displayName(runtime, bookmarkOverlay.getIngredientUnderMouse().orElse(null));
+        }
+        return null;
+    }
+
+    @Nullable
+    private static <T> String displayName(IJeiRuntime runtime, @Nullable ITypedIngredient<T> ingredient) {
+        if (ingredient == null) {
+            return null;
+        }
+        try {
+            String name = runtime.getIngredientManager()
+                    .getIngredientHelper(ingredient.getType())
+                    .getDisplayName(ingredient.getIngredient());
+            return name == null || name.isBlank() ? null : name;
+        } catch (Throwable ignored) {
+            return null;
+        }
     }
 
     public static List<AEKey> getBookmarkKeys() {
@@ -47,75 +82,55 @@ public final class WcwtJeiBookmarkKeys {
             return List.of();
         }
 
-        try {
-            Field bookmarkListField = overlay.getClass().getDeclaredField("bookmarkList");
-            bookmarkListField.setAccessible(true);
-            Object bookmarkList = bookmarkListField.get(overlay);
-
-            Method getElementsMethod = bookmarkList.getClass().getMethod("getElements");
-            List<?> elements = (List<?>) getElementsMethod.invoke(bookmarkList);
-
-            List<AEKey> bookmarks = new ArrayList<>(elements.size());
-            for (Object element : elements) {
-                Method getTypedIngredientMethod = element.getClass().getMethod("getTypedIngredient");
-                Object typedIngredient = getTypedIngredientMethod.invoke(element);
-                if (!(typedIngredient instanceof ITypedIngredient<?> ingredient)) {
-                    continue;
-                }
-
-                GenericStack stack = WcwtRecipeTransferHandler.toGenericStackForBookmark(ingredient);
-                if (stack != null && stack.what() != null) {
-                    bookmarks.add(stack.what());
-                }
-            }
-            return List.copyOf(bookmarks);
-        } catch (Throwable ignored) {
+        var bookmarkList = WcwtReflect.findDeclaredField(overlay.getClass(), "bookmarkList")
+                .flatMap(field -> WcwtReflect.readField(overlay, field))
+                .orElse(null);
+        if (bookmarkList == null) {
             return List.of();
         }
+        var elements = WcwtReflect.findMethod(bookmarkList.getClass(), "getElements")
+                .flatMap(method -> WcwtReflect.invoke(bookmarkList, method))
+                .filter(List.class::isInstance)
+                .map(value -> (List<?>) value)
+                .orElse(List.of());
+        List<AEKey> bookmarks = new ArrayList<>(elements.size());
+        for (Object element : elements) {
+            var typedIngredient = WcwtReflect.findMethod(element.getClass(), "getTypedIngredient")
+                    .flatMap(method -> WcwtReflect.invoke(element, method))
+                    .orElse(null);
+            if (!(typedIngredient instanceof ITypedIngredient<?> ingredient)) {
+                continue;
+            }
+            GenericStack stack = WcwtRecipeTransferHandler.toGenericStackForBookmark(ingredient);
+            if (stack != null && stack.what() != null) {
+                bookmarks.add(stack.what());
+            }
+        }
+        return List.copyOf(bookmarks);
     }
 
     private static List<AEKey> loadEmiFavoriteKeys() {
-        try {
-            Class<?> favoritesClass = Class.forName("dev.emi.emi.runtime.EmiFavorites");
-            Field favoritesField = favoritesClass.getDeclaredField("favorites");
-            Object rawFavorites = favoritesField.get(null);
-            if (!(rawFavorites instanceof List<?> favorites)) {
-                return List.of();
-            }
-
-            List<AEKey> keys = new ArrayList<>(favorites.size());
-            for (Object favorite : favorites) {
-                if (favorite == null) {
-                    continue;
-                }
-
-                Method getStack = favorite.getClass().getMethod("getStack");
-                Object ingredient = getStack.invoke(favorite);
-                if (ingredient == null) {
-                    continue;
-                }
-
-                Method getEmiStacks = ingredient.getClass().getMethod("getEmiStacks");
-                Object rawEmiStacks = getEmiStacks.invoke(ingredient);
-                if (!(rawEmiStacks instanceof List<?> emiStacks)) {
-                    continue;
-                }
-
-                for (Object emiStack : emiStacks) {
-                    if (emiStack == null) {
-                        continue;
-                    }
-
-                    GenericStack stack = convertEmiStackToGenericStack(emiStack);
-                    if (stack != null && stack.what() != null) {
-                        keys.add(stack.what());
-                    }
-                }
-            }
-            return List.copyOf(keys);
-        } catch (Throwable ignored) {
+        var rawFavorites = WcwtReflect.findClass("emi", "dev.emi.emi.runtime.EmiFavorites")
+                .flatMap(owner -> WcwtReflect.findDeclaredField(owner, "favorites")
+                        .flatMap(field -> WcwtReflect.readField(null, field)))
+                .orElse(null);
+        if (!(rawFavorites instanceof List<?> favorites)) {
             return List.of();
         }
+
+        List<AEKey> keys = new ArrayList<>(favorites.size());
+        for (Object favorite : favorites) {
+            if (favorite == null) {
+                continue;
+            }
+            var ingredient = WcwtReflect.findMethod(favorite.getClass(), "getStack")
+                    .flatMap(method -> WcwtReflect.invoke(favorite, method))
+                    .orElse(null);
+            for (GenericStack stack : EmiStackCompat.stacksFromIngredient(ingredient)) {
+                keys.add(stack.what());
+            }
+        }
+        return List.copyOf(keys);
     }
 
     public static Map<AEKey, Integer> getBookmarkPriorities() {
@@ -217,31 +232,5 @@ public final class WcwtJeiBookmarkKeys {
                 target.add(key);
             }
         }
-    }
-
-    private static @Nullable GenericStack convertEmiStackToGenericStack(Object emiStack) {
-        try {
-            Class<?> emiStackClass = Class.forName("dev.emi.emi.api.stack.EmiStack");
-            if (!emiStackClass.isInstance(emiStack)) {
-                return null;
-            }
-
-            Method getKey = emiStackClass.getMethod("getKey");
-            Object key = getKey.invoke(emiStack);
-            if (key instanceof net.minecraft.world.level.material.Fluid fluid
-                    && fluid != net.minecraft.world.level.material.Fluids.EMPTY) {
-                Method getAmount = emiStackClass.getMethod("getAmount");
-                long amount = ((Number) getAmount.invoke(emiStack)).longValue();
-                return GenericStack.fromFluidStack(new net.neoforged.neoforge.fluids.FluidStack(fluid, (int) Math.max(1L, amount)));
-            }
-
-            Method getItemStack = emiStackClass.getMethod("getItemStack");
-            Object rawItemStack = getItemStack.invoke(emiStack);
-            if (rawItemStack instanceof ItemStack itemStack && !itemStack.isEmpty()) {
-                return GenericStack.fromItemStack(itemStack.copyWithCount(1));
-            }
-        } catch (Throwable ignored) {
-        }
-        return null;
     }
 }

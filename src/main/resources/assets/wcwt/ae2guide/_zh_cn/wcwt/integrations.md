@@ -50,4 +50,4 @@ ExtendedAE 不只是运行时测试模组，WCWT 的样板管理区会实际接�
 
 ## ExtendedAE Plus
 
-WCWT 会兼容 ExtendedAE Plus 的 JEI 搜索信息、配方类型搜索键、快捷键和映射配置接口。安装后优先调用它的实现；未安装时，WCWT 仍可自行读写相同的客户端映射路径。样板管理区的供应器列表、样板移动、自动上传目标选择，以及打开供应器输出侧目标容器均由 WCWT 自己实现，不以 ExtendedAE Plus 为必需依赖。
+WCWT 会兼容 ExtendedAE Plus 1.6.0 及以上版本的 JEI 搜索信息、配方类型搜索键、快捷键和映射配置接口。安装该版本后优先调用它的实现；未安装时，WCWT 仍可自行读写相同的客户端映射路径。更旧的 ExtendedAE Plus 不受支持。样板管理区的供应器列表、样板移动、自动上传目标选择，以及打开供应器输出侧目标容器均由 WCWT 自己实现，不以 ExtendedAE Plus 为必需依赖。

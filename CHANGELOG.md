@@ -1,5 +1,92 @@
 # Changelog
 
+## v1.3.9
+
+### English
+
+**Added**
+
+1. Added a JEI/EMI hammer button that pulls items into the crafting grid and returns to the terminal; the + button now always encodes the recipe.
+2. Added Ctrl+hammer on crafting recipes to arm ae2helpers auto-insert for missing craftable slots.
+3. Added Shift+Encode to return the last pattern uploaded through ExtendedAE Plus.
+4. Added Shift+Encode return for non-processing patterns uploaded to ECO or Lightning Tech.
+5. Added an optional toolkit HUD with left/right hotbars for slots 0-8 and 9-17 for quick tool switching; toolkit capacity is now at least 18 slots and can be disabled in wireless-terminal settings.
+
+**Fixed**
+
+1. Fixed pattern-management UI and slot hover highlights being cropped.
+2. Fixed F-key fill-search into the provider search field when EAEP's JEI proxy is missing.
+3. Fixed the ingredient list and bookmarks not showing correctly on newer JEI.
+4. Fixed some processing patterns not being returnable after a unique-match upload through ExtendedAE Plus.
+
+**Improved**
+
+1. Improved encoding auto-upload to call ExtendedAE Plus public APIs instead of WCWT's own matching logic.
+2. Improved encoding upload so it only runs on a unique provider-name match; zero or multiple matches fall back to the editor or cache.
+3. Improved pattern encoding to follow AE2's encode flow: write the encoded slot first, then upload. Stonecutting requires a selected recipe, and Advanced AE directional patterns use its public encoder.
+4. Improved pattern-management mapping add/reload/delete to call ExtendedAE Plus public mapping APIs; Cancel now opens the mapping manager.
+5. Improved pattern-management search and mapping fields to use ExtendedAE Plus's Chinese-capable text field when it is present.
+6. Improved world-highlight to call ExtendedAE's public highlight APIs instead of reflection, and resized the pin button.
+7. Improved overload-pattern conversion to use Lightning Tech / Thunderbolt public APIs.
+8. Improved resonating-pattern conversion to call Crystal Science's public encode API instead of reflection.
+9. Improved JEI ingredient conversion to use AE2 JEI Integration's public converter API, with converters cached by ingredient type.
+10. Improved optional Curios, Applied Mekanistics, MEGA Cells, AE2WTLib magnet-range, JECH, and Advanced AE input/output direction editor calls to use public APIs instead of reflection.
+11. Improved Inventory Profiles Next support by removing the reflection/hints writer and using IPN's public screen annotations so sort buttons sit at the player-inventory top-right.
+12. Improved the wireless-terminal settings screen to size itself to its options instead of using a fixed background.
+13. Improved optional upgrade-card recipes to require their companion mods; JEI/EMI hide those cards and their recipes when the mods are missing.
+
+**Removed**
+
+1. Removed the option to open the ExtendedAE Plus provider selector for duplicate names.
+2. Removed the unused crafting-grid lock button, hotkey, config, and related transfer-border mixin.
+
+**Changed**
+
+1. Changed the ExtendedAE Plus requirement to 1.6.0 or newer.
+
+### 中文
+
+**新增**
+
+1. 新增 JEI/EMI 锤子按钮：从网络拉取物品到合成格并返回终端；原 + 按钮固定编码配方。
+2. 新增 Ctrl+锤子：拉取工作台配方时接入 ae2helpers 模组，对缺料可合成格自动填入。
+3. 新增 Shift+编写撤回：安装 ExtendedAE Plus 时可撤回上次上传的样板。
+4. 新增对 ECO / 闪电科技非处理样板的 Shift+编写撤回。
+5. 新增工具包左右 HUD 扩展快捷栏（0-8 / 9-17 格），用于快速切换工具，工具包容量下限调整为 18 格，可在无线终端设置中关闭。
+
+**修复**
+
+1. 修复样板管理区部分 UI 和槽位悬停高亮被裁切问题。
+2. 修复 F 键填充搜索到供应器搜索框在 EAEP JEI 代理缺失时无法工作的问题。
+3. 修复新版 JEI 原料列表与书签无法正常显示的问题。
+4. 修复 ExtendedAE Plus 唯一匹配上传时部分处理样板无法撤回的问题。
+
+**优化**
+
+1. 优化编码自动上传，改为调用 ExtendedAE Plus 公开 API，不再使用 WCWT 自研匹配上传。
+2. 优化编码上传条件：仅在供应器名称唯一匹配时上传；0 个或多名则回退到编辑槽或缓存区。
+3. 优化样板编码流程，对齐 AE2 原版：先写入编码槽再上传；切石机必须选手动配方；Advanced AE 方向样板改用其公开编码器。
+4. 优化样板管理区映射：增加/重载/删除改为调用 ExtendedAE Plus 公开 API，取消按钮改为打开映射管理界面。
+5. 优化样板管理区输入框：安装 ExtendedAE Plus 时，搜索框和映射框改用其可输入中文的输入框。
+6. 优化世界高亮，改为直接调用 ExtendedAE 公开 API，调整定位针按钮大小。
+7. 优化过载样板转换，改用闪电科技 / Thunderbolt 公开 API。
+8. 优化谐振样板转换，改为调用水晶科技公开 encode API，不再反射。
+9. 优化 JEI 原料转换，改为调用 AE2 JEI Integration 公开 converter API，并按原料类型缓存。
+10. 优化可选兼容：Curios、应用通用机械、MEGA 元件、AE2WTLib 磁力范围、JECH 与 Advanced AE 输入输出方向编辑界面改为调用公开 API，不再反射。
+11. 优化 Inventory Profiles Next 兼容：删除反射/hints 写入，改用 IPN 公开屏幕注解，整理按钮放到玩家物品栏右上角。
+12. 优化无线终端设置界面，改为按选项内容自动调整高度，不再使用固定背景。
+13. 优化可选升级卡配方：增加对应模组条件，缺模组时 JEI/EMI 不再显示这些卡及其配方。
+
+**移除**
+
+1. 移除同名供应器上传时打开 ExtendedAE Plus 选择界面的配置。
+2. 移除已无用的合成网格锁定按钮、快捷键、配置及相关转移边框 mixin。
+
+**调整**
+
+1. 调整 ExtendedAE Plus 兼容要求为 1.6.0 及以上。
+
+
 ## v1.3.8
 
 ### English

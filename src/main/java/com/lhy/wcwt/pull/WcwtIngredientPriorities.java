@@ -81,14 +81,11 @@ public final class WcwtIngredientPriorities {
             return List.of();
         }
 
-        List<ItemStack> deduplicated = new ArrayList<>(alternatives.size());
+        var unique = new WcwtStackMatching.UniqueStacks();
         for (var alternative : alternatives) {
-            if (alternative == null || alternative.isEmpty() || containsEquivalentStack(deduplicated, alternative)) {
-                continue;
-            }
-            deduplicated.add(alternative.copy());
+            unique.add(alternative == null ? ItemStack.EMPTY : alternative.copy());
         }
-        return deduplicated;
+        return unique.list();
     }
 
     public static List<ItemStack> sortItemAlternatives(@Nullable MEStorageMenu menu, List<ItemStack> alternatives) {
@@ -196,8 +193,10 @@ public final class WcwtIngredientPriorities {
 
         if (visibleAlternatives != null && !visibleAlternatives.isEmpty()) {
             for (ItemStack item : items) {
-                if (containsEquivalentStack(visibleAlternatives, item)) {
-                    return item.copy();
+                for (ItemStack visible : visibleAlternatives) {
+                    if (ItemStack.isSameItemSameComponents(visible, item)) {
+                        return item.copy();
+                    }
                 }
             }
         }
@@ -237,12 +236,4 @@ public final class WcwtIngredientPriorities {
         return key == null ? Integer.MIN_VALUE : priorities.getOrDefault(key, Integer.MIN_VALUE);
     }
 
-    private static boolean containsEquivalentStack(List<ItemStack> stacks, ItemStack candidate) {
-        for (var existing : stacks) {
-            if (ItemStack.isSameItemSameComponents(existing, candidate)) {
-                return true;
-            }
-        }
-        return false;
-    }
 }

@@ -2,24 +2,25 @@ package com.lhy.wcwt.menu;
 
 import appeng.menu.SlotSemantic;
 import appeng.menu.SlotSemantics;
+import de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics;
 
 public class WcwtSlotSemantics {
-    public static final SlotSemantic AE2WTLIB_HELMET = getAe2wtlibSemantic("HELMET");
-    public static final SlotSemantic AE2WTLIB_CHESTPLATE = getAe2wtlibSemantic("CHESTPLATE");
-    public static final SlotSemantic AE2WTLIB_LEGGINGS = getAe2wtlibSemantic("LEGGINGS");
-    public static final SlotSemantic AE2WTLIB_BOOTS = getAe2wtlibSemantic("BOOTS");
-    public static final SlotSemantic AE2WTLIB_OFFHAND = getAe2wtlibSemantic("OFFHAND");
-    
+    public static final SlotSemantic AE2WTLIB_HELMET = AE2wtlibSlotSemantics.HELMET;
+    public static final SlotSemantic AE2WTLIB_CHESTPLATE = AE2wtlibSlotSemantics.CHESTPLATE;
+    public static final SlotSemantic AE2WTLIB_LEGGINGS = AE2wtlibSlotSemantics.LEGGINGS;
+    public static final SlotSemantic AE2WTLIB_BOOTS = AE2wtlibSlotSemantics.BOOTS;
+    public static final SlotSemantic AE2WTLIB_OFFHAND = AE2wtlibSlotSemantics.OFFHAND;
+
     // 装饰盔甲槽位
     public static final SlotSemantic DECORATIVE_HELMET = SlotSemantics.register("DECORATIVE_HELMET", true);
     public static final SlotSemantic DECORATIVE_ARMOR = SlotSemantics.register("DECORATIVE_ARMOR", true);
     public static final SlotSemantic DECORATIVE_SHIN_GUARDS = SlotSemantics.register("DECORATIVE_SHIN_GUARDS", true);
     public static final SlotSemantic DECORATIVE_BOOTS = SlotSemantics.register("DECORATIVE_BOOTS", true);
-    
+
     // 饰品槽位
     public static final SlotSemantic AE_CURIOS = SlotSemantics.register("AE_CURIOS", true);
     public static final SlotSemantic WCWT_TOOLKIT = SlotSemantics.register("WCWT_TOOLKIT", true);
-    
+
     // 高级编码槽位
     public static final SlotSemantic COPY_PATTERN = SlotSemantics.register("COPY_PATTERN", false);
     public static final SlotSemantic REPLACE_INPUT = SlotSemantics.register("REPLACE_INPUT", false);
@@ -51,14 +52,5 @@ public class WcwtSlotSemantics {
 
     public static void init() {
         // 触发类加载以注册槽位语义
-    }
-
-    private static SlotSemantic getAe2wtlibSemantic(String id) {
-        try {
-            Class.forName("de.mari_023.ae2wtlib.api.gui.AE2wtlibSlotSemantics");
-        } catch (ClassNotFoundException e) {
-            throw new IllegalStateException("AE2WTLib slot semantics are unavailable", e);
-        }
-        return SlotSemantics.getOrThrow("AE2WTLIB_" + id);
     }
 }

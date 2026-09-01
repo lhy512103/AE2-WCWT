@@ -4,6 +4,7 @@ import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.Scrollbar;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
+import com.lhy.wcwt.compat.LightningTechOverloadCompat;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -535,11 +536,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     }
 
     private static boolean isOverloadPattern(ItemStack stack) {
-        try {
-            return Class.forName("com.moakiee.ae2lt.item.OverloadPatternItem").isInstance(stack.getItem());
-        } catch (Throwable ignored) {
-            return false;
-        }
+        return LightningTechOverloadCompat.isOverloadPattern(stack);
     }
 
     private static ItemStack firstItemTemplate(GenericStack[] possibleInputs) {
@@ -590,39 +587,12 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
         @Nullable
         static OverloadModeReader read(ItemStack stack) {
-            try {
-                Class<?> overloadItemClass = Class.forName("com.moakiee.ae2lt.item.OverloadPatternItem");
-                if (!overloadItemClass.isInstance(stack.getItem())) {
-                    return null;
-                }
-                Object optional = overloadItemClass.getMethod("readEncodedPattern", ItemStack.class)
-                        .invoke(stack.getItem(), stack);
-                Object encodedPattern = optional.getClass().getMethod("orElse", Object.class).invoke(optional, new Object[]{null});
-                if (encodedPattern == null) {
-                    return null;
-                }
-
-                Set<Integer> inputs = new HashSet<>();
-                for (Object slot : (Iterable<?>) encodedPattern.getClass().getMethod("inputSlots").invoke(encodedPattern)) {
-                    Object matchMode = slot.getClass().getMethod("matchMode").invoke(slot);
-                    boolean idOnly = (boolean) matchMode.getClass().getMethod("ignoresComponents").invoke(matchMode);
-                    if (idOnly) {
-                        inputs.add((Integer) slot.getClass().getMethod("slotIndex").invoke(slot));
-                    }
-                }
-
-                Set<Integer> outputs = new HashSet<>();
-                for (Object slot : (Iterable<?>) encodedPattern.getClass().getMethod("outputSlots").invoke(encodedPattern)) {
-                    Object matchMode = slot.getClass().getMethod("matchMode").invoke(slot);
-                    boolean idOnly = (boolean) matchMode.getClass().getMethod("ignoresComponents").invoke(matchMode);
-                    if (idOnly) {
-                        outputs.add((Integer) slot.getClass().getMethod("slotIndex").invoke(slot));
-                    }
-                }
-                return new OverloadModeReader(inputs, outputs);
-            } catch (Throwable ignored) {
+            if (!LightningTechOverloadCompat.isOverloadPattern(stack)) {
                 return null;
             }
+            return new OverloadModeReader(
+                    LightningTechOverloadCompat.inputIdOnlySlots(stack),
+                    LightningTechOverloadCompat.outputIdOnlySlots(stack));
         }
     }
 }
