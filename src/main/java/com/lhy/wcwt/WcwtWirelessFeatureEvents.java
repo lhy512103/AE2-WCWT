@@ -1,6 +1,8 @@
 package com.lhy.wcwt;
 
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
+import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
+import com.lhy.wcwt.network.WcwtToolkitHotbarSyncPacket;
 import com.lhy.wcwt.init.ModComponents;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -22,6 +24,16 @@ public class WcwtWirelessFeatureEvents {
     public static void onPlayerTick(PlayerTickEvent.Post event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             WcwtWirelessFeatures.tickPlayerMagnet(player);
+            if (WcwtToolkitHotbarState.isToolkitSelected(player)) {
+                WcwtToolkitHotbarSyncPacket.sendIfChanged(player);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            WcwtToolkitHotbarSyncPacket.send(player);
         }
     }
 
@@ -105,7 +117,8 @@ public class WcwtWirelessFeatureEvents {
                 return;
             }
         }
-        if (WcwtWirelessFeatures.insertPickupIntoME(entity, player)) {
+        if (WcwtToolkitHotbarState.insertPickup(entity, player)
+                || WcwtWirelessFeatures.insertPickupIntoME(entity, player)) {
             event.setCanPickup(TriState.FALSE);
         }
     }

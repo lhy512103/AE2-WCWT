@@ -27,7 +27,7 @@ The card box stores upgrade cards supported by WCWT. Insert cards manually. A st
 
 ## Toolkit
 
-The toolkit stores non-stackable tool items. Its first 11 slots are dedicated tool slots; later general slots can use slot memory.
+The toolkit stores non-stackable tool items. All toolkit slots are general slots and can use slot memory; at least 18 slots are available for the two HUD hotbars.
 
 1. Open the toolkit panel and manually place a tool in a general slot.
 2. Click the memory button to enable memory editing, then click a general slot to remember it.
@@ -35,6 +35,6 @@ The toolkit stores non-stackable tool items. Its first 11 slots are dedicated to
 4. Later, Shift-moving a matching tool prefers that remembered empty slot.
 5. Turning memory editing off returns the button to its disabled style without deleting saved slot memories.
 
-The memory control has disabled, hovered, and enabled states; hovered and enabled share the highlighted appearance. The server option `toolkitSlotCount` controls the available memory/general slot count, and the client cannot exceed the server limit.
+The memory control has disabled, hovered, and enabled states; hovered and enabled share the highlighted appearance. The server option `toolkitSlotCount` controls the available general/memory slot count (18-640, default 64), and the client cannot exceed the server limit. The client setting `showToolkitHotbars` independently shows slots 0-8 and 9-17 as left and right HUD hotbars.
 
 The toolkit does not duplicate items. If a target is occupied, an item is stackable, or it does not qualify as a tool, normal movement rules apply or insertion is rejected.

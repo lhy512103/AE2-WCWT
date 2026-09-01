@@ -28,6 +28,7 @@
 22. JEI ingredient conversion now uses AE2 JEI Integration's public converter API, with converters cached by ingredient type.
 23. Optional Curios, Applied Mekanistics, MEGA Cells, AE2WTLib magnet-range, JECH, and Advanced AE direction-map calls now use public APIs instead of reflection.
 24. The wireless-terminal settings screen now sizes itself to its options instead of using a fixed 200×201 background.
+25. Added an optional toolkit HUD with left/right hotbars for slots 0-8 and 9-17, while retaining the right-panel/management-area setting.
 
 ### 中文
 
@@ -55,6 +56,7 @@
 22. JEI 原料转换改为调用 AE2 JEI Integration 公开 converter API，并按原料类型缓存。
 23. Curios、应用通用机械、MEGA 元件、AE2WTLib 磁力范围、JECH 与 Advanced AE 方向图改为调用公开 API，不再反射。
 24. 无线终端设置界面改为按选项内容自动调整高度，不再使用固定 200×201 背景。
+25. 工具包容量下限调整为 18 格；新增独立的左右 HUD 扩展快捷栏开关，保留右侧面板/管理区二选一设置。
 
 ## v1.3.8
 

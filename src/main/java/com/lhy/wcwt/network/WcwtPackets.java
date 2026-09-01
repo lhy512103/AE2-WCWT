@@ -198,6 +198,24 @@ public class WcwtPackets {
         );
 
         registrar.playToServer(
+            WcwtToolkitHotbarSelectionPacket.TYPE,
+            WcwtToolkitHotbarSelectionPacket.STREAM_CODEC,
+            WcwtToolkitHotbarSelectionPacket::handle
+        );
+
+        registrar.playToServer(
+            WcwtToolkitHotbarActionPacket.TYPE,
+            WcwtToolkitHotbarActionPacket.STREAM_CODEC,
+            WcwtToolkitHotbarActionPacket::handle
+        );
+
+        registrar.playToClient(
+            WcwtToolkitHotbarSyncPacket.TYPE,
+            WcwtToolkitHotbarSyncPacket.STREAM_CODEC,
+            WcwtToolkitHotbarSyncPacket::handle
+        );
+
+        registrar.playToServer(
             OpenTerminalHotkeyPacket.TYPE,
             OpenTerminalHotkeyPacket.STREAM_CODEC,
             OpenTerminalHotkeyPacket::handle

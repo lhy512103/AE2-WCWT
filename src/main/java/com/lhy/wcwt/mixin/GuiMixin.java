@@ -1,10 +1,13 @@
 package com.lhy.wcwt.mixin;
 
 import com.lhy.wcwt.client.WcwtRestockState;
+import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
@@ -38,5 +41,17 @@ public class GuiMixin {
         }
         guiGraphics.renderItemDecorations(minecraft.font, stack, x, y, number);
         ci.cancel();
+    }
+
+    @WrapWithCondition(method = "renderItemHotbar", at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V"))
+    private boolean wcwt$skipVanillaHotbarSelection(GuiGraphics graphics, ResourceLocation sprite, int x, int y,
+                                                    int width, int height) {
+        if (!ResourceLocation.withDefaultNamespace("hud/hotbar_selection").equals(sprite)) {
+            return true;
+        }
+        Player player = minecraft.player;
+        return player == null || !WcwtToolkitHotbarState.isToolkitSelected(player);
     }
 }

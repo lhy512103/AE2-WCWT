@@ -56,6 +56,7 @@ import appeng.me.storage.NullInventory;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.init.ModComponents;
+import com.lhy.wcwt.network.WcwtToolkitHotbarSyncPacket;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.results.ActionHostResult;
 import de.mari_023.ae2wtlib.api.results.LongResult;
@@ -84,6 +85,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
     private static final String TOOLKIT_MEMORY_TAG = "memory";
     private static final String TOOLKIT_SLOT_TAG = "slot";
     private static final String TOOLKIT_STACK_TAG = "stack";
+    private static final ThreadLocal<Boolean> LOADING_SHARED_TOOLKIT = ThreadLocal.withInitial(() -> Boolean.FALSE);
     
     // 定义各种存储库存的ResourceLocation标识符
     public static final ResourceLocation INV_AE2WTLIB_ARMOR = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "ae2wtlib_armor");
@@ -1236,12 +1238,14 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         return inventory;
     }
 
-    private InternalInventory createToolkitInventory(Player player, ItemStack stack) {
+    public static InternalInventory createToolkitInventory(Player player, ItemStack stack) {
         int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
-                saveSharedToolkitInventory(player, stack, inv);
+                if (!LOADING_SHARED_TOOLKIT.get()) {
+                    saveSharedToolkitInventory(player, stack, inv);
+                }
             }
 
             @Override
@@ -1249,17 +1253,19 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 return player.level().isClientSide();
             }
         }, toolkitSlots);
-        loadSharedToolkitInventory(player, stack, inventory);
+        withToolkitLoadSuppressed(() -> loadSharedToolkitInventory(player, stack, inventory));
         inventory.setFilter(new ToolkitItemFilter());
         return inventory;
     }
 
-    private InternalInventory createToolkitMemoryInventory(Player player, ItemStack stack) {
+    public static InternalInventory createToolkitMemoryInventory(Player player, ItemStack stack) {
         int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
-                saveSharedToolkitMemory(player, stack, inv);
+                if (!LOADING_SHARED_TOOLKIT.get()) {
+                    saveSharedToolkitMemory(player, stack, inv);
+                }
             }
 
             @Override
@@ -1267,7 +1273,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 return player.level().isClientSide();
             }
         }, toolkitSlots);
-        loadSharedToolkitMemory(player, stack, inventory);
+        withToolkitLoadSuppressed(() -> loadSharedToolkitMemory(player, stack, inventory));
         return inventory;
     }
 
@@ -1375,6 +1381,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         }
         persisted.put(PLAYER_TOOLKIT_DATA_TAG, serialized);
         saveToolkitInventoryMirror(terminalStack, inventory);
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            WcwtToolkitHotbarSyncPacket.send(serverPlayer, inventory, snapshotToolkitHotbar(player, true));
+        }
         if (DEBUG_TOOLKIT) {
             WcwtMod.LOGGER.info("WCWT toolkit debug: saved shared toolkit for player={}, slotCount={}, nonEmptySlots={}",
                     player.getScoreboardName(), inventory.size(), countNonEmptySlots(inventory));
@@ -1407,6 +1416,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         sharedToolkitTag.put(TOOLKIT_MEMORY_TAG, serializeToolkitSlots(player, memory));
         persisted.put(PLAYER_TOOLKIT_DATA_TAG, sharedToolkitTag);
         saveToolkitMemoryMirror(terminalStack, memory);
+        if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+            WcwtToolkitHotbarSyncPacket.send(serverPlayer, snapshotToolkitHotbar(player, false), memory);
+        }
     }
 
     private static CompoundTag serializeToolkitSlots(Player player, AppEngInternalInventory inventory) {
@@ -1486,6 +1498,42 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
             }
         }
         return count;
+    }
+
+    public static java.util.List<ItemStack> snapshotToolkitHotbar(Player player, boolean memory) {
+        java.util.List<ItemStack> stacks = new java.util.ArrayList<>(WcwtToolkitAccess.HOTBAR_SLOTS);
+        for (int i = 0; i < WcwtToolkitAccess.HOTBAR_SLOTS; i++) {
+            stacks.add(ItemStack.EMPTY);
+        }
+        var persisted = player.getPersistentData().getCompound(PLAYER_PERSISTED_TAG);
+        var sharedToolkitTag = persisted.getCompound(WCWT_PLAYER_DATA_TAG).getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        CompoundTag source = memory ? sharedToolkitTag.getCompound(TOOLKIT_MEMORY_TAG) : sharedToolkitTag;
+        if (!source.contains(TOOLKIT_ITEMS_TAG, Tag.TAG_LIST)) {
+            return stacks;
+        }
+        ListTag items = source.getList(TOOLKIT_ITEMS_TAG, Tag.TAG_COMPOUND);
+        for (int i = 0; i < items.size(); i++) {
+            CompoundTag entry = items.getCompound(i);
+            int slot = entry.getInt(TOOLKIT_SLOT_TAG);
+            if (slot < 0 || slot >= stacks.size() || !entry.contains(TOOLKIT_STACK_TAG, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+            stacks.set(slot, ItemStack.parseOptional(player.registryAccess(), entry.getCompound(TOOLKIT_STACK_TAG)));
+        }
+        return stacks;
+    }
+
+    private static void withToolkitLoadSuppressed(Runnable action) {
+        if (LOADING_SHARED_TOOLKIT.get()) {
+            action.run();
+            return;
+        }
+        LOADING_SHARED_TOOLKIT.set(true);
+        try {
+            action.run();
+        } finally {
+            LOADING_SHARED_TOOLKIT.set(false);
+        }
     }
 
     private static CompoundTag getOrCreateWcwtPlayerData(Player player) {

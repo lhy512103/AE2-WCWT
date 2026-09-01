@@ -70,6 +70,11 @@
       "left": 10,
       "top": 25,
       "width": 180
+    },
+    "showToolkitHotbars": {
+      "left": 10,
+      "top": 25,
+      "width": 180
     }
   }
 }

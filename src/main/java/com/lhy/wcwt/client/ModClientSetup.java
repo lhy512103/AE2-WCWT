@@ -44,6 +44,8 @@ public class ModClientSetup {
         event.register(WcwtKeybindings.OPEN_TOOLKIT);
         event.register(WcwtKeybindings.OPEN_RESONATING_LIGHTNING_PATTERN_CODING);
         event.register(WcwtKeybindings.TOGGLE_FAVORITE_ITEM);
+        event.register(WcwtKeybindings.TOOLKIT_BAR_LEFT);
+        event.register(WcwtKeybindings.TOOLKIT_BAR_RIGHT);
     }
 
     @SubscribeEvent

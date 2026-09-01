@@ -148,7 +148,7 @@ Right-side buttons. Each panel has its own hotkey.
 | Cosmetic Armor | Cosmetic Armor Card + Cosmetic Armor Reworked | Cosmetic armor slots |
 | Curios | Curios Card + Curios | Real Curios slots, scroll, render toggle. The currently open WCWT cannot be unequipped from Curios. |
 | Card Box | Network Tool Slot Pack Card | AE / addon upgrade cards; persistent 3×3 upgrade inventory without a physical Network Tool |
-| Toolkit | Toolkit Card | Tools, not upgrade cards. First 11 slots are dedicated (sword / pick / axe / shovel / hoe / wrench / quartz knife / network tool / memory card / Mekanism config card / configurator). Extra slots are general + memory slots. Slot count is a server option, `11 ~ 640` (default 64). Toolkit hotkey can open the panel even when the main screen is closed. |
+| Toolkit | Toolkit Card | Tools, not upgrade cards. The toolkit has 18 general slots at minimum, configurable up to 640. When enabled separately, slots 0-8 and 9-17 are shown as left and right HUD hotbars, and the selected toolkit item behaves as the main-hand item. Toolkit hotkey can open the panel even when the main screen is closed. |
 | Resonating Overload Encoder | Resonating Overload Encoder Card | Overload conversion (AE2 Lightning Tech) and resonating conversion (AE2 Crystal Science) |
 
 ## Hotkeys
@@ -167,7 +167,7 @@ The Toolkit hotkey works while the main terminal is closed. The other extension-
 OP-only (`permission level 2`):
 
 ```
-/wcwt config toolkitSlotCount [11-640]
+/wcwt config toolkitSlotCount [18-640]
 /wcwt config patternProviderActiveRefresh [true|false]
 ```
 
@@ -177,7 +177,7 @@ Client (`config/wcwt-client.toml`) covers recipe-transfer behaviour, pattern-upl
 
 Server (`config/wcwt-server.toml`):
 
-- `toolkitSlotCount` — 11–640, default 64
+- `toolkitSlotCount` — 18–640, default 64
 - `patternProviderActiveRefresh` — refresh provider lists while the area is open
 - `maxSyncedSlotsPerProvider` — 64–8192, default 1024
 
@@ -317,7 +317,7 @@ Shift 快取/快放是客户端选项。服务端 `maxSyncedSlotsPerProvider`（
 | 装饰盔甲 | 装饰盔甲卡 + Cosmetic Armor Reworked | 装饰盔甲槽 |
 | 饰品栏 | 饰品栏卡 + Curios | 真实 Curios 槽、滚动、渲染开关。当前打开的 WCWT 不能从饰品槽取下 |
 | 卡槽箱 | 网络工具卡槽包卡 | 升级卡集中存放；无需实体网络工具即可提供可持久化的 3×3 升级槽 |
-| 工具包 | 工具包卡 | 放工具不是放卡。前 11 格专用（剑镐斧锹锄扳手石英刀网络工具内存卡 / Mekanism 配置卡与配置器），其后为通用记忆槽。槽数服务端可配 `11 ~ 640`，默认 64。快捷键可在未打开终端时唤起 |
+| 工具包 | 工具包卡 | 放工具不是放卡。工具包至少 18 个通用槽位，服务端可配 `18 ~ 640`，默认 64。独立开关开启后，第 0-8 格和第 9-17 格会作为左右扩展 HUD 快捷栏显示；快捷键可在未打开终端时唤起 |
 | 谐振过载编码器 | 谐振过载编码器卡 | 过载转换（闪电科技）与谐振转换（晶体科学） |
 
 ## 快捷键
@@ -329,7 +329,7 @@ Shift 快取/快放是客户端选项。服务端 `maxSyncedSlotsPerProvider`（
 仅 OP（权限等级 2）：
 
 ```
-/wcwt config toolkitSlotCount [11-640]
+/wcwt config toolkitSlotCount [18-640]
 /wcwt config patternProviderActiveRefresh [true|false]
 ```
 
@@ -339,7 +339,7 @@ Shift 快取/快放是客户端选项。服务端 `maxSyncedSlotsPerProvider`（
 
 服务端 `config/wcwt-server.toml`：
 
-- `toolkitSlotCount`：11–640，默认 64
+- `toolkitSlotCount`：18–640，默认 64
 - `patternProviderActiveRefresh`：打开样板管理时是否主动刷新供应器列表
 - `maxSyncedSlotsPerProvider`：64–8192，默认 1024
 

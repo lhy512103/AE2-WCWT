@@ -8,7 +8,9 @@
     "WcwtMenuProtectionMixin",
     "WcwtRemoteMenuMixin",
     "WcwtServerPlayerRestockMixin",
-    "WcwtServerPlayerGameModeMixin"
+    "WcwtServerPlayerGameModeMixin",
+    "WcwtInventoryMixin",
+    "WcwtPlayerMixin"
   ],
   "client": [
     "GuiMixin",
