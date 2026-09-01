@@ -64,7 +64,7 @@ side="CLIENT"
 [[dependencies.${mod_id}]]
 modId="extendedae_plus"
 type="optional"
-versionRange="[0,)"
+versionRange="[1.6.0,)"
 ordering="AFTER"
 side="BOTH"
 

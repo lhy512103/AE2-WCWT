@@ -40,7 +40,7 @@ public final class WcwtToolkitHud {
         Minecraft minecraft = Minecraft.getInstance();
         if (!isHudVisible(minecraft)) {
             if (minecraft.player != null
-                    && !WcwtClientConfig.showToolkitHotbars()
+                    && (!WcwtClientConfig.showToolkitHotbars() || !WcwtToolkitHotbarState.hasToolkitCard(minecraft.player))
                     && WcwtToolkitHotbarState.isToolkitSelected(minecraft.player)) {
                 setSelection(WcwtToolkitHotbarState.Bar.CENTER, minecraft.player.getInventory().selected);
             }
@@ -216,6 +216,7 @@ public final class WcwtToolkitHud {
     private static boolean isHudVisible(Minecraft minecraft) {
         return WcwtClientConfig.showToolkitHotbars()
                 && minecraft.player != null
+                && WcwtToolkitHotbarState.hasToolkitCard(minecraft.player)
                 && !minecraft.player.isSpectator()
                 && minecraft.screen == null
                 && minecraft.getOverlay() == null;

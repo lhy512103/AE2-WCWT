@@ -34,7 +34,7 @@ These mods are compile-time `compileOnly` / runtime optional. Missing them does 
 
 - AdvancedAE
 - ExtendedAE
-- ExtendedAE Plus
+- ExtendedAE Plus (1.6.0+)
 - Curios
 - Cosmetic Armor Reworked
 - EMI

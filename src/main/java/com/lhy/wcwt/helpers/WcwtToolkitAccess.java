@@ -1,7 +1,9 @@
 package com.lhy.wcwt.helpers;
 
 import appeng.api.inventories.InternalInventory;
+import appeng.api.upgrades.IUpgradeableItem;
 import appeng.integration.modules.curios.CuriosIntegration;
+import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.world.entity.player.Player;
@@ -15,24 +17,41 @@ public final class WcwtToolkitAccess {
     private WcwtToolkitAccess() {
     }
 
+    public static boolean hasToolkitCard(Player player) {
+        var host = existingHost(player);
+        if (host != null) {
+            return hasToolkitCard(host.getItemStack());
+        }
+        return hasToolkitCard(findTerminal(player));
+    }
+
+    public static boolean hasToolkitCard(ItemStack terminal) {
+        return !terminal.isEmpty()
+                && terminal.getItem() instanceof IUpgradeableItem upgradeable
+                && upgradeable.getUpgrades(terminal).isInstalled(ModItems.TOOLKIT_CARD.get());
+    }
+
     @Nullable
     public static InternalInventory findInventory(Player player) {
         var host = existingHost(player);
         if (host != null) {
-            return host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
+            return hasToolkitCard(host.getItemStack())
+                    ? host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT) : null;
         }
         ItemStack terminal = findTerminal(player);
-        return terminal.isEmpty() ? null : WirelessComprehensiveWorkTerminalMenuHost.createToolkitInventory(player, terminal);
+        return !hasToolkitCard(terminal) ? null
+                : WirelessComprehensiveWorkTerminalMenuHost.createToolkitInventory(player, terminal);
     }
 
     @Nullable
     public static InternalInventory findMemoryInventory(Player player) {
         var host = existingHost(player);
         if (host != null) {
-            return host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT_MEMORY);
+            return hasToolkitCard(host.getItemStack())
+                    ? host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT_MEMORY) : null;
         }
         ItemStack terminal = findTerminal(player);
-        return terminal.isEmpty() ? null
+        return !hasToolkitCard(terminal) ? null
                 : WirelessComprehensiveWorkTerminalMenuHost.createToolkitMemoryInventory(player, terminal);
     }
 

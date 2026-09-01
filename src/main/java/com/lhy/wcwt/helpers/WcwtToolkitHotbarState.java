@@ -20,6 +20,7 @@ public final class WcwtToolkitHotbarState {
     private static final Map<Player, Selection> SELECTIONS = new WeakHashMap<>();
     private static final Map<Player, ItemStack[]> CLIENT_SNAPSHOTS = new WeakHashMap<>();
     private static final Map<Player, ItemStack[]> CLIENT_MEMORY_SNAPSHOTS = new WeakHashMap<>();
+    private static final Map<Player, Boolean> CLIENT_TOOLKIT_CARD = new WeakHashMap<>();
 
     private WcwtToolkitHotbarState() {
     }
@@ -35,11 +36,18 @@ public final class WcwtToolkitHotbarState {
     }
 
     public static boolean isToolkitSelected(Player player) {
-        return getBar(player) != Bar.CENTER;
+        return hasToolkitCard(player) && getBar(player) != Bar.CENTER;
+    }
+
+    public static boolean hasToolkitCard(Player player) {
+        if (player.level().isClientSide()) {
+            return Boolean.TRUE.equals(CLIENT_TOOLKIT_CARD.get(player));
+        }
+        return WcwtToolkitAccess.hasToolkitCard(player);
     }
 
     public static void setSelection(Player player, Bar bar, int slot) {
-        if (bar == Bar.CENTER) {
+        if (bar == Bar.CENTER || !hasToolkitCard(player)) {
             SELECTIONS.remove(player);
             return;
         }
@@ -51,6 +59,7 @@ public final class WcwtToolkitHotbarState {
         SELECTIONS.remove(player);
         CLIENT_SNAPSHOTS.remove(player);
         CLIENT_MEMORY_SNAPSHOTS.remove(player);
+        CLIENT_TOOLKIT_CARD.remove(player);
     }
 
     public static int toolkitIndex(Player player) {
@@ -109,7 +118,7 @@ public final class WcwtToolkitHotbarState {
     }
 
     public static boolean insertPickup(ItemEntity entity, Player player) {
-        if (!(player instanceof ServerPlayer serverPlayer)) {
+        if (!(player instanceof ServerPlayer serverPlayer) || !hasToolkitCard(player)) {
             return false;
         }
         ItemStack entityStack = entity.getItem();
@@ -179,6 +188,13 @@ public final class WcwtToolkitHotbarState {
 
     public static void setClientSnapshot(Player player, java.util.List<ItemStack> stacks) {
         CLIENT_SNAPSHOTS.put(player, copyHotbar(stacks));
+    }
+
+    public static void setClientToolkitCard(Player player, boolean installed) {
+        CLIENT_TOOLKIT_CARD.put(player, installed);
+        if (!installed) {
+            SELECTIONS.remove(player);
+        }
     }
 
     public static ItemStack[] getClientMemorySnapshot(Player player) {

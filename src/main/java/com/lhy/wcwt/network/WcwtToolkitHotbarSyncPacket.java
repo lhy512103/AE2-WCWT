@@ -6,6 +6,7 @@ import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import appeng.api.inventories.InternalInventory;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -19,9 +20,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack> memories)
+public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack> memories, boolean hasCard)
         implements CustomPacketPayload {
     private static final Map<ServerPlayer, ItemStack> LAST_SENT_SELECTION = new WeakHashMap<>();
+    private static final Map<ServerPlayer, Boolean> LAST_SENT_HAS_CARD = new WeakHashMap<>();
     public static final Type<WcwtToolkitHotbarSyncPacket> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_hotbar_sync"));
 
@@ -36,10 +38,11 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
     private static void write(RegistryFriendlyByteBuf buf, WcwtToolkitHotbarSyncPacket packet) {
         writeHotbar(buf, packet.stacks);
         writeHotbar(buf, packet.memories);
+        ByteBufCodecs.BOOL.encode(buf, packet.hasCard);
     }
 
     private static WcwtToolkitHotbarSyncPacket read(RegistryFriendlyByteBuf buf) {
-        return new WcwtToolkitHotbarSyncPacket(readHotbar(buf), readHotbar(buf));
+        return new WcwtToolkitHotbarSyncPacket(readHotbar(buf), readHotbar(buf), ByteBufCodecs.BOOL.decode(buf));
     }
 
     private static void writeHotbar(RegistryFriendlyByteBuf buf, List<ItemStack> stacks) {
@@ -82,8 +85,19 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
     }
 
     public static void send(ServerPlayer player, List<ItemStack> stacks, List<ItemStack> memories) {
+        boolean hasCard = WcwtToolkitAccess.hasToolkitCard(player);
+        LAST_SENT_HAS_CARD.put(player, hasCard);
         LAST_SENT_SELECTION.put(player, WcwtToolkitHotbarState.getSelectedToolkit(player).copy());
-        PacketDistributor.sendToPlayer(player, new WcwtToolkitHotbarSyncPacket(stacks, memories));
+        PacketDistributor.sendToPlayer(player, new WcwtToolkitHotbarSyncPacket(
+                hasCard ? stacks : List.of(), hasCard ? memories : List.of(), hasCard));
+    }
+
+    public static void sendIfCardChanged(ServerPlayer player) {
+        boolean hasCard = WcwtToolkitAccess.hasToolkitCard(player);
+        Boolean previous = LAST_SENT_HAS_CARD.get(player);
+        if (previous == null || previous != hasCard) {
+            send(player);
+        }
     }
 
     private static List<ItemStack> copyHotbar(InternalInventory inventory) {
@@ -108,6 +122,7 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
     public static void handle(WcwtToolkitHotbarSyncPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() != null && context.player().level().isClientSide()) {
+                WcwtToolkitHotbarState.setClientToolkitCard(context.player(), packet.hasCard);
                 WcwtToolkitHotbarState.setClientSnapshot(context.player(), packet.stacks);
                 WcwtToolkitHotbarState.setClientMemorySnapshot(context.player(), packet.memories);
             }

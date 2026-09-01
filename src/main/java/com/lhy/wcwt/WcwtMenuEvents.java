@@ -1,6 +1,8 @@
 package com.lhy.wcwt;
 
 import com.lhy.wcwt.helpers.WcwtRemoteMenuAccess;
+import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
+import com.lhy.wcwt.network.WcwtToolkitHotbarSyncPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -15,6 +17,7 @@ public final class WcwtMenuEvents {
     public static void onContainerClosed(PlayerContainerEvent.Close event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             WcwtRemoteMenuAccess.clear(player, event.getContainer());
+            WcwtToolkitHotbarSyncPacket.sendIfCardChanged(player);
         }
     }
 }
