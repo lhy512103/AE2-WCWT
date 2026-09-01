@@ -23,6 +23,7 @@ import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.TabButton;
 import appeng.client.gui.widgets.ToggleButton;
+import appeng.client.gui.style.PaletteColor;
 import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.StyleManager;
 import appeng.client.gui.widgets.Scrollbar;
@@ -933,6 +934,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private static class WcwtWirelessTerminalSettingsSubScreen
             extends appeng.client.gui.AESubScreen<WirelessComprehensiveWorkTerminalMenu, WirelessComprehensiveWorkTerminalScreen> {
+        private static final int SETTINGS_WIDTH = 200;
+        private static final int SETTINGS_PAD_X = 10;
+        private static final int SETTINGS_CONTENT_TOP = 25;
+        private static final int SETTINGS_ROW_GAP = 2;
+        private static final int SETTINGS_SECTION_GAP = 6;
+        private static final int SETTINGS_HEADER_H = 12;
+        private static final int SETTINGS_BOTTOM_PAD = 8;
+        private static final int SETTINGS_CHECK_H = 14;
+
         private final AECheckbox pickBlock = widgets.addCheckbox("pickBlock",
                 Component.translatable("gui.ae2wtlib.pick_block.text"), this::changeVisibility);
         private final AECheckbox craftIfMissing = widgets.addCheckbox("craftIfMissing",
@@ -959,6 +969,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 "expandToolkitInManagementArea",
                 Component.translatable("wcwt.config.expandToolkitInManagementArea"),
                 this::saveClientSettings);
+        private int magnetTitleY = 73;
+        private int otherTitleY = 114;
 
         WcwtWirelessTerminalSettingsSubScreen(WirelessComprehensiveWorkTerminalScreen parent) {
             super(parent, "/screens/wcwt/wireless_terminal_settings.json");
@@ -989,11 +1001,69 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         @Override
         protected void init() {
+            resizeToContent();
             super.init();
-            leftPos = (width - imageWidth) / 2;
-            topPos = (height - imageHeight) / 2;
+            layoutSettings(true);
             setSlotsHidden(SlotSemantics.TOOLBOX, true);
             refreshMagnetSettingsAvailability(stack());
+        }
+
+        @Override
+        public void drawFG(GuiGraphics guiGraphics, int offsetX, int offsetY, int mouseX, int mouseY) {
+            int color = getStyle().getColor(PaletteColor.DEFAULT_TEXT_COLOR).toARGB();
+            guiGraphics.drawString(font, Component.translatable("gui.ae2wtlib.magnet_settings_title"),
+                    8, magnetTitleY, color, false);
+            guiGraphics.drawString(font, Component.translatable("gui.wcwt.wireless_settings.other_settings_title"),
+                    8, otherTitleY, color, false);
+        }
+
+        private void resizeToContent() {
+            int height = layoutSettings(false);
+            imageWidth = SETTINGS_WIDTH;
+            imageHeight = height;
+            var generated = getStyle().getGeneratedBackground();
+            if (generated != null) {
+                generated.setWidth(SETTINGS_WIDTH);
+                generated.setHeight(height);
+            }
+        }
+
+        private int layoutSettings(boolean apply) {
+            int checkWidth = SETTINGS_WIDTH - SETTINGS_PAD_X * 2;
+            int x = (apply ? leftPos : 0) + SETTINGS_PAD_X;
+            int y = SETTINGS_CONTENT_TOP;
+            y = placeCheckbox(pickBlock, x, y, checkWidth, apply);
+            y = placeCheckbox(craftIfMissing, x, y, checkWidth, apply);
+            y = placeCheckbox(restock, x, y, checkWidth, apply);
+            y += SETTINGS_SECTION_GAP;
+            magnetTitleY = y;
+            y += SETTINGS_HEADER_H;
+            y = placeCheckbox(magnet, x, y, checkWidth, apply);
+            y = placeCheckbox(pickupToME, x, y, checkWidth, apply);
+            y += SETTINGS_SECTION_GAP;
+            otherTitleY = y;
+            y += SETTINGS_HEADER_H;
+            y = placeCheckbox(patternUploadFailFallbackToEditor, x, y, checkWidth, apply);
+            y = placeCheckbox(patternMultiplierApplyToEditorProcessing, x, y, checkWidth, apply);
+            y = placeCheckbox(autoSwitchManualWorkspaceOnRecipeTransfer, x, y, checkWidth, apply);
+            y = placeCheckbox(expandToolkitInManagementArea, x, y, checkWidth, apply);
+            return y + SETTINGS_BOTTOM_PAD;
+        }
+
+        private int placeCheckbox(AECheckbox box, int x, int y, int width, boolean apply) {
+            int height = checkboxRowHeight(box, width);
+            if (apply) {
+                box.setX(x);
+                box.setY(topPos + y);
+                box.setWidth(width);
+                box.setHeight(height);
+            }
+            return y + height + SETTINGS_ROW_GAP;
+        }
+
+        private static int checkboxRowHeight(AECheckbox box, int width) {
+            int lines = Minecraft.getInstance().font.split(box.getMessage(), Math.max(1, width - 22)).size();
+            return lines <= 1 ? SETTINGS_CHECK_H : 2 + lines * 9;
         }
 
         private ItemStack stack() {

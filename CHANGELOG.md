@@ -27,6 +27,7 @@
 21. Resonating-pattern conversion now calls Crystal Science's public encode API instead of reflection.
 22. JEI ingredient conversion now uses AE2 JEI Integration's public converter API, with converters cached by ingredient type.
 23. Optional Curios, Applied Mekanistics, MEGA Cells, AE2WTLib magnet-range, JECH, and Advanced AE direction-map calls now use public APIs instead of reflection.
+24. The wireless-terminal settings screen now sizes itself to its options instead of using a fixed 200×201 background.
 
 ### 中文
 
@@ -53,6 +54,7 @@
 21. 谐振样板转换改为调用水晶科技公开 encode API，不再反射。
 22. JEI 原料转换改为调用 AE2 JEI Integration 公开 converter API，并按原料类型缓存。
 23. Curios、应用通用机械、MEGA 元件、AE2WTLib 磁力范围、JECH 与 Advanced AE 方向图改为调用公开 API，不再反射。
+24. 无线终端设置界面改为按选项内容自动调整高度，不再使用固定 200×201 背景。
 
 ## v1.3.8
 

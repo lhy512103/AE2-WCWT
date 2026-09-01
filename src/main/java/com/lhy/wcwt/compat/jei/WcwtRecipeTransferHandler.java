@@ -1,6 +1,8 @@
 package com.lhy.wcwt.compat.jei;
 
+import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.itemlists.EncodingHelper;
@@ -25,6 +27,7 @@ import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import mezz.jei.api.recipe.transfer.IUniversalRecipeTransferHandler;
 import mezz.jei.library.plugins.jei.info.IngredientInfoRecipe;
 import mezz.jei.library.plugins.jei.tags.ITagInfoRecipe;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
@@ -38,14 +41,19 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 public class WcwtRecipeTransferHandler
         implements IUniversalRecipeTransferHandler<WirelessComprehensiveWorkTerminalMenu> {
+    private static Set<AEKey> cachedCraftableKeys = Set.of();
+    private static long cachedCraftableKeysTick = Long.MIN_VALUE;
+    private static int cachedCraftableKeysRepoId;
+
     private final IRecipeTransferHandlerHelper transferHelper;
 
     public WcwtRecipeTransferHandler(IRecipeTransferHandlerHelper transferHelper) {
@@ -125,14 +133,10 @@ public class WcwtRecipeTransferHandler
     public static List<IRecipeSlotView> findCraftableEncodingSlots(WirelessComprehensiveWorkTerminalMenu menu,
                                                                    IRecipeSlotsView slotsView,
                                                                    int maxInputSlots) {
-        var repo = menu.getClientRepo();
-        if (repo == null) {
+        var craftableKeys = craftableKeysForTick(menu);
+        if (craftableKeys.isEmpty()) {
             return List.of();
         }
-        var craftableKeys = repo.getAllEntries().stream()
-                .filter(e -> e.getWhat() != null && e.isCraftable())
-                .map(GridInventoryEntry::getWhat)
-                .collect(Collectors.toSet());
 
         var stream = slotsView.getSlotViews(RecipeIngredientRole.INPUT).stream();
         if (maxInputSlots < Integer.MAX_VALUE) {
@@ -140,10 +144,57 @@ public class WcwtRecipeTransferHandler
         }
         return stream
                 .filter(slotView -> slotView.getAllIngredients().anyMatch(ingredient -> {
-                    GenericStack stack = toGenericStack(ingredient);
-                    return stack != null && craftableKeys.contains(stack.what());
+                    AEKey key = toPreviewKey(ingredient);
+                    return key != null && craftableKeys.contains(key);
                 }))
                 .toList();
+    }
+
+    private static Set<AEKey> craftableKeysForTick(WirelessComprehensiveWorkTerminalMenu menu) {
+        var repo = menu.getClientRepo();
+        if (repo == null) {
+            return Set.of();
+        }
+        long tick = currentClientTick();
+        int repoId = System.identityHashCode(repo);
+        if (cachedCraftableKeysTick == tick && cachedCraftableKeysRepoId == repoId) {
+            return cachedCraftableKeys;
+        }
+        Set<AEKey> keys = new HashSet<>();
+        for (GridInventoryEntry entry : repo.getAllEntries()) {
+            if (entry.getWhat() != null && entry.isCraftable()) {
+                keys.add(entry.getWhat());
+            }
+        }
+        cachedCraftableKeys = keys.isEmpty() ? Set.of() : keys;
+        cachedCraftableKeysTick = tick;
+        cachedCraftableKeysRepoId = repoId;
+        return cachedCraftableKeys;
+    }
+
+    private static long currentClientTick() {
+        var level = Minecraft.getInstance().level;
+        return level != null ? level.getGameTime() : 0L;
+    }
+
+    @Nullable
+    private static AEKey toPreviewKey(@Nullable ITypedIngredient<?> ingredient) {
+        if (ingredient == null) {
+            return null;
+        }
+        Object raw = ingredient.getIngredient();
+        if (raw instanceof ItemStack stack && !stack.isEmpty()) {
+            return AEItemKey.of(stack);
+        }
+        if (raw instanceof FluidStack fluid && !fluid.isEmpty()) {
+            return AEFluidKey.of(fluid);
+        }
+        GenericStack converted = Ae2JeiIntegrationCompat.convert(ingredient);
+        if (converted != null) {
+            return converted.what();
+        }
+        GenericStack chemical = AppliedMekanisticsCompat.fromChemicalStack(raw);
+        return chemical == null ? null : chemical.what();
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {

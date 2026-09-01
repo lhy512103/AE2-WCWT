@@ -23,11 +23,14 @@ public final class Ae2JeiIntegrationCompat {
 
     @Nullable
     public static GenericStack convert(@Nullable ITypedIngredient<?> ingredient) {
-        if (!available() || ingredient == null) {
+        if (ingredient == null) {
             return null;
         }
         Object raw = ingredient.getIngredient();
         if (raw instanceof ItemStack || raw instanceof FluidStack) {
+            return null;
+        }
+        if (!available()) {
             return null;
         }
         return Impl.convert(ingredient);
