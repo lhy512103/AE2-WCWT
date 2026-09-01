@@ -1,7 +1,6 @@
 package com.lhy.wcwt.client;
 
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.compat.InventoryProfilesNextCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.init.ModMenus;
@@ -21,7 +20,6 @@ import org.lwjgl.glfw.GLFW;
 
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public class ModClientSetup {
-    private static boolean ipnCompatInitialized;
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
 
     @SubscribeEvent
@@ -79,10 +77,6 @@ public class ModClientSetup {
     @SubscribeEvent
     public static void onClientTickPost(ClientTickEvent.Post event) {
         var minecraft = Minecraft.getInstance();
-        if (!ipnCompatInitialized) {
-            ipnCompatInitialized = true;
-            InventoryProfilesNextCompat.ensureHintsInstalled();
-        }
         if (minecraft.player == null) {
             return;
         }

@@ -108,6 +108,11 @@ import com.mojang.blaze3d.platform.InputConstants;
 import net.neoforged.neoforge.network.PacketDistributor;
 import appeng.parts.encoding.EncodingMode;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
+import org.anti_ad.mc.ipn.api.IPNButton;
+import org.anti_ad.mc.ipn.api.IPNGuiHint;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
+import org.anti_ad.mc.ipn.api.IPNPlayerSideOnly;
+import org.anti_ad.mc.ipn.api.IPNSlotsIgnoreForInventoryTypes;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
@@ -129,6 +134,26 @@ import com.google.common.primitives.Longs;
  * 无线综合工作终端界面
  * 集成了多个AE2附属模组的功能
  */
+@IPNPlayerSideOnly
+@IPNSlotsIgnoreForInventoryTypes(
+        value = {
+                "appeng.menu.slot.AppEngSlot",
+                "appeng.menu.slot.FakeSlot",
+                "appeng.menu.slot.OptionalRestrictedInputSlot",
+                "appeng.menu.slot.PatternTermSlot",
+                "appeng.menu.slot.RestrictedInputSlot",
+                "com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu$ToolkitSlot",
+                "com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu$WcwtCurioSlot",
+                "net.neoforged.neoforge.items.SlotItemHandler"
+        },
+        ignoreCraftingSlots = true
+)
+@IPNGuiHint(button = IPNButton.SORT, horizontalOffset = 179, bottom = 1)
+@IPNGuiHint(button = IPNButton.SORT_COLUMNS, horizontalOffset = 179, bottom = 1)
+@IPNGuiHint(button = IPNButton.SORT_ROWS, horizontalOffset = 179, bottom = 1)
+@IPNGuiHint(button = IPNButton.SORT_PLAYER, horizontalOffset = 179, bottom = 1)
+@IPNGuiHint(button = IPNButton.SORT_COLUMNS_PLAYER, horizontalOffset = 179, bottom = 1)
+@IPNGuiHint(button = IPNButton.SORT_ROWS_PLAYER, horizontalOffset = 179, bottom = 1)
 public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<WirelessComprehensiveWorkTerminalMenu>
         implements IUniversalTerminalCapable {
     private static final String STYLE_PATH = "/screens/wcwt/wireless_comprehensive_work_terminal.json";
@@ -5287,6 +5312,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return stack.getCount() + "x" + (key == null ? stack.getItem().toString() : key.toString());
     }
 
+    @IPNIgnore
     private static class WcwtSetProcessingPatternAmountSubScreen extends
             appeng.client.gui.AESubScreen<WirelessComprehensiveWorkTerminalMenu, WirelessComprehensiveWorkTerminalScreen> {
         private final NumberEntryWidget amount;

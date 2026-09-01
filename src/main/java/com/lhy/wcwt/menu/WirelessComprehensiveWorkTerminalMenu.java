@@ -113,6 +113,9 @@ import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.fluids.FluidUtil;
 import net.neoforged.neoforge.items.SlotItemHandler;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.anti_ad.mc.ipn.api.IPNIgnore;
+import org.anti_ad.mc.ipn.api.IPNPlayerSideOnly;
+import org.anti_ad.mc.ipn.api.IPNSlotsIgnoreForInventoryTypes;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
@@ -126,6 +129,21 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
+@IPNIgnore
+@IPNPlayerSideOnly
+@IPNSlotsIgnoreForInventoryTypes(
+        value = {
+                "appeng.menu.slot.AppEngSlot",
+                "appeng.menu.slot.FakeSlot",
+                "appeng.menu.slot.OptionalRestrictedInputSlot",
+                "appeng.menu.slot.PatternTermSlot",
+                "appeng.menu.slot.RestrictedInputSlot",
+                "com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu$ToolkitSlot",
+                "com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu$WcwtCurioSlot",
+                "net.neoforged.neoforge.items.SlotItemHandler"
+        },
+        ignoreCraftingSlots = true
+)
 public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu implements IOptionalSlotHost {
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
     private static final boolean DEBUG_BLANK_PATTERN_SYNC =

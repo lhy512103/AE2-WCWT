@@ -32,6 +32,7 @@
 26. ExtendedAE Plus integration now requires 1.6.0 or newer.
 27. Updated the JEI compile and runtime dependency to 19.44.0.403.
 28. JEI now keeps a continuous left bookmark area, reports only visible right-side overflow, reserves two ingredient columns around narrow widgets, and uses full extended-panel bounds so the list does not overlap open side panels.
+29. Removed the Inventory Profiles Next reflection/hints writer and switched WCWT to IPN's public screen annotations so sort buttons sit at the player-inventory top-right.
 
 ### 中文
 
@@ -63,6 +64,7 @@
 26. ExtendedAE Plus 兼容要求改为 1.6.0 及以上。
 27. JEI 编译与运行时依赖更新到 19.44.0.403。
 28. JEI 现在为左侧书签保留连续区域；窄控件预留两列原料，打开的扩展面板按完整尺寸上报，避免列表叠在面板上。
+29. 删除 Inventory Profiles Next 反射/hints 写入，改用 IPN 公开屏幕注解，整理按钮放到玩家物品栏右上角。
 
 ## v1.3.8
 

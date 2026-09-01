@@ -95,3 +95,10 @@ type="optional"
 versionRange="[0,)"
 ordering="AFTER"
 side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="inventoryprofilesnext"
+type="optional"
+versionRange="[0,)"
+ordering="NONE"
+side="CLIENT"

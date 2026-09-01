@@ -27,6 +27,7 @@ dependencies {
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
     compileOnly "curse.maven:polymorph-388800:${polymorph_file}"
     compileOnly "curse.maven:just-enough-characters-250702:${jech_file}"
+    compileOnly "curse.maven:inventory-profiles-next-495267:${inventory_profiles_next_file}"
 
     // Local runtime core mods
     localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"
@@ -62,6 +63,8 @@ dependencies {
     localRuntime "curse.maven:merequester-688367:7844592"
     localRuntime "curse.maven:aeinfinitybooster-559313:8377914"
     localRuntime "curse.maven:clientsort-1049891:8172893"
+    localRuntime "curse.maven:inventory-profiles-next-495267:${inventory_profiles_next_file}"
+    localRuntime "curse.maven:libipn-679177:${libipn_file}"
     localRuntime "curse.maven:inventory-essentials-368825:8362286"
     localRuntime "curse.maven:balm-531761:8424824"
 
