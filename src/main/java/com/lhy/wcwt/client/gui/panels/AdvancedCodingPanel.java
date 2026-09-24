@@ -135,7 +135,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     // 输入行列表
     private final ArrayList<InputRow> rows = new ArrayList<>();
 
-    // ─── 功能按钮（仅 UI 骨架，点击事件 TODO） ──────────────────────
+    // ─── 功能按钮 ──────────────────────
     private IconButton copyPatternBtn;
     private IconButton replaceBtn;
     private IconButton partitionedStorageBtn;

@@ -44,16 +44,11 @@ import com.lhy.wcwt.client.gui.widgets.PatternMultiplierButton;
 import com.lhy.wcwt.compat.AdvancedAePatternCompat;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import com.lhy.wcwt.compat.CuriosBridge;
-import com.lhy.wcwt.compat.ExtendedAePlusMatrixUploadCompat;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
 import com.lhy.wcwt.compat.CrystalScienceCompat;
-import com.lhy.wcwt.compat.LightningTechCraftingUploadCompat;
 import com.lhy.wcwt.compat.LightningTechOverloadCompat;
-import com.lhy.wcwt.compat.NeoEcoApiCompat;
 import com.lhy.wcwt.compat.WcwtMegaCellsCompat;
 import com.lhy.wcwt.compat.WcwtPolymorphCompat;
-import com.lhy.wcwt.compat.plus.PlusEncodingUpload;
-import com.lhy.wcwt.compat.plus.PlusPresence;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
@@ -73,7 +68,6 @@ import com.lhy.wcwt.pull.WcwtMeIngredientExtraction;
 import com.lhy.wcwt.pull.WcwtStackMatching;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderIds;
-import com.lhy.wcwt.util.PatternProviderSorts;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
@@ -254,17 +248,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private final List<List<ItemStack>> manualCraftingSlotAlternatives = createEmptyManualCraftingAlternatives();
     private boolean manualCraftingItemSubstitution;
     private boolean manualCraftingFluidSubstitution;
-    /**
-     * {@link #listUploadProviders(boolean)} 的「同一服务端 tick 内」缓存。
-     * 原因：vanilla {@code AbstractContainerMenu.broadcastChanges()} 每 tick 会遍历所有槽位调用
-     * {@code slot.getItem()}，而 {@link PatternProviderSlot#getItem()} 会走 {@link #listUploadProviders(boolean)}
-     * 做一次全网机器扫描 + 排序。36 个供应器槽 × 每 tick = 36 次全网扫描，大型网络下是 20~80ms 的主线程开销。
-     * 同一 tick 内网络拓扑不会变，缓存到当前 gameTime 即可把 36 次压成 1 次。
-     * 只缓存 {@code requireAvailableSlots=false} 这一热点变体；元件 ItemStack 仍由 getItem() 实时读取，不受影响。
-     */
-    private long cachedUploadProvidersTick = Long.MIN_VALUE;
-    @Nullable
-    private List<PatternContainer> cachedUploadProviders;
+    private final WcwtPatternUploadTargets uploadTargets = new WcwtPatternUploadTargets(
+            this::getMenuGrid, this::getPlayer, this::isServerSide, this::returnBlankPatternFromMatrixUpload);
     /**
      * 上一次推送给客户端的样板供应器内容签名。
      * 订阅期间原本每 20 tick 雷打不动全量推一次，无论内容是否变化——这会在网络线程上重复序列化
@@ -961,7 +946,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (providerId <= 0 || providerSlot < 0 || isClientSide()) {
                 return null;
             }
-            var provider = PatternProviderIds.find(listUploadProviders(false), providerId);
+            var provider = PatternProviderIds.find(uploadTargets.providers(), providerId);
             if (provider == null) {
                 return null;
             }
@@ -1858,7 +1843,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (shouldSyncProviders && patternProviderSyncCooldown <= 0) {
                 long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
                 // 内容签名去重：内容未变则跳过整包构建 + 序列化 + 发送，消除每秒重复推送上千样板的浪费。
-                long signature = computePatternProviderSignature();
+                long signature = uploadTargets.signature();
                 if (signature != lastSyncedProviderSignature) {
                     PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer));
                     lastSyncedProviderSignature = signature;
@@ -1987,171 +1972,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 && serverPlayer.serverLevel().getGameTime() <= patternProviderSyncSubscriptionUntilTick;
     }
 
-    /**
-     * 计算当前样板供应器内容的轻量签名，用于推送去重。
-     * 只遍历供应器与其槽位做整数哈希，不拷贝、不序列化 ItemStack——比构建整包便宜几个数量级。
-     * 捕获的变化维度：供应器集合（providerId + size）、每个非空槽的（槽号 + 物品 + 数量 + 数据组件）。
-     * 组件哈希覆盖样板 NBT 变化，因此样板被编辑/替换也会反映为签名变化。
-     */
-    private long computePatternProviderSignature() {
-        var providers = listUploadProviders(false);
-        long hash = 1469598103934665603L; // FNV-like 起始值
-        hash = hash * 1099511628211L + providers.size();
-        for (int p = 0; p < providers.size(); p++) {
-            var provider = providers.get(p);
-            InternalInventory inv = provider.getTerminalPatternInventory();
-            if (inv == null) {
-                hash = hash * 1099511628211L + 17L;
-                continue;
-            }
-            hash = hash * 1099511628211L + inv.size();
-            for (int i = 0; i < inv.size(); i++) {
-                var stack = inv.getStackInSlot(i);
-                if (stack.isEmpty()) {
-                    continue;
-                }
-                hash = hash * 1099511628211L + i;
-                hash = hash * 1099511628211L + stack.getCount();
-                // ItemStack.hashItemAndComponents 是 MC 为「物品+组件(含 NBT)」提供的规范哈希，
-                // AE2 的 AEItemKey 也用它，比 getComponents().hashCode() 更稳定可靠。
-                hash = hash * 1099511628211L + ItemStack.hashItemAndComponents(stack);
-            }
-        }
-        return hash;
-    }
-
     private static boolean isValidEncodingModeOrdinal(int ordinal) {
         return ordinal >= 0 && ordinal < EncodingMode.values().length;
-    }
-
-    private MatrixUploadResult uploadEncodedPatternToMatrix(ItemStack encodedPattern) {
-        if (!(getPlayer() instanceof ServerPlayer serverPlayer)
-                || encodedPattern.isEmpty()
-                || !PatternDetailsHelper.isEncodedPattern(encodedPattern)) {
-            return MatrixUploadResult.FAILURE;
-        }
-
-        ItemStack uploadStack = PatternUploadMetadata.copyWithoutUploadData(encodedPattern);
-
-        var grid = getMenuGrid();
-        if (grid == null) {
-            return MatrixUploadResult.FAILURE;
-        }
-
-        try {
-            MatrixUploadResult tianshuUpload = uploadEncodedPatternToTianshuCraftingArray(uploadStack, serverPlayer);
-            if (tianshuUpload.state() != MatrixUploadState.FAILURE) {
-                return tianshuUpload;
-            }
-        } catch (Throwable ignored) {
-        }
-        try {
-            EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(grid, uploadStack);
-            if (ecoDuplicate.duplicate()) {
-                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
-                recordEaepProviderUpload(ecoDuplicate.provider(), ecoDuplicate.slot());
-                return MatrixUploadResult.uploaded(ecoDuplicate.providerId(), ecoDuplicate.slot());
-            }
-            if (NeoEcoApiCompat.uploadPatternToEcoStorage(grid, uploadStack.copy())) {
-                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
-                return findEcoUploadResult(uploadStack);
-            }
-        } catch (Throwable ignored) {
-        }
-        try {
-            if (assemblerMatrixContainsPattern(uploadStack)) {
-                serverPlayer.sendSystemMessage(Component.translatable("extendedae_plus.message.matrix.duplicate"));
-                return returnBlankPatternFromMatrixUpload(uploadStack.getCount())
-                        ? MatrixUploadResult.DUPLICATE_RETURNED
-                        : MatrixUploadResult.DUPLICATE_ABORTED;
-            }
-            if (ExtendedAePlusMatrixUploadCompat.uploadPatternToMatrix(serverPlayer, uploadStack.copy(), grid)) {
-                return findMatrixUploadResult(uploadStack);
-            }
-        } catch (Throwable ignored) {
-        }
-        return MatrixUploadResult.FAILURE;
-    }
-
-    private EcoUploadDuplicateResult findEcoDuplicatePattern(appeng.api.networking.IGrid grid, ItemStack encodedPattern) {
-        var providers = listUploadProviders(false);
-        for (int i = 0; i < providers.size(); i++) {
-            var provider = providers.get(i);
-            if (!NeoEcoApiCompat.isEcoPatternProvider(provider)) {
-                continue;
-            }
-            int duplicateSlot = findMatchingPatternSlot(provider, encodedPattern);
-            if (duplicateSlot >= 0) {
-                return new EcoUploadDuplicateResult(true, PatternProviderIds.idOf(provider), duplicateSlot, provider);
-            }
-        }
-        return EcoUploadDuplicateResult.NONE;
-    }
-
-    private MatrixUploadResult uploadEncodedPatternToTianshuCraftingArray(ItemStack encodedPattern,
-                                                                          ServerPlayer serverPlayer) {
-        if (!LightningTechCraftingUploadCompat.isAvailable()
-                || !LightningTechCraftingUploadCompat.isCraftingPattern(encodedPattern, serverPlayer.level())) {
-            return MatrixUploadResult.FAILURE;
-        }
-        var providers = listUploadProviders(false);
-        int firstTargetIndex = -1;
-        for (int i = 0; i < providers.size(); i++) {
-            var provider = providers.get(i);
-            if (!LightningTechCraftingUploadCompat.isTianshuCraftingArray(provider)) {
-                continue;
-            }
-            int duplicateSlot = LightningTechCraftingUploadCompat.findDuplicateSlot(
-                    provider, encodedPattern, serverPlayer.level());
-            if (duplicateSlot >= 0) {
-                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_duplicate"));
-                recordEaepProviderUpload(provider, duplicateSlot);
-                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), duplicateSlot);
-            }
-            if (firstTargetIndex < 0
-                    && LightningTechCraftingUploadCompat.insertCraftingPattern(provider, encodedPattern, true)) {
-                firstTargetIndex = i;
-            }
-        }
-        if (firstTargetIndex < 0) {
-            return MatrixUploadResult.FAILURE;
-        }
-        var target = providers.get(firstTargetIndex);
-        if (!LightningTechCraftingUploadCompat.insertCraftingPattern(target, encodedPattern, false)) {
-            return MatrixUploadResult.FAILURE;
-        }
-        serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_uploaded"));
-        int insertedSlot = findLastInsertedPatternSlot(target, encodedPattern);
-        recordEaepProviderUpload(target, insertedSlot);
-        return MatrixUploadResult.uploaded(PatternProviderIds.idOf(target), insertedSlot);
-    }
-
-    private MatrixUploadResult findEcoUploadResult(ItemStack encodedPattern) {
-        var providers = listUploadProviders(false);
-        for (int i = 0; i < providers.size(); i++) {
-            var provider = providers.get(i);
-            if (!NeoEcoApiCompat.isEcoPatternProvider(provider)) {
-                continue;
-            }
-            int insertedSlot = findMatchingPatternSlot(provider, encodedPattern);
-            if (insertedSlot >= 0) {
-                recordEaepProviderUpload(provider, insertedSlot);
-                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), insertedSlot);
-            }
-        }
-        return MatrixUploadResult.UPLOADED;
-    }
-
-    private MatrixUploadResult findMatrixUploadResult(ItemStack encodedPattern) {
-        var providers = listUploadProviders(false);
-        for (int i = 0; i < providers.size(); i++) {
-            var provider = providers.get(i);
-            int insertedSlot = findLastInsertedPatternSlot(provider, encodedPattern);
-            if (insertedSlot >= 0) {
-                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), insertedSlot);
-            }
-        }
-        return MatrixUploadResult.UPLOADED;
     }
 
     private boolean returnBlankPatternFromMatrixUpload(int count) {
@@ -2185,168 +2007,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return host.getActionableNode().getGrid();
         }
         return null;
-    }
-
-    private UploadAttemptResult uploadEncodedPatternToMatchingProvider(ItemStack encodedPattern, String searchText) {
-        if (!PlusPresence.available() || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
-            return UploadAttemptResult.NO_TARGET;
-        }
-        ItemStack uploadStack = PatternUploadMetadata.copyWithoutUploadData(encodedPattern);
-        PlusEncodingUpload.UniqueUploadResult result = PlusEncodingUpload.uploadUniqueMatch(
-                serverPlayer, getMenuGrid(), uploadStack, searchText);
-        logPatternUploadDebug("server unique upload query={}, uploaded={}, hadTarget={}, providerName={}",
-                searchText, result.uploaded(), result.hadTarget(), result.providerName());
-        if (!result.hadTarget()) {
-            return UploadAttemptResult.NO_TARGET;
-        }
-        long providerId = -1L;
-        int slot = -1;
-        if (result.uploaded()) {
-            MatrixUploadResult located = findMatrixUploadResult(uploadStack);
-            providerId = located.providerId();
-            slot = result.slot() >= 0 ? result.slot() : located.slot();
-        }
-        return new UploadAttemptResult(result.uploaded(), true, result.providerName(), providerId, slot);
-    }
-
-    private List<PatternContainer> listUploadProviders(boolean requireAvailableSlots) {
-        // requireAvailableSlots=true 的变体依赖每槽空位实时计数，不缓存，直接重新扫描。
-        if (requireAvailableSlots) {
-            return scanUploadProviders(true);
-        }
-        // 热点路径（broadcastChanges 每 tick 经由 PatternProviderSlot.getItem() 调用 36 次）：
-        // 同一服务端 tick 内复用上一次扫描结果，把全网扫描从 36 次/tick 压成 1 次/tick。
-        if (isServerSide() && getPlayer() != null) {
-            long tick = getPlayer().level().getGameTime();
-            if (cachedUploadProviders != null && cachedUploadProvidersTick == tick) {
-                return cachedUploadProviders;
-            }
-            List<PatternContainer> providers = scanUploadProviders(false);
-            cachedUploadProviders = providers;
-            cachedUploadProvidersTick = tick;
-            return providers;
-        }
-        return scanUploadProviders(false);
-    }
-
-    private List<PatternContainer> scanUploadProviders(boolean requireAvailableSlots) {
-        var grid = getMenuGrid();
-        if (grid == null) {
-            return List.of();
-        }
-
-        var providers = new ArrayList<PatternContainer>();
-        for (var machineClass : grid.getMachineClasses()) {
-            if (!PatternContainer.class.isAssignableFrom(machineClass)) {
-                continue;
-            }
-            @SuppressWarnings("unchecked")
-            Class<? extends PatternContainer> containerClass = (Class<? extends PatternContainer>) machineClass;
-            for (var container : grid.getActiveMachines(containerClass)) {
-                if (container != null
-                        && container.isVisibleInTerminal()
-                        && container.getTerminalPatternInventory() != null
-                        && container.getTerminalPatternInventory().size() > 0
-                        && container.getTerminalGroup() != null
-                        && (!requireAvailableSlots || getAvailablePatternSlots(container) > 0)) {
-                    providers.add(container);
-                }
-            }
-        }
-        providers.sort(PatternProviderSorts.STABLE);
-        return providers;
-    }
-
-    private int findLastInsertedPatternSlot(PatternContainer provider, ItemStack encodedPattern) {
-        InternalInventory inv = provider.getTerminalPatternInventory();
-        if (inv == null) {
-            return -1;
-        }
-        for (int i = inv.size() - 1; i >= 0; i--) {
-            var stack = inv.getStackInSlot(i);
-            if (!stack.isEmpty() && PatternUploadMetadata.isSamePatternIgnoringUploadData(stack, encodedPattern)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private int findMatchingPatternSlot(PatternContainer provider, ItemStack encodedPattern) {
-        InternalInventory inv = provider.getTerminalPatternInventory();
-        if (inv == null) {
-            return -1;
-        }
-        for (int i = 0; i < inv.size(); i++) {
-            var stack = inv.getStackInSlot(i);
-            if (!stack.isEmpty() && PatternUploadMetadata.isSamePatternIgnoringUploadData(stack, encodedPattern)) {
-                return i;
-            }
-        }
-        return -1;
-    }
-
-    private void recordEaepProviderUpload(PatternContainer provider, int slot) {
-        if (!PlusPresence.available() || slot < 0 || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
-            return;
-        }
-        PlusEncodingUpload.recordLastProviderUpload(serverPlayer, getMenuGrid(), provider, slot);
-    }
-
-    private record EcoUploadDuplicateResult(boolean duplicate, long providerId, int slot,
-                                            PatternContainer provider) {
-        private static final EcoUploadDuplicateResult NONE = new EcoUploadDuplicateResult(false, -1, -1, null);
-    }
-
-    private record MatrixUploadResult(MatrixUploadState state, long providerId, int slot) {
-        private static final MatrixUploadResult UPLOADED = new MatrixUploadResult(MatrixUploadState.UPLOADED, -1, -1);
-        private static final MatrixUploadResult DUPLICATE_RETURNED =
-                new MatrixUploadResult(MatrixUploadState.DUPLICATE_RETURNED, -1, -1);
-        private static final MatrixUploadResult DUPLICATE_ABORTED =
-                new MatrixUploadResult(MatrixUploadState.DUPLICATE_ABORTED, -1, -1);
-        private static final MatrixUploadResult FAILURE = new MatrixUploadResult(MatrixUploadState.FAILURE, -1, -1);
-
-        private static MatrixUploadResult uploaded(long providerId, int slot) {
-            return new MatrixUploadResult(MatrixUploadState.UPLOADED, providerId, slot);
-        }
-    }
-
-    private enum MatrixUploadState {
-        UPLOADED,
-        DUPLICATE_RETURNED,
-        DUPLICATE_ABORTED,
-        FAILURE
-    }
-
-    private record UploadAttemptResult(boolean uploaded, boolean hadTarget, String providerName, long providerId, int slot) {
-        private static final UploadAttemptResult NO_TARGET = new UploadAttemptResult(false, false, "", -1, -1);
-    }
-
-    private boolean assemblerMatrixContainsPattern(ItemStack encodedPattern) {
-        if (!ExtendedAePlusMatrixUploadCompat.isAssemblerMatrixAvailable()) {
-            return false;
-        }
-        for (var provider : listUploadProviders(false)) {
-            if (ExtendedAePlusMatrixUploadCompat.isAssemblerMatrix(provider)
-                    && findMatchingPatternSlot(provider, encodedPattern) >= 0) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
-    private static int getAvailablePatternSlots(PatternContainer provider) {
-        InternalInventory inv = provider.getTerminalPatternInventory();
-        if (inv == null) {
-            return 0;
-        }
-        int available = 0;
-        for (int i = 0; i < inv.size(); i++) {
-            if (inv.getStackInSlot(i).isEmpty()) {
-                available++;
-            }
-        }
-        return available;
     }
 
     private void addPatternEncodingSlots() {
@@ -2515,23 +2175,23 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private boolean tryUploadEncodedPattern(EncodingMode mode, ItemStack encodedPattern,
                                             @Nullable String resolvedProviderSearchText) {
         if (mode != EncodingMode.PROCESSING) {
-            MatrixUploadResult matrixUploadResult = uploadEncodedPatternToMatrix(encodedPattern);
-            if (matrixUploadResult.state() == MatrixUploadState.UPLOADED
-                    || matrixUploadResult.state() == MatrixUploadState.DUPLICATE_RETURNED) {
+            var matrixUploadResult = uploadTargets.uploadToMatrix(encodedPattern);
+            if (matrixUploadResult.state() == WcwtPatternUploadTargets.MatrixUploadState.UPLOADED
+                    || matrixUploadResult.state() == WcwtPatternUploadTargets.MatrixUploadState.DUPLICATE_RETURNED) {
                 notifyEncodedPatternUpload(resolvedProviderSearchText, matrixUploadResult.providerId(),
                         matrixUploadResult.slot(), null);
                 logEncode("matrix upload result={}, mode={}, encoded={}",
                         matrixUploadResult.state(), mode, encodedPattern);
                 return true;
             }
-            if (matrixUploadResult.state() == MatrixUploadState.DUPLICATE_ABORTED) {
+            if (matrixUploadResult.state() == WcwtPatternUploadTargets.MatrixUploadState.DUPLICATE_ABORTED) {
                 logEncode("matrix duplicate detected but blank return failed, mode={}, encoded={}",
                         mode, encodedPattern);
                 return false;
             }
         }
 
-        UploadAttemptResult uploadAttempt = uploadEncodedPatternToMatchingProvider(
+        var uploadAttempt = uploadTargets.uploadToMatchingProvider(
                 encodedPattern, resolvedProviderSearchText);
         logPatternUploadDebug(
                 "server unique upload attempt player={}, uploaded={}, hadTarget={}, providerName={}, providerId={}, slot={}, resolvedSearchText={}",

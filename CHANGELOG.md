@@ -16,6 +16,7 @@
 10. Fixed: Pick block selects an extra-bar cell that already holds the picked item, and otherwise returns to the vanilla hotbar first.
 11. Fixed: Lowering `toolkitSlotCount` now returns the items in removed slots to the player instead of deleting them.
 12. Added: Unit tests for packet size limits, stable pattern-provider ids, extra-bar index mapping and EMI button placement, plus a GitHub Actions workflow that builds and tests every push and pull request.
+13. Changed: Internal cleanup. Pattern upload targets (Tianshu array, ECO storage, assembler matrix, unique provider match) moved out of the terminal menu into their own class, toolkit persistence moved out of the menu host, and unused Curios slot-selection code and stale TODOs were removed. No behavior change.
 
 ### 中文
 
@@ -31,6 +32,7 @@
 10. 修复：选取方块（鼠标中键）时优先选中扩展栏中已有该物品的格子，否则先切回原版快捷栏再执行。
 11. 修复：调小 `toolkitSlotCount` 后，被移除格子里的物品会退还给玩家，不再直接删除。
 12. 新增：为数据包长度上限、样板供应器稳定 ID、扩展栏格子映射和 EMI 按钮避让添加单元测试，并新增 GitHub Actions 工作流，每次推送和 PR 自动构建并运行测试。
+13. 调整：内部重构。样板上传目标（天枢阵列、ECO 样板库、装配矩阵、唯一供应器匹配）从终端菜单拆到独立类，工具包持久化从菜单宿主拆出，并删除未使用的饰品栏选槽代码和过时的 TODO。功能不变。
 
 ## v1.3.9
 

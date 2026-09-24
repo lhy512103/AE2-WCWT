@@ -30,9 +30,6 @@ public class CuriosPanel extends ExtendedUIPanel {
             new ExtendedPanelLayout.Rect(DEFAULT_SCROLLBAR_X, DEFAULT_SCROLLBAR_Y, 0, DEFAULT_SCROLLBAR_HEIGHT);
     private int columns = DEFAULT_COLUMNS;
 
-    private int selectedSlot = -1; // 高级编码模式下选中的槽位
-    private boolean advancedCodingMode = false; // 是否处于高级编码模式
-    
     public CuriosPanel(int x, int y) {
         super(x, y, 134, 186);
     }
@@ -47,20 +44,6 @@ public class CuriosPanel extends ExtendedUIPanel {
         scrollbar = layout.widget("curios_scrollbar", scrollbar);
         columns = layout.slotColumns("AE_CURIOS", DEFAULT_COLUMNS);
         createReturnButton();
-    }
-    
-    /**
-     * 设置高级编码模式
-     */
-    public void setAdvancedCodingMode(boolean enabled) {
-        this.advancedCodingMode = enabled;
-    }
-    
-    /**
-     * 设置选中的槽位
-     */
-    public void setSelectedSlot(int slot) {
-        this.selectedSlot = slot;
     }
     
     @Override
@@ -82,32 +65,7 @@ public class CuriosPanel extends ExtendedUIPanel {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!visible) return false;
-
-        // 关闭按钮等：先交给基类处理
-        if (super.mouseClicked(mouseX, mouseY, button)) {
-            return true;
-        }
-
-        // 处理槽位点击（高级编码模式下选择槽位）
-        if (advancedCodingMode) {
-            int relX = (int)mouseX - (x + getSlotAnchorX());
-            int relY = (int)mouseY - (y + getSlotAnchorY());
-
-            if (relX >= 0 && relX < getColumns() * SLOT_SIZE && relY >= 0 && relY < VISIBLE_ROWS * SLOT_SIZE) {
-                int col = relX / SLOT_SIZE;
-                int row = relY / SLOT_SIZE;
-                int slotIndex = row * getColumns() + col;
-
-                if (slotIndex >= 0) {
-                    selectedSlot = slotIndex;
-                    // TODO: 发送网络包通知服务端选择了该槽位
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return visible && super.mouseClicked(mouseX, mouseY, button);
     }
 
     public int getColumns() {
