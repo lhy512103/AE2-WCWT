@@ -34,7 +34,7 @@ public record ResonatingLightningPatternActionPacket(Action action, int[] inputI
     }
 
     private static ResonatingLightningPatternActionPacket read(RegistryFriendlyByteBuf buf) {
-        Action action = Action.values()[buf.readVarInt()];
+        Action action = WcwtPacketLimits.readEnum(buf, Action.values(), "resonating action");
         return new ResonatingLightningPatternActionPacket(action, readArray(buf), readArray(buf));
     }
 
@@ -46,7 +46,7 @@ public record ResonatingLightningPatternActionPacket(Action action, int[] inputI
     }
 
     private static int[] readArray(RegistryFriendlyByteBuf buf) {
-        int size = buf.readVarInt();
+        int size = WcwtPacketLimits.readCount(buf, WcwtPacketLimits.MAX_SLOT_INDICES, "id-only slot");
         int[] values = new int[size];
         for (int i = 0; i < size; i++) {
             values[i] = buf.readVarInt();

@@ -3,7 +3,7 @@
 AE2 WCWT (Wireless Comprehensive Work Terminal) is an integrated wireless terminal for **Applied Energistics 2 / NeoForge 1.21.1**.
 It is not just a wireless crafting terminal: it folds commonly used AE2 addon workflows into a single terminal item and a single UI.
 
-Current version: `v1.3.9`
+Current version: `v1.3.10`
 
 ## Overview
 
@@ -233,7 +233,7 @@ MIT License.
 AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistics 2 / NeoForge 1.21.1** 的综合型无线终端。
 目标不是只做“无线合成终端”，而是把 AE2 生态里常用、常切换、常要开很多界面的功能，集中到一把终端里。
 
-当前版本：`v1.3.9`
+当前版本：`v1.3.10`
 
 ## 特性概览
 

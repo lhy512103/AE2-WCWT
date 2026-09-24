@@ -25,7 +25,8 @@ public record PatternProviderSlotSyncPacket(List<Mapping> mappings) implements C
     }
 
     private static PatternProviderSlotSyncPacket read(ByteBuf buf) {
-        int count = ByteBufCodecs.VAR_INT.decode(buf);
+        int count = WcwtPacketLimits.readCount(buf,
+                WirelessComprehensiveWorkTerminalMenu.PATTERN_PROVIDER_VISIBLE_SLOTS, "pattern provider slot mapping");
         var mappings = new java.util.ArrayList<Mapping>(count);
         for (int i = 0; i < count; i++) {
             mappings.add(new Mapping(

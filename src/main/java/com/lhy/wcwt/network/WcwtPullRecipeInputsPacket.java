@@ -44,7 +44,7 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
     private static WcwtPullRecipeInputsPacket decode(RegistryFriendlyByteBuf buffer) {
         boolean maxTransfer = buffer.readBoolean();
         boolean craftMissing = buffer.readBoolean();
-        int size = buffer.readVarInt();
+        int size = WcwtPacketLimits.readCount(buffer, WcwtPacketLimits.MAX_RECIPE_INGREDIENTS, "requested ingredient");
         List<RequestedIngredient> ingredients = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             ingredients.add(RequestedIngredient.decode(buffer));
@@ -78,13 +78,17 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
         }
 
         public RequestedIngredient(List<ItemStack> alternatives, int count, int slotIndex) {
-            this.alternatives = alternatives.stream().map(ItemStack::copy).toList();
+            this.alternatives = alternatives.stream()
+                    .limit(WcwtPacketLimits.MAX_INGREDIENT_ALTERNATIVES)
+                    .map(ItemStack::copy)
+                    .toList();
             this.count = count;
             this.slotIndex = slotIndex;
         }
 
         private static RequestedIngredient decode(RegistryFriendlyByteBuf buffer) {
-            int size = buffer.readVarInt();
+            int size = WcwtPacketLimits.readCount(buffer, WcwtPacketLimits.MAX_INGREDIENT_ALTERNATIVES,
+                    "ingredient alternative");
             List<ItemStack> alternatives = new ArrayList<>(size);
             for (int i = 0; i < size; i++) {
                 alternatives.add(ItemStack.OPTIONAL_STREAM_CODEC.decode(buffer));

@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.3.10
+
+### English
+
+1. Fixed: Recipe-pull, JEI transfer, pattern-provider slot and resonating/overload packets now reject oversized or invalid counts before allocating, so a crafted packet can no longer exhaust server memory.
+
+### 中文
+
+1. 修复：配方拉取、JEI 转移、样板供应器槽位映射和谐振/过载转换数据包在分配内存前先校验数量与枚举值，伪造的数据包不能再耗尽服务端内存。
+
 ## v1.3.9
 
 ### English
