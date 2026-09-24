@@ -1,5 +1,6 @@
 package com.lhy.wcwt.mixin;
 
+import com.lhy.wcwt.helpers.WcwtToolkitHand;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
@@ -17,7 +18,7 @@ public abstract class WcwtPlayerMixin {
             return;
         }
         Player player = (Player) (Object) this;
-        if (WcwtToolkitHotbarState.isToolkitSelected(player)) {
+        if (WcwtToolkitHand.isOverrideActive(player)) {
             WcwtToolkitHotbarState.setSelectedToolkit(player, stack);
             ci.cancel();
         }

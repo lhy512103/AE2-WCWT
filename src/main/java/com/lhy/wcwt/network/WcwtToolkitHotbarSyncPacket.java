@@ -3,27 +3,23 @@ package com.lhy.wcwt.network;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.helpers.WcwtToolkitAccess;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
-import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
-import appeng.api.inventories.InternalInventory;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
 
-public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack> memories, boolean hasCard)
-        implements CustomPacketPayload {
-    private static final Map<ServerPlayer, ItemStack> LAST_SENT_SELECTION = new WeakHashMap<>();
-    private static final Map<ServerPlayer, Boolean> LAST_SENT_HAS_CARD = new WeakHashMap<>();
+/**
+ * Client copy of the 18 extra-bar cells and their remembered items. The page is only included when
+ * the server changed it, so it cannot undo a selection the client is already showing.
+ */
+public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack> memories, boolean hasCard,
+                                          int page) implements CustomPacketPayload {
+    public static final int PAGE_UNCHANGED = -1;
     public static final Type<WcwtToolkitHotbarSyncPacket> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_hotbar_sync"));
 
@@ -38,17 +34,24 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
     private static void write(RegistryFriendlyByteBuf buf, WcwtToolkitHotbarSyncPacket packet) {
         writeHotbar(buf, packet.stacks);
         writeHotbar(buf, packet.memories);
-        ByteBufCodecs.BOOL.encode(buf, packet.hasCard);
+        buf.writeBoolean(packet.hasCard);
+        buf.writeByte(packet.page);
     }
 
     private static WcwtToolkitHotbarSyncPacket read(RegistryFriendlyByteBuf buf) {
-        return new WcwtToolkitHotbarSyncPacket(readHotbar(buf), readHotbar(buf), ByteBufCodecs.BOOL.decode(buf));
+        List<ItemStack> stacks = readHotbar(buf);
+        List<ItemStack> memories = readHotbar(buf);
+        boolean hasCard = buf.readBoolean();
+        int page = buf.readByte();
+        if (page != PAGE_UNCHANGED && (page < 0 || page >= WcwtToolkitHotbarState.Bar.values().length)) {
+            page = PAGE_UNCHANGED;
+        }
+        return new WcwtToolkitHotbarSyncPacket(stacks, memories, hasCard, page);
     }
 
     private static void writeHotbar(RegistryFriendlyByteBuf buf, List<ItemStack> stacks) {
         for (int i = 0; i < WcwtToolkitAccess.HOTBAR_SLOTS; i++) {
-            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf,
-                    i < stacks.size() ? stacks.get(i) : ItemStack.EMPTY);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, i < stacks.size() ? stacks.get(i) : ItemStack.EMPTY);
         }
     }
 
@@ -65,66 +68,11 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
         return TYPE;
     }
 
-    public static void send(ServerPlayer player) {
-        send(player,
-                WirelessComprehensiveWorkTerminalMenuHost.snapshotToolkitHotbar(player, false),
-                WirelessComprehensiveWorkTerminalMenuHost.snapshotToolkitHotbar(player, true));
-    }
-
-    public static void send(ServerPlayer player, InternalInventory inventory) {
-        send(player, copyHotbar(inventory),
-                WirelessComprehensiveWorkTerminalMenuHost.snapshotToolkitHotbar(player, true));
-    }
-
-    public static void send(ServerPlayer player, List<ItemStack> stacks, InternalInventory memories) {
-        send(player, stacks, copyHotbar(memories));
-    }
-
-    public static void send(ServerPlayer player, InternalInventory inventory, List<ItemStack> memories) {
-        send(player, copyHotbar(inventory), memories);
-    }
-
-    public static void send(ServerPlayer player, List<ItemStack> stacks, List<ItemStack> memories) {
-        boolean hasCard = WcwtToolkitAccess.hasToolkitCard(player);
-        LAST_SENT_HAS_CARD.put(player, hasCard);
-        LAST_SENT_SELECTION.put(player, WcwtToolkitHotbarState.getSelectedToolkit(player).copy());
-        PacketDistributor.sendToPlayer(player, new WcwtToolkitHotbarSyncPacket(
-                hasCard ? stacks : List.of(), hasCard ? memories : List.of(), hasCard));
-    }
-
-    public static void sendIfCardChanged(ServerPlayer player) {
-        boolean hasCard = WcwtToolkitAccess.hasToolkitCard(player);
-        Boolean previous = LAST_SENT_HAS_CARD.get(player);
-        if (previous == null || previous != hasCard) {
-            send(player);
-        }
-    }
-
-    private static List<ItemStack> copyHotbar(InternalInventory inventory) {
-        List<ItemStack> stacks = new ArrayList<>(WcwtToolkitAccess.HOTBAR_SLOTS);
-        for (int i = 0; i < WcwtToolkitAccess.HOTBAR_SLOTS; i++) {
-            stacks.add(inventory != null && i < inventory.size()
-                    ? inventory.getStackInSlot(i).copy() : ItemStack.EMPTY);
-        }
-        return stacks;
-    }
-
-    public static void sendIfChanged(ServerPlayer player) {
-        ItemStack current = WcwtToolkitHotbarState.getSelectedToolkit(player);
-        ItemStack previous = LAST_SENT_SELECTION.get(player);
-        if (previous == null || !ItemStack.matches(previous, current)) {
-            if (!WcwtToolkitHotbarState.persistSelectedToolkit(player)) {
-                send(player);
-            }
-        }
-    }
-
     public static void handle(WcwtToolkitHotbarSyncPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() != null && context.player().level().isClientSide()) {
-                WcwtToolkitHotbarState.setClientToolkitCard(context.player(), packet.hasCard);
-                WcwtToolkitHotbarState.setClientSnapshot(context.player(), packet.stacks);
-                WcwtToolkitHotbarState.setClientMemorySnapshot(context.player(), packet.memories);
+                WcwtToolkitHotbarState.applyClientSync(context.player(), packet.hasCard, packet.stacks,
+                        packet.memories, packet.page);
             }
         });
     }

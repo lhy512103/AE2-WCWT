@@ -204,9 +204,9 @@ public class WcwtPackets {
         );
 
         registrar.playToServer(
-            WcwtToolkitHotbarActionPacket.TYPE,
-            WcwtToolkitHotbarActionPacket.STREAM_CODEC,
-            WcwtToolkitHotbarActionPacket::handle
+            WcwtToolkitHotbarDropPacket.TYPE,
+            WcwtToolkitHotbarDropPacket.STREAM_CODEC,
+            WcwtToolkitHotbarDropPacket::handle
         );
 
         registrar.playToClient(

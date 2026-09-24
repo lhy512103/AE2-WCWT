@@ -7,12 +7,28 @@
 1. Fixed: Recipe-pull, JEI transfer, pattern-provider slot and resonating/overload packets now reject oversized or invalid counts before allocating, so a crafted packet can no longer exhaust server memory.
 2. Fixed: Pattern providers in the management area are now tracked by a stable id instead of their list position, so adding, removing or renaming a provider can no longer make a click, upload or highlight hit a different machine.
 3. Fixed: The EMI hammer button no longer overlaps EMI Recipe Sharing's share button or any other button added next to the recipe; it moves to the nearest free spot (#23).
+4. Fixed: Using an item menu (wireless terminal, wrench, network tool and so on) from a toolkit extra bar no longer throws "Could not find item held in hand" on the server and kicks the player; AE2 now locates the item on the toolkit cell (#26).
+5. Fixed: Scrolling the toolkit extra bars on a LAN or integrated-server world no longer corrupts state shared between the client and server threads, which could disconnect other players; the extra-bar state now lives on each player object (#25).
+6. Fixed: The toolkit extra bars no longer take the mouse wheel from other mods. Shift+scroll and scrolls another mod already handled are left alone, so tools such as AE2's color applicator can cycle again (#24).
+7. Fixed: The toolkit extra bars, every terminal menu and the network-tool locators now share one live toolkit inventory per player, so two diverging copies can no longer duplicate or lose items. Terminals no longer carry a copy of the toolkit; old copies are removed when the terminal is first used.
+8. Changed: The toolkit extra bars now follow the MEST model: number keys pick a slot inside the current page, clicking a cell only selects it, and the page overrides the main hand only while no container is open.
+9. Fixed: Equipping armor from an extra bar, pouring a bucket, swapping hands and dropping with Q now write the right cell; stacks the toolkit cannot hold go back to the inventory instead of lingering as a second copy.
+10. Fixed: Pick block selects an extra-bar cell that already holds the picked item, and otherwise returns to the vanilla hotbar first.
+11. Fixed: Lowering `toolkitSlotCount` now returns the items in removed slots to the player instead of deleting them.
 
 ### 中文
 
 1. 修复：配方拉取、JEI 转移、样板供应器槽位映射和谐振/过载转换数据包在分配内存前先校验数量与枚举值，伪造的数据包不能再耗尽服务端内存。
 2. 修复：样板管理区改用稳定 ID 标识样板供应器，不再按列表位置定位；网络中增删或改名供应器后，点击、上传和高亮不会再落到另一台机器上。
 3. 修复：EMI 配方旁的锤子按钮不再与 EMI Recipe Sharing 的分享按钮或其他附属加的按钮重叠，会自动挪到最近的空位（#23）。
+4. 修复：在工具包扩展快捷栏中使用无线终端、扳手、网络工具等带界面的物品时，服务端不再抛出 “Could not find item held in hand” 并把玩家踢下线，AE2 改为在工具包格子上定位该物品（#26）。
+5. 修复：局域网 / 单人开放联机时滚动扩展快捷栏不再破坏客户端与服务端线程共用的状态，避免导致其他玩家掉线；扩展栏状态改为保存在各自的玩家对象上（#25）。
+6. 修复：工具包扩展快捷栏不再抢占其他模组的滚轮操作。按住 Shift 滚动或已被其他模组处理的滚动会直接放行，AE2 染色器等工具可以重新潜行滚轮切换（#24）。
+7. 修复：扩展快捷栏、所有终端界面和网络工具定位器共用每个玩家唯一的一份工具包库存，不再出现两份副本分叉导致刷物品或丢物品；终端物品上不再保存工具包副本，旧副本会在首次使用时清除。
+8. 调整：扩展快捷栏改为参考 MEST 的实现：数字键在当前页内选格，点击格子只做选中，只有在没有打开容器界面时才会用扩展栏格子替换主手。
+9. 修复：从扩展栏右键装备盔甲、倒出水桶、交换主副手和按 Q 丢弃时会写回正确的格子；工具包放不下的物品退回背包，不再残留成第二份副本。
+10. 修复：选取方块（鼠标中键）时优先选中扩展栏中已有该物品的格子，否则先切回原版快捷栏再执行。
+11. 修复：调小 `toolkitSlotCount` 后，被移除格子里的物品会退还给玩家，不再直接删除。
 
 ## v1.3.9
 
