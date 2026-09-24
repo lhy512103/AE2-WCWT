@@ -29,6 +29,8 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 final class WcwtEmiPullItemsWidget extends Widget {
     private static final int SIZE = 12;
+    private static final int PITCH = 14;
+    private static final int MAX_PLACEMENT_ATTEMPTS = 8;
     private static final ResourceLocation EMI_BUTTONS =
             ResourceLocation.fromNamespaceAndPath("emi", "textures/gui/buttons.png");
 
@@ -46,7 +48,46 @@ final class WcwtEmiPullItemsWidget extends Widget {
 
     @Override
     public Bounds getBounds() {
+        return resolvePlacement();
+    }
+
+    /**
+     * EMI and addons such as EMI Recipe Sharing add their buttons to the same widget list after the
+     * decorators run, so the free spot is only known once the list is complete: move up, then one
+     * column right, past anything already there.
+     */
+    private Bounds resolvePlacement() {
+        int candidateX = x;
+        int candidateY = y;
+        for (int attempt = 0; attempt < MAX_PLACEMENT_ATTEMPTS; attempt++) {
+            if (!overlapsOtherWidget(candidateX, candidateY)) {
+                return new Bounds(candidateX, candidateY, SIZE, SIZE);
+            }
+            if (candidateY - PITCH >= 0) {
+                candidateY -= PITCH;
+            } else {
+                candidateX += PITCH;
+                candidateY = y;
+            }
+        }
         return new Bounds(x, y, SIZE, SIZE);
+    }
+
+    private boolean overlapsOtherWidget(int left, int top) {
+        for (Widget widget : recipeWidgets) {
+            if (widget == this) {
+                continue;
+            }
+            Bounds other = widget.getBounds();
+            if (other == null || other.empty()) {
+                continue;
+            }
+            if (left < other.right() && other.left() < left + SIZE
+                    && top < other.bottom() && other.top() < top + SIZE) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -56,10 +97,11 @@ final class WcwtEmiPullItemsWidget extends Widget {
         }
         var preview = preview();
         boolean canFill = preview != null && preview.inputCount() > 0 && preview.anyResolved();
-        boolean hovered = canFill && getBounds().contains(mouseX, mouseY);
+        Bounds bounds = getBounds();
+        boolean hovered = canFill && bounds.contains(mouseX, mouseY);
         int textureV = canFill ? (hovered ? 12 : 0) : 24;
-        graphics.blit(EMI_BUTTONS, x, y, SIZE, SIZE, 72, textureV, SIZE, SIZE, 256, 256);
-        var hammer = Icon.CRAFT_HAMMER.getBlitter().dest(x + 1, y + 1, 10, 10);
+        graphics.blit(EMI_BUTTONS, bounds.x(), bounds.y(), SIZE, SIZE, 72, textureV, SIZE, SIZE, 256, 256);
+        var hammer = Icon.CRAFT_HAMMER.getBlitter().dest(bounds.x() + 1, bounds.y() + 1, 10, 10);
         if (!canFill) {
             hammer.color(0.45F, 0.45F, 0.45F);
         }
