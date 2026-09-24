@@ -18,7 +18,6 @@ import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.core.network.serverbound.FillCraftingGridFromRecipePacket;
 import appeng.core.definitions.AEItems;
 import appeng.helpers.InventoryAction;
-import appeng.helpers.patternprovider.PatternContainer;
 import appeng.items.storage.ViewCellItem;
 import appeng.menu.MenuOpener;
 import appeng.menu.SlotSemantics;
