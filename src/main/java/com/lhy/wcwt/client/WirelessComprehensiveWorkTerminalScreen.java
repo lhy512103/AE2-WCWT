@@ -8,7 +8,6 @@ import appeng.client.gui.me.common.ClientDisplaySlot;
 import appeng.client.gui.me.common.RepoSlot;
 import appeng.client.gui.me.common.StackSizeRenderer;
 import appeng.client.gui.me.items.CraftingTermScreen;
-import appeng.client.gui.style.Blitter;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.core.network.ServerboundPacket;
@@ -54,7 +53,6 @@ import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
-import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import com.lhy.wcwt.client.gui.panels.*;
@@ -65,7 +63,6 @@ import com.lhy.wcwt.network.EncodePatternPacket;
 import com.lhy.wcwt.network.ExtendedUIPacket;
 import com.lhy.wcwt.network.ManualAnvilNamePacket;
 import com.lhy.wcwt.network.ManualWorkspaceModePacket;
-import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import com.lhy.wcwt.network.PatternMultiplierPacket;
 import com.lhy.wcwt.network.PatternModePacket;
 import com.lhy.wcwt.network.PatternManagementActionPacket;
@@ -420,8 +417,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/states.png");
     private static final ResourceLocation AE2_CHECKBOX_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
-    private static final ResourceLocation AAE_STATES_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("advanced_ae", "textures/guis/states.png");
     private static final ResourceLocation WCWT_GUI_TEXTURE =
             ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wireless_comprehensive_work_terminal_gui.png");
     private static final ResourceLocation WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE =
@@ -458,7 +453,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int STONECUTTING_RESULT_SLOT_H = 22;
     private static final int STONECUTTING_RESULT_SRC_X = 124;
     private static final int STONECUTTING_RESULT_SRC_Y = 140;
-    private static final int PATTERN_OPTION_BUTTON_SIZE = 16;
     
     // 样板选择状态（保留以备后续功能使用）
     private boolean advancedCodingMode = false; // 是否处于高级编码模式
@@ -1192,23 +1186,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
-    private int getRepoColumns() {
-        int firstRepoRowY = Integer.MIN_VALUE;
-        int columns = 0;
-        for (Slot slot : menu.slots) {
-            if (!(slot instanceof RepoSlot)) {
-                continue;
-            }
-            if (firstRepoRowY == Integer.MIN_VALUE) {
-                firstRepoRowY = slot.y;
-            }
-            if (slot.y != firstRepoRowY) {
-                break;
-            }
-            columns++;
-        }
-        return columns;
-    }
 
     private void renderPinnedRowBackgroundOverlay(GuiGraphics guiGraphics, int offsetX, int offsetY) {
         if (!repo.hasPinnedRow()) {
@@ -3311,9 +3288,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return true;
         }
         boolean matched = false;
-        for (var slotEntry : entry.slots().entrySet()) {
+        for (var slotEntry : entry.slots().int2ObjectEntrySet()) {
             if (patternStackMatches(slotEntry.getValue(), filter)) {
-                patternManagementSearchHighlightSlots.add(new PatternManagementSlotKey(entry.providerId(), slotEntry.getKey()));
+                patternManagementSearchHighlightSlots.add(new PatternManagementSlotKey(entry.providerId(), slotEntry.getIntKey()));
                 matched = true;
             }
         }
@@ -4411,7 +4388,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void renderPatternManagementHeader(GuiGraphics guiGraphics, PatternManagementHeaderRow row,
                                                int rowY, int textColor, int mouseX, int mouseY) {
-        var entry = row.firstEntry();
         if (patternManagementShowSlots && row.containsProvider(selectedPatternProviderId)) {
             guiGraphics.fill(patternManagementPage.left(), rowY,
                     patternManagementPage.left() + patternManagementPage.width(),
@@ -4932,12 +4908,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         pose.popPose();
     }
 
-    private void drawVerticalText(GuiGraphics guiGraphics, String text, int x, int y, int color) {
-        for (int i = 0; i < text.length(); i++) {
-            WcwtTextRendering.drawString(guiGraphics, font, text.substring(i, i + 1),
-                    x, y + i * 8, color, false);
-        }
-    }
 
     private void drawScaledVerticalText(GuiGraphics guiGraphics, String text, int x, int y, int color, float scale) {
         var pose = guiGraphics.pose();
@@ -5088,27 +5058,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         super.slotClicked(slot, slotIdx, mouseButton, clickType);
     }
     
-    private void renderExtendedUI(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        // 渲染当前可见的扩展UI面板
-        if (advancedCodingPanel != null && advancedCodingPanel.isVisible()) {
-            advancedCodingPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (cosmeticArmorPanel != null && cosmeticArmorPanel.isVisible()) {
-            cosmeticArmorPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (curiosPanel != null && curiosPanel.isVisible()) {
-            curiosPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (toolboxPanel != null && toolboxPanel.isVisible()) {
-            toolboxPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (toolkitPanel != null && toolkitPanel.isVisible()) {
-            toolkitPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (resonatingLightningPatternCodingPanel != null && resonatingLightningPatternCodingPanel.isVisible()) {
-            resonatingLightningPatternCodingPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-    }
     
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {

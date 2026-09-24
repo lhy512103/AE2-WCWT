@@ -2,7 +2,6 @@ package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;

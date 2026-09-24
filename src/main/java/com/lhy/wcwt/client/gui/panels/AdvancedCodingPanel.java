@@ -638,9 +638,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         updateInputList(newList);
     }
 
-    /** 调试日志限频：避免每帧刷屏。每隔 60 帧（约 1 秒）打印一次关键状态。 */
-    private static int debugTick = 0;
-    private static final boolean DEBUG = false;
 
     @Override
     protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -654,11 +651,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         // 表现为"明明有 18+ 行配置，鼠标拖滑块/滚轮都不动"。每帧刷新一次代价极小。
         resetScrollbarRange();
 
-        if (DEBUG && (debugTick++ % 60) == 0) {
-            WcwtMod.LOGGER.info("[WCWT-DEBUG] renderContent panel=({},{}) mouse=({},{}) inputList.size={} scrollLevel={}",
-                    x, y, mouseX, mouseY, inputList.size(),
-                    manageScrollbar != null ? manageScrollbar.getCurrentScroll() : -1);
-        }
 
         // 渲染标题
         var font = Minecraft.getInstance().font;
@@ -797,16 +789,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         pose.popPose();
         WcwtTextRendering.drawString(g, font, replaceLabel, replaceLabelX, replaceLabelY, 0xFFFFFF, false);
 
-        if (DEBUG && (debugTick % 60) == 0) {
-            WcwtMod.LOGGER.info("[WCWT-DEBUG] copy label: textW={} btnX={} btnW={} -> labelX={} (btnCenter={}, textCenter={})",
-                    copyTextW, COPY_PATTERN_BTN_X, COPY_PATTERN_BTN_W, copyLabelX - x,
-                    COPY_PATTERN_BTN_X + COPY_PATTERN_BTN_W / 2f,
-                    (copyLabelX - x) + copyTextW / 2f);
-            WcwtMod.LOGGER.info("[WCWT-DEBUG] replace label: textW={} btnX={} btnW={} -> labelX={} (btnCenter={}, textCenter={})",
-                    replaceTextW, REPLACE_BTN_X, REPLACE_BTN_W, replaceLabelX - x,
-                    REPLACE_BTN_X + REPLACE_BTN_W / 2f,
-                    (replaceLabelX - x) + replaceTextW / 2f);
-        }
     }
 
     private void updatePanelTooltip(int mouseX, int mouseY) {
@@ -1076,10 +1058,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 }
             }
         }
-        if (DEBUG) {
-            WcwtMod.LOGGER.info("[WCWT-DEBUG] cell config click slotIdx={} button={} key={}",
-                    slotIdx, button, key);
-        }
         rememberLocalCellConfig(slotIdx, key);
         PacketDistributor.sendToServer(new CellConfigSetPacket(slotIdx, key));
         return true;
@@ -1151,13 +1129,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 && mouseY >= rect.getY() && mouseY < rect.getY() + rect.getHeight();
     }
 
-    /** 当鼠标悬停在槽位区域时，绘制半透明白色高亮（16×16）。 */
-    private void drawSlotHoverHighlight(GuiGraphics g, int mouseX, int mouseY, int slotAbsX, int slotAbsY) {
-        if (mouseX >= slotAbsX && mouseX < slotAbsX + 16
-                && mouseY >= slotAbsY && mouseY < slotAbsY + 16) {
-            g.fill(slotAbsX, slotAbsY, slotAbsX + 16, slotAbsY + 16, 0x80FFFFFF);
-        }
-    }
 
     private void drawSlotHoverHighlight(GuiGraphics g, int mouseX, int mouseY, Rect2i area) {
         if (mouseX >= area.getX() && mouseX < area.getX() + area.getWidth()

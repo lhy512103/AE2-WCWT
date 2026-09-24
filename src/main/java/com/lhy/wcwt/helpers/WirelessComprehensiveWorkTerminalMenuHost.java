@@ -16,7 +16,6 @@ import appeng.api.storage.MEStorage;
 import appeng.api.storage.SupplierStorage;
 import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.api.stacks.AEKey;
-import appeng.api.stacks.GenericStack;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.upgrades.IUpgradeInventory;

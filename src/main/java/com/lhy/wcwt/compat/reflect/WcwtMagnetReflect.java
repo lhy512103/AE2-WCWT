@@ -15,6 +15,11 @@ import java.util.Optional;
  * <p>所有方法在反射失效时返回 {@code empty} 或 {@code false}，绝不外抛。
  */
 public final class WcwtMagnetReflect {
+    @SuppressWarnings("unchecked")
+    private static DataComponentType<Object> asObjectComponent(Object o) {
+        return (DataComponentType<Object>) o;
+    }
+
     private static final String MOD_ID = "ae2wtlib";
     private static final String ADDITIONAL_COMPONENTS_CLASS =
             "de.mari_023.ae2wtlib.AE2wtlibAdditionalComponents";
@@ -27,9 +32,9 @@ public final class WcwtMagnetReflect {
 
     /** 磁力设置数据组件。拿不到时返回 empty，此时磁力相关开关整体不可用。 */
     @SuppressWarnings("rawtypes")
-    public static Optional<DataComponentType> settingsComponent() {
+    public static Optional<DataComponentType<Object>> settingsComponent() {
         return WcwtReflect.readStaticField(MOD_ID, ADDITIONAL_COMPONENTS_CLASS, "MAGNET_SETTINGS")
-                .map(DataComponentType.class::cast);
+                .map(WcwtMagnetReflect::asObjectComponent);
     }
 
     /** 读取终端当前磁力模式名，失败返回 {@code "OFF"}。 */

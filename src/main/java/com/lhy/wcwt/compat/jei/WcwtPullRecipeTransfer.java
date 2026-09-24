@@ -427,10 +427,6 @@ public final class WcwtPullRecipeTransfer {
             this.allowShiftMaxTransfer = allowShiftMaxTransfer;
         }
 
-        private static TerminalPullTransferError previewOnly(boolean craftMissing, boolean allowShiftMaxTransfer) {
-            return new TerminalPullTransferError(new PreviewSlots(List.of(), List.of(), false), craftMissing,
-                    allowShiftMaxTransfer);
-        }
 
         @Override
         public Type getType() {

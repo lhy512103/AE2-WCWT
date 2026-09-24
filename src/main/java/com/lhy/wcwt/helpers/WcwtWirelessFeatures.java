@@ -136,12 +136,12 @@ public final class WcwtWirelessFeatures {
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
             if (stack.isEmpty() || stack.is(AE2wtlibTags.NO_RESTOCK) || stack.getMaxStackSize() == 1
-                    || items.containsKey(stack.getItem().builtInRegistryHolder())) {
+                    || items.containsKey(stack.getItemHolder())) {
                 continue;
             }
             AEItemKey key = AEItemKey.of(stack);
             long amount = key == null ? 0 : grid.getStorageService().getCachedInventory().get(key);
-            items.put(stack.getItem().builtInRegistryHolder(), amount);
+            items.put(stack.getItemHolder(), amount);
         }
         PacketDistributor.sendToPlayer(player, new WcwtRestockAmountsPacket(true, items));
     }
@@ -449,26 +449,6 @@ public final class WcwtWirelessFeatures {
         return findTerminalTarget(player, stack -> stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem);
     }
 
-    private static ItemStack findTerminalStack(Player player, java.util.function.Predicate<ItemStack> predicate) {
-        var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
-        if (cap != null) {
-            for (int i = 0; i < cap.getSlots(); i++) {
-                ItemStack stack = cap.getStackInSlot(i);
-                if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
-                    return stack;
-                }
-            }
-        }
-
-        Inventory inventory = player.getInventory();
-        for (int i = 0; i < inventory.getContainerSize(); i++) {
-            ItemStack stack = inventory.getItem(i);
-            if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
-                return stack;
-            }
-        }
-        return ItemStack.EMPTY;
-    }
 
     private static TerminalTarget findTerminalTarget(ServerPlayer player,
                                                      java.util.function.Predicate<ItemStack> predicate) {

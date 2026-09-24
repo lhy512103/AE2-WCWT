@@ -69,7 +69,9 @@ public final class CuriosBridge {
                 int slots = stacksHandler.getSlots();
                 boolean canToggleRendering = stacksHandler.canToggleRendering();
                 var renderStatuses = stacksHandler.getRenders();
-                ResourceLocation icon = top.theillusivec4.curios.api.CuriosApi.getSlotIcon(entry.getKey());
+                ResourceLocation icon = top.theillusivec4.curios.api.CuriosApi.getSlot(entry.getKey(), player.level())
+                        .map(top.theillusivec4.curios.api.type.ISlotType::getIcon)
+                        .orElse(null);
                 for (int slot = 0; slot < slots; slot++) {
                     result.add(new CurioSlotSpec(
                             entry.getKey(),

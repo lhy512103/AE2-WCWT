@@ -92,7 +92,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.InventoryMenu;
-import net.minecraft.world.inventory.ItemCombinerMenuSlotDefinition;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.SmithingMenu;
@@ -101,7 +100,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.fluids.FluidUtil;
@@ -120,7 +118,6 @@ import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 
 @IPNIgnore
@@ -1514,9 +1511,6 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         updateManualAnvilResult();
     }
 
-    private boolean isManualResultSlot(Slot slot) {
-        return slot == manualSmithingResultSlot || slot == manualAnvilResultSlot;
-    }
 
     private void applyManualWorkspaceSlotActivation(ManualWorkspaceMode mode) {
         boolean crafting = mode == ManualWorkspaceMode.CRAFTING;

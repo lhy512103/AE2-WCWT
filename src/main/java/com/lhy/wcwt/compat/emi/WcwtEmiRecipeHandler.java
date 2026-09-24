@@ -13,7 +13,6 @@ import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
-import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtStackMatching;
@@ -849,13 +848,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                          Set<Integer> craftableSlots,
                          boolean anyResolved,
                          int inputCount) {
-        private static PreviewResult previewOnly() {
-            return new PreviewResult(Set.of(), Set.of(), false, 0);
-        }
 
-        private boolean anyMissingOrCraftable() {
-            return !missingSlots.isEmpty() || !craftableSlots.isEmpty();
-        }
     }
 
 }

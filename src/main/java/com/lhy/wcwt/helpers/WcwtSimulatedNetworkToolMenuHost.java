@@ -19,7 +19,6 @@ import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * 由 WCWT 的卡槽包卡提供的虚拟网络工具宿主。

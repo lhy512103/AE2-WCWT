@@ -1,7 +1,6 @@
 package com.lhy.wcwt;
 
 import com.lhy.wcwt.helpers.WcwtRemoteMenuAccess;
-import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
