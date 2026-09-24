@@ -270,3 +270,18 @@ tasks.named("jar", Jar).configure {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
 }
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+
+// Tests use the same Minecraft/NeoForge/AE2 and optional-mod API classes that compile the main source set.
+sourceSets.test {
+    compileClasspath += sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.compileClasspath
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}

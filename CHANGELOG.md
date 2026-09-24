@@ -15,6 +15,7 @@
 9. Fixed: Equipping armor from an extra bar, pouring a bucket, swapping hands and dropping with Q now write the right cell; stacks the toolkit cannot hold go back to the inventory instead of lingering as a second copy.
 10. Fixed: Pick block selects an extra-bar cell that already holds the picked item, and otherwise returns to the vanilla hotbar first.
 11. Fixed: Lowering `toolkitSlotCount` now returns the items in removed slots to the player instead of deleting them.
+12. Added: Unit tests for packet size limits, stable pattern-provider ids, extra-bar index mapping and EMI button placement, plus a GitHub Actions workflow that builds and tests every push and pull request.
 
 ### 中文
 
@@ -29,6 +30,7 @@
 9. 修复：从扩展栏右键装备盔甲、倒出水桶、交换主副手和按 Q 丢弃时会写回正确的格子；工具包放不下的物品退回背包，不再残留成第二份副本。
 10. 修复：选取方块（鼠标中键）时优先选中扩展栏中已有该物品的格子，否则先切回原版快捷栏再执行。
 11. 修复：调小 `toolkitSlotCount` 后，被移除格子里的物品会退还给玩家，不再直接删除。
+12. 新增：为数据包长度上限、样板供应器稳定 ID、扩展栏格子映射和 EMI 按钮避让添加单元测试，并新增 GitHub Actions 工作流，每次推送和 PR 自动构建并运行测试。
 
 ## v1.3.9
 
