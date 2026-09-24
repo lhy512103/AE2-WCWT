@@ -6,6 +6,7 @@ import appeng.helpers.patternprovider.PatternContainer;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
 import com.lhy.wcwt.config.WcwtServerConfig;
+import com.lhy.wcwt.util.PatternProviderIds;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
@@ -190,7 +191,6 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         }
 
         providers.sort(PatternProviderSorts.STABLE);
-        long id = 1;
         int copiedNonEmptySlots = 0;
         int totalInventorySlots = 0;
         int maxSyncedSlots = WcwtServerConfig.maxSyncedSlotsPerProvider();
@@ -219,7 +219,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
                         providerLogName(container), truncatedSlots, maxSyncedSlots);
             }
             var location = getLocation(container);
-            entries.add(new Entry(id++, container.getTerminalGroup(), getMappedProviderDisplayName(container), inv.size(), slots,
+            entries.add(new Entry(PatternProviderIds.idOf(container), container.getTerminalGroup(), getMappedProviderDisplayName(container), inv.size(), slots,
                     location.pos, location.dimension, location.face));
         }
 

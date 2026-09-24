@@ -72,6 +72,7 @@ import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtMeIngredientExtraction;
 import com.lhy.wcwt.pull.WcwtStackMatching;
 import com.lhy.wcwt.util.PatternUploadMetadata;
+import com.lhy.wcwt.util.PatternProviderIds;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Direction;
@@ -960,12 +961,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (providerId <= 0 || providerSlot < 0 || isClientSide()) {
                 return null;
             }
-            var providers = listUploadProviders(false);
-            int providerIndex = (int) providerId - 1;
-            if (providerIndex < 0 || providerIndex >= providers.size()) {
+            var provider = PatternProviderIds.find(listUploadProviders(false), providerId);
+            if (provider == null) {
                 return null;
             }
-            var inv = providers.get(providerIndex).getTerminalPatternInventory();
+            var inv = provider.getTerminalPatternInventory();
             return inv != null && providerSlot < inv.size() ? inv : null;
         }
 
@@ -2082,7 +2082,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             int duplicateSlot = findMatchingPatternSlot(provider, encodedPattern);
             if (duplicateSlot >= 0) {
-                return new EcoUploadDuplicateResult(true, i + 1L, duplicateSlot, provider);
+                return new EcoUploadDuplicateResult(true, PatternProviderIds.idOf(provider), duplicateSlot, provider);
             }
         }
         return EcoUploadDuplicateResult.NONE;
@@ -2106,7 +2106,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (duplicateSlot >= 0) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_duplicate"));
                 recordEaepProviderUpload(provider, duplicateSlot);
-                return MatrixUploadResult.uploaded(i + 1L, duplicateSlot);
+                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), duplicateSlot);
             }
             if (firstTargetIndex < 0
                     && LightningTechCraftingUploadCompat.insertCraftingPattern(provider, encodedPattern, true)) {
@@ -2123,7 +2123,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_uploaded"));
         int insertedSlot = findLastInsertedPatternSlot(target, encodedPattern);
         recordEaepProviderUpload(target, insertedSlot);
-        return MatrixUploadResult.uploaded(firstTargetIndex + 1L, insertedSlot);
+        return MatrixUploadResult.uploaded(PatternProviderIds.idOf(target), insertedSlot);
     }
 
     private MatrixUploadResult findEcoUploadResult(ItemStack encodedPattern) {
@@ -2136,7 +2136,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             int insertedSlot = findMatchingPatternSlot(provider, encodedPattern);
             if (insertedSlot >= 0) {
                 recordEaepProviderUpload(provider, insertedSlot);
-                return MatrixUploadResult.uploaded(i + 1L, insertedSlot);
+                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), insertedSlot);
             }
         }
         return MatrixUploadResult.UPLOADED;
@@ -2148,7 +2148,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             var provider = providers.get(i);
             int insertedSlot = findLastInsertedPatternSlot(provider, encodedPattern);
             if (insertedSlot >= 0) {
-                return MatrixUploadResult.uploaded(i + 1L, insertedSlot);
+                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), insertedSlot);
             }
         }
         return MatrixUploadResult.UPLOADED;

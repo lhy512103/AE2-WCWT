@@ -5,10 +5,12 @@
 ### English
 
 1. Fixed: Recipe-pull, JEI transfer, pattern-provider slot and resonating/overload packets now reject oversized or invalid counts before allocating, so a crafted packet can no longer exhaust server memory.
+2. Fixed: Pattern providers in the management area are now tracked by a stable id instead of their list position, so adding, removing or renaming a provider can no longer make a click, upload or highlight hit a different machine.
 
 ### 中文
 
 1. 修复：配方拉取、JEI 转移、样板供应器槽位映射和谐振/过载转换数据包在分配内存前先校验数量与枚举值，伪造的数据包不能再耗尽服务端内存。
+2. 修复：样板管理区改用稳定 ID 标识样板供应器，不再按列表位置定位；网络中增删或改名供应器后，点击、上传和高亮不会再落到另一台机器上。
 
 ## v1.3.9
 
