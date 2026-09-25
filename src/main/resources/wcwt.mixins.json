@@ -16,7 +16,8 @@
   ],
   "client": [
     "GuiMixin",
-    "WcwtMinecraftPickBlockMixin"
+    "WcwtMinecraftPickBlockMixin",
+    "RecipeDisplayMixin"
   ],
   "injectors": {
     "defaultRequire": 1

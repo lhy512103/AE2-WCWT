@@ -21,7 +21,7 @@ dependencies {
     // Cross-mod APIs used by optional compatibility code
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
     compileOnly "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
-    compileOnly "dev.emi:emi-neoforge:${emi_version}:api"
+    compileOnly "dev.emi:emi-neoforge:${emi_version}"
     compileOnly "com.simibubi.create:create-1.21.1:${create_version}"
     compileOnly "mekanism:Mekanism:${mekanism_version}"
     compileOnly "top.theillusivec4.curios:curios-neoforge:${curios_version}"
