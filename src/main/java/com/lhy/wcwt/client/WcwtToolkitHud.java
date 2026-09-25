@@ -14,6 +14,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
@@ -41,8 +42,12 @@ public final class WcwtToolkitHud {
     private static final ResourceLocation SELECTION = ResourceLocation.withDefaultNamespace("hud/hotbar_selection");
     private static final Bar[] CYCLE_ORDER = {Bar.LEFT, Bar.CENTER, Bar.RIGHT};
     private static final int CELLS = CYCLE_ORDER.length * WcwtToolkitAccess.HOTBAR_SIZE;
-    private static final int BAR_WIDTH = 182;
     private static final int BAR_HEIGHT = 22;
+    private static final int SELECTION_HEIGHT = 23;
+    private static final int HOTBAR_HALF = 91;
+    private static final int OFFHAND_WIDTH = 29;
+    private static final int PADDING = 2;
+    private static final int MIN_SLOT = 12;
 
     private WcwtToolkitHud() {
     }
@@ -78,12 +83,18 @@ public final class WcwtToolkitHud {
             return;
         }
         LocalPlayer player = minecraft.player;
+        int guiWidth = graphics.guiWidth();
+        int leftGap = offhandGap(player, true);
+        int rightGap = offhandGap(player, false);
+        int leftSlot = slotSize(guiWidth, leftGap);
+        int rightSlot = slotSize(guiWidth, rightGap);
         int y = graphics.guiHeight() - BAR_HEIGHT;
-        int centerX = graphics.guiWidth() / 2 - 91;
         Bar bar = WcwtToolkitHotbarState.getBar(player);
         int slot = WcwtToolkitHotbarState.getSlot(player);
-        renderBar(graphics, player, centerX - BAR_WIDTH, y, 0, bar == Bar.LEFT, slot, 10);
-        renderBar(graphics, player, centerX + BAR_WIDTH, y, WcwtToolkitAccess.HOTBAR_SIZE, bar == Bar.RIGHT, slot, 20);
+        renderBar(graphics, player, leftX(guiWidth, leftSlot, leftGap), y, 0, leftSlot,
+                bar == Bar.LEFT, slot, 10);
+        renderBar(graphics, player, rightX(guiWidth, rightSlot, rightGap), y,
+                WcwtToolkitAccess.HOTBAR_SIZE, rightSlot, bar == Bar.RIGHT, slot, 20);
     }
 
     @SubscribeEvent(priority = EventPriority.LOW)
@@ -117,11 +128,16 @@ public final class WcwtToolkitHud {
         if (mouseY < y || mouseY >= y + BAR_HEIGHT) {
             return;
         }
-        int centerX = window.getGuiScaledWidth() / 2 - 91;
-        int slot = slotAt(mouseX, centerX - BAR_WIDTH);
+        int guiWidth = window.getGuiScaledWidth();
+        int leftGap = offhandGap(minecraft.player, true);
+        int rightGap = offhandGap(minecraft.player, false);
+        int leftSlot = slotSize(guiWidth, leftGap);
+        int rightSlot = slotSize(guiWidth, rightGap);
+        int slot = slotAt(mouseX, leftX(guiWidth, leftSlot, leftGap), leftSlot, 0);
         Bar bar = Bar.LEFT;
         if (slot < 0) {
-            slot = slotAt(mouseX, centerX + BAR_WIDTH);
+            slot = slotAt(mouseX, rightX(guiWidth, rightSlot, rightGap), rightSlot,
+                    WcwtToolkitAccess.HOTBAR_SIZE);
             bar = Bar.RIGHT;
         }
         if (slot < 0) {
@@ -174,13 +190,13 @@ public final class WcwtToolkitHud {
     }
 
     private static void renderBar(GuiGraphics graphics, LocalPlayer player, int x, int y, int firstIndex,
-                                  boolean selected, int selectedSlot, int seedOffset) {
+                                  int slot, boolean selected, int selectedSlot, int seedOffset) {
         RenderSystem.enableBlend();
         graphics.pose().pushPose();
         graphics.pose().translate(0.0F, 0.0F, -90.0F);
-        graphics.blitSprite(HOTBAR, x, y, BAR_WIDTH, BAR_HEIGHT);
+        graphics.blitSprite(HOTBAR, x, y, barWidth(slot), BAR_HEIGHT);
         if (selected) {
-            graphics.blitSprite(SELECTION, x - 1 + selectedSlot * 20, y - 1, 24, 23);
+            graphics.blitSprite(SELECTION, x - 1 + selectedSlot * slot, y - 1, slot + 4, SELECTION_HEIGHT);
         }
         graphics.pose().popPose();
         RenderSystem.disableBlend();
@@ -188,7 +204,7 @@ public final class WcwtToolkitHud {
         for (int i = 0; i < WcwtToolkitAccess.HOTBAR_SIZE; i++) {
             ItemStack stack = WcwtToolkitHotbarState.stackAt(player, firstIndex + i);
             ItemStack memory = WcwtToolkitHotbarState.memoryAt(player, firstIndex + i);
-            int itemX = x + 3 + i * 20;
+            int itemX = x + 3 + i * slot;
             int itemY = y + 3;
             if (!stack.isEmpty()) {
                 graphics.renderItem(player, stack, itemX, itemY, seedOffset + i);
@@ -201,12 +217,38 @@ public final class WcwtToolkitHud {
         }
     }
 
-    private static int slotAt(int mouseX, int barX) {
-        if (mouseX < barX || mouseX >= barX + BAR_WIDTH) {
+    private static int slotAt(int mouseX, int barX, int slot, int firstIndex) {
+        if (mouseX < barX || mouseX >= barX + barWidth(slot)) {
             return -1;
         }
-        int slot = (mouseX - barX - 1) / 20;
-        return slot >= 0 && slot < WcwtToolkitAccess.HOTBAR_SIZE ? slot : -1;
+        int index = (mouseX - barX - 3) / slot;
+        return index >= 0 && index < WcwtToolkitAccess.HOTBAR_SIZE ? firstIndex + index : -1;
+    }
+
+    private static int offhandGap(LocalPlayer player, boolean leftSide) {
+        if (player == null || player.getOffhandItem().isEmpty()) {
+            return 0;
+        }
+        boolean offhandOnLeft = player.getMainArm() == HumanoidArm.RIGHT;
+        return offhandOnLeft == leftSide ? OFFHAND_WIDTH : 0;
+    }
+
+    private static int slotSize(int guiWidth, int gap) {
+        int usable = guiWidth / 2 - HOTBAR_HALF - gap - PADDING;
+        return Mth.clamp((usable - 2) / WcwtToolkitAccess.HOTBAR_SIZE, MIN_SLOT, 20);
+    }
+
+    private static int barWidth(int slot) {
+        return slot * WcwtToolkitAccess.HOTBAR_SIZE + 2;
+    }
+
+    private static int leftX(int guiWidth, int slot, int gap) {
+        return Math.max(0, guiWidth / 2 - HOTBAR_HALF - gap - PADDING - barWidth(slot));
+    }
+
+    private static int rightX(int guiWidth, int slot, int gap) {
+        return Math.min(Math.max(0, guiWidth - barWidth(slot)),
+                guiWidth / 2 + HOTBAR_HALF + gap + PADDING);
     }
 
     private static int ringIndex(LocalPlayer player) {
