@@ -36,13 +36,15 @@ jobs:
         id: metadata
         env:
           RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
+          CURSEFORGE_PROJECT_ID_VALUE: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          MODRINTH_PROJECT_ID_VALUE: ${{ vars.MODRINTH_PROJECT_ID }}
           CURSEFORGE_TOKEN_VALUE: ${{ secrets.CURSEFORGE_TOKEN }}
           MODRINTH_TOKEN_VALUE: ${{ secrets.MODRINTH_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
           get_property() {
-            sed -n "s/^$1=//p" gradle.properties | head -n 1
+            sed -n "s/^$1=//p" gradle.properties | head -n 1 | tr -d '\r'
           }
 
           echo "mod_id=$(get_property mod_id)" >> "$GITHUB_OUTPUT"
@@ -56,7 +58,7 @@ jobs:
             exit 1
           fi
 
-          if [ -z "${{ vars.CURSEFORGE_PROJECT_ID }}" ] || [ -z "${{ vars.MODRINTH_PROJECT_ID }}" ]; then
+          if [ -z "$CURSEFORGE_PROJECT_ID_VALUE" ] || [ -z "$MODRINTH_PROJECT_ID_VALUE" ]; then
             echo "CURSEFORGE_PROJECT_ID and MODRINTH_PROJECT_ID repository variables are required." >&2
             exit 1
           fi
@@ -68,6 +70,12 @@ jobs:
 
       - name: Build mod
         run: ./gradlew build --no-daemon
+
+      - name: Read GitHub Release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
+        run: gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .body > release-notes.md
 
       - name: Upload jar to GitHub Release
         uses: softprops/action-gh-release@v2
@@ -89,4 +97,4 @@ jobs:
           version-type: release
           loaders: neoforge
           game-versions: ${{ steps.metadata.outputs.minecraft_version }}
-          changelog: ${{ github.event.release.body }}
+          changelog-file: release-notes.md
