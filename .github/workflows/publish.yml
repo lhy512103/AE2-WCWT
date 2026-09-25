@@ -4,21 +4,26 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Release tag to build and publish
+        required: true
+        default: v1.3.10
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   publish:
     name: Publish to CurseForge and Modrinth
     runs-on: ubuntu-latest
-    if: ${{ vars.MODRINTH_PROJECT_ID != '' && vars.CURSEFORGE_PROJECT_ID != '' }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -30,7 +35,9 @@ jobs:
       - name: Read mod metadata
         id: metadata
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
+          CURSEFORGE_TOKEN_VALUE: ${{ secrets.CURSEFORGE_TOKEN }}
+          MODRINTH_TOKEN_VALUE: ${{ secrets.MODRINTH_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
@@ -49,8 +56,25 @@ jobs:
             exit 1
           fi
 
+          if [ -z "${{ vars.CURSEFORGE_PROJECT_ID }}" ] || [ -z "${{ vars.MODRINTH_PROJECT_ID }}" ]; then
+            echo "CURSEFORGE_PROJECT_ID and MODRINTH_PROJECT_ID repository variables are required." >&2
+            exit 1
+          fi
+
+          if [ -z "$CURSEFORGE_TOKEN_VALUE" ] || [ -z "$MODRINTH_TOKEN_VALUE" ]; then
+            echo "CURSEFORGE_TOKEN and MODRINTH_TOKEN repository secrets are required." >&2
+            exit 1
+          fi
+
       - name: Build mod
         run: ./gradlew build --no-daemon
+
+      - name: Upload jar to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
+          files: build/libs/${{ steps.metadata.outputs.mod_id }}-${{ steps.metadata.outputs.mod_version }}.jar
+          fail_on_unmatched_files: true
 
       - name: Publish mod files
         uses: Kir-Antipov/mc-publish@v3
