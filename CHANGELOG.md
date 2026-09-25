@@ -21,7 +21,7 @@
 15. Fixed: Toolkit quick bars now use a dedicated layer above the vanilla hotbar, preventing offhand HUD overlap.
 16. Fixed: Advanced AE pattern inputs keep their encoded order, text-entry keys no longer trigger terminal shortcuts, empty terminals no longer refresh pinned rows during initialization, resonant conversion icons stay inside their buttons, and toolkit cards work with universal terminals.
 17. Fixed: Toolkit quick bars now reserve the vanilla offhand well and adapt their cell width like MEST, preventing overlap when the offhand is occupied.
-18. Added: A GitHub Actions workflow can publish versioned NeoForge builds to CurseForge and Modrinth when the changelog is updated.
+18. Added: Publishing a GitHub Release can automatically publish the matching NeoForge build to CurseForge and Modrinth.
 
 ### 中文
 
@@ -46,7 +46,7 @@
 19. 修复：谐振转换图标保持在按钮范围内;
 20. 修复：通用终端也能识别工具包卡。
 21. 修复：工具包扩展快捷栏参考 MEST 预留原版副手槽，并自适应格子宽度，副手有物品时不再重叠。
-22. 新增：更新远端 changelog 时，GitHub Actions 可自动将版本化 NeoForge 构建发布到 CurseForge 和 Modrinth。
+22. 新增：发布 GitHub Release 后，GitHub Actions 可自动将对应版本的 NeoForge 构建发布到 CurseForge 和 Modrinth。
 
 ## v1.3.9
 

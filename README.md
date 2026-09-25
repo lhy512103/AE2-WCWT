@@ -7,10 +7,10 @@ Current version: `v1.3.10`
 
 ## Automated Publishing
 
-The repository contains a GitHub Actions workflow at `.github/workflows/publish.yml`. A push to
-the `main` branch that changes `CHANGELOG.md` builds the NeoForge jar and publishes it to both
-CurseForge and Modrinth. The `mod_version` in `gradle.properties` must be updated in the same
-commit, and `CHANGELOG.md` must contain a matching heading such as `## v1.3.11`.
+The repository contains a GitHub Actions workflow at `.github/workflows/publish.yml`. Publishing
+a GitHub Release builds the NeoForge jar from that release tag and publishes it to both CurseForge
+and Modrinth. The release tag must match `mod_version` in `gradle.properties`; for example,
+release tag `v1.3.11` requires `mod_version=1.3.11`.
 
 Configure these repository settings before using the workflow:
 
@@ -19,9 +19,8 @@ Configure these repository settings before using the workflow:
 - Repository secret `CURSEFORGE_TOKEN`: a CurseForge API token with permission to publish files.
 - Repository secret `MODRINTH_TOKEN`: a Modrinth personal access token with the `CREATE_VERSION` scope.
 
-The workflow can also be started manually from the Actions page. It publishes the jar from
-`build/libs`, labels it as a NeoForge release for Minecraft `1.21.1`, and uses `CHANGELOG.md` as
-the release description.
+The workflow publishes the jar from `build/libs`, labels it as a NeoForge release for Minecraft
+`1.21.1`, and uses the GitHub Release body as the release description on both platforms.
 
 ## Overview
 
