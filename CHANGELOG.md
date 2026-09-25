@@ -17,6 +17,7 @@
 11. Fixed: Lowering `toolkitSlotCount` returns items in removed slots to the player.
 12. Added: Unit tests and a GitHub Actions build workflow.
 13. Changed: Moved pattern-upload and toolkit-storage code out of the terminal menu classes.
+14. Chore: Removed unused code and replaced deprecated API calls to keep the project warning-free.
 
 ### 中文
 
@@ -33,6 +34,7 @@
 11. 修复：调小 `toolkitSlotCount` 后，被移除格子里的物品会退还给玩家。
 12. 新增：单元测试和 GitHub Actions 构建工作流。
 13. 调整：将样板上传和工具包存储代码从终端菜单类中拆出。
+14. 清理：删除未使用代码并替换过时 API，清理 IDE 警告。
 
 ## v1.3.9
 

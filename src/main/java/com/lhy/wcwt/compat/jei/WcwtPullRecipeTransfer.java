@@ -406,9 +406,6 @@ public final class WcwtPullRecipeTransfer {
             return anyMissing() && anyResolved;
         }
 
-        public int totalSize() {
-            return missingSlots.size() + craftableSlots.size();
-        }
     }
 
     private static final class TerminalPullTransferError implements IRecipeTransferError {

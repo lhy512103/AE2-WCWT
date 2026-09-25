@@ -51,7 +51,6 @@ import com.lhy.wcwt.compat.WcwtOptionalFeatureGates;
 import com.lhy.wcwt.compat.reflect.WcwtMagnetReflect;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.api.IExtendedUIHost;
-import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
@@ -200,8 +199,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     /** 4 个样板模式 tab 按钮中**最顶**的那个（modeTabButton3）。扩展按钮 Y 锚到它的顶部。*/
     private TabButton topModeTabButton;
-    /** 4 个样板模式 tab 按钮中**最底**的那个（modeTabButton0）。用于反推升级槽底部位置。*/
-    private TabButton bottomModeTabButton;
     private TabButton tabCrafting;
     private TabButton tabProcessing;
     private TabButton tabSmithing;
@@ -711,8 +708,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 btn -> setPatternEncodingMode(EncodingMode.STONECUTTING));
         tabStonecutting.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
         widgets.add("modeTabButton3", tabStonecutting);
-        // JSON: modeTabButton3 bottom:168（最小）→ 最底的样板按钮
-        bottomModeTabButton = tabStonecutting;
 
         // 样板倍增按钮
         multiplierButtons = new PatternMultiplierButton[8];
@@ -1954,10 +1949,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         toggleExtendedUI(type);
         return true;
-    }
-
-    private static boolean matchesHotkey(com.mojang.blaze3d.platform.InputConstants.Key key, int keyCode, int scanCode) {
-        return key != null && key.getType().getOrCreate(keyCode) != null;
     }
 
     private static boolean matchesHotkey(net.minecraft.client.KeyMapping mapping, int keyCode, int scanCode) {
@@ -4412,9 +4403,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 rowY + (PATTERN_MANAGEMENT_HEADER_ROW_H - font.lineHeight) / 2,
                 textColor, false);
 
-        renderPatternManagementButton(guiGraphics, rowButton(patternManagementUploadButton, rowY),
-                161, 0, 177, 0,
-                AE2_STATES_TEXTURE, 0, 144, 256, 256, mouseX, mouseY);
+        var uploadButton = rowButton(patternManagementUploadButton, rowY);
+        renderPatternManagementButton(guiGraphics, uploadButton.left(), uploadButton.top(),
+                161, 0, 177, 0, uploadButton.width(), uploadButton.height(),
+                AE2_STATES_TEXTURE, 0, 144, 16, 16, 256, 256, mouseX, mouseY, 0, 0);
         renderPatternManagementButtonIcon(guiGraphics, rowButton(patternManagementUiButton, rowY),
                 161, 0, 177, 0,
                 WCWT_STATES_TEXTURE, 52, 5, 8, 7, 256, 256, mouseX, mouseY);
@@ -4939,34 +4931,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private void renderPatternManagementButton(GuiGraphics guiGraphics, int x, int y,
                                                int normalU, int normalV, int hoverU, int hoverV,
                                                int w, int h, ResourceLocation iconTexture, int iconU, int iconV,
-                                               int mouseX, int mouseY) {
-        renderPatternManagementButton(guiGraphics, x, y, normalU, normalV, hoverU, hoverV, w, h,
-                iconTexture, iconU, iconV, 64, 64, mouseX, mouseY, 0, 0);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, int x, int y,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               int w, int h, ResourceLocation iconTexture, int iconU, int iconV,
-                                               int iconTextureWidth, int iconTextureHeight,
-                                               int mouseX, int mouseY) {
-        renderPatternManagementButton(guiGraphics, x, y, normalU, normalV, hoverU, hoverV, w, h,
-                iconTexture, iconU, iconV, iconTextureWidth, iconTextureHeight, mouseX, mouseY, 0, 0);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, int x, int y,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               int w, int h, ResourceLocation iconTexture, int iconU, int iconV,
-                                               int iconTextureWidth, int iconTextureHeight,
-                                               int mouseX, int mouseY, int iconOffsetX, int iconOffsetY) {
-        int iconSize = iconTextureWidth == 256 ? 16 : 12;
-        renderPatternManagementButton(guiGraphics, x, y, normalU, normalV, hoverU, hoverV, w, h,
-                iconTexture, iconU, iconV, iconSize, iconSize, iconTextureWidth, iconTextureHeight,
-                mouseX, mouseY, iconOffsetX, iconOffsetY);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, int x, int y,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               int w, int h, ResourceLocation iconTexture, int iconU, int iconV,
                                                int iconW, int iconH, int iconTextureWidth, int iconTextureHeight,
                                                int mouseX, int mouseY, int iconOffsetX, int iconOffsetY) {
         boolean hover = mouseX >= leftPos + x && mouseX < leftPos + x + w
@@ -4982,34 +4946,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             guiGraphics.blit(iconTexture, iconX, iconY, drawIconW, drawIconH, iconU, iconV, iconW, iconH,
                     iconTextureWidth, iconTextureHeight);
         }
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               ResourceLocation iconTexture, int iconU, int iconV,
-                                               int mouseX, int mouseY) {
-        renderPatternManagementButton(guiGraphics, rect.left(), rect.top(), normalU, normalV, hoverU, hoverV,
-                rect.width(), rect.height(), iconTexture, iconU, iconV, mouseX, mouseY);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               ResourceLocation iconTexture, int iconU, int iconV,
-                                               int iconTextureWidth, int iconTextureHeight,
-                                               int mouseX, int mouseY) {
-        renderPatternManagementButton(guiGraphics, rect.left(), rect.top(), normalU, normalV, hoverU, hoverV,
-                rect.width(), rect.height(), iconTexture, iconU, iconV, iconTextureWidth, iconTextureHeight,
-                mouseX, mouseY);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               ResourceLocation iconTexture, int iconU, int iconV,
-                                               int iconTextureWidth, int iconTextureHeight,
-                                               int mouseX, int mouseY, int iconOffsetX, int iconOffsetY) {
-        renderPatternManagementButton(guiGraphics, rect.left(), rect.top(), normalU, normalV, hoverU, hoverV,
-                rect.width(), rect.height(), iconTexture, iconU, iconV, iconTextureWidth, iconTextureHeight,
-                mouseX, mouseY, iconOffsetX, iconOffsetY);
     }
 
     private void renderPatternManagementHighlightButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect) {
@@ -5718,7 +5654,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (!slot.isActive()) {
                 continue;
             }
-            if (!(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot)) {
+            if (!(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot)) {
                 continue;
             }
             if (relX >= slot.x && relX < slot.x + PLAYER_INVENTORY_SLOT_HIT_SIZE

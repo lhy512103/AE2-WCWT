@@ -11,6 +11,7 @@ import io.netty.handler.codec.DecoderException;
 import java.util.List;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import net.minecraft.network.codec.ByteBufCodecs;
 import org.junit.jupiter.api.Test;
 
@@ -101,6 +102,6 @@ class WcwtPacketLimitsTest {
     }
 
     private static RegistryFriendlyByteBuf registryBuf() {
-        return new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY);
+        return new RegistryFriendlyByteBuf(Unpooled.buffer(), RegistryAccess.EMPTY, ConnectionType.OTHER);
     }
 }

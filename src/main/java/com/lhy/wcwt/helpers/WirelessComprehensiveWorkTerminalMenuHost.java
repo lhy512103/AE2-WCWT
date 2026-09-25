@@ -7,7 +7,6 @@ import appeng.api.config.PowerMultiplier;
 import appeng.api.features.Locatables;
 import appeng.api.ids.AEComponents;
 import appeng.api.implementations.blockentities.IViewCellStorage;
-import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.security.IActionHost;
@@ -58,7 +57,7 @@ import de.mari_023.ae2wtlib.api.results.LongResult;
 import de.mari_023.ae2wtlib.api.results.Status;
 
 public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
-        implements ISegmentedInventory, IExtendedUIHost, IPatternCachingHost, IConfigInvHost,
+        implements IExtendedUIHost, IPatternCachingHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost, IViewCellStorage {
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");

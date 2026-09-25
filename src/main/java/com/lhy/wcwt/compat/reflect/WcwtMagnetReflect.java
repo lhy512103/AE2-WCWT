@@ -31,7 +31,6 @@ public final class WcwtMagnetReflect {
     }
 
     /** 磁力设置数据组件。拿不到时返回 empty，此时磁力相关开关整体不可用。 */
-    @SuppressWarnings("rawtypes")
     public static Optional<DataComponentType<Object>> settingsComponent() {
         return WcwtReflect.readStaticField(MOD_ID, ADDITIONAL_COMPONENTS_CLASS, "MAGNET_SETTINGS")
                 .map(WcwtMagnetReflect::asObjectComponent);

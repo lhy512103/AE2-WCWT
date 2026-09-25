@@ -40,7 +40,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
-import org.jetbrains.annotations.Nullable;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
@@ -105,7 +104,6 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return false;
         }
 
-        WirelessComprehensiveWorkTerminalMenu menu = context.getScreenHandler();
         EncodingMode mode = getTransferMode(recipe);
         if (mode != EncodingMode.CRAFTING
                 && mode != EncodingMode.PROCESSING
@@ -835,7 +833,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (fluid == null || fluid == Fluids.EMPTY) {
             return null;
         }
-        FluidStack neoFluidStack = new FluidStack(fluid.builtInRegistryHolder(),
+        FluidStack neoFluidStack = new FluidStack(net.minecraft.core.registries.BuiltInRegistries.FLUID.wrapAsHolder(fluid),
                 (int) Math.max(1L, Math.min(Integer.MAX_VALUE, amount)),
                 stack.getComponentChanges());
         if (neoFluidStack.isEmpty()) {
