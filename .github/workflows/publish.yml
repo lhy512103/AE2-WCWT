@@ -1,0 +1,66 @@
+name: Build and Publish
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - CHANGELOG.md
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to CurseForge and Modrinth
+    runs-on: ubuntu-latest
+    if: ${{ vars.MODRINTH_PROJECT_ID != '' && vars.CURSEFORGE_PROJECT_ID != '' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Read mod metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          get_property() {
+            sed -n "s/^$1=//p" gradle.properties | head -n 1
+          }
+
+          echo "mod_id=$(get_property mod_id)" >> "$GITHUB_OUTPUT"
+          echo "mod_version=$(get_property mod_version)" >> "$GITHUB_OUTPUT"
+          echo "minecraft_version=$(get_property minecraft_version)" >> "$GITHUB_OUTPUT"
+
+          version="$(get_property mod_version)"
+          if ! grep -qE "^## v?${version//./\\.}$" CHANGELOG.md; then
+            echo "CHANGELOG.md must contain a heading for v${version}." >&2
+            exit 1
+          fi
+
+      - name: Build mod
+        run: ./gradlew build --no-daemon
+
+      - name: Publish mod files
+        uses: Kir-Antipov/mc-publish@v3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: build/libs/${{ steps.metadata.outputs.mod_id }}-${{ steps.metadata.outputs.mod_version }}.jar
+          name: ${{ steps.metadata.outputs.mod_id }}-${{ steps.metadata.outputs.mod_version }}
+          version: ${{ steps.metadata.outputs.mod_version }}
+          version-type: release
+          loaders: neoforge
+          game-versions: ${{ steps.metadata.outputs.minecraft_version }}
+          changelog-file: CHANGELOG.md
