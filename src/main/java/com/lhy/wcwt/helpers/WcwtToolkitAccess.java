@@ -1,11 +1,10 @@
 package com.lhy.wcwt.helpers;
 
 import appeng.api.upgrades.IUpgradeableItem;
-import appeng.integration.modules.curios.CuriosIntegration;
 import com.lhy.wcwt.init.ModItems;
-import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
-import de.mari_023.ae2wtlib.api.terminal.ItemWUT;
+import de.mari_023.ae2wtlib.api.registration.WTDefinition;
+import de.mari_023.ae2wtlib.api.terminal.WUTHandler;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -37,26 +36,12 @@ public final class WcwtToolkitAccess {
                 ? menu.getMenuHost() : null;
     }
 
+    /**
+     * Delegates to ae2wtlib's own lookup, which scans all player inventory slots including the
+     * offhand.
+     */
     public static ItemStack findTerminal(Player player) {
-        var curios = player.getCapability(CuriosIntegration.ITEM_HANDLER);
-        if (curios != null) {
-            for (int i = 0; i < curios.getSlots(); i++) {
-                ItemStack stack = curios.getStackInSlot(i);
-                if (isTerminalItem(stack)) {
-                    return stack;
-                }
-            }
-        }
-        for (ItemStack stack : player.getInventory().items) {
-            if (isTerminalItem(stack)) {
-                return stack;
-            }
-        }
-        return ItemStack.EMPTY;
-    }
-
-    private static boolean isTerminalItem(ItemStack stack) {
-        return stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem
-                || stack.getItem() instanceof ItemWUT;
+        var locator = WUTHandler.findTerminal(player, WTDefinition.of("wcwt"));
+        return locator == null ? ItemStack.EMPTY : locator.locateItem(player);
     }
 }
