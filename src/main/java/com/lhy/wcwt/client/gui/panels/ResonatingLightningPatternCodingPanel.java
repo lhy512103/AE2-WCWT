@@ -65,8 +65,6 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     private static final int AE2_CHECKBOX_V_OFF = 28;
     private static final int AE2_CHECKBOX_V_ON = 40;
     private static final int RESONATING_COLUMNS = 7;
-    private static final int RESONATING_VISIBLE_ROWS = 3;
-    private static final int RESONATING_SLOT_SIZE = 18;
     private static final int DEFAULT_RESONATING_SLOT_SPACING = 16;
     private final ExtendedPanelLayout layout = ExtendedPanelLayout.load("wcwt_resonating_lightning_pattern_coding.json");
     private final Scrollbar lightningScrollbar = new Scrollbar(Scrollbar.SMALL);
@@ -117,6 +115,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
                             new int[0], new int[0])))
                     .useAE2ToolbarBackground()
                     .setOverlayIcon(() -> Icon.SCHEDULING_RANDOM)
+                    .disableHoverPressOffset()
                     .setTooltipLines(List.of(Component.translatable("gui.wcwt.rlpc.resonating_convert")));
             children.add(resonatingConvertButton);
         }

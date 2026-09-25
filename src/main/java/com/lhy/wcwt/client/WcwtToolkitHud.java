@@ -2,35 +2,52 @@ package com.lhy.wcwt.client;
 
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.config.WcwtClientConfig;
+import com.lhy.wcwt.helpers.WcwtToolkitAccess;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
-import com.lhy.wcwt.network.WcwtToolkitHotbarActionPacket;
+import com.lhy.wcwt.helpers.WcwtToolkitHotbarState.Bar;
+import com.lhy.wcwt.network.WcwtToolkitHotbarDropPacket;
 import com.lhy.wcwt.network.WcwtToolkitHotbarSelectionPacket;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
+/**
+ * HUD and input for the 27-cell ring: left toolkit bar, vanilla hotbar, right toolkit bar.
+ *
+ * <p>Scroll and the left/right keys move around the ring, number keys stay vanilla and pick a slot
+ * inside the current page, and a left click on a toolkit cell selects it. Shift+scroll and scrolls
+ * another mod already consumed are left alone, so tools that cycle modes on sneak-scroll keep working.
+ */
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public final class WcwtToolkitHud {
     private static final ResourceLocation HOTBAR = ResourceLocation.withDefaultNamespace("hud/hotbar");
     private static final ResourceLocation SELECTION = ResourceLocation.withDefaultNamespace("hud/hotbar_selection");
-    private static final WcwtToolkitHotbarState.Bar[] CYCLE_ORDER = {
-            WcwtToolkitHotbarState.Bar.LEFT,
-            WcwtToolkitHotbarState.Bar.CENTER,
-            WcwtToolkitHotbarState.Bar.RIGHT
-    };
-    private static final int BAR_WIDTH = 182;
+    private static final Bar[] CYCLE_ORDER = {Bar.LEFT, Bar.CENTER, Bar.RIGHT};
+    private static final int CELLS = CYCLE_ORDER.length * WcwtToolkitAccess.HOTBAR_SIZE;
     private static final int BAR_HEIGHT = 22;
+    private static final int SELECTION_HEIGHT = 23;
+    private static final int HOTBAR_HALF = 91;
+    private static final int OFFHAND_WIDTH = 29;
+    private static final int PADDING = 2;
+    private static final int MIN_SLOT = 12;
 
     private WcwtToolkitHud() {
     }
@@ -38,62 +55,53 @@ public final class WcwtToolkitHud {
     @SubscribeEvent
     public static void onClientTickPre(ClientTickEvent.Pre event) {
         Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer player = minecraft.player;
         if (!isHudVisible(minecraft)) {
-            if (minecraft.player != null
-                    && (!WcwtClientConfig.showToolkitHotbars() || !WcwtToolkitHotbarState.hasToolkitCard(minecraft.player))
-                    && WcwtToolkitHotbarState.isToolkitSelected(minecraft.player)) {
-                setSelection(WcwtToolkitHotbarState.Bar.CENTER, minecraft.player.getInventory().selected);
+            if (player != null && WcwtToolkitHotbarState.isToolkitSelected(player)
+                    && (!WcwtClientConfig.showToolkitHotbars() || !WcwtToolkitHotbarState.hasToolkitCard(player))) {
+                setSelection(player, Bar.CENTER, player.getInventory().selected);
             }
             return;
         }
 
         while (WcwtKeybindings.TOOLKIT_BAR_LEFT.consumeClick()) {
-            cycle(-1);
+            cyclePage(player, -1);
         }
         while (WcwtKeybindings.TOOLKIT_BAR_RIGHT.consumeClick()) {
-            cycle(1);
+            cyclePage(player, 1);
         }
-
-        if (!WcwtToolkitHotbarState.isToolkitSelected(minecraft.player)) {
-            return;
-        }
-        for (int i = 0; i < minecraft.options.keyHotbarSlots.length; i++) {
-            while (minecraft.options.keyHotbarSlots[i].consumeClick()) {
-                setSelection(WcwtToolkitHotbarState.getBar(minecraft.player), i);
+        if (WcwtToolkitHotbarState.isToolkitSelected(player)) {
+            while (minecraft.options.keyDrop.consumeClick()) {
+                PacketDistributor.sendToServer(new WcwtToolkitHotbarDropPacket(Screen.hasControlDown()));
             }
         }
-        while (minecraft.options.keyDrop.consumeClick()) {
-            int index = WcwtToolkitHotbarState.toolkitIndex(minecraft.player);
-            PacketDistributor.sendToServer(new WcwtToolkitHotbarActionPacket(
-                    WcwtToolkitHotbarActionPacket.DROP, index, net.minecraft.client.gui.screens.Screen.hasControlDown()));
-        }
     }
 
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiEvent.Post event) {
+    public static void renderGuiLayer(GuiGraphics graphics, net.minecraft.client.DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (!isHudVisible(minecraft)) {
+        if (!isHudVisible(minecraft) || minecraft.options.hideGui) {
             return;
         }
-        GuiGraphics graphics = event.getGuiGraphics();
+        LocalPlayer player = minecraft.player;
+        int guiWidth = graphics.guiWidth();
+        int leftGap = offhandGap(player, true);
+        int rightGap = offhandGap(player, false);
+        int leftSlot = slotSize(guiWidth, leftGap);
+        int rightSlot = slotSize(guiWidth, rightGap);
         int y = graphics.guiHeight() - BAR_HEIGHT;
-        int centerX = graphics.guiWidth() / 2 - 91;
-        ItemStack[] toolkit = WcwtToolkitHotbarState.getClientSnapshot(minecraft.player);
-        ItemStack[] memory = WcwtToolkitHotbarState.getClientMemorySnapshot(minecraft.player);
-        renderBar(graphics, centerX - BAR_WIDTH, y, java.util.Arrays.asList(toolkit).subList(0, 9),
-                java.util.Arrays.asList(memory).subList(0, 9),
-                WcwtToolkitHotbarState.getBar(minecraft.player) == WcwtToolkitHotbarState.Bar.LEFT,
-                WcwtToolkitHotbarState.getSlot(minecraft.player), 10);
-        renderBar(graphics, centerX + BAR_WIDTH, y, java.util.Arrays.asList(toolkit).subList(9, 18),
-                java.util.Arrays.asList(memory).subList(9, 18),
-                WcwtToolkitHotbarState.getBar(minecraft.player) == WcwtToolkitHotbarState.Bar.RIGHT,
-                WcwtToolkitHotbarState.getSlot(minecraft.player), 20);
+        Bar bar = WcwtToolkitHotbarState.getBar(player);
+        int slot = WcwtToolkitHotbarState.getSlot(player);
+        renderBar(graphics, player, leftX(guiWidth, leftSlot, leftGap), y, 0, leftSlot,
+                bar == Bar.LEFT, slot, 10);
+        renderBar(graphics, player, rightX(guiWidth, rightSlot, rightGap), y,
+                WcwtToolkitAccess.HOTBAR_SIZE, rightSlot, bar == Bar.RIGHT, slot, 20);
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOW)
     public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (!isHudVisible(minecraft) || minecraft.player.isSpectator()) {
+        LocalPlayer player = minecraft.player;
+        if (event.isCanceled() || !isHudVisible(minecraft) || player.isShiftKeyDown()) {
             return;
         }
         int delta = (int) Math.signum(event.getScrollDeltaY() != 0.0
@@ -101,16 +109,8 @@ public final class WcwtToolkitHud {
         if (delta == 0) {
             return;
         }
-        var player = minecraft.player;
-        int barIndex = 1;
-        for (int i = 0; i < CYCLE_ORDER.length; i++) {
-            if (CYCLE_ORDER[i] == WcwtToolkitHotbarState.getBar(player)) {
-                barIndex = i;
-                break;
-            }
-        }
-        int index = Math.floorMod(barIndex * 9 + WcwtToolkitHotbarState.getSlot(player) - delta, 27);
-        setSelection(CYCLE_ORDER[index / 9], index % 9);
+        int index = Math.floorMod(ringIndex(player) - delta, CELLS);
+        setSelection(player, CYCLE_ORDER[index / WcwtToolkitAccess.HOTBAR_SIZE], index % WcwtToolkitAccess.HOTBAR_SIZE);
         event.setCanceled(true);
     }
 
@@ -118,8 +118,7 @@ public final class WcwtToolkitHud {
     public static void onMouseButton(InputEvent.MouseButton.Pre event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (!isHudVisible(minecraft) || event.getAction() != GLFW.GLFW_PRESS
-                || (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT
-                && event.getButton() != GLFW.GLFW_MOUSE_BUTTON_RIGHT)) {
+                || event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return;
         }
         var window = minecraft.getWindow();
@@ -129,88 +128,150 @@ public final class WcwtToolkitHud {
         if (mouseY < y || mouseY >= y + BAR_HEIGHT) {
             return;
         }
-        int centerX = window.getGuiScaledWidth() / 2 - 91;
-        int slot = slotAt(mouseX, centerX - BAR_WIDTH);
-        int toolkitIndex = slot;
-        WcwtToolkitHotbarState.Bar bar = WcwtToolkitHotbarState.Bar.LEFT;
+        int guiWidth = window.getGuiScaledWidth();
+        int leftGap = offhandGap(minecraft.player, true);
+        int rightGap = offhandGap(minecraft.player, false);
+        int leftSlot = slotSize(guiWidth, leftGap);
+        int rightSlot = slotSize(guiWidth, rightGap);
+        int slot = slotAt(mouseX, leftX(guiWidth, leftSlot, leftGap), leftSlot, 0);
+        Bar bar = Bar.LEFT;
         if (slot < 0) {
-            slot = slotAt(mouseX, centerX + BAR_WIDTH);
-            toolkitIndex = slot < 0 ? -1 : 9 + slot;
-            bar = WcwtToolkitHotbarState.Bar.RIGHT;
+            slot = slotAt(mouseX, rightX(guiWidth, rightSlot, rightGap), rightSlot,
+                    WcwtToolkitAccess.HOTBAR_SIZE);
+            bar = Bar.RIGHT;
         }
-        if (toolkitIndex < 0) {
+        if (slot < 0) {
             return;
         }
-        setSelection(bar, slot);
-        PacketDistributor.sendToServer(new WcwtToolkitHotbarActionPacket(
-                WcwtToolkitHotbarActionPacket.CLICK, toolkitIndex,
-                event.getButton() == GLFW.GLFW_MOUSE_BUTTON_RIGHT));
+        setSelection(minecraft.player, bar, slot);
         event.setCanceled(true);
     }
 
-    private static void renderBar(GuiGraphics graphics, int x, int y, java.util.List<ItemStack> stacks,
-                                   java.util.List<ItemStack> memories, boolean selected, int selectedSlot,
-                                   int seedOffset) {
+    /**
+     * Pick block selects an extra-bar cell that already holds the item; otherwise it returns to the
+     * vanilla page first, since vanilla picks into {@code Inventory.selected} of the real hotbar.
+     */
+    @SubscribeEvent
+    public static void onPickBlock(InputEvent.InteractionKeyMappingTriggered event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        LocalPlayer player = minecraft.player;
+        if (!event.isPickBlock() || !isHudVisible(minecraft)) {
+            return;
+        }
+        if (!player.getAbilities().instabuild) {
+            ItemStack picked = pickedStack(minecraft);
+            for (int index = 0; !picked.isEmpty() && index < WcwtToolkitAccess.HOTBAR_SLOTS; index++) {
+                if (ItemStack.isSameItemSameComponents(WcwtToolkitHotbarState.stackAt(player, index), picked)) {
+                    setSelection(player, index < WcwtToolkitAccess.HOTBAR_SIZE ? Bar.LEFT : Bar.RIGHT,
+                            index % WcwtToolkitAccess.HOTBAR_SIZE);
+                    event.setCanceled(true);
+                    return;
+                }
+            }
+        }
+        if (WcwtToolkitHotbarState.isToolkitSelected(player)) {
+            setSelection(player, Bar.CENTER, player.getInventory().selected);
+        }
+    }
+
+    private static ItemStack pickedStack(Minecraft minecraft) {
+        if (minecraft.level == null) {
+            return ItemStack.EMPTY;
+        }
+        if (minecraft.hitResult instanceof BlockHitResult blockHit && blockHit.getType() == HitResult.Type.BLOCK) {
+            BlockState state = minecraft.level.getBlockState(blockHit.getBlockPos());
+            return state.getCloneItemStack(blockHit, minecraft.level, blockHit.getBlockPos(), minecraft.player);
+        }
+        if (minecraft.hitResult instanceof EntityHitResult entityHit) {
+            ItemStack stack = entityHit.getEntity().getPickedResult(entityHit);
+            return stack == null ? ItemStack.EMPTY : stack;
+        }
+        return ItemStack.EMPTY;
+    }
+
+    private static void renderBar(GuiGraphics graphics, LocalPlayer player, int x, int y, int firstIndex,
+                                  int slot, boolean selected, int selectedSlot, int seedOffset) {
         RenderSystem.enableBlend();
         graphics.pose().pushPose();
         graphics.pose().translate(0.0F, 0.0F, -90.0F);
-        graphics.blitSprite(HOTBAR, x, y, BAR_WIDTH, BAR_HEIGHT);
+        graphics.blitSprite(HOTBAR, x, y, barWidth(slot), BAR_HEIGHT);
         if (selected) {
-            graphics.blitSprite(SELECTION, x - 1 + selectedSlot * 20, y - 1, 24, 23);
+            graphics.blitSprite(SELECTION, x - 1 + selectedSlot * slot, y - 1, slot + 4, SELECTION_HEIGHT);
         }
         graphics.pose().popPose();
         RenderSystem.disableBlend();
         Minecraft minecraft = Minecraft.getInstance();
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = stacks.get(i);
-            ItemStack memory = i < memories.size() ? memories.get(i) : ItemStack.EMPTY;
-            int itemX = x + 3 + i * 20;
+        for (int i = 0; i < WcwtToolkitAccess.HOTBAR_SIZE; i++) {
+            ItemStack stack = WcwtToolkitHotbarState.stackAt(player, firstIndex + i);
+            ItemStack memory = WcwtToolkitHotbarState.memoryAt(player, firstIndex + i);
+            int itemX = x + 3 + i * slot;
             int itemY = y + 3;
             if (!stack.isEmpty()) {
-                graphics.renderItem(minecraft.player, stack, itemX, itemY, seedOffset + i);
+                graphics.renderItem(player, stack, itemX, itemY, seedOffset + i);
                 graphics.renderItemDecorations(minecraft.font, stack, itemX, itemY);
             } else if (!memory.isEmpty()) {
                 graphics.setColor(1.0F, 1.0F, 1.0F, 0.38F);
-                graphics.renderItem(minecraft.player, memory, itemX, itemY, seedOffset + i);
+                graphics.renderItem(player, memory, itemX, itemY, seedOffset + i);
                 graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
             }
         }
     }
 
-    private static int slotAt(int mouseX, int barX) {
-        if (mouseX < barX || mouseX >= barX + BAR_WIDTH) {
+    private static int slotAt(int mouseX, int barX, int slot, int firstIndex) {
+        if (mouseX < barX || mouseX >= barX + barWidth(slot)) {
             return -1;
         }
-        int slot = (mouseX - barX - 1) / 20;
-        return slot >= 0 && slot < 9 ? slot : -1;
+        int index = (mouseX - barX - 3) / slot;
+        return index >= 0 && index < WcwtToolkitAccess.HOTBAR_SIZE ? firstIndex + index : -1;
     }
 
-    private static void cycle(int direction) {
-        Minecraft minecraft = Minecraft.getInstance();
-        WcwtToolkitHotbarState.Bar current = WcwtToolkitHotbarState.getBar(minecraft.player);
-        int index = 1;
+    private static int offhandGap(LocalPlayer player, boolean leftSide) {
+        if (player == null || player.getOffhandItem().isEmpty()) {
+            return 0;
+        }
+        boolean offhandOnLeft = player.getMainArm() == HumanoidArm.RIGHT;
+        return offhandOnLeft == leftSide ? OFFHAND_WIDTH : 0;
+    }
+
+    private static int slotSize(int guiWidth, int gap) {
+        int usable = guiWidth / 2 - HOTBAR_HALF - gap - PADDING;
+        return Mth.clamp((usable - 2) / WcwtToolkitAccess.HOTBAR_SIZE, MIN_SLOT, 20);
+    }
+
+    private static int barWidth(int slot) {
+        return slot * WcwtToolkitAccess.HOTBAR_SIZE + 2;
+    }
+
+    private static int leftX(int guiWidth, int slot, int gap) {
+        return Math.max(0, guiWidth / 2 - HOTBAR_HALF - gap - PADDING - barWidth(slot));
+    }
+
+    private static int rightX(int guiWidth, int slot, int gap) {
+        return Math.min(Math.max(0, guiWidth - barWidth(slot)),
+                guiWidth / 2 + HOTBAR_HALF + gap + PADDING);
+    }
+
+    private static int ringIndex(LocalPlayer player) {
+        Bar bar = WcwtToolkitHotbarState.getBar(player);
+        int page = 1;
         for (int i = 0; i < CYCLE_ORDER.length; i++) {
-            if (CYCLE_ORDER[i] == current) {
-                index = i;
-                break;
+            if (CYCLE_ORDER[i] == bar) {
+                page = i;
             }
         }
-        WcwtToolkitHotbarState.Bar next = CYCLE_ORDER[Math.floorMod(index + direction, CYCLE_ORDER.length)];
-        int slot = current == WcwtToolkitHotbarState.Bar.CENTER
-                ? minecraft.player.getInventory().selected : WcwtToolkitHotbarState.getSlot(minecraft.player);
-        setSelection(next, slot);
+        return page * WcwtToolkitAccess.HOTBAR_SIZE + WcwtToolkitHotbarState.getSlot(player);
     }
 
-    private static void setSelection(WcwtToolkitHotbarState.Bar bar, int slot) {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null) {
-            return;
-        }
-        if (bar == WcwtToolkitHotbarState.Bar.CENTER) {
-            minecraft.player.getInventory().selected = slot;
-        }
-        WcwtToolkitHotbarState.setSelection(minecraft.player, bar, slot);
-        PacketDistributor.sendToServer(new WcwtToolkitHotbarSelectionPacket(bar.ordinal(), slot));
+    private static void cyclePage(LocalPlayer player, int direction) {
+        int page = ringIndex(player) / WcwtToolkitAccess.HOTBAR_SIZE;
+        Bar next = CYCLE_ORDER[Math.floorMod(page + direction, CYCLE_ORDER.length)];
+        setSelection(player, next, WcwtToolkitHotbarState.getSlot(player));
+    }
+
+    private static void setSelection(LocalPlayer player, Bar bar, int slot) {
+        WcwtToolkitHotbarState.setSelection(player, bar, slot);
+        PacketDistributor.sendToServer(new WcwtToolkitHotbarSelectionPacket(
+                WcwtToolkitHotbarState.getBar(player).ordinal(), WcwtToolkitHotbarState.getSlot(player)));
     }
 
     private static boolean isHudVisible(Minecraft minecraft) {

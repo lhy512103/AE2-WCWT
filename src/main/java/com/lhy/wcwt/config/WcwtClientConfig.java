@@ -107,7 +107,7 @@ public final class WcwtClientConfig {
         FAVORITED_KEYS = BUILDER
                 .comment("Serialized client-side favorite AE keys for WCWT terminal sorting and overlays.")
                 .translation("wcwt.config.favoritedKeys")
-                .defineList("favoritedKeys", java.util.List.of(), entry -> entry instanceof String);
+                .defineList("favoritedKeys", java.util.List.of(), () -> "", entry -> entry instanceof String);
         SPEC = BUILDER.build();
     }
 

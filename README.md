@@ -3,7 +3,24 @@
 AE2 WCWT (Wireless Comprehensive Work Terminal) is an integrated wireless terminal for **Applied Energistics 2 / NeoForge 1.21.1**.
 It is not just a wireless crafting terminal: it folds commonly used AE2 addon workflows into a single terminal item and a single UI.
 
-Current version: `v1.3.9`
+Current version: `v1.3.10`
+
+## Automated Publishing
+
+The repository contains a GitHub Actions workflow at `.github/workflows/publish.yml`. Publishing
+a GitHub Release builds the NeoForge jar from that release tag and publishes it to both CurseForge
+and Modrinth. The release tag must match `mod_version` in `gradle.properties`; for example,
+release tag `v1.3.11` requires `mod_version=1.3.11`.
+
+Configure these repository settings before using the workflow:
+
+- Repository variable `CURSEFORGE_PROJECT_ID`: the CurseForge project ID.
+- Repository variable `MODRINTH_PROJECT_ID`: the Modrinth project ID or slug.
+- Repository secret `CURSEFORGE_TOKEN`: a CurseForge API token with permission to publish files.
+- Repository secret `MODRINTH_TOKEN`: a Modrinth personal access token with the `CREATE_VERSION` scope.
+
+The workflow publishes the jar from `build/libs`, labels it as a NeoForge release for Minecraft
+`1.21.1`, and uses the GitHub Release body as the release description on both platforms.
 
 ## Overview
 
@@ -233,7 +250,7 @@ MIT License.
 AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistics 2 / NeoForge 1.21.1** 的综合型无线终端。
 目标不是只做“无线合成终端”，而是把 AE2 生态里常用、常切换、常要开很多界面的功能，集中到一把终端里。
 
-当前版本：`v1.3.9`
+当前版本：`v1.3.10`
 
 ## 特性概览
 

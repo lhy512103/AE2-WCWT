@@ -1,5 +1,53 @@
 # Changelog
 
+## v1.3.10
+
+### English
+
+1. Fixed: Oversized counts in client packets are rejected before allocation, so crafted packets can no longer exhaust server memory.
+2. Fixed: Pattern providers are tracked by a stable id, so adding or removing a provider no longer sends clicks and uploads to the wrong machine.
+3. Fixed: The EMI hammer button no longer overlaps EMI Recipe Sharing's share button (#23).
+4. Fixed: Using an item with a GUI from the toolkit extra bar no longer kicks the player from the server (#26).
+5. Fixed: Scrolling the toolkit extra bar in multiplayer no longer disconnects players (#25).
+6. Fixed: The toolkit extra bar no longer takes Shift+scroll or scrolls handled by other mods (#24).
+7. Fixed: The extra bar and terminals share one toolkit inventory, so items can no longer be duplicated or lost.
+8. Changed: The extra bar now works like MEST: number keys pick a slot in the current page and clicking a cell only selects it.
+9. Fixed: Equipping armor, pouring buckets, swapping hands and dropping from the extra bar now update the right cell.
+10. Fixed: Pick block selects a matching extra-bar cell, otherwise switches back to the vanilla hotbar.
+11. Fixed: Lowering `toolkitSlotCount` returns items in removed slots to the player.
+12. Added: Unit tests and a GitHub Actions build workflow.
+13. Changed: Moved pattern-upload and toolkit-storage code out of the terminal menu classes.
+14. Chore: Removed unused code and replaced deprecated API calls to keep the project warning-free.
+15. Fixed: Toolkit quick bars now use a dedicated layer above the vanilla hotbar, preventing offhand HUD overlap.
+16. Fixed: Advanced AE pattern inputs keep their encoded order, text-entry keys no longer trigger terminal shortcuts, empty terminals no longer refresh pinned rows during initialization, resonant conversion icons stay inside their buttons, and toolkit cards work with universal terminals.
+17. Fixed: Toolkit quick bars now reserve the vanilla offhand well and adapt their cell width like MEST, preventing overlap when the offhand is occupied.
+18. Added: Publishing a GitHub Release can automatically publish the matching NeoForge build to CurseForge and Modrinth.
+
+### 中文
+
+1. 修复：客户端数据包中过大的数量会在分配前被拒绝，伪造的数据包不能再耗尽服务端内存。
+2. 修复：样板供应器改用稳定 ID 标识，增删供应器后点击和上传不会再落到别的机器上。
+3. 修复：EMI 锤子按钮不再与 EMI Recipe Sharing 的分享按钮重叠（#23）。
+4. 修复：在工具包扩展栏中使用带界面的物品不再把玩家踢出服务器（#26）。
+5. 修复：联机时滚动工具包扩展栏不再导致玩家掉线（#25）。
+6. 修复：工具包扩展栏不再抢占 Shift+滚轮和其他模组已处理的滚轮操作（#24）。
+7. 修复：扩展栏与终端共用同一份工具包库存，不会再刷物品或丢物品。
+8. 调整：扩展栏参考 MEST 实现，数字键在当前页内选格，点击格子只做选中。
+9. 修复：从扩展栏装备盔甲、倒水桶、交换主副手和丢弃物品时会更新正确的格子。
+10. 修复：鼠标中键选取方块时优先选中扩展栏中相同的物品，否则切回原版快捷栏。
+11. 修复：调小 `toolkitSlotCount` 后，被移除格子里的物品会退还给玩家。
+12. 新增：单元测试和 GitHub Actions 构建工作流。
+13. 调整：将样板上传和工具包存储代码从终端菜单类中拆出。
+14. 清理：删除未使用代码并替换过时 API，清理 IDE 警告。
+15. 修复：工具包扩展快捷栏改用原版快捷栏上方的独立图层，避免与副手 HUD 重叠。
+16. 修复：高级 AE 样板保留编码顺序;
+17. 修复：输入文字时不会触发终端快捷键;
+18. 修复：空终端初始化不再刷新置顶行;
+19. 修复：谐振转换图标保持在按钮范围内;
+20. 修复：通用终端也能识别工具包卡。
+21. 修复：工具包扩展快捷栏参考 MEST 预留原版副手槽，并自适应格子宽度，副手有物品时不再重叠。
+22. 新增：发布 GitHub Release 后，GitHub Actions 可自动将对应版本的 NeoForge 构建发布到 CurseForge 和 Modrinth。
+
 ## v1.3.9
 
 ### English

@@ -29,13 +29,13 @@ public record JeiCraftingTransferPacket(List<@Nullable GenericStack> inputs, Lis
 
     private static JeiCraftingTransferPacket decode(RegistryFriendlyByteBuf buffer) {
         boolean toCraftingGrid = buffer.readBoolean();
-        EncodingMode mode = EncodingMode.values()[buffer.readVarInt()];
-        int inputSize = buffer.readVarInt();
+        EncodingMode mode = WcwtPacketLimits.readEnum(buffer, EncodingMode.values(), "encoding mode");
+        int inputSize = WcwtPacketLimits.readCount(buffer, WcwtPacketLimits.MAX_TRANSFER_STACKS, "transfer input");
         List<GenericStack> inputs = new ArrayList<>(inputSize);
         for (int i = 0; i < inputSize; i++) {
             inputs.add(readNullableStack(buffer));
         }
-        int outputSize = buffer.readVarInt();
+        int outputSize = WcwtPacketLimits.readCount(buffer, WcwtPacketLimits.MAX_TRANSFER_STACKS, "transfer output");
         List<GenericStack> outputs = new ArrayList<>(outputSize);
         for (int i = 0; i < outputSize; i++) {
             outputs.add(readNullableStack(buffer));

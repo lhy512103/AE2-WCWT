@@ -9,6 +9,7 @@ import appeng.hotkeys.HotkeyActions;
 import appeng.items.tools.powered.WirelessTerminalItem;
 import appeng.items.tools.powered.powersink.PoweredItemCapabilities;
 import appeng.menu.locator.MenuLocators;
+import com.lhy.wcwt.init.ModAttachments;
 import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.init.ModCreativeTabs;
 import com.lhy.wcwt.init.ModItems;
@@ -18,6 +19,7 @@ import com.lhy.wcwt.hotkeys.WcwtMagnetHotkeyAction;
 import com.lhy.wcwt.hotkeys.WcwtStowHotkeyAction;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
+import com.lhy.wcwt.menu.locator.WcwtToolkitItemLocator;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -65,6 +67,7 @@ public class WcwtMod {
     public WcwtMod(IEventBus modEventBus, ModContainer modContainer) {
         WcwtSlotSemantics.init();
         ModComponents.DATA_COMPONENTS.register(modEventBus);
+        ModAttachments.ATTACHMENT_TYPES.register(modEventBus);
         ModItems.ITEMS.register(modEventBus);
         ModCreativeTabs.CREATIVE_TABS.register(modEventBus);
         ModMenus.MENUS.register(modEventBus);
@@ -100,6 +103,10 @@ public class WcwtMod {
                     WcwtToolkitNetworkToolLocator.class,
                     WcwtToolkitNetworkToolLocator::writeToPacket,
                     WcwtToolkitNetworkToolLocator::readFromPacket);
+            MenuLocators.register(
+                    WcwtToolkitItemLocator.class,
+                    WcwtToolkitItemLocator::writeToPacket,
+                    WcwtToolkitItemLocator::readFromPacket);
             GridLinkables.register(
                     ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);

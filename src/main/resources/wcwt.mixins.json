@@ -10,7 +10,9 @@
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin",
     "WcwtInventoryMixin",
-    "WcwtPlayerMixin"
+    "WcwtPlayerMixin",
+    "WcwtMenuLocatorsMixin",
+    "WcwtToolkitDropMixin"
   ],
   "client": [
     "GuiMixin",

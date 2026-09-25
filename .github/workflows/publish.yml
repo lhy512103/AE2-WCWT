@@ -1,0 +1,68 @@
+name: Build and Publish
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Publish to CurseForge and Modrinth
+    runs-on: ubuntu-latest
+    if: ${{ vars.MODRINTH_PROJECT_ID != '' && vars.CURSEFORGE_PROJECT_ID != '' }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Read mod metadata
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          get_property() {
+            sed -n "s/^$1=//p" gradle.properties | head -n 1
+          }
+
+          echo "mod_id=$(get_property mod_id)" >> "$GITHUB_OUTPUT"
+          echo "mod_version=$(get_property mod_version)" >> "$GITHUB_OUTPUT"
+          echo "minecraft_version=$(get_property minecraft_version)" >> "$GITHUB_OUTPUT"
+
+          version="$(get_property mod_version)"
+          release_version="${RELEASE_TAG#v}"
+          if [ "$version" != "$release_version" ]; then
+            echo "Release tag v${release_version} does not match mod_version=${version}." >&2
+            exit 1
+          fi
+
+      - name: Build mod
+        run: ./gradlew build --no-daemon
+
+      - name: Publish mod files
+        uses: Kir-Antipov/mc-publish@v3
+        with:
+          modrinth-id: ${{ vars.MODRINTH_PROJECT_ID }}
+          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
+          curseforge-id: ${{ vars.CURSEFORGE_PROJECT_ID }}
+          curseforge-token: ${{ secrets.CURSEFORGE_TOKEN }}
+          files: build/libs/${{ steps.metadata.outputs.mod_id }}-${{ steps.metadata.outputs.mod_version }}.jar
+          name: ${{ steps.metadata.outputs.mod_id }}-${{ steps.metadata.outputs.mod_version }}
+          version: ${{ steps.metadata.outputs.mod_version }}
+          version-type: release
+          loaders: neoforge
+          game-versions: ${{ steps.metadata.outputs.minecraft_version }}
+          changelog: ${{ github.event.release.body }}

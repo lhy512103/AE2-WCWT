@@ -5,7 +5,6 @@ import com.glodblock.github.extendedae.util.FCClientUtil;
 import com.glodblock.github.extendedae.util.MessageUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;

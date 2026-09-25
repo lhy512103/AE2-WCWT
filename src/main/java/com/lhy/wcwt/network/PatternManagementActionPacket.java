@@ -10,6 +10,7 @@ import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.helpers.WcwtRemoteMenuAccess;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternUploadMetadata;
+import com.lhy.wcwt.util.PatternProviderIds;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.chat.Component;
@@ -127,7 +128,7 @@ public record PatternManagementActionPacket(Action action,
         if (providerSlot < 0) {
             return;
         }
-        var provider = getProviderByOrdinal(player, providerId);
+        var provider = getProviderById(player, providerId);
         if (provider == null) {
             return;
         }
@@ -164,7 +165,7 @@ public record PatternManagementActionPacket(Action action,
         if (providerSlot < 0) {
             return;
         }
-        var provider = getProviderByOrdinal(player, providerId);
+        var provider = getProviderById(player, providerId);
         if (provider == null) {
             return;
         }
@@ -208,7 +209,7 @@ public record PatternManagementActionPacket(Action action,
 
         PatternContainer provider = null;
         if (preferredProviderId > 0) {
-            provider = getProviderByOrdinal(providers, preferredProviderId);
+            provider = getProviderById(providers, preferredProviderId);
         }
         String patternSearchText = normalizeSearchText(clientResolvedSearchText);
         if (patternSearchText == null) {
@@ -246,7 +247,7 @@ public record PatternManagementActionPacket(Action action,
         }
 
         var providers = listProviders(player);
-        var provider = getProviderByOrdinal(providers, providerId);
+        var provider = getProviderById(providers, providerId);
         if (provider == null) {
             player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"), true);
             return;
@@ -315,10 +316,10 @@ public record PatternManagementActionPacket(Action action,
 
     private static ResolvedProvider resolveProvider(ServerPlayer player, PatternManagementActionPacket packet) {
         var providers = listProviders(player);
-        PatternContainer ordinalProvider = getProviderByOrdinal(providers, packet.providerId);
+        PatternContainer idProvider = getProviderById(providers, packet.providerId);
         if (!packet.hasProviderLocation) {
-            return ordinalProvider != null
-                    ? new ResolvedProvider(ordinalProvider, getLocation(ordinalProvider))
+            return idProvider != null
+                    ? new ResolvedProvider(idProvider, getLocation(idProvider))
                     : null;
         }
         RequestedLocation requested = getRequestedLocation(player, packet);
@@ -326,10 +327,10 @@ public record PatternManagementActionPacket(Action action,
             return null;
         }
 
-        if (ordinalProvider != null) {
-            Location location = getLocation(ordinalProvider);
+        if (idProvider != null) {
+            Location location = getLocation(idProvider);
             if (matches(location, requested)) {
-                return new ResolvedProvider(ordinalProvider, location);
+                return new ResolvedProvider(idProvider, location);
             }
         }
         for (PatternContainer provider : providers) {
@@ -445,17 +446,13 @@ public record PatternManagementActionPacket(Action action,
         }
     }
 
-    private static PatternContainer getProviderByOrdinal(ServerPlayer player, long providerId) {
+    private static PatternContainer getProviderById(ServerPlayer player, long providerId) {
         var providers = listProviders(player);
-        return getProviderByOrdinal(providers, providerId);
+        return getProviderById(providers, providerId);
     }
 
-    private static PatternContainer getProviderByOrdinal(List<PatternContainer> providers, long providerId) {
-        int index = (int) providerId - 1;
-        if (index < 0 || index >= providers.size()) {
-            return null;
-        }
-        return providers.get(index);
+    private static PatternContainer getProviderById(List<PatternContainer> providers, long providerId) {
+        return PatternProviderIds.find(providers, providerId);
     }
 
     private static InsertResult insertPatternIntoProviderGroup(List<PatternContainer> providers,

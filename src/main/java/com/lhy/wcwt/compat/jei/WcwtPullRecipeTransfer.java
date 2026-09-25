@@ -406,9 +406,6 @@ public final class WcwtPullRecipeTransfer {
             return anyMissing() && anyResolved;
         }
 
-        public int totalSize() {
-            return missingSlots.size() + craftableSlots.size();
-        }
     }
 
     private static final class TerminalPullTransferError implements IRecipeTransferError {
@@ -427,10 +424,6 @@ public final class WcwtPullRecipeTransfer {
             this.allowShiftMaxTransfer = allowShiftMaxTransfer;
         }
 
-        private static TerminalPullTransferError previewOnly(boolean craftMissing, boolean allowShiftMaxTransfer) {
-            return new TerminalPullTransferError(new PreviewSlots(List.of(), List.of(), false), craftMissing,
-                    allowShiftMaxTransfer);
-        }
 
         @Override
         public Type getType() {

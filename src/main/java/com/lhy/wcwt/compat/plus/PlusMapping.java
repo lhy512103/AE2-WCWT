@@ -81,7 +81,8 @@ public final class PlusMapping {
         if (provider == null) {
             return "";
         }
-        String name = ExtendedAEPatternUploadUtil.getProviderDisplayName(provider);
+        var nameComponent = ExtendedAEPatternUploadUtil.getProviderDisplayNameComponent(provider);
+        String name = nameComponent == null ? null : nameComponent.getString();
         return name == null ? "" : name;
     }
 }

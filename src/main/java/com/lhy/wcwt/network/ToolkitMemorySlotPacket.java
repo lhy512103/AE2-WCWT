@@ -1,6 +1,7 @@
 package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
+import com.lhy.wcwt.helpers.WcwtToolkitSync;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -31,7 +32,7 @@ public record ToolkitMemorySlotPacket(int slotIndex, boolean remember) implement
             if (context.player() instanceof ServerPlayer player
                     && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
                 menu.setToolkitMemorySlot(packet.slotIndex(), packet.remember());
-                WcwtToolkitHotbarSyncPacket.send(player);
+                WcwtToolkitSync.sendNow(player);
             }
         });
     }
