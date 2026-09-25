@@ -25,7 +25,6 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.lwjgl.glfw.GLFW;
 
@@ -73,14 +72,12 @@ public final class WcwtToolkitHud {
         }
     }
 
-    @SubscribeEvent
-    public static void onRenderGui(RenderGuiEvent.Post event) {
+    public static void renderGuiLayer(GuiGraphics graphics, net.minecraft.client.DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
         if (!isHudVisible(minecraft) || minecraft.options.hideGui) {
             return;
         }
         LocalPlayer player = minecraft.player;
-        GuiGraphics graphics = event.getGuiGraphics();
         int y = graphics.guiHeight() - BAR_HEIGHT;
         int centerX = graphics.guiWidth() / 2 - 91;
         Bar bar = WcwtToolkitHotbarState.getBar(player);
