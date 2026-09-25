@@ -775,7 +775,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         int copyTextW    = font.width(copyLabel);
         float replaceScale = WcwtTextRendering.scale(1.0F);
         float replaceTextW = font.width(replaceLabel) * replaceScale;
-        int copyLabelX    = x + COPY_PATTERN_BTN_X + Math.round((COPY_PATTERN_BTN_W - copyTextW)    / 2f);
         int replaceLabelX = x + REPLACE_BTN_X      + Math.round((REPLACE_BTN_W      - replaceTextW) / 2f);
         int labelBaseY = y + COPY_PATTERN_BTN_Y + (COPY_PATTERN_BTN_H - 7) / 2 - 1;
         boolean copyHovered = copyPatternBtn != null
