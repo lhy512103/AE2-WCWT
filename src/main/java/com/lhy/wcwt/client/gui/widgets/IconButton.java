@@ -138,11 +138,12 @@ public class IconButton extends Button implements ITooltip {
             Icon icon = overlayIcon.get();
             if (icon != null) {
                 // 图标始终缩放到按钮内部
-                float iconScale = Math.min((float) width / icon.width, (float) height / icon.height);
+                float iconScale = Math.min((float) Math.max(1, width - 2) / icon.width,
+                        (float) Math.max(1, height - 2) / icon.height);
                 int renderW = (int)(icon.width  * iconScale);
                 int renderH = (int)(icon.height * iconScale);
                 int iconX = getX() + (width  - renderW) / 2;
-                int iconY = getY() + (height - renderH) / 2 + overlayOffsetY + pressOffsetY;
+                int iconY = getY() + (height - renderH) / 2 + overlayOffsetY;
                 if (iconScale == 1f) {
                     icon.getBlitter().dest(iconX, iconY).blit(guiGraphics);
                 } else {

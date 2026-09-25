@@ -115,6 +115,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
                             new int[0], new int[0])))
                     .useAE2ToolbarBackground()
                     .setOverlayIcon(() -> Icon.SCHEDULING_RANDOM)
+                    .disableHoverPressOffset()
                     .setTooltipLines(List.of(Component.translatable("gui.wcwt.rlpc.resonating_convert")));
             children.add(resonatingConvertButton);
         }

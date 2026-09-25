@@ -19,6 +19,7 @@
 13. Changed: Moved pattern-upload and toolkit-storage code out of the terminal menu classes.
 14. Chore: Removed unused code and replaced deprecated API calls to keep the project warning-free.
 15. Fixed: Toolkit quick bars now use a dedicated layer above the vanilla hotbar, preventing offhand HUD overlap.
+16. Fixed: Advanced AE pattern inputs keep their encoded order, text-entry keys no longer trigger terminal shortcuts, empty terminals no longer refresh pinned rows during initialization, resonant conversion icons stay inside their buttons, and toolkit cards work with universal terminals.
 
 ### 中文
 
@@ -37,6 +38,7 @@
 13. 调整：将样板上传和工具包存储代码从终端菜单类中拆出。
 14. 清理：删除未使用代码并替换过时 API，清理 IDE 警告。
 15. 修复：工具包扩展快捷栏改用原版快捷栏上方的独立图层，避免与副手 HUD 重叠。
+16. 修复：高级 AE 样板保留编码顺序，输入文字时不会触发终端快捷键，空终端初始化不再刷新置顶行，谐振转换图标保持在按钮范围内，通用终端也能识别工具包卡。
 
 ## v1.3.9
 

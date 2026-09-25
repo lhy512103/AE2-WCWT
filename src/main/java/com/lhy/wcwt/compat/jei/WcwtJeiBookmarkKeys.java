@@ -29,6 +29,19 @@ public final class WcwtJeiBookmarkKeys {
         jeiRuntime = runtime;
     }
 
+    public static boolean isSearchFieldFocused() {
+        IJeiRuntime runtime = jeiRuntime;
+        if (runtime == null) {
+            return false;
+        }
+        try {
+            var overlay = runtime.getIngredientListOverlay();
+            return overlay != null && overlay.hasKeyboardFocus();
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     @Nullable
     public static String getHoveredIngredientDisplayName() {
         IJeiRuntime runtime = jeiRuntime;

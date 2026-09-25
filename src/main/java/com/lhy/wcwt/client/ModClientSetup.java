@@ -2,6 +2,7 @@ package com.lhy.wcwt.client;
 
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
+import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.init.ModMenus;
 import appeng.init.client.InitScreens;
@@ -56,7 +57,8 @@ public class ModClientSetup {
         if (screen == null) {
             return;
         }
-        if (!screen.isTypingInPatternManagementField()
+        if (!screen.isTypingInPatternManagementField() && screen.getFocused() == null
+                && !WcwtJeiBookmarkKeys.isSearchFieldFocused()
                 && screen.handleExtendedUiHotkey(event.getKeyCode(), event.getScanCode())) {
             event.setCanceled(true);
             return;

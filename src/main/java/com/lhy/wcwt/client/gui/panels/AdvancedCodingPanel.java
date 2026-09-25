@@ -457,6 +457,13 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
      * @param inputList 新的输入列表
      */
     public void updateInputList(LinkedHashMap<AEKey, Direction> inputList) {
+        if (new ArrayList<>(this.inputList.keySet()).equals(new ArrayList<>(inputList.keySet()))) {
+            this.inputList = inputList;
+            rows.clear();
+            inputList.forEach((key, direction) -> rows.add(new InputRow(key, direction)));
+            resetScrollbarRange();
+            return;
+        }
         this.inputList.clear();
         
         // 清除旧的方向按钮
@@ -615,7 +622,11 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
             if (level != null) {
                 var advView = AdvancedAePatternCompat.view(stack, level, false);
                 if (advView != null) {
-                    newList.putAll(advView.dirMap());
+                    for (var input : advView.inputs()) {
+                        if (input != null && input.what() != null) {
+                            newList.putIfAbsent(input.what(), advView.dirMap().get(input.what()));
+                        }
+                    }
                 } else {
                     var detail = appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level);
                     if (detail instanceof appeng.crafting.pattern.AEProcessingPattern proc) {

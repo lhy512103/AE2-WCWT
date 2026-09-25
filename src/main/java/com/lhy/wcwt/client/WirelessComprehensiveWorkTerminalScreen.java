@@ -1173,7 +1173,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         if (columns > 0) {
             repo.setRowSize(columns);
-            repo.updateView();
         }
 
         if (DEBUG_REPO) {
