@@ -10,7 +10,6 @@ import dev.emi.emi.api.EmiRegistry;
 import dev.emi.emi.api.recipe.EmiRecipe;
 import dev.emi.emi.api.widget.Bounds;
 import dev.emi.emi.api.widget.Widget;
-import dev.emi.emi.api.widget.WidgetHolder;
 import net.minecraft.world.item.Item;
 
 import java.util.HashSet;
@@ -30,13 +29,13 @@ public class WcwtEmiPlugin implements EmiPlugin {
                     .anyMatch(output -> hiddenItems.contains(output.getItemStack().getItem())));
         }
         registry.addRecipeHandler(ModMenus.WCWT_MENU_TYPE, new WcwtEmiRecipeHandler());
-        registry.addRecipeDecorator(WcwtEmiPlugin::decoratePullItems);
         registry.addExclusionArea(WirelessComprehensiveWorkTerminalScreen.class,
                 (screen, consumer) -> consumer.accept(new Bounds(screen.getGuiLeft(), screen.getGuiTop(),
                         screen.getXSize(), screen.getYSize())));
     }
 
-    private static void decoratePullItems(EmiRecipe recipe, WidgetHolder widgets) {
+    /** Called from {@code RecipeDisplayMixin}; see there for why this is not an EmiRecipeDecorator. */
+    public static void addPullItemsButton(EmiRecipe recipe, List<Widget> widgets) {
         if (!WcwtPullItemsSupport.shouldShowExtraButton()) {
             return;
         }
@@ -44,9 +43,8 @@ public class WcwtEmiPlugin implements EmiPlugin {
         if (!handler.supportsRecipe(recipe)) {
             return;
         }
-        List<Widget> existing = holderWidgets(widgets);
         int[] pos = pullButtonPos(recipe);
-        widgets.add(new WcwtEmiPullItemsWidget(pos[0], pos[1], recipe, existing));
+        widgets.add(new WcwtEmiPullItemsWidget(pos[0], pos[1], recipe, widgets));
     }
 
     private static int[] pullButtonPos(EmiRecipe recipe) {
@@ -75,18 +73,5 @@ public class WcwtEmiPlugin implements EmiPlugin {
             x += BUTTON_PITCH;
         }
         return new int[] {recipe.getDisplayWidth() + 5, Math.max(0, height - BUTTON)};
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<Widget> holderWidgets(WidgetHolder holder) {
-        try {
-            var field = holder.getClass().getField("widgets");
-            Object value = field.get(holder);
-            if (value instanceof List<?> list) {
-                return (List<Widget>) list;
-            }
-        } catch (ReflectiveOperationException ignored) {
-        }
-        return List.of();
     }
 }
