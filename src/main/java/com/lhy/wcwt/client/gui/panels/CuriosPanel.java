@@ -29,7 +29,6 @@ public class CuriosPanel extends ExtendedUIPanel {
             new ExtendedPanelLayout.Rect(DEFAULT_SCROLLBAR_X, DEFAULT_SCROLLBAR_Y, 0, DEFAULT_SCROLLBAR_HEIGHT);
     private int columns = DEFAULT_COLUMNS;
 
-    private int selectedSlot = -1; // 高级编码模式下选中的槽位
     private boolean advancedCodingMode = false; // 是否处于高级编码模式
     
     public CuriosPanel(int x, int y) {
@@ -53,13 +52,6 @@ public class CuriosPanel extends ExtendedUIPanel {
      */
     public void setAdvancedCodingMode(boolean enabled) {
         this.advancedCodingMode = enabled;
-    }
-    
-    /**
-     * 设置选中的槽位
-     */
-    public void setSelectedSlot(int slot) {
-        this.selectedSlot = slot;
     }
     
     @Override
@@ -99,7 +91,6 @@ public class CuriosPanel extends ExtendedUIPanel {
                 int slotIndex = row * getColumns() + col;
 
                 if (slotIndex >= 0) {
-                    selectedSlot = slotIndex;
                     // TODO: 发送网络包通知服务端选择了该槽位
                     return true;
                 }

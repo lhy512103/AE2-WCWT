@@ -28,7 +28,6 @@ public final class WcwtJeiBookmarkOrder {
     private WcwtJeiBookmarkOrder() {
     }
 
-    @SuppressWarnings("unchecked")
     public static void handleBookmarkMiddleClick(BookmarkInputHandler handler, Screen screen, UserInput input,
                                                  IInternalKeyMappings keyBindings,
                                                  CallbackInfoReturnable<Optional<IUserInputHandler>> cir) {

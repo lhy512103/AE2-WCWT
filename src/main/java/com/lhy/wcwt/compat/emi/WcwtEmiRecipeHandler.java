@@ -19,7 +19,6 @@ import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
-import com.lhy.wcwt.pull.WcwtPullIngredientOrdering;
 import com.lhy.wcwt.pull.WcwtStackMatching;
 import dev.emi.emi.api.recipe.EmiPlayerInventory;
 import dev.emi.emi.api.recipe.EmiRecipe;
@@ -44,7 +43,6 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Method;
@@ -797,13 +795,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                                  Set<Integer> craftableSlots,
                                  boolean anyResolved,
                                  int inputCount) {
-        private static PreviewResult previewOnly() {
-            return new PreviewResult(Set.of(), Set.of(), false, 0);
-        }
 
-        private boolean anyMissingOrCraftable() {
-            return !missingSlots.isEmpty() || !craftableSlots.isEmpty();
-        }
     }
 
 }

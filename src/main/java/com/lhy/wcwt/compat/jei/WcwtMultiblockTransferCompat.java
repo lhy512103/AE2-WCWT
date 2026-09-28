@@ -92,6 +92,7 @@ final class WcwtMultiblockTransferCompat {
                 .anyMatch(slot -> slot.getAllIngredients().findAny().isPresent());
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean isFilteredHatchSlot(List<ItemStack> alternatives, String[] filters) {
         if (filters.length == 0) {
             return false;

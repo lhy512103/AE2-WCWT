@@ -6,7 +6,6 @@ import io.netty.buffer.ByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.ByteBufCodecs;
 import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
 import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record ManualWorkspaceModePacket(int mode) implements CustomPacketPayload {

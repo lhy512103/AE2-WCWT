@@ -340,10 +340,6 @@ public final class WcwtIngredientPriorities {
         return items.length > 0 ? items[0].copy() : ItemStack.EMPTY;
     }
 
-    private static ItemStack findBestNetworkIngredient(@Nullable MEStorageMenu menu, Ingredient ingredient) {
-        return findBestNetworkIngredient(createContext(menu, Map.of()), ingredient);
-    }
-
     private static ItemStack findBestNetworkIngredient(PriorityContext context, Ingredient ingredient) {
         return context.ingredientPriorities().entrySet().stream()
                 .filter(entry -> entry.getKey() instanceof AEItemKey itemKey && itemKey.matches(ingredient))

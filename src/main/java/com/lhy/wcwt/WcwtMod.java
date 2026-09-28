@@ -185,6 +185,7 @@ public class WcwtMod {
         });
     }
 
+    @SuppressWarnings("deprecation")
     private static void registerExternalUpgradeCard(Item host, String namespace, String path, int max, String groupKey,
             boolean quietIfMissing) {
         var card = BuiltInRegistries.ITEM.get(ResourceLocationCompat.id(namespace, path));

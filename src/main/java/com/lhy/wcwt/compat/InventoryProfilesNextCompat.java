@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
-import java.util.Collection;
 import java.util.List;
 import java.util.Queue;
 import java.nio.charset.StandardCharsets;
@@ -165,7 +164,7 @@ public final class InventoryProfilesNextCompat {
         }
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
+    @SuppressWarnings("unchecked")
     private static void applyHints(Object hintData, boolean configureButtons) throws ReflectiveOperationException {
         setBooleanField(hintData, "force", true);
         setBooleanField(hintData, "playerSideOnly", true);
@@ -204,7 +203,7 @@ public final class InventoryProfilesNextCompat {
     private static void configureButtonHint(Method hintFor, Object hintData, Class<?> buttonEnumClass,
                                             String buttonName, int horizontalOffset, int bottom, boolean hide)
             throws ReflectiveOperationException {
-        Object button = Enum.valueOf((Class<? extends Enum>) buttonEnumClass.asSubclass(Enum.class), buttonName);
+        @SuppressWarnings({"unchecked", "rawtypes"}) Object button = Enum.valueOf((Class<? extends Enum>) buttonEnumClass.asSubclass(Enum.class), buttonName);
         Object buttonHint = hintFor.invoke(hintData, button);
         setIntField(buttonHint, "horizontalOffset", horizontalOffset);
         setIntField(buttonHint, "bottom", bottom);

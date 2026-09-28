@@ -130,6 +130,7 @@ public final class GtceuRecipeTransferExclusions {
         return false;
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean isGtceuProgrammedCircuit(ItemStack stack) {
         return GTCEU_PROGRAMMED_CIRCUIT.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()));
     }

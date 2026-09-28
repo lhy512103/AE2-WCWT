@@ -34,7 +34,6 @@ import net.minecraftforge.network.NetworkHooks;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public record PatternManagementActionPacket(Action action,

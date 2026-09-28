@@ -2,7 +2,6 @@ package com.lhy.wcwt.menu.locator;
 
 import appeng.api.implementations.menuobjects.ItemMenuHost;
 import appeng.menu.ISubMenu;
-import appeng.menu.locator.MenuLocator;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;

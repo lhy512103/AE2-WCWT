@@ -277,20 +277,6 @@ public final class WcwtTerminalPullService {
         };
     }
 
-    private static List<RequestedIngredient> scaleRequestedIngredients(List<RequestedIngredient> requestedIngredients, int transferSets) {
-        if (transferSets <= 1) {
-            return requestedIngredients;
-        }
-
-        List<RequestedIngredient> scaled = new ArrayList<>(requestedIngredients.size());
-        for (RequestedIngredient ingredient : requestedIngredients) {
-            scaled.add(new RequestedIngredient(ingredient.alternatives(),
-                    Math.max(1, Math.multiplyExact(ingredient.count(), transferSets)),
-                    ingredient.targetSlot()));
-        }
-        return scaled;
-    }
-
     /**
      * Shift/+ 最大传输时按每个配方槽独立放大，而不是用“所有输入都能满足的最小套数”。
      *
@@ -405,66 +391,6 @@ public final class WcwtTerminalPullService {
             snapshot.add(inventory.getStackInSlot(i).copy());
         }
         return snapshot;
-    }
-
-    private static int computeMaxTransferSets(MEStorageMenu menu, MEStorage storage, @Nullable IPartitionList filter,
-            @Nullable ICraftingService craftingService, boolean craftMissing, List<RequestedIngredient> requestedIngredients,
-            List<ItemStack> playerInventorySnapshot, List<ItemStack> craftingGridSnapshot,
-            WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode targetMode) {
-        Map<AEItemKey, Long> availableByKey = new LinkedHashMap<>();
-
-        for (int i = 0; i < playerInventorySnapshot.size(); i++) {
-            if (menu.isPlayerInventorySlotLocked(i)) {
-                continue;
-            }
-            addStackAmount(availableByKey, playerInventorySnapshot.get(i));
-        }
-        for (ItemStack stack : craftingGridSnapshot) {
-            addStackAmount(availableByKey, stack);
-        }
-        for (var entry : storage.getAvailableStacks()) {
-            if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
-                continue;
-            }
-            if (filter != null && !filter.isListed(itemKey)) {
-                continue;
-            }
-            availableByKey.merge(itemKey, entry.getLongValue(), Long::sum);
-        }
-
-        List<RequestedIngredient> orderedIngredients = new ArrayList<>(requestedIngredients);
-        orderedIngredients.sort((left, right) -> Integer.compare(left.alternatives().size(), right.alternatives().size()));
-
-        int completedSets = 0;
-        int maxSets = getMaxTransferSetsForTarget(targetMode, requestedIngredients);
-        while (completedSets < maxSets
-                && tryReserveSingleSet(availableByKey, orderedIngredients, filter, craftingService, craftMissing)) {
-            completedSets++;
-        }
-        return completedSets;
-    }
-
-    private static boolean tryReserveSingleSet(Map<AEItemKey, Long> availableByKey, List<RequestedIngredient> orderedIngredients,
-            @Nullable IPartitionList filter, @Nullable ICraftingService craftingService, boolean craftMissing) {
-        Map<AEItemKey, Long> remaining = new LinkedHashMap<>(availableByKey);
-
-        for (RequestedIngredient ingredient : orderedIngredients) {
-            if (ingredient.alternatives().isEmpty()) {
-                return false;
-            }
-            var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(ingredient.alternatives());
-            long reserved = WcwtMeIngredientExtraction.reserveAmount(
-                    remaining, ingredient.alternatives(), wideIngredient, ingredient.count());
-            if (reserved < ingredient.count()
-                    && !(craftMissing && craftingService != null
-                    && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null)) {
-                return false;
-            }
-        }
-
-        availableByKey.clear();
-        availableByKey.putAll(remaining);
-        return true;
     }
 
     private static void addStackAmount(Map<AEItemKey, Long> availableByKey, ItemStack stack) {

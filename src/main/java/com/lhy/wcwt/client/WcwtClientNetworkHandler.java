@@ -31,6 +31,7 @@ public final class WcwtClientNetworkHandler {
         }
     }
 
+    @SuppressWarnings("deprecation")
     public static void handleRestockAmounts(WcwtRestockAmountsPacket packet) {
         HashMap<Item, Long> map = Maps.newHashMapWithExpectedSize(packet.items().size());
         packet.items().forEach((itemId, count) ->

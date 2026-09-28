@@ -29,7 +29,6 @@ import appeng.api.config.CopyMode;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.client.gui.Icon;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.Scrollbar;
@@ -663,7 +662,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
 
     /** 调试日志限频：避免每帧刷屏。每隔 60 帧（约 1 秒）打印一次关键状态。 */
     private static int debugTick = 0;
-    private static final boolean DEBUG = false;
+    private static final boolean DEBUG = Boolean.getBoolean("wcwt.debug.advancedCoding");
 
     @Override
     protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -1170,14 +1169,6 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     private static boolean contains(Rect2i rect, double mouseX, double mouseY) {
         return mouseX >= rect.getX() && mouseX < rect.getX() + rect.getWidth()
                 && mouseY >= rect.getY() && mouseY < rect.getY() + rect.getHeight();
-    }
-
-    /** 当鼠标悬停在槽位区域时，绘制半透明白色高亮（16×16）。 */
-    private void drawSlotHoverHighlight(GuiGraphics g, int mouseX, int mouseY, int slotAbsX, int slotAbsY) {
-        if (mouseX >= slotAbsX && mouseX < slotAbsX + 16
-                && mouseY >= slotAbsY && mouseY < slotAbsY + 16) {
-            g.fill(slotAbsX, slotAbsY, slotAbsX + 16, slotAbsY + 16, 0x80FFFFFF);
-        }
     }
 
     private void drawSlotHoverHighlight(GuiGraphics g, int mouseX, int mouseY, Rect2i area) {

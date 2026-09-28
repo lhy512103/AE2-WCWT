@@ -11,7 +11,6 @@ import appeng.client.gui.me.items.CraftingTermScreen;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.client.gui.NumberEntryType;
-import appeng.core.sync.BasePacket;
 import appeng.core.sync.packets.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.slot.AppEngSlot;
@@ -45,7 +44,6 @@ import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.api.IExtendedUIHost;
-import com.lhy.wcwt.client.WcwtKeybindings;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
@@ -63,7 +61,6 @@ import com.lhy.wcwt.network.ExtendedUIPacket;
 import com.lhy.wcwt.network.ManualAnvilNamePacket;
 import com.lhy.wcwt.network.ManualWorkspaceModePacket;
 import com.lhy.wcwt.network.ModNetworking;
-import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import com.lhy.wcwt.network.PatternMultiplierPacket;
 import com.lhy.wcwt.network.PatternModePacket;
 import com.lhy.wcwt.network.PatternManagementActionPacket;
@@ -117,7 +114,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -169,7 +165,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     /** 4 个样板模式 tab 按钮中**最顶**的那个（modeTabButton3）。扩展按钮 Y 锚到它的顶部。*/
     private TabButton topModeTabButton;
     /** 4 个样板模式 tab 按钮中**最底**的那个（modeTabButton0）。用于反推升级槽底部位置。*/
-    private TabButton bottomModeTabButton;
     private TabButton tabCrafting;
     private TabButton tabProcessing;
     private TabButton tabSmithing;
@@ -342,8 +337,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             com.lhy.wcwt.util.ResourceLocationCompat.id("curios", "textures/gui/inventory.png");
     private static final ResourceLocation AE2_STATES_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/states.png");
-    private static final ResourceLocation AAE_STATES_TEXTURE =
-            com.lhy.wcwt.util.ResourceLocationCompat.id("advanced_ae", "textures/guis/states.png");
     private static final ResourceLocation WCWT_GUI_TEXTURE =
             com.lhy.wcwt.util.ResourceLocationCompat.id("ae2", "textures/guis/wcwt/wireless_comprehensive_work_terminal_gui.png");
     private static final ResourceLocation WCWT_EXTENDED_CRAFTING_TEXTURE =
@@ -380,7 +373,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int THEMED_STONECUTTING_RESULT_SRC_X = 124;
     private static final int THEMED_STONECUTTING_RESULT_SRC_Y = 140;
     private static final int THEMED_EXTENDED_BUTTONS_Z_OFFSET = 40;
-    private static final int PATTERN_OPTION_BUTTON_SIZE = 16;
     private static final int PINNED_ROW_SRC_X = 7;
     private static final int PINNED_ROW_SRC_Y = 307;
     private static final int PINNED_ROW_WIDTH = 324;
@@ -406,7 +398,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private ItemStack lastEncodedPatternForUploadSync = ItemStack.EMPTY;
     private @Nullable String lastEncodedPatternUploadSearchText;
     private boolean attemptedRestoreManagementToolkitOpenState;
-    private boolean managementToolkitOpen;
     private boolean rebuildingFavoriteRepoView;
     private boolean viewCellsPanelVisible = WcwtClientConfig.lastViewCellsPanelVisible();
     private boolean otherKeyTypesOnly = WcwtClientConfig.lastOtherKeyTypesFilter();
@@ -550,8 +541,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 WCWT_STATES_TEXTURE,
                 Component.translatable("gui.ae2.CraftingTerminal"),
                 btn -> switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING))
-                .drawTextureUnscaledCentered()
-                .disableHoverPressOffset();
+                .drawTextureUnscaledCentered();
         widgets.add("manual_mode_button0", manualCraftingButton);
 
         manualSmithingButton = new IconButton(0, 0, 12, 12,
@@ -559,8 +549,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 WCWT_STATES_TEXTURE,
                 Component.translatable("gui.wcwt.manual_workspace.smithing"),
                 btn -> switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.SMITHING))
-                .drawTextureUnscaledCentered()
-                .disableHoverPressOffset();
+                .drawTextureUnscaledCentered();
         widgets.add("manual_mode_button1", manualSmithingButton);
 
         manualAnvilButton = new IconButton(0, 0, 12, 12,
@@ -568,8 +557,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 WCWT_STATES_TEXTURE,
                 Component.translatable("gui.wcwt.manual_workspace.anvil"),
                 btn -> switchManualWorkspaceMode(WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.ANVIL))
-                .drawTextureUnscaledCentered()
-                .disableHoverPressOffset();
+                .drawTextureUnscaledCentered();
         widgets.add("manual_mode_button2", manualAnvilButton);
 
         manualAnvilNameField = new TransparentEditBox(font, 0, 0, 88, 12, Component.empty());
@@ -661,8 +649,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 btn -> setPatternEncodingMode(EncodingMode.STONECUTTING));
         tabStonecutting.setStyle(appeng.client.gui.widgets.TabButton.Style.HORIZONTAL);
         widgets.add("modeTabButton3", tabStonecutting);
-        // JSON: modeTabButton3 bottom:168（最小）→ 最底的样板按钮
-        bottomModeTabButton = tabStonecutting;
 
         // 样板倍增按钮
         multiplierButtons = new PatternMultiplierButton[8];
@@ -1661,10 +1647,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         toggleExtendedUI(type);
         return true;
-    }
-
-    private static boolean matchesHotkey(com.mojang.blaze3d.platform.InputConstants.Key key, int keyCode, int scanCode) {
-        return key != null && key.getType().getOrCreate(keyCode) != null;
     }
 
     private static boolean matchesHotkey(net.minecraft.client.KeyMapping mapping, int keyCode, int scanCode) {
@@ -3189,7 +3171,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         slot.y = y;
     }
 
-    @SuppressWarnings("unchecked")
     private @Nullable AbstractWidget resolveWidgetById(String id) {
         try {
             Field field = appeng.client.gui.WidgetContainer.class.getDeclaredField("widgets");
@@ -4662,8 +4643,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         String label = text.getString();
         float scale = 0.75F;
         int textWidth = font.width(label);
-        boolean hover = mouseX >= leftPos + rect.left() && mouseX < leftPos + rect.left() + rect.width()
-                && mouseY >= topPos + rect.top() && mouseY < topPos + rect.top() + rect.height();
         float x = rect.left() + (rect.width() - textWidth * scale) / 2.0F;
         float y = rect.top() + (rect.height() - font.lineHeight * scale) / 2.0F;
         var pose = guiGraphics.pose();
@@ -4682,12 +4661,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 108, imageHeight - 131, color, false);
         guiGraphics.drawString(font, Component.translatable("gui.wcwt.batch.fluid_substitution"),
                 108, imageHeight - 113, color, false);
-    }
-
-    private void drawVerticalText(GuiGraphics guiGraphics, String text, int x, int y, int color) {
-        for (int i = 0; i < text.length(); i++) {
-            guiGraphics.drawString(font, text.substring(i, i + 1), x, y + i * 8, color, false);
-        }
     }
 
     private void drawScaledVerticalText(GuiGraphics guiGraphics, String text, int x, int y, int color, float scale) {
@@ -4713,14 +4686,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 : hover ? AE2_RADIO_UNCHECKED_FOCUS_V : AE2_RADIO_UNCHECKED_V;
         guiGraphics.blit(WcwtAe2Textures.checkbox(), rect.left(), rect.top(), rect.width(), rect.height(),
                 bgU, bgV, AE2_RADIO_SIZE, AE2_RADIO_SIZE, 64, 64);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, int x, int y,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               int w, int h, ResourceLocation iconTexture, int iconU, int iconV,
-                                               int mouseX, int mouseY) {
-        renderPatternManagementButton(guiGraphics, x, y, normalU, normalV, hoverU, hoverV, w, h,
-                iconTexture, iconU, iconV, 64, 64, mouseX, mouseY, 0, 0);
     }
 
     private void renderPatternManagementButton(GuiGraphics guiGraphics, int x, int y,
@@ -4763,29 +4728,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private void renderPatternManagementButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
                                                int normalU, int normalV, int hoverU, int hoverV,
                                                ResourceLocation iconTexture, int iconU, int iconV,
-                                               int mouseX, int mouseY) {
-        renderPatternManagementButton(guiGraphics, rect.left(), rect.top(), normalU, normalV, hoverU, hoverV,
-                rect.width(), rect.height(), iconTexture, iconU, iconV, mouseX, mouseY);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               ResourceLocation iconTexture, int iconU, int iconV,
                                                int iconTextureWidth, int iconTextureHeight,
                                                int mouseX, int mouseY) {
         renderPatternManagementButton(guiGraphics, rect.left(), rect.top(), normalU, normalV, hoverU, hoverV,
                 rect.width(), rect.height(), iconTexture, iconU, iconV, iconTextureWidth, iconTextureHeight,
                 mouseX, mouseY);
-    }
-
-    private void renderPatternManagementButton(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
-                                               int normalU, int normalV, int hoverU, int hoverV,
-                                               ResourceLocation iconTexture, int iconU, int iconV,
-                                               int iconTextureWidth, int iconTextureHeight,
-                                               int mouseX, int mouseY, int iconOffsetX, int iconOffsetY) {
-        renderPatternManagementButton(guiGraphics, rect.left(), rect.top(), normalU, normalV, hoverU, hoverV,
-                rect.width(), rect.height(), iconTexture, iconU, iconV, iconTextureWidth, iconTextureHeight,
-                mouseX, mouseY, iconOffsetX, iconOffsetY);
     }
 
     private void renderPatternManagementButtonIcon(GuiGraphics guiGraphics, ExtendedPanelLayout.Rect rect,
@@ -4800,11 +4747,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private ExtendedPanelLayout.Rect rowButton(ExtendedPanelLayout.Rect rect, int rowY) {
         return new ExtendedPanelLayout.Rect(rect.left(), rowY + rect.top() + PATTERN_MANAGEMENT_HEADER_Y_OFFSET,
-                rect.width(), rect.height());
-    }
-
-    private ExtendedPanelLayout.Rect slotRowButton(ExtendedPanelLayout.Rect rect, int rowY) {
-        return new ExtendedPanelLayout.Rect(rect.left(), rowY + rect.top() + PATTERN_MANAGEMENT_SLOT_Y_OFFSET,
                 rect.width(), rect.height());
     }
 
@@ -4830,28 +4772,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (selectedPatternCacheIndex == cacheIndex) {
                 selectedPatternCacheIndex = -1;
             }
-        }
-    }
-    
-    private void renderExtendedUI(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        // 渲染当前可见的扩展UI面板
-        if (advancedCodingPanel != null && advancedCodingPanel.isVisible()) {
-            advancedCodingPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (cosmeticArmorPanel != null && cosmeticArmorPanel.isVisible()) {
-            cosmeticArmorPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (curiosPanel != null && curiosPanel.isVisible()) {
-            curiosPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (toolboxPanel != null && toolboxPanel.isVisible()) {
-            toolboxPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (toolkitPanel != null && toolkitPanel.isVisible()) {
-            toolkitPanel.render(guiGraphics, mouseX, mouseY, 0);
-        }
-        if (resonatingLightningPatternCodingPanel != null && resonatingLightningPatternCodingPanel.isVisible()) {
-            resonatingLightningPatternCodingPanel.render(guiGraphics, mouseX, mouseY, 0);
         }
     }
     
@@ -5145,20 +5065,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
 
-        var panelBounds = viewCellsPanel.getBounds();
         viewCellsPanel.setScrollbarOffset(new Point(
                 mainLayout.widgetInt("viewCellsScrollbar", "left", WcwtUpgradeSlotBackground.SCROLLBAR_X),
                 mainLayout.widgetInt("viewCellsScrollbar", "top", WcwtUpgradeSlotBackground.SCROLLBAR_Y)));
-    }
-
-    private void refreshCellUpgradePanelLayout() {
-        if (cellUpgradesPanel == null || upgradesPanel == null) {
-            return;
-        }
-
-        var cellBounds = cellUpgradesPanel.getBounds();
-        var rect = resolvePanelRelativeToUpgrades("cellScrollingUpgrades", cellBounds, 2, 0);
-        cellUpgradesPanel.setPosition(new Point(rect.left(), rect.top()));
     }
 
     private ExtendedPanelLayout.Rect resolvePanelRelativeToUpgrades(String widgetId,
@@ -5940,22 +5849,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 Component.literal(entry.pos().toShortString()),
                 Component.literal(entry.dimension().location().toString()),
                 (int) Math.sqrt(player.blockPosition().distSqr(entry.pos()))), false);
-    }
-
-    private void openPatternProviderUi(PatternProviderListPacket.Entry entry) {
-        if (entry.pos() == null || entry.dimension() == null) {
-            return;
-        }
-        try {
-            var packetClass = Class.forName("com.extendedae_plus.network.OpenProviderUiC2SPacket");
-            var ctor = packetClass.getConstructor(long.class, ResourceLocation.class, int.class);
-            int face = entry.face() != null ? entry.face().ordinal() : -1;
-            Object packet = ctor.newInstance(entry.pos().asLong(), entry.dimension().location(), face);
-            if (packet instanceof com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload payload) {
-                ModNetworking.sendToServer(payload);
-            }
-        } catch (Throwable ignored) {
-        }
     }
 
     private WirelessComprehensiveWorkTerminalMenu.WcwtCurioSlot getCurioToggleSlotAt(double mouseX, double mouseY) {

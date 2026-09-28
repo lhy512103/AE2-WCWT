@@ -151,6 +151,7 @@ public final class ToolkitItemRules {
     }
 
     /** 剑格：原版与其它模组中以 {@link SwordItem} 实现的近战武器为主，三叉戟归入同一格便于收纳。 */
+    @SuppressWarnings("deprecation")
     private static boolean isSwordCategory(ItemStack stack) {
         Item item = stack.getItem();
         if (item instanceof SwordItem || item instanceof TridentItem) {
@@ -160,6 +161,7 @@ public final class ToolkitItemRules {
         return "minecraft".equals(id.getNamespace()) && ("trident".equals(id.getPath()) || id.getPath().contains("sword"));
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean isWrenchCategory(ItemStack stack) {
         Item item = stack.getItem();
         if (item instanceof QuartzWrenchItem) {
@@ -173,11 +175,13 @@ public final class ToolkitItemRules {
         return p.endsWith("_wrench") || p.contains("wrench");
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean isMekanismConfigurationCard(ItemStack stack) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         return "mekanism".equals(id.getNamespace()) && id.getPath().contains("configuration_card");
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean isMekanismConfigurator(ItemStack stack) {
         ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (!"mekanism".equals(id.getNamespace())) {

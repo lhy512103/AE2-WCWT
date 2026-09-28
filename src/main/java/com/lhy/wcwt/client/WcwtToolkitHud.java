@@ -38,7 +38,7 @@ import org.lwjgl.glfw.GLFW;
 @Mod.EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public final class WcwtToolkitHud {
     private static final net.minecraft.resources.ResourceLocation WIDGETS =
-            new net.minecraft.resources.ResourceLocation("minecraft", "textures/gui/widgets.png");
+            com.lhy.wcwt.util.ResourceLocationCompat.id("minecraft", "textures/gui/widgets.png");
     private static final Bar[] CYCLE_ORDER = {Bar.LEFT, Bar.CENTER, Bar.RIGHT};
     private static final int CELLS = CYCLE_ORDER.length * WcwtToolkitAccess.HOTBAR_SIZE;
     private static final int BAR_HEIGHT = 22;

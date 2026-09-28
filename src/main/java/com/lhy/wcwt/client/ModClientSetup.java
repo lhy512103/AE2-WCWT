@@ -35,6 +35,7 @@ public class ModClientSetup {
     private static boolean ipnCompatInitialized;
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
 
+    @SuppressWarnings("removal")
     public static void init(IEventBus modBus) {
         ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> new WcwtConfigScreen(parent)));

@@ -286,9 +286,6 @@ public final class WcwtPullRecipeTransfer {
             return anyMissing() && anyResolved;
         }
 
-        public int totalSize() {
-            return missingSlots.size() + craftableSlots.size();
-        }
     }
 
     private static final class TerminalPullTransferError implements IRecipeTransferError {
@@ -308,12 +305,6 @@ public final class WcwtPullRecipeTransfer {
             this.craftMissing = craftMissing;
             this.allowShiftMaxTransfer = allowShiftMaxTransfer;
             this.reportMissingMaterials = reportMissingMaterials;
-        }
-
-        private static TerminalPullTransferError previewOnly(boolean craftMissing, boolean allowShiftMaxTransfer,
-                boolean reportMissingMaterials) {
-            return new TerminalPullTransferError(new PreviewSlots(List.of(), List.of(), false), craftMissing,
-                    allowShiftMaxTransfer, reportMissingMaterials);
         }
 
         @Override
