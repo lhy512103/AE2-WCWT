@@ -7,6 +7,7 @@
 3. Fixed: extended hotbars were hidden when a Wireless Universal Terminal without the toolkit card was worn.
 4. Fixed: crash on mouse click when TooManyRecipeViewers and ExtendedAE Plus are both installed (#15).
 5. Removed: type restrictions and gray placeholder icons on the first 11 toolkit slots.
+6. Fixed: GT tool ingredients (e.g. saws) could not be auto-filled when crafting in the WCWT terminal unless the material matched the one shown in JEI/EMI.
 
 
 ## 中文
@@ -16,6 +17,7 @@
 3. 修复：佩戴未装工具包卡的无线通用终端时扩展快捷栏不显示。
 4. 修复：同时安装 TooManyRecipeViewers 与 ExtendedAE Plus 时点击鼠标崩溃（#15）。
 5. 移除：工具包前 11 格的类型限制与灰色底图。
+6. 修复：WCWT 终端合成时 GT 工具类标签物品（如锯子）材质与 JEI/EMI 当前显示不一致时无法自动填充。
 
 
 # 1.20.1.10

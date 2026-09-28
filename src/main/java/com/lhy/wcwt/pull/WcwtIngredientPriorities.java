@@ -316,7 +316,9 @@ public final class WcwtIngredientPriorities {
         if (!exactVisible.isEmpty()) {
             return exactVisible;
         }
+        // 可损耗物品（如 GT 工具）的 NBT 只是耐久/属性，按物品匹配以便使用任意材质或耐久的实物
         List<ItemStack> exactAlternatives = collectExactAlternatives(ingredient, visibleAlternatives);
+        exactAlternatives.removeIf(WcwtStackMatching::isDamageable);
         if (!exactAlternatives.isEmpty()) {
             ItemStack exactNetworkIngredient = findBestExactNetworkIngredient(context, exactAlternatives);
             if (!exactNetworkIngredient.isEmpty()) {
@@ -375,6 +377,7 @@ public final class WcwtIngredientPriorities {
         }
         for (var visibleAlternative : deduplicateItemAlternatives(visibleAlternatives)) {
             if (WcwtStackMatching.hasSpecificData(visibleAlternative)
+                    && !WcwtStackMatching.isDamageable(visibleAlternative)
                     && ingredient.test(visibleAlternative)) {
                 return visibleAlternative.copy();
             }
