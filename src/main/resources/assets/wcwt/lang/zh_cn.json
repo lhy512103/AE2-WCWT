@@ -38,17 +38,6 @@
   "gui.wcwt.favorite.marked": "已收藏",
   "gui.wcwt.view_cells.visible": "显示元件",
   "gui.wcwt.view_cells.hidden": "隐藏元件",
-  "gui.wcwt.toolkit.slot.sword": "剑类",
-  "gui.wcwt.toolkit.slot.pickaxe": "镐类",
-  "gui.wcwt.toolkit.slot.axe": "斧类",
-  "gui.wcwt.toolkit.slot.shovel": "锹类",
-  "gui.wcwt.toolkit.slot.hoe": "锄头",
-  "gui.wcwt.toolkit.slot.wrench": "扳手（如 AE 石英扳手）",
-  "gui.wcwt.toolkit.slot.cutting_knife": "AE 切割刀",
-  "gui.wcwt.toolkit.slot.network_tool": "AE 网络工具（空槽快速双击：从手上或背包放入）",
-  "gui.wcwt.toolkit.slot.memory_card": "AE 内存卡",
-  "gui.wcwt.toolkit.slot.mek_configuration_card": "Mekanism 配置卡",
-  "gui.wcwt.toolkit.slot.mek_configurator": "Mekanism 配置器",
   "gui.wcwt.toolkit.memory_mode.enabled": "工具包记忆槽位：开",
   "gui.wcwt.toolkit.memory_mode.disabled": "工具包记忆槽位：关",
   "gui.wcwt.toolkit.memory_slot.set": "左键记住当前物品，右键清除记忆。",
@@ -283,7 +272,5 @@
   "message.wcwt.eco_pattern_duplicate": "ECO合成子系统已存在相同样板。",
   "message.wcwt.eco_pattern_uploaded": "样板已上传至ECO合成子系统。",
   "message.wcwt.eaep_provider_missing": "WCWT：没有可用于 EAEP 上传的样板供应器。",
-  "message.wcwt.eaep_pending_failed": "WCWT：无法创建 EAEP 待上传样板。",
-  "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 网络工具槽已满。",
-  "message.wcwt.toolkit_network_tool_not_found": "未发现可放入的网络工具（光标上或背包内）。"
+  "message.wcwt.eaep_pending_failed": "WCWT：无法创建 EAEP 待上传样板。"
 }

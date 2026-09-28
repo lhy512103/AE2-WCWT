@@ -30,17 +30,6 @@
   "key.wcwt.toolkit_bar_left": "左側ツールキットホットバーへ切替",
   "key.wcwt.toolkit_bar_right": "右側ツールキットホットバーへ切替",
   "key.wcwt.open_resonating_lightning_pattern_coding": "共鳴過負荷エンコーダを開く",
-  "gui.wcwt.toolkit.slot.sword": "剣",
-  "gui.wcwt.toolkit.slot.pickaxe": "ツルハシ",
-  "gui.wcwt.toolkit.slot.axe": "斧",
-  "gui.wcwt.toolkit.slot.shovel": "シャベル",
-  "gui.wcwt.toolkit.slot.hoe": "クワ",
-  "gui.wcwt.toolkit.slot.wrench": "レンチ (例: AE 石英レンチ)",
-  "gui.wcwt.toolkit.slot.cutting_knife": "AE カッティングナイフ",
-  "gui.wcwt.toolkit.slot.network_tool": "AE ネットワークツール (空欄をダブルクリック: カーソルまたはインベントリから)",
-  "gui.wcwt.toolkit.slot.memory_card": "AE メモリーカード",
-  "gui.wcwt.toolkit.slot.mek_configuration_card": "Mekanism 設定カード",
-  "gui.wcwt.toolkit.slot.mek_configurator": "Mekanism コンフィグレータ",
 
   "gui.wcwt.return": "戻る",
 
@@ -191,7 +180,5 @@
   "message.wcwt.pull_full": "WCWT: インベントリ/保存先が満杯のためスキップ: %1$s",
   "message.wcwt.pull_shift_hint": "Shift: 非クラフトレシピで 1 バッチ分を取得",
   "message.wcwt.eco_pattern_duplicate": "ECO クラフトサブシステムには既に同じパターンがあります。",
-  "message.wcwt.eco_pattern_uploaded": "パターンを ECO クラフトサブシステムへアップロードしました。",
-  "message.wcwt.toolkit_network_slot_occupied": "ツールキットの AE ネットワークツール用スロットは既に埋まっています。",
-  "message.wcwt.toolkit_network_tool_not_found": "カーソル上またはインベントリ内に AE ネットワークツールが見つかりません。"
+  "message.wcwt.eco_pattern_uploaded": "パターンを ECO クラフトサブシステムへアップロードしました。"
 }

@@ -30,17 +30,6 @@
   "key.wcwt.toolkit_bar_left": "Левая панель набора инструментов",
   "key.wcwt.toolkit_bar_right": "Правая панель набора инструментов",
   "key.wcwt.open_resonating_lightning_pattern_coding": "Открыть кодировщик резонансной перегрузки",
-  "gui.wcwt.toolkit.slot.sword": "Мечи",
-  "gui.wcwt.toolkit.slot.pickaxe": "Кирки",
-  "gui.wcwt.toolkit.slot.axe": "Топоры",
-  "gui.wcwt.toolkit.slot.shovel": "Лопаты",
-  "gui.wcwt.toolkit.slot.hoe": "Мотыги",
-  "gui.wcwt.toolkit.slot.wrench": "Гаечный ключ (напр. кварцевый ключ AE)",
-  "gui.wcwt.toolkit.slot.cutting_knife": "Режущий нож AE",
-  "gui.wcwt.toolkit.slot.network_tool": "Сетевой инструмент AE (двойной клик по пустому слоту: с курсора или из инвентаря)",
-  "gui.wcwt.toolkit.slot.memory_card": "Карта памяти AE",
-  "gui.wcwt.toolkit.slot.mek_configuration_card": "Карта настройки Mekanism",
-  "gui.wcwt.toolkit.slot.mek_configurator": "Конфигуратор Mekanism",
 
   "gui.wcwt.return": "Назад",
 
@@ -193,7 +182,5 @@
   "message.wcwt.pull_full": "WCWT: пропущено, потому что инвентарь/хранилище заполнены: %1$s",
   "message.wcwt.pull_shift_hint": "Shift: получить одну партию для некрафтовых рецептов",
   "message.wcwt.eco_pattern_duplicate": "Подсистема крафта ECO уже содержит этот шаблон.",
-  "message.wcwt.eco_pattern_uploaded": "Шаблон загружен в подсистему крафта ECO.",
-  "message.wcwt.toolkit_network_slot_occupied": "Слот сетевого инструмента AE в наборе уже занят.",
-  "message.wcwt.toolkit_network_tool_not_found": "Не найден сетевой инструмент AE на курсоре или в инвентаре."
+  "message.wcwt.eco_pattern_uploaded": "Шаблон загружен в подсистему крафта ECO."
 }

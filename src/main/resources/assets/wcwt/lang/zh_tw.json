@@ -28,17 +28,6 @@
   "key.wcwt.toolkit_bar_left": "切換到左側工具包快捷欄",
   "key.wcwt.toolkit_bar_right": "切換到右側工具包快捷欄",
   "key.wcwt.open_resonating_lightning_pattern_coding": "打開諧振過載編碼器",
-  "gui.wcwt.toolkit.slot.sword": "劍類",
-  "gui.wcwt.toolkit.slot.pickaxe": "鎬類",
-  "gui.wcwt.toolkit.slot.axe": "斧類",
-  "gui.wcwt.toolkit.slot.shovel": "鏟類",
-  "gui.wcwt.toolkit.slot.hoe": "鋤頭",
-  "gui.wcwt.toolkit.slot.wrench": "扳手（如 AE 石英扳手）",
-  "gui.wcwt.toolkit.slot.cutting_knife": "AE 切割刀",
-  "gui.wcwt.toolkit.slot.network_tool": "AE 網路工具（空槽快速雙擊：從手上或背包放入）",
-  "gui.wcwt.toolkit.slot.memory_card": "AE 記憶卡",
-  "gui.wcwt.toolkit.slot.mek_configuration_card": "Mekanism 配置卡",
-  "gui.wcwt.toolkit.slot.mek_configurator": "Mekanism 配置器",
 
   "gui.wcwt.return": "返回",
 
@@ -191,7 +180,5 @@
   "message.wcwt.pull_full": "WCWT：背包或存儲空間不足，已跳過：%1$s",
   "message.wcwt.pull_shift_hint": "按住 Shift：非合成配方拉取一組用量",
   "message.wcwt.eco_pattern_duplicate": "ECO 合成子系統已存在相同樣板。",
-  "message.wcwt.eco_pattern_uploaded": "樣板已上傳至 ECO 合成子系統。",
-  "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 網路工具槽已滿。",
-  "message.wcwt.toolkit_network_tool_not_found": "未發現可放入的網路工具（光標上或背包內）。"
+  "message.wcwt.eco_pattern_uploaded": "樣板已上傳至 ECO 合成子系統。"
 }

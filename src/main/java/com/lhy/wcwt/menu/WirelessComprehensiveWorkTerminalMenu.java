@@ -666,13 +666,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         ToolkitSlot(InternalInventory inventory, int toolkitIndex) {
             super(inventory, toolkitIndex);
             this.toolkitIndex = toolkitIndex;
-            String tipKey = ToolkitItemRules.dedicatedSlotTooltipKey(toolkitIndex);
-            if (tipKey != null) {
-                setEmptyTooltip(() -> List.of(Component.translatable(tipKey)));
-            }
         }
 
-        /** 客户端命中检测／双击网络工具槽等用。 */
         public int toolkitLogicalIndex() {
             return toolkitIndex;
         }
@@ -1347,7 +1342,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private boolean isToolkitMemorySlot(int toolkitIndex) {
-        return toolkitIndex >= ToolkitItemRules.DEDICATED_SLOT_COUNT;
+        return toolkitIndex >= 0;
     }
 
     @Nullable
@@ -5066,7 +5061,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         int limit = Math.min(memory.size(), TOOLKIT_MEMORY_ITEM_MATCH_LIMIT);
         int[] tmp = new int[limit];
         int count = 0;
-        for (int slot = ToolkitItemRules.DEDICATED_SLOT_COUNT; slot < limit; slot++) {
+        for (int slot = 0; slot < limit; slot++) {
             if (!memory.getStackInSlot(slot).isEmpty() && toolkitMemoryMatches(slot, stack)) {
                 tmp[count++] = slot;
             }

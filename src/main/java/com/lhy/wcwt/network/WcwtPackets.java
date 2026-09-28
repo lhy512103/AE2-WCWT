@@ -75,9 +75,6 @@ public class WcwtPackets {
         ModNetworking.registerServerbound(id++, PatternManagementUploadSettingPacket.class,
                 PatternManagementUploadSettingPacket.TYPE, PatternManagementUploadSettingPacket.STREAM_CODEC,
                 PatternManagementUploadSettingPacket::handle);
-        ModNetworking.registerServerbound(id++, ToolkitNetworkToolDepositPacket.class,
-                ToolkitNetworkToolDepositPacket.TYPE, ToolkitNetworkToolDepositPacket.STREAM_CODEC,
-                ToolkitNetworkToolDepositPacket::handle);
         ModNetworking.registerServerbound(id++, ToolkitMemorySlotPacket.class,
                 ToolkitMemorySlotPacket.TYPE, ToolkitMemorySlotPacket.STREAM_CODEC,
                 ToolkitMemorySlotPacket::handle);

@@ -69,7 +69,6 @@ import com.lhy.wcwt.network.PatternProviderListPacket;
 import com.lhy.wcwt.network.PatternSelectionPacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
 import com.lhy.wcwt.network.StonecuttingRecipeSelectionPacket;
-import com.lhy.wcwt.network.ToolkitNetworkToolDepositPacket;
 import com.lhy.wcwt.network.ToolkitMemorySlotPacket;
 import com.lhy.wcwt.network.CycleProcessingOutputPacket;
 import com.lhy.wcwt.network.WirelessSettingsPacket;
@@ -390,8 +389,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean lastDebugRepoConnected;
     private boolean lastObservedLinkConnected;
     private boolean observedLinkConnectionOnce;
-    private @Nullable Slot lastAeNetworkToolkitDoubleClickSlot;
-    private long lastAeNetworkToolkitDoubleClickMs;
     private final Set<AEKey> craftableIndicatorKeys = new HashSet<>();
     private @Nullable Method meStorageUpdateScrollbarMethod;
     private @Nullable Field repoViewField;
@@ -4210,7 +4207,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderBatchPropertyButton(guiGraphics, batchFluidReplacementButton, batchFluidSubstitutions, mouseX, mouseY);
 
         if (isToolkitExpandedInManagementArea()) {
-            renderManagementToolkit(guiGraphics);
             return;
         }
 
@@ -4414,25 +4410,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         guiGraphics.fill(x - 1, y, x, y + size, borderColor);
         guiGraphics.fill(x + size, y, x + size + 1, y + size, borderColor);
         guiGraphics.fill(x, y, x + size, y + size, backgroundColor);
-    }
-
-    private void renderManagementToolkit(GuiGraphics guiGraphics) {
-        int columns = getManagementToolkitColumns();
-        int visibleRows = getManagementToolkitVisibleRows();
-        int scroll = patternManagementScrollbar != null ? patternManagementScrollbar.getCurrentScroll() : 0;
-        int firstSlot = scroll * columns;
-        for (int visibleIndex = 0; visibleIndex < columns * visibleRows; visibleIndex++) {
-            int slotIndex = firstSlot + visibleIndex;
-            if (slotIndex >= getToolkitSlots().size()) {
-                break;
-            }
-            int x = managementToolkitSlotRect.left() + (visibleIndex % columns) * ToolkitPanel.SLOT_SIZE;
-            int y = managementToolkitSlotRect.top() + (visibleIndex / columns) * ToolkitPanel.SLOT_SIZE;
-            Slot slot = getToolkitSlots().get(slotIndex);
-            if (slotIndex < ToolkitItemRules.DEDICATED_SLOT_COUNT && (slot == null || slot.getItem().isEmpty())) {
-                guiGraphics.blit(WCWT_STATES_TEXTURE, x, y, 48 + slotIndex * 16, 16, 16, 16, 256, 256);
-            }
-        }
     }
 
     private void renderToolkitMemoryOverlay(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -4859,9 +4836,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 return true;
             }
             if (toolkitPanel != null && toolkitPanel.isVisible() && toolkitPanel.mouseClicked(mouseX, mouseY, button)) {
-                return true;
-            }
-            if (button == 0 && tryAeNetworkToolkitSlotDoubleDeposit(mouseX, mouseY)) {
                 return true;
             }
         }
@@ -5515,48 +5489,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
-    private boolean tryAeNetworkToolkitSlotDoubleDeposit(double mouseX, double mouseY) {
-        var host = menu.getMenuHost();
-        if (host == null || (!isToolkitExpandedInManagementArea()
-                && host.getCurrentExtendedUI() != IExtendedUIHost.ExtendedUIType.TOOLKIT)) {
-            return false;
-        }
-        int relX = (int) Math.round(mouseX - leftPos);
-        int relY = (int) Math.round(mouseY - topPos);
-        Slot hit = null;
-        for (Slot slot : menu.getSlots(WcwtSlotSemantics.WCWT_TOOLKIT)) {
-            if (!slot.isActive()) {
-                continue;
-            }
-            if (!(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot)) {
-                continue;
-            }
-            if (toolkitSlot.toolkitLogicalIndex() != ToolkitItemRules.NETWORK_TOOL_DEDICATED_INDEX) {
-                continue;
-            }
-            if (relX >= slot.x && relX < slot.x + PLAYER_INVENTORY_SLOT_HIT_SIZE
-                    && relY >= slot.y && relY < slot.y + PLAYER_INVENTORY_SLOT_HIT_SIZE) {
-                hit = slot;
-                break;
-            }
-        }
-        if (hit == null) {
-            return false;
-        }
-        long now = System.currentTimeMillis();
-        if (lastAeNetworkToolkitDoubleClickSlot != null && hit == lastAeNetworkToolkitDoubleClickSlot
-                && now - lastAeNetworkToolkitDoubleClickMs <= 550L) {
-            ModNetworking.sendToServer(new ToolkitNetworkToolDepositPacket());
-            playPatternManagementClickSound();
-            lastAeNetworkToolkitDoubleClickSlot = null;
-            lastAeNetworkToolkitDoubleClickMs = 0L;
-            return true;
-        }
-        lastAeNetworkToolkitDoubleClickSlot = hit;
-        lastAeNetworkToolkitDoubleClickMs = now;
-        return false;
-    }
-
     private boolean handleToolkitMemoryClick(double mouseX, double mouseY, int button) {
         int relX = (int) Math.round(mouseX - leftPos);
         int relY = (int) Math.round(mouseY - topPos);
@@ -5574,9 +5506,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return false;
         }
         int slotIndex = logicalSlot.toolkitLogicalIndex();
-        if (slotIndex < ToolkitItemRules.DEDICATED_SLOT_COUNT) {
-            return false;
-        }
         if (button == 0 && toolkitSlot.getItem().isEmpty()) {
             return true;
         }
@@ -5949,8 +5878,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return null;
         }
         Slot toolkitSlot = getToolkitSlotAt(mouseX, mouseY);
-        if (!(toolkitSlot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot logicalSlot)
-                || logicalSlot.toolkitLogicalIndex() < ToolkitItemRules.DEDICATED_SLOT_COUNT) {
+        if (!(toolkitSlot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot)) {
             return null;
         }
         return toolkitSlot.getItem().isEmpty()
