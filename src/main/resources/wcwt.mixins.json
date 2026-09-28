@@ -13,6 +13,11 @@
     "WcwtToolboxMenuMixin",
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin",
+    "WcwtInventoryMixin",
+    "WcwtPlayerMixin",
+    "WcwtToolkitDropMixin",
+    "WcwtMenuLocatorsMixin",
+    "WcwtItemMenuHostMixin",
     "compat.eaep.WcwtEaepCuriosItemLocatorMixin",
     "compat.eaep.WcwtEaepOpenCraftFromJeiC2SPacketMixin",
     "compat.eaep.WcwtEaepPullFromJeiOrCraftC2SPacketMixin",
@@ -22,7 +27,8 @@
     "client.WcwtUpgradesPanelLayoutMixin",
     "compat.eaep.WcwtEaepInputEventsMixin",
     "compat.jei.WcwtJeiBookmarkInputHandlerMixin",
-    "client.WcwtMinecraftPickBlockMixin"
+    "client.WcwtMinecraftPickBlockMixin",
+    "client.WcwtGuiHotbarMixin"
   ],
   "injectors": {
     "defaultRequire": 1

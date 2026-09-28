@@ -2,6 +2,7 @@ package com.lhy.wcwt.menu.locator;
 
 import org.jetbrains.annotations.Nullable;
 
+import appeng.core.definitions.AEItems;
 import appeng.items.tools.NetworkToolItem;
 import appeng.menu.locator.MenuLocator;
 import com.lhy.wcwt.compat.CuriosBridge;
@@ -38,7 +39,11 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
         }
         ItemStack stack = toolkit.getStackInSlot(toolkitSlot);
         if (!(stack.getItem() instanceof NetworkToolItem)) {
-            return null;
+            // The client never holds the full toolkit; menu slot sync fills the tool's contents.
+            if (!player.level().isClientSide()) {
+                return null;
+            }
+            stack = AEItems.NETWORK_TOOL.stack();
         }
 
         var toolHost = new WcwtToolkitNetworkToolMenuHost(

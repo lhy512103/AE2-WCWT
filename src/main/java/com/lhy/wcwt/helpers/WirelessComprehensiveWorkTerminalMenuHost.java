@@ -35,7 +35,6 @@ import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.api.IPatternCachingHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
@@ -50,7 +49,6 @@ import appeng.items.tools.powered.powersink.AEBasePoweredItem;
 import appeng.me.cluster.implementations.QuantumCluster;
 import appeng.me.storage.NullInventory;
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.init.ModComponents;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.TextConstants;
@@ -86,15 +84,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
      * 3 tick ~= 150ms，足够吞掉本次日志里看到的瞬时 false/true 抖动，又不会把真实断线拖得太久。
      */
     private static final long TRANSIENT_DISCONNECT_GRACE_TICKS = 3L;
-    private static final String PLAYER_PERSISTED_TAG = "PlayerPersisted";
-    private static final String WCWT_PLAYER_DATA_TAG = WcwtMod.MOD_ID;
-    private static final String PLAYER_TOOLKIT_DATA_TAG = "shared_toolkit";
     private static final String PLAYER_PENDING_EXTENDED_UI_TAG = "pending_extended_ui";
-    private static final String TOOLKIT_SIZE_TAG = "size";
-    private static final String TOOLKIT_ITEMS_TAG = "items";
-    private static final String TOOLKIT_MEMORY_TAG = "memory";
-    private static final String TOOLKIT_SLOT_TAG = "slot";
-    private static final String TOOLKIT_STACK_TAG = "stack";
     private static final String SINGULARITY_TAG = "singularity";
     private static final String PICKUP_CONFIG_TAG = "pickup_config";
     private static final String INSERT_CONFIG_TAG = "insert_config";
@@ -1461,50 +1451,20 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         return inventory;
     }
 
-    public static InternalInventory createToolkitInventory(Player player, ItemStack stack) {
-        int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
-        final AppEngInternalInventory[] invRef = new AppEngInternalInventory[1];
-        var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
-            @Override
-            public void saveChanges() {
-                saveSharedToolkitInventory(player, stack, invRef[0]);
-            }
-            @Override
-            public void onChangeInventory(InternalInventory inv, int slot) {
-            }
+    /** Legacy item-tag keys used before the shared player store existed; only for migration. */
+    public static final String LEGACY_TOOLKIT_INV_KEY = ModComponents.TOOLKIT_INV;
+    public static final String LEGACY_TOOLKIT_MEMORY_INV_KEY = ModComponents.TOOLKIT_MEMORY_INV;
 
-            @Override
-            public boolean isClientSide() {
-                return player.level().isClientSide();
-            }
-        }, toolkitSlots);
-        invRef[0] = inventory;
-        loadSharedToolkitInventory(player, stack, inventory);
-        inventory.setFilter(new ToolkitItemFilter());
-        return inventory;
+    public static InternalInventory createToolkitInventory(Player player, ItemStack stack) {
+        return player.level().isClientSide()
+                ? WcwtToolkitStore.clientInventory(false)
+                : WcwtToolkitStore.items(player, stack);
     }
 
     private static InternalInventory createToolkitMemoryInventory(Player player, ItemStack stack) {
-        int toolkitSlots = WcwtServerConfig.toolkitSlotCount();
-        final AppEngInternalInventory[] invRef = new AppEngInternalInventory[1];
-        var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
-            @Override
-            public void saveChanges() {
-                saveSharedToolkitMemory(player, stack, invRef[0]);
-            }
-
-            @Override
-            public void onChangeInventory(InternalInventory inv, int slot) {
-            }
-
-            @Override
-            public boolean isClientSide() {
-                return player.level().isClientSide();
-            }
-        }, toolkitSlots);
-        invRef[0] = inventory;
-        loadSharedToolkitMemory(player, stack, inventory);
-        return inventory;
+        return player.level().isClientSide()
+                ? WcwtToolkitStore.clientInventory(true)
+                : WcwtToolkitStore.memory(player, stack);
     }
 
     /**
@@ -1566,191 +1526,8 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         return inventory;
     }
 
-    private static void loadSharedToolkitInventory(Player player, ItemStack terminalStack, AppEngInternalInventory inventory) {
-        if (player.level().isClientSide()) {
-            loadToolkitInventoryMirror(terminalStack, inventory);
-            if (DEBUG_TOOLKIT) {
-                WcwtMod.LOGGER.info("WCWT toolkit debug: loaded toolkit from item mirror on client for player={}, nonEmptySlots={}",
-                        player.getScoreboardName(), countNonEmptySlots(inventory));
-            }
-            return;
-        }
-        var persisted = getOrCreateWcwtPlayerData(player);
-        var sharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
-        boolean hasSharedToolkit = !sharedToolkitTag.isEmpty();
-        if (!hasSharedToolkit) {
-            if (DEBUG_TOOLKIT) {
-                WcwtMod.LOGGER.info("WCWT toolkit debug: no shared toolkit for player={}, attempting legacy migration",
-                        player.getScoreboardName());
-            }
-            migrateLegacyToolkitIntoPlayer(player, terminalStack, inventory, persisted);
-            return;
-        }
-        if (sharedToolkitTag.contains(TOOLKIT_ITEMS_TAG, Tag.TAG_LIST)) {
-            readSharedToolkitSlots(player, sharedToolkitTag, inventory);
-        } else {
-            readLegacySharedToolkitContents(player, terminalStack, sharedToolkitTag, inventory);
-        }
-        saveToolkitInventoryMirror(terminalStack, inventory);
-        if (DEBUG_TOOLKIT) {
-            WcwtMod.LOGGER.info("WCWT toolkit debug: loaded shared toolkit for player={}, slotCount={}, nonEmptySlots={}",
-                    player.getScoreboardName(), inventory.size(), countNonEmptySlots(inventory));
-        }
-    }
-
-    private static void migrateLegacyToolkitIntoPlayer(Player player, ItemStack terminalStack,
-                                                       AppEngInternalInventory inventory, CompoundTag persisted) {
-        if (!persisted.contains(PLAYER_TOOLKIT_DATA_TAG)) {
-            persisted.put(PLAYER_TOOLKIT_DATA_TAG, new CompoundTag());
-        }
-        inventory.readFromNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_INV);
-        saveSharedToolkitInventory(player, terminalStack, inventory);
-        CompoundTag root = getRootTag(terminalStack);
-        if (root != null && root.contains(ModComponents.TOOLKIT_INV, Tag.TAG_LIST)) {
-            root.remove(ModComponents.TOOLKIT_INV);
-            if (DEBUG_TOOLKIT) {
-                WcwtMod.LOGGER.info("WCWT toolkit debug: migrated legacy item-bound toolkit into shared store for player={}, nonEmptySlots={}",
-                        player.getScoreboardName(), countNonEmptySlots(inventory));
-            }
-        }
-    }
-
-    private static void saveSharedToolkitInventory(Player player, ItemStack terminalStack, AppEngInternalInventory inventory) {
-        var persisted = getOrCreateWcwtPlayerData(player);
-        CompoundTag existingSharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
-        CompoundTag serialized = new CompoundTag();
-        serialized.putInt(TOOLKIT_SIZE_TAG, inventory.size());
-        ListTag items = new ListTag();
-        for (int slot = 0; slot < inventory.size(); slot++) {
-            ItemStack stack = inventory.getStackInSlot(slot);
-            if (stack.isEmpty()) {
-                continue;
-            }
-            CompoundTag entry = new CompoundTag();
-            entry.putInt(TOOLKIT_SLOT_TAG, slot);
-            CompoundTag stackTag = new CompoundTag();
-            stack.save(stackTag);
-            entry.put(TOOLKIT_STACK_TAG, stackTag);
-            items.add(entry);
-        }
-        serialized.put(TOOLKIT_ITEMS_TAG, items);
-        if (existingSharedToolkitTag.contains(TOOLKIT_MEMORY_TAG, Tag.TAG_COMPOUND)) {
-            serialized.put(TOOLKIT_MEMORY_TAG, existingSharedToolkitTag.getCompound(TOOLKIT_MEMORY_TAG));
-        }
-        persisted.put(PLAYER_TOOLKIT_DATA_TAG, serialized);
-        saveToolkitInventoryMirror(terminalStack, inventory);
-        if (DEBUG_TOOLKIT) {
-            WcwtMod.LOGGER.info("WCWT toolkit debug: saved shared toolkit for player={}, slotCount={}, nonEmptySlots={}",
-                    player.getScoreboardName(), inventory.size(), countNonEmptySlots(inventory));
-        }
-    }
-
-    private static void loadSharedToolkitMemory(Player player, ItemStack terminalStack, AppEngInternalInventory inventory) {
-        if (player.level().isClientSide()) {
-            loadToolkitMemoryMirror(terminalStack, inventory);
-            return;
-        }
-        var persisted = getOrCreateWcwtPlayerData(player);
-        var sharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
-        var memoryTag = sharedToolkitTag.getCompound(TOOLKIT_MEMORY_TAG);
-        if (!memoryTag.isEmpty()) {
-            readSharedToolkitSlots(player, memoryTag, inventory);
-        } else {
-            loadToolkitMemoryMirror(terminalStack, inventory);
-            if (countNonEmptySlots(inventory) > 0) {
-                saveSharedToolkitMemory(player, terminalStack, inventory);
-            }
-        }
-        saveToolkitMemoryMirror(terminalStack, inventory);
-    }
-
-    private static void saveSharedToolkitMemory(Player player, ItemStack terminalStack, AppEngInternalInventory memory) {
-        var persisted = getOrCreateWcwtPlayerData(player);
-        var sharedToolkitTag = persisted.getCompound(PLAYER_TOOLKIT_DATA_TAG);
-        sharedToolkitTag.put(TOOLKIT_MEMORY_TAG, serializeToolkitSlots(memory));
-        persisted.put(PLAYER_TOOLKIT_DATA_TAG, sharedToolkitTag);
-        saveToolkitMemoryMirror(terminalStack, memory);
-    }
-
-    private static CompoundTag serializeToolkitSlots(AppEngInternalInventory inventory) {
-        CompoundTag serialized = new CompoundTag();
-        serialized.putInt(TOOLKIT_SIZE_TAG, inventory.size());
-        ListTag items = new ListTag();
-        for (int slot = 0; slot < inventory.size(); slot++) {
-            ItemStack stack = inventory.getStackInSlot(slot);
-            if (stack.isEmpty()) {
-                continue;
-            }
-            CompoundTag entry = new CompoundTag();
-            entry.putInt(TOOLKIT_SLOT_TAG, slot);
-            CompoundTag stackTag = new CompoundTag();
-            stack.save(stackTag);
-            entry.put(TOOLKIT_STACK_TAG, stackTag);
-            items.add(entry);
-        }
-        serialized.put(TOOLKIT_ITEMS_TAG, items);
-        return serialized;
-    }
-
-    private static void readSharedToolkitSlots(Player player, CompoundTag sharedToolkitTag,
-                                               AppEngInternalInventory inventory) {
-        for (int slot = 0; slot < inventory.size(); slot++) {
-            inventory.setItemDirect(slot, ItemStack.EMPTY);
-        }
-        ListTag items = sharedToolkitTag.getList(TOOLKIT_ITEMS_TAG, Tag.TAG_COMPOUND);
-        for (int i = 0; i < items.size(); i++) {
-            CompoundTag entry = items.getCompound(i);
-            int slot = entry.getInt(TOOLKIT_SLOT_TAG);
-            if (slot < 0 || slot >= inventory.size() || !entry.contains(TOOLKIT_STACK_TAG, Tag.TAG_COMPOUND)) {
-                continue;
-            }
-            ItemStack stack = ItemStack.of(entry.getCompound(TOOLKIT_STACK_TAG));
-            inventory.setItemDirect(slot, stack);
-        }
-    }
-
-    private static void readLegacySharedToolkitContents(Player player, ItemStack terminalStack, CompoundTag sharedToolkitTag,
-                                                        AppEngInternalInventory inventory) {
-        inventory.readFromNBT(sharedToolkitTag, ModComponents.TOOLKIT_INV);
-        saveSharedToolkitInventory(player, terminalStack, inventory);
-        if (DEBUG_TOOLKIT) {
-            WcwtMod.LOGGER.info("WCWT toolkit debug: upgraded legacy shared toolkit codec data for player={}, nonEmptySlots={}",
-                    player.getScoreboardName(), countNonEmptySlots(inventory));
-        }
-    }
-
-    private static void loadToolkitInventoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
-        inventory.readFromNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_INV);
-    }
-
-    private static void saveToolkitInventoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
-        inventory.writeToNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_INV);
-    }
-
-    private static void loadToolkitMemoryMirror(ItemStack terminalStack, AppEngInternalInventory inventory) {
-        inventory.readFromNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_MEMORY_INV);
-    }
-
-    private static void saveToolkitMemoryMirror(ItemStack terminalStack, AppEngInternalInventory memory) {
-        memory.writeToNBT(getOrCreateRootTag(terminalStack), ModComponents.TOOLKIT_MEMORY_INV);
-    }
-
-    private static int countNonEmptySlots(AppEngInternalInventory inventory) {
-        int count = 0;
-        for (int i = 0; i < inventory.size(); i++) {
-            if (!inventory.getStackInSlot(i).isEmpty()) {
-                count++;
-            }
-        }
-        return count;
-    }
-
     private static CompoundTag getOrCreateWcwtPlayerData(Player player) {
-        var persisted = player.getPersistentData().getCompound(PLAYER_PERSISTED_TAG);
-        player.getPersistentData().put(PLAYER_PERSISTED_TAG, persisted);
-        var wcwtData = persisted.getCompound(WCWT_PLAYER_DATA_TAG);
-        persisted.put(WCWT_PLAYER_DATA_TAG, wcwtData);
-        return wcwtData;
+        return WcwtToolkitStore.playerData(player);
     }
 
     public static void setPendingExtendedUi(Player player, ExtendedUIType type) {
@@ -1779,17 +1556,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         return ExtendedUIType.NONE;
     }
 
-    private static final class ToolkitItemFilter implements appeng.util.inv.filter.IAEItemFilter {
-        @Override
-        public boolean allowInsert(InternalInventory inv, int slot, ItemStack stack) {
-            return ToolkitItemRules.mayPlace(slot, stack);
-        }
-    }
-
     /** @deprecated 请使用 {@link ToolkitItemRules#mayPlace(int, ItemStack)} 或 {@link ToolkitItemRules#isBaseToolkitCandidate(ItemStack)} */
     @Deprecated
     public static boolean isToolkitItem(ItemStack stack) {
         return ToolkitItemRules.isBaseToolkitCandidate(stack);
     }
 }
-

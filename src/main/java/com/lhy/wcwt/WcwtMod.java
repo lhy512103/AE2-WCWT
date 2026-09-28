@@ -25,6 +25,7 @@ import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WcwtSlotSemantics;
 import com.lhy.wcwt.menu.locator.WcwtCurioLocator;
 import com.lhy.wcwt.menu.locator.WcwtInventoryLocator;
+import com.lhy.wcwt.menu.locator.WcwtToolkitItemLocator;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import de.mari_023.ae2wtlib.AE2wtlib;
 import de.mari_023.ae2wtlib.terminal.IUniversalWirelessTerminalItem;
@@ -125,6 +126,10 @@ public class WcwtMod {
                     WcwtToolkitNetworkToolLocator.class,
                     WcwtToolkitNetworkToolLocator::writeToPacket,
                     WcwtToolkitNetworkToolLocator::readFromPacket);
+            MenuLocators.register(
+                    WcwtToolkitItemLocator.class,
+                    WcwtToolkitItemLocator::writeToPacket,
+                    WcwtToolkitItemLocator::readFromPacket);
             GridLinkables.register(
                     ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get(),
                     WirelessTerminalItem.LINKABLE_HANDLER);

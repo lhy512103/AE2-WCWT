@@ -27,6 +27,8 @@
   "key.wcwt.open_tool_slots_box": "カードボックスを開く",
   "key.wcwt.open_terminal": "独立 ME 総合作業端末を開く",
   "key.wcwt.open_toolkit": "ツールキットを開く",
+  "key.wcwt.toolkit_bar_left": "左側ツールキットホットバーへ切替",
+  "key.wcwt.toolkit_bar_right": "右側ツールキットホットバーへ切替",
   "key.wcwt.open_resonating_lightning_pattern_coding": "共鳴過負荷エンコーダを開く",
   "gui.wcwt.toolkit.slot.sword": "剣",
   "gui.wcwt.toolkit.slot.pickaxe": "ツルハシ",
@@ -162,7 +164,7 @@
   "gui.wcwt.top_action.mute": "消音",
 
   "wcwt.config.toolkitSlotCount": "ツールキットのスロット数",
-  "wcwt.config.toolkitSlotCount.tooltip": "最小 11 で先頭 11 個の専用ツールスロットを維持します。通常は保存後すぐ反映されます。",
+  "wcwt.config.toolkitSlotCount.tooltip": "最小 18 で 2 本の 9 スロット拡張ホットバーと先頭 11 個の専用ツールスロットを維持します。通常は保存後すぐ反映されます。",
   "wcwt.config.patternUploadFailFallbackToEditor": "保存失敗時は編集スロット優先",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "OFF: まずパターンキャッシュへ、満杯なら編集スロットへ戻します。ON: まず編集スロットへ戻します。",
   "wcwt.config.patternManagementShiftQuick": "パターン管理 Shift クイック移動",
@@ -179,6 +181,8 @@
   "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "ON: JEI/EMI で GTCEu の処理レシピをパターンエンコードエリアへ転送する際、消費されない触媒などのアイテム入力を自動で除去します。デフォルトは ON です。",
   "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables": "除去時に GTCEu プログラム回路を保持",
   "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "ON: GTCEu の非消費入力除去が有効な場合、処理パターン内のプログラム回路を保持します。デフォルトは ON です。",
+  "wcwt.config.showToolkitHotbars": "ツールキットのホットバーを表示",
+  "wcwt.config.showToolkitHotbars.tooltip": "ON: ワールド内でツールキットの 0-8 番と 9-17 番を左右の HUD ホットバーとして表示します。",
 
   "message.wcwt.pull_no_link": "WCWT: 端末は利用可能な ME ネットワークに接続されていません。",
   "message.wcwt.pull_no_inputs": "WCWT: この JEI レシピには取得できるアイテム入力がありません。",

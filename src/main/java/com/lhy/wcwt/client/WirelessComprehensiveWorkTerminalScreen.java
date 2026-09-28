@@ -828,6 +828,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 "expandToolkitInManagementArea",
                 Component.translatable("wcwt.config.expandToolkitInManagementArea"),
                 this::saveClientSettings);
+        private final AECheckbox showToolkitHotbars = widgets.addCheckbox(
+                "showToolkitHotbars",
+                Component.translatable("wcwt.config.showToolkitHotbars"),
+                this::saveClientSettings);
 
         WcwtWirelessTerminalSettingsSubScreen(WirelessComprehensiveWorkTerminalScreen parent) {
             super(parent, "/screens/wcwt/wireless_terminal_settings.json");
@@ -847,6 +851,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             autoSwitchManualWorkspaceOnRecipeTransfer
                     .setSelected(WcwtClientConfig.autoSwitchManualWorkspaceOnRecipeTransfer());
             expandToolkitInManagementArea.setSelected(WcwtClientConfig.expandToolkitInManagementArea());
+            showToolkitHotbars.setSelected(WcwtClientConfig.showToolkitHotbars());
             refreshMagnetSettingsAvailability(stack);
         }
 
@@ -887,6 +892,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     .set(autoSwitchManualWorkspaceOnRecipeTransfer.isSelected());
             WcwtClientConfig.EXPAND_TOOLKIT_IN_MANAGEMENT_AREA
                     .set(expandToolkitInManagementArea.isSelected());
+            WcwtClientConfig.SHOW_TOOLKIT_HOTBARS
+                    .set(showToolkitHotbars.isSelected());
             WcwtClientConfig.SPEC.save();
         }
 

@@ -87,17 +87,23 @@
     "patternMultiplierApplyToEditorProcessing": {
       "$comment": "样板倍增器同时作用于样板编码区处理样板开关。",
       "left": 10,
-      "top": 144,
+      "top": 139,
       "width": 180
     },
     "autoSwitchManualWorkspaceOnRecipeTransfer": {
       "$comment": "拉取样板时自动切换手动工作区开关。",
       "left": 10,
-      "top": 164,
+      "top": 154,
       "width": 180
     },
     "expandToolkitInManagementArea": {
       "$comment": "工具包在管理区位置展开开关。",
+      "left": 10,
+      "top": 169,
+      "width": 180
+    },
+    "showToolkitHotbars": {
+      "$comment": "工具包扩展快捷栏开关。",
       "left": 10,
       "top": 184,
       "width": 180

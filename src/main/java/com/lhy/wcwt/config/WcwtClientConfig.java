@@ -21,6 +21,7 @@ public final class WcwtClientConfig {
     public static final ForgeConfigSpec.BooleanValue PREFER_FAVORITES_FOR_PATTERN_ENCODING;
     public static final ForgeConfigSpec.BooleanValue FILL_PROVIDER_SEARCH_FROM_JEI_BOOKMARK;
     public static final ForgeConfigSpec.BooleanValue EXPAND_TOOLKIT_IN_MANAGEMENT_AREA;
+    public static final ForgeConfigSpec.BooleanValue SHOW_TOOLKIT_HOTBARS;
     public static final ForgeConfigSpec.BooleanValue PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR;
     public static final ForgeConfigSpec.BooleanValue PRIORITY_SHIFT_MOVE_TO_CARD_BOX;
     public static final ForgeConfigSpec.BooleanValue PRIORITY_SHIFT_MOVE_TO_TOOLKIT;
@@ -77,6 +78,10 @@ public final class WcwtClientConfig {
                 .comment("If true: opening the toolkit expands it in the pattern management area instead of the right-side panel. Saving wcwt-client.toml usually reloads without restart.")
                 .translation("wcwt.config.expandToolkitInManagementArea")
                 .define("expandToolkitInManagementArea", false);
+        SHOW_TOOLKIT_HOTBARS = BUILDER
+                .comment("If true: show the first two toolkit rows as left and right HUD hotbars while in the world.")
+                .translation("wcwt.config.showToolkitHotbars")
+                .define("showToolkitHotbars", true);
         PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR = BUILDER
                 .comment("If true: while the Cosmetic Armor extended UI is open, shift-clicking armor from the inventory prefers cosmetic armor slots first.")
                 .translation("wcwt.config.priorityShiftMoveToCosmeticArmor")
@@ -161,6 +166,14 @@ public final class WcwtClientConfig {
 
     public static boolean expandToolkitInManagementArea() {
         return EXPAND_TOOLKIT_IN_MANAGEMENT_AREA.get();
+    }
+
+    public static boolean showToolkitHotbars() {
+        return SHOW_TOOLKIT_HOTBARS.get();
+    }
+
+    public static void setShowToolkitHotbars(boolean enabled) {
+        SHOW_TOOLKIT_HOTBARS.set(enabled);
     }
 
     public static boolean priorityShiftMoveToCosmeticArmor() {

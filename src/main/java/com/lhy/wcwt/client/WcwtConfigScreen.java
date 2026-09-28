@@ -119,6 +119,13 @@ public class WcwtConfigScreen extends Screen {
                         saveClientConfig();
                     });
             y += ROW_HEIGHT;
+            addBooleanRow(y, "wcwt.config.showToolkitHotbars",
+                    () -> WcwtClientConfig.SHOW_TOOLKIT_HOTBARS.get(),
+                    value -> {
+                        WcwtClientConfig.SHOW_TOOLKIT_HOTBARS.set(value);
+                        saveClientConfig();
+                    });
+            y += ROW_HEIGHT;
             addBooleanRow(y, "wcwt.config.priorityShiftMoveToCosmeticArmor",
                     () -> WcwtClientConfig.PRIORITY_SHIFT_MOVE_TO_COSMETIC_ARMOR.get(),
                     value -> {
