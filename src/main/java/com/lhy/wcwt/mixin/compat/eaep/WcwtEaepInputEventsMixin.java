@@ -7,6 +7,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+@SuppressWarnings("public-target")
 @Mixin(targets = "com.extendedae_plus.client.InputEvents", remap = false)
 public abstract class WcwtEaepInputEventsMixin {
     @Inject(method = "onMouseButtonPre", at = @At("HEAD"), cancellable = true, remap = false)

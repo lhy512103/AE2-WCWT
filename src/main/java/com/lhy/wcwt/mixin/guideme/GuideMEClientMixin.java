@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.Overwrite;
  * 此 Mixin 将该方法替换为安全的默认值（false），避免崩溃。
  * 生产环境下此方法通常不会在配置加载前被调用，因此无副作用。
  */
+@SuppressWarnings("public-target")
 @Mixin(targets = "guideme.internal.GuideMEClient", remap = false)
 public class GuideMEClientMixin {
     /**

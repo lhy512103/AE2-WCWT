@@ -91,7 +91,6 @@ public class CuriosPanel extends ExtendedUIPanel {
                 int slotIndex = row * getColumns() + col;
 
                 if (slotIndex >= 0) {
-                    // TODO: 发送网络包通知服务端选择了该槽位
                     return true;
                 }
             }

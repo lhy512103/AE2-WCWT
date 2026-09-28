@@ -6,7 +6,6 @@ import appeng.api.config.IncludeExclude;
 import appeng.api.config.PowerMultiplier;
 import appeng.api.features.Locatables;
 import appeng.api.implementations.blockentities.IViewCellStorage;
-import appeng.api.inventories.ISegmentedInventory;
 import appeng.api.inventories.InternalInventory;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.security.IActionHost;
@@ -54,7 +53,7 @@ import de.mari_023.ae2wtlib.api.TextConstants;
 import de.mari_023.ae2wtlib.terminal.WTMenuHost;
 import appeng.core.localization.PlayerMessages;
 public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
-        implements ISegmentedInventory, IViewCellStorage, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
+        implements IViewCellStorage, IExtendedUIHost, IPatternCachingHost, ICraftingLockHost, IConfigInvHost,
         IPatternTerminalMenuHost, IPatternTerminalLogicHost {
     private static CompoundTag getOrCreateRootTag(ItemStack stack) {
         CompoundTag stackTag = stack.getOrCreateTag();
