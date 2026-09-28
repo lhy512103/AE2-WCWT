@@ -1,6 +1,6 @@
 package com.lhy.wcwt.mixin.compat.eaep;
 
-import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkOrder;
+import com.lhy.wcwt.compat.jei.WcwtEaepJeiMouseHandler;
 import net.minecraftforge.client.event.ScreenEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,7 +11,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class WcwtEaepInputEventsMixin {
     @Inject(method = "onMouseButtonPre", at = @At("HEAD"), cancellable = true, remap = false)
     private static void wcwt$handleBookmarkOrderBeforeEaep(ScreenEvent.MouseButtonPressed.Pre event, CallbackInfo ci) {
-        if (WcwtJeiBookmarkOrder.handleEaepMouseButtonPre(event)) {
+        if (WcwtEaepJeiMouseHandler.handleEaepMouseButtonPre(event)) {
             ci.cancel();
         }
     }

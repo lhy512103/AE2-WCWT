@@ -5,6 +5,7 @@
 1. Added: toolkit extended hotbars on both sides of the vanilla hotbar (requires the toolkit card).
 2. Fixed: terminals in the extended hotbars could not be opened with right-click.
 3. Fixed: extended hotbars were hidden when a Wireless Universal Terminal without the toolkit card was worn.
+4. Fixed: crash on mouse click when TooManyRecipeViewers and ExtendedAE Plus are both installed (#15).
 
 
 ## 中文
@@ -12,6 +13,7 @@
 1. 新增：原版快捷栏两侧的工具包扩展快捷栏（需安装工具包卡）。
 2. 修复：扩展快捷栏中的终端无法右键打开。
 3. 修复：佩戴未装工具包卡的无线通用终端时扩展快捷栏不显示。
+4. 修复：同时安装 TooManyRecipeViewers 与 ExtendedAE Plus 时点击鼠标崩溃（#15）。
 
 
 # 1.20.1.10

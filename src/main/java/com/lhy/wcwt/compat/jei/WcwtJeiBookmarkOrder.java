@@ -15,16 +15,14 @@ import mezz.jei.gui.input.handlers.BookmarkInputHandler;
 import mezz.jei.gui.input.handlers.SameElementInputHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraftforge.client.event.ScreenEvent;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Optional;
 
+/** Full-JEI bookmark input handling; references JEI internal GUI classes. */
 public final class WcwtJeiBookmarkOrder {
     private static Field focusSourceField;
-    private static final String EAEP_JEI_RUNTIME_PROXY = "com.extendedae_plus.integration.jei.JeiRuntimeProxy";
     private static final boolean DEBUG = Boolean.getBoolean("wcwt.debug.jeiBookmark");
 
     private WcwtJeiBookmarkOrder() {
@@ -84,57 +82,6 @@ public final class WcwtJeiBookmarkOrder {
         } catch (RuntimeException | LinkageError e) {
             WcwtMod.LOGGER.warn("[WCWT-DBG] JEI recipe ingredient: exception={}", e.toString());
         }
-    }
-
-    public static boolean handleEaepMouseButtonPre(ScreenEvent.MouseButtonPressed.Pre event) {
-        int button = event.getButton();
-        boolean eaepOpenCraftClick = button == 2;
-        boolean eaepPullOrCraftClick = button == 0 && Screen.hasControlDown();
-        if (!eaepOpenCraftClick && !eaepPullOrCraftClick) {
-            return false;
-        }
-
-        Minecraft minecraft = Minecraft.getInstance();
-        debug("EAEP JEI mouse pre entered: button={}, mouse={},{} player={}, screen={}",
-                button, event.getMouseX(), event.getMouseY(), minecraft.player,
-                minecraft.screen == null ? null : minecraft.screen.getClass().getName());
-        if (minecraft.player == null) {
-            debug("EAEP JEI mouse pre skipped: no client player");
-            return false;
-        }
-        if (!WcwtWirelessFeatures.hasAnyTerminal(minecraft.player)) {
-            debug("EAEP JEI mouse pre skipped: no WCWT terminal");
-            return false;
-        }
-
-        GenericStack stack = findEaepHoveredGenericStack(event.getMouseX(), event.getMouseY());
-        if (stack == null || stack.what() == null) {
-            debug("EAEP JEI mouse pre skipped: no hovered generic stack");
-            return false;
-        }
-
-        WcwtJeiBookmarkOrderPacket.Action action = eaepOpenCraftClick
-                ? WcwtJeiBookmarkOrderPacket.Action.OPEN_CRAFT
-                : WcwtJeiBookmarkOrderPacket.Action.PULL_OR_CRAFT;
-        debug("EAEP JEI mouse pre sending WCWT packet action={} and canceling EAEP stack={}", action, stack);
-        ModNetworking.sendToServer(new WcwtJeiBookmarkOrderPacket(stack, action));
-        event.setCanceled(true);
-        return true;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static GenericStack findEaepHoveredGenericStack(double mouseX, double mouseY) {
-        try {
-            Class<?> proxyClass = Class.forName(EAEP_JEI_RUNTIME_PROXY);
-            Method method = proxyClass.getMethod("getIngredientUnderMouse", double.class, double.class);
-            Object result = method.invoke(null, mouseX, mouseY);
-            if (result instanceof Optional<?> optional
-                    && optional.orElse(null) instanceof ITypedIngredient<?> typedIngredient) {
-                return WcwtRecipeTransferHandler.toGenericStackForBookmark(typedIngredient);
-            }
-        } catch (ReflectiveOperationException | LinkageError ignored) {
-        }
-        return null;
     }
 
     private static void debug(String message, Object... args) {

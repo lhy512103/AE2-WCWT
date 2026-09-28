@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
+import java.nio.file.Files;
 import java.util.List;
 import java.util.Set;
 
@@ -34,7 +35,9 @@ public final class WcwtMixinConfigPlugin implements IMixinConfigPlugin {
             return shouldApplyCompatMixin("extendedae_plus", targetClassName, mixinClassName);
         }
         if (mixinClassName.startsWith(JEI_COMPAT_PACKAGE)) {
-            return shouldApplyCompatMixin("jei", targetClassName, mixinClassName);
+            // JEI API providers such as TMRV claim the "jei" mod id without JEI's internal GUI classes.
+            return shouldApplyCompatMixin("jei", targetClassName, mixinClassName)
+                    && modFileHasClass("jei", targetClassName);
         }
         return shouldApplyCompatMixin(null, targetClassName, mixinClassName);
     }
@@ -69,6 +72,18 @@ public final class WcwtMixinConfigPlugin implements IMixinConfigPlugin {
         try {
             var modList = LoadingModList.get();
             return modList != null && modList.getModFileById(modId) != null;
+        } catch (RuntimeException | LinkageError ignored) {
+            return false;
+        }
+    }
+
+    private static boolean modFileHasClass(String modId, String className) {
+        try {
+            var modFile = LoadingModList.get().getModFileById(modId);
+            boolean present = modFile != null
+                    && Files.exists(modFile.getFile().findResource(className.replace('.', '/') + ".class"));
+            LOGGER.info("WCWT compat mixin target check: modId={}, target={}, present={}", modId, className, present);
+            return present;
         } catch (RuntimeException | LinkageError ignored) {
             return false;
         }
