@@ -30,7 +30,6 @@ public class ToolkitPanel extends ExtendedUIPanel {
     private ExtendedPanelLayout.Rect memoryButton =
             new ExtendedPanelLayout.Rect(110, 2, 12, 12);
     private int columns = DEFAULT_COLUMNS;
-    private int firstVisibleSlot;
 
     public ToolkitPanel(int x, int y) {
         super(x, y, 134, 186);
@@ -60,10 +59,6 @@ public class ToolkitPanel extends ExtendedUIPanel {
         guiGraphics.drawString(font,
                 Component.translatable("gui.wcwt.extended_ui.toolkit"),
                 x + 4, y + 3, 0x404040, false);
-    }
-
-    public void setFirstVisibleSlot(int firstVisibleSlot) {
-        this.firstVisibleSlot = Math.max(0, firstVisibleSlot);
     }
 
     public int getColumns() {

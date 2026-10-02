@@ -46,7 +46,6 @@ import com.lhy.wcwt.compat.WcwtRecipeSearchKeyResolver;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.helpers.ExtendedUiUpgradeCards;
-import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import com.lhy.wcwt.client.gui.panels.*;
 import com.lhy.wcwt.client.gui.WcwtAe2Textures;
@@ -3591,9 +3590,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         int firstSlot = (activeScrollbar != null ? activeScrollbar.getCurrentScroll() : 0) * columns;
-        if (toolkitPanel != null) {
-            toolkitPanel.setFirstVisibleSlot(firstSlot);
-        }
         int baseX;
         int baseY;
         if (toolkitInManagementArea) {
