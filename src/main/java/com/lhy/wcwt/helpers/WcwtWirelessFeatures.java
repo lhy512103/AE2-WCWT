@@ -41,7 +41,6 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -113,6 +112,7 @@ public final class WcwtWirelessFeatures {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static void syncRestockAmounts(ServerPlayer player, ItemStack terminal) {
         boolean enabled = getBoolean(terminal, "restock");
         int tick = player.getServer() == null ? 0 : player.getServer().getTickCount();
@@ -382,11 +382,6 @@ public final class WcwtWirelessFeatures {
     }
 
     private static void pickBlock(ServerPlayer player, AEItemKey what, int targetAmount, HotbarTarget hotbarTarget,
-                                  Predicate<ItemStack> terminalPredicate) {
-        pickBlock(player, what, targetAmount, hotbarTarget, terminalPredicate, false);
-    }
-
-    private static void pickBlock(ServerPlayer player, AEItemKey what, int targetAmount, HotbarTarget hotbarTarget,
                                   Predicate<ItemStack> terminalPredicate, boolean alwaysCraftIfAvailable) {
         ItemStack requestedStack = what.toStack(Math.max(1, targetAmount));
         if (requestedStack.isEmpty()) {
@@ -633,11 +628,6 @@ public final class WcwtWirelessFeatures {
         return ItemStack.EMPTY;
     }
 
-    private static ItemStack findTerminalStack(ServerPlayer player, java.util.function.Predicate<ItemStack> predicate) {
-        var target = findTerminalTarget(player, predicate);
-        return target == null ? ItemStack.EMPTY : target.stack();
-    }
-
     private static TerminalTarget findTerminalTarget(ServerPlayer player,
                                                      java.util.function.Predicate<ItemStack> predicate) {
         return findTerminalTarget(player, predicate, false);
@@ -740,6 +730,7 @@ public final class WcwtWirelessFeatures {
         return hasMagnetCard(terminal);
     }
 
+    @SuppressWarnings("deprecation")
     private static boolean hasMagnetCard(ItemStack terminal) {
         Item card = BuiltInRegistries.ITEM.get(MAGNET_CARD_ID);
         return card != null
@@ -900,6 +891,7 @@ public final class WcwtWirelessFeatures {
         WcwtMod.LOGGER.info("WCWT JEI bookmark debug: player={}, " + message, withPlayer);
     }
 
+    @SuppressWarnings("deprecation")
     private static String describeStack(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return "<empty>";

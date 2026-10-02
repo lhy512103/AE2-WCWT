@@ -25,8 +25,6 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import mezz.jei.api.recipe.transfer.IUniversalRecipeTransferHandler;
-import mezz.jei.library.plugins.jei.info.IngredientInfoRecipe;
-import mezz.jei.library.plugins.jei.tags.ITagInfoRecipe;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.ItemStack;
@@ -49,6 +47,9 @@ public class WcwtRecipeTransferHandler
         implements IUniversalRecipeTransferHandler<WirelessComprehensiveWorkTerminalMenu> {
     private static final String GTCEU_MULTIBLOCK_INFO_WRAPPER_CLASS =
             "com.gregtechceu.gtceu.integration.jei.multipage.MultiblockInfoWrapper";
+    private static final String JEI_TAG_INFO_RECIPE_CLASS = "mezz.jei.library.plugins.jei.tags.ITagInfoRecipe";
+    private static final String JEI_INGREDIENT_INFO_RECIPE_CLASS =
+            "mezz.jei.library.plugins.jei.info.IngredientInfoRecipe";
 
     private final IRecipeTransferHandlerHelper transferHelper;
 
@@ -452,9 +453,29 @@ public class WcwtRecipeTransferHandler
     }
 
     private static boolean shouldSkipTransferAnalysis(Object recipe) {
-        return recipe instanceof ITagInfoRecipe
-                || recipe instanceof IngredientInfoRecipe
+        return isInstanceOfNamed(recipe, JEI_TAG_INFO_RECIPE_CLASS)
+                || isInstanceOfNamed(recipe, JEI_INGREDIENT_INFO_RECIPE_CLASS)
                 || isClassNamed(recipe, GTCEU_MULTIBLOCK_INFO_WRAPPER_CLASS);
+    }
+
+    /** Name-based so JEI API providers without JEI's library classes (e.g. TMRV) do not throw. */
+    private static boolean isInstanceOfNamed(@Nullable Object instance, String className) {
+        return instance != null && isTypeNamed(instance.getClass(), className);
+    }
+
+    private static boolean isTypeNamed(@Nullable Class<?> type, String className) {
+        if (type == null) {
+            return false;
+        }
+        if (className.equals(type.getName()) || isTypeNamed(type.getSuperclass(), className)) {
+            return true;
+        }
+        for (Class<?> iface : type.getInterfaces()) {
+            if (isTypeNamed(iface, className)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean isClassNamed(@Nullable Object instance, String className) {

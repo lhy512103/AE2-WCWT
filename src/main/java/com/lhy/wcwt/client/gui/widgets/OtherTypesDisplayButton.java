@@ -1,6 +1,5 @@
 package com.lhy.wcwt.client.gui.widgets;
 
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;

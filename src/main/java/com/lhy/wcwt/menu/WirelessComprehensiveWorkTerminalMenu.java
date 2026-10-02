@@ -36,7 +36,6 @@ import appeng.parts.encoding.PatternEncodingLogic;
 import appeng.util.ConfigInventory;
 import appeng.util.CraftingRecipeUtil;
 import appeng.util.Platform;
-import appeng.util.inv.FilteredInternalInventory;
 import appeng.util.inv.CarriedItemInventory;
 import appeng.util.inv.PlayerInternalInventory;
 import appeng.util.inv.filter.IAEItemFilter;
@@ -86,7 +85,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
-import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.crafting.CraftingRecipe;
@@ -100,7 +98,6 @@ import net.minecraft.world.inventory.AnvilMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.inventory.InventoryMenu;
-import net.minecraft.world.inventory.ItemCombinerMenuSlotDefinition;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.ResultContainer;
 import net.minecraft.world.inventory.SmithingMenu;
@@ -108,8 +105,6 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.TransientCraftingContainer;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
-import com.lhy.wcwt.compat.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import com.lhy.wcwt.compat.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraftforge.common.ForgeHooks;
 import net.minecraftforge.event.ForgeEventFactory;
@@ -129,11 +124,9 @@ import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
@@ -673,13 +666,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         ToolkitSlot(InternalInventory inventory, int toolkitIndex) {
             super(inventory, toolkitIndex);
             this.toolkitIndex = toolkitIndex;
-            String tipKey = ToolkitItemRules.dedicatedSlotTooltipKey(toolkitIndex);
-            if (tipKey != null) {
-                setEmptyTooltip(() -> List.of(Component.translatable(tipKey)));
-            }
         }
 
-        /** 客户端命中检测／双击网络工具槽等用。 */
         public int toolkitLogicalIndex() {
             return toolkitIndex;
         }
@@ -1354,7 +1342,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private boolean isToolkitMemorySlot(int toolkitIndex) {
-        return toolkitIndex >= ToolkitItemRules.DEDICATED_SLOT_COUNT;
+        return toolkitIndex >= 0;
     }
 
     @Nullable
@@ -5073,7 +5061,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         int limit = Math.min(memory.size(), TOOLKIT_MEMORY_ITEM_MATCH_LIMIT);
         int[] tmp = new int[limit];
         int count = 0;
-        for (int slot = ToolkitItemRules.DEDICATED_SLOT_COUNT; slot < limit; slot++) {
+        for (int slot = 0; slot < limit; slot++) {
             if (!memory.getStackInSlot(slot).isEmpty() && toolkitMemoryMatches(slot, stack)) {
                 tmp[count++] = slot;
             }
@@ -5229,6 +5217,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public boolean isValidForSlot(Slot slot, ItemStack stack) {
         if (stack != null && !stack.isEmpty() && getSlots(WcwtSlotSemantics.WCWT_CELL_UPGRADE).contains(slot)) {
             var key = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
@@ -6420,8 +6409,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
                 Object service = Class.forName(SERVICE_CLASS).getConstructor().newInstance();
                 Class<?> matchModeClass = Class.forName(MATCH_MODE_CLASS);
-                Object strictMode = Enum.valueOf((Class<Enum>) matchModeClass.asSubclass(Enum.class), "STRICT");
-                Object idOnlyMode = Enum.valueOf((Class<Enum>) matchModeClass.asSubclass(Enum.class), "ID_ONLY");
+                @SuppressWarnings({"unchecked", "rawtypes"}) Object strictMode = Enum.valueOf((Class<Enum>) matchModeClass.asSubclass(Enum.class), "STRICT");
+                @SuppressWarnings({"unchecked", "rawtypes"}) Object idOnlyMode = Enum.valueOf((Class<Enum>) matchModeClass.asSubclass(Enum.class), "ID_ONLY");
                 Object builder = Class.forName(ENCODED_PATTERN_CLASS).getMethod("builder").invoke(null);
 
                 Method inputMethod = builder.getClass().getMethod("input", int.class, matchModeClass);

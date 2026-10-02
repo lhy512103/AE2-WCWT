@@ -12,6 +12,7 @@ import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.locator.WcwtInventoryLocator;
 import com.lhy.wcwt.menu.locator.WcwtItemLocator;
+import com.lhy.wcwt.menu.locator.WcwtToolkitItemLocator;
 import com.lhy.wcwt.migration.WcwtLegacyUniversalTerminalMigration;
 import de.mari_023.ae2wtlib.AE2wtlib;
 import de.mari_023.ae2wtlib.terminal.IUniversalWirelessTerminalItem;
@@ -85,6 +86,10 @@ public class WirelessComprehensiveWorkTerminalItem extends WirelessCraftingTermi
             return new InteractionResultHolder<>(
                     stack.isEmpty() || stack.getItem() != this ? InteractionResult.FAIL : InteractionResult.SUCCESS,
                     stack);
+        }
+        if (WcwtToolkitItemLocator.forHand(player, hand) instanceof WcwtToolkitItemLocator toolkitLocator) {
+            return new InteractionResultHolder<>(openFromLocator(player, toolkitLocator, false)
+                    ? InteractionResult.sidedSuccess(false) : InteractionResult.FAIL, stack);
         }
         int slot = findHeldInventorySlot(player, stack);
         if (slot >= 0 && openFromLocator(player, new WcwtInventoryLocator(slot), false)) {

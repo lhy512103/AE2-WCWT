@@ -1,5 +1,8 @@
 package com.lhy.wcwt;
 
+import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
+import com.lhy.wcwt.helpers.WcwtToolkitSync;
+import com.lhy.wcwt.helpers.WcwtToolkitStore;
 import com.lhy.wcwt.helpers.WcwtWirelessFeatures;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -8,6 +11,7 @@ import net.minecraftforge.event.entity.living.LivingEntityUseItemEvent;
 import net.minecraftforge.event.entity.player.ArrowLooseEvent;
 import net.minecraftforge.event.entity.player.ArrowNockEvent;
 import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.Event.Result;
@@ -20,6 +24,7 @@ public class WcwtWirelessFeatureEvents {
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase == TickEvent.Phase.END && event.player instanceof ServerPlayer player) {
             WcwtWirelessFeatures.tickPlayerMagnet(player);
+            WcwtToolkitSync.tick(player);
         }
     }
 
@@ -77,9 +82,39 @@ public class WcwtWirelessFeatureEvents {
         if (entity.hasPickUpDelay()) {
             return;
         }
-        if (WcwtWirelessFeatures.insertPickupIntoME(entity, player)) {
+        if (WcwtToolkitHotbarState.insertPickup(entity, player)
+                || WcwtWirelessFeatures.insertPickupIntoME(entity, player)) {
             event.setCanceled(true);
             event.setResult(Result.DENY);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            WcwtToolkitSync.sendFull(player);
+        }
+    }
+
+    /** Respawn and dimension travel give the client a fresh player with an empty toolkit copy. */
+    @SubscribeEvent
+    public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            WcwtToolkitSync.sendFull(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            WcwtToolkitSync.sendFull(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            WcwtToolkitStore.persist(player);
         }
     }
 }

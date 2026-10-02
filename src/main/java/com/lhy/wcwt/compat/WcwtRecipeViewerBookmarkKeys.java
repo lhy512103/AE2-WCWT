@@ -84,7 +84,6 @@ public final class WcwtRecipeViewerBookmarkKeys {
         return best;
     }
 
-    @SuppressWarnings("unchecked")
     private static List<AEKey> loadJeiBookmarkKeys() {
         if (!ModList.get().isLoaded("jei")) {
             return List.of();

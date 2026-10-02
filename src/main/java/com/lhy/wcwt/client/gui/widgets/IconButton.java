@@ -40,7 +40,6 @@ public class IconButton extends Button implements ITooltip {
     private int overlayOffsetY = 0;
     private int overlayInset = 0;
     private boolean scaleTextureToButton = true;
-    private boolean pressOffsetOnHover = false;
 
     public IconButton(int x, int y, int w, int h,
                       int normalU, int normalV,
@@ -95,11 +94,6 @@ public class IconButton extends Button implements ITooltip {
 
     public IconButton drawTextureUnscaledCentered() {
         this.scaleTextureToButton = false;
-        return this;
-    }
-
-    public IconButton disableHoverPressOffset() {
-        this.pressOffsetOnHover = false;
         return this;
     }
 

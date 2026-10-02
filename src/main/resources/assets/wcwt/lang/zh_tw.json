@@ -25,18 +25,9 @@
   "key.wcwt.open_tool_slots_box": "打開卡槽箱",
   "key.wcwt.open_terminal": "打開獨立 ME 綜合工作終端",
   "key.wcwt.open_toolkit": "打開工具包",
+  "key.wcwt.toolkit_bar_left": "切換到左側工具包快捷欄",
+  "key.wcwt.toolkit_bar_right": "切換到右側工具包快捷欄",
   "key.wcwt.open_resonating_lightning_pattern_coding": "打開諧振過載編碼器",
-  "gui.wcwt.toolkit.slot.sword": "劍類",
-  "gui.wcwt.toolkit.slot.pickaxe": "鎬類",
-  "gui.wcwt.toolkit.slot.axe": "斧類",
-  "gui.wcwt.toolkit.slot.shovel": "鏟類",
-  "gui.wcwt.toolkit.slot.hoe": "鋤頭",
-  "gui.wcwt.toolkit.slot.wrench": "扳手（如 AE 石英扳手）",
-  "gui.wcwt.toolkit.slot.cutting_knife": "AE 切割刀",
-  "gui.wcwt.toolkit.slot.network_tool": "AE 網路工具（空槽快速雙擊：從手上或背包放入）",
-  "gui.wcwt.toolkit.slot.memory_card": "AE 記憶卡",
-  "gui.wcwt.toolkit.slot.mek_configuration_card": "Mekanism 配置卡",
-  "gui.wcwt.toolkit.slot.mek_configurator": "Mekanism 配置器",
 
   "gui.wcwt.return": "返回",
 
@@ -162,7 +153,7 @@
   "gui.wcwt.top_action.mute": "靜音",
 
   "wcwt.config.toolkitSlotCount": "工具包槽位數量",
-  "wcwt.config.toolkitSlotCount.tooltip": "最小 11 格，用於保留前 11 個專用工具槽。保存配置後一般即生效。",
+  "wcwt.config.toolkitSlotCount.tooltip": "最小 18 格，用於提供兩條 9 格工具包快捷欄並保留前 11 個專用工具槽。保存配置後一般即生效。",
   "wcwt.config.patternUploadFailFallbackToEditor": "上傳失敗優先回退到樣板編輯槽",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "關：優先回退到樣板緩存區，緩存區放不下再回退到樣板編輯槽。開：優先回退到樣板編輯槽。",
   "wcwt.config.patternManagementShiftQuick": "樣板管理 Shift 快速移動",
@@ -179,6 +170,8 @@
   "wcwt.config.filterGtceuNonConsumablePatternInputs.tooltip": "開：JEI/EMI 拉取 GTCEu 加工配方到樣板編碼區時，自動移除催化劑等不會被消耗的物品輸入。默認開啟。",
   "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables": "剔除時保留 GTCEu 編程電路",
   "wcwt.config.keepGtceuProgrammedCircuitWhenFilteringNonConsumables.tooltip": "開：啟用 GTCEu 不消耗輸入剔除時，保留處理樣板中的編程電路。默認開啟。",
+  "wcwt.config.showToolkitHotbars": "顯示工具包擴展快捷欄",
+  "wcwt.config.showToolkitHotbars.tooltip": "開：在世界中將工具包第 0-8 格和第 9-17 格顯示為左右 HUD 快捷欄。",
 
   "message.wcwt.pull_no_link": "WCWT：終端未連接到可用的 ME 網路。",
   "message.wcwt.pull_no_inputs": "WCWT：該 JEI 配方沒有可拉取的物品輸入。",
@@ -187,7 +180,5 @@
   "message.wcwt.pull_full": "WCWT：背包或存儲空間不足，已跳過：%1$s",
   "message.wcwt.pull_shift_hint": "按住 Shift：非合成配方拉取一組用量",
   "message.wcwt.eco_pattern_duplicate": "ECO 合成子系統已存在相同樣板。",
-  "message.wcwt.eco_pattern_uploaded": "樣板已上傳至 ECO 合成子系統。",
-  "message.wcwt.toolkit_network_slot_occupied": "工具包 AE 網路工具槽已滿。",
-  "message.wcwt.toolkit_network_tool_not_found": "未發現可放入的網路工具（光標上或背包內）。"
+  "message.wcwt.eco_pattern_uploaded": "樣板已上傳至 ECO 合成子系統。"
 }

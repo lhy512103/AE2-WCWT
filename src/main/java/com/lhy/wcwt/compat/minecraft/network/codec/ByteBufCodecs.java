@@ -12,7 +12,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -117,6 +116,7 @@ public final class ByteBufCodecs {
         });
     }
 
+    @SuppressWarnings("deprecation")
     private static Registry<net.minecraft.world.item.Item> itemRegistry(RegistryAccess access) {
         return access != null ? access.registryOrThrow(Registries.ITEM) : BuiltInRegistries.ITEM;
     }

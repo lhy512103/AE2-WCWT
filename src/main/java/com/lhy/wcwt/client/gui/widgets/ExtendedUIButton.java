@@ -42,13 +42,11 @@ public class ExtendedUIButton extends Button implements ITooltip {
     private static final int BTN_V = 128;
     private static final int BTN_U_NORMAL  = 128;
     private static final int BTN_U_HOVERED = 160;
-    private static final int BTN_U_ACTIVE  = 192;   // 当前扩展UI激活时使用
     private static final int BTN_W = 20, BTN_H = 17;
 
     // ---- 各类型图标（默认 14×14）----
     private static final int ICON_W = 14, ICON_H = 14;
     /** 图标在按钮面内的像素偏移（居中）: offsetX = (20-14)/2 = 3, offsetY = (17-14)/2 = 1 */
-    private static final int ICON_OFFSET_X = 3, ICON_OFFSET_Y = 1;
 
     private final IExtendedUIHost host;
     private final IExtendedUIHost.ExtendedUIType uiType;

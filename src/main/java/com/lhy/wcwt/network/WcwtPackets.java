@@ -75,12 +75,18 @@ public class WcwtPackets {
         ModNetworking.registerServerbound(id++, PatternManagementUploadSettingPacket.class,
                 PatternManagementUploadSettingPacket.TYPE, PatternManagementUploadSettingPacket.STREAM_CODEC,
                 PatternManagementUploadSettingPacket::handle);
-        ModNetworking.registerServerbound(id++, ToolkitNetworkToolDepositPacket.class,
-                ToolkitNetworkToolDepositPacket.TYPE, ToolkitNetworkToolDepositPacket.STREAM_CODEC,
-                ToolkitNetworkToolDepositPacket::handle);
         ModNetworking.registerServerbound(id++, ToolkitMemorySlotPacket.class,
                 ToolkitMemorySlotPacket.TYPE, ToolkitMemorySlotPacket.STREAM_CODEC,
                 ToolkitMemorySlotPacket::handle);
+        ModNetworking.registerServerbound(id++, WcwtToolkitHotbarSelectionPacket.class,
+                WcwtToolkitHotbarSelectionPacket.TYPE, WcwtToolkitHotbarSelectionPacket.STREAM_CODEC,
+                WcwtToolkitHotbarSelectionPacket::handle);
+        ModNetworking.registerServerbound(id++, WcwtToolkitHotbarDropPacket.class,
+                WcwtToolkitHotbarDropPacket.TYPE, WcwtToolkitHotbarDropPacket.STREAM_CODEC,
+                WcwtToolkitHotbarDropPacket::handle);
+        ModNetworking.registerClientbound(id++, WcwtToolkitHotbarSyncPacket.class,
+                WcwtToolkitHotbarSyncPacket.TYPE, WcwtToolkitHotbarSyncPacket.STREAM_CODEC,
+                WcwtToolkitHotbarSyncPacket::handle);
         ModNetworking.registerServerbound(id++, OpenTerminalHotkeyPacket.class, OpenTerminalHotkeyPacket.TYPE,
                 OpenTerminalHotkeyPacket.STREAM_CODEC, OpenTerminalHotkeyPacket::handle);
         ModNetworking.registerServerbound(id++, OpenToolkitHotkeyPacket.class, OpenToolkitHotkeyPacket.TYPE,

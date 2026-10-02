@@ -19,7 +19,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.TooltipFlag;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -61,8 +60,6 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     private static final int AE2_CHECKBOX_V_OFF = 28;
     private static final int AE2_CHECKBOX_V_ON = 40;
     private static final int RESONATING_COLUMNS = 7;
-    private static final int RESONATING_VISIBLE_ROWS = 3;
-    private static final int RESONATING_SLOT_SIZE = 18;
     private static final int DEFAULT_RESONATING_SLOT_SPACING = 16;
     private final ExtendedPanelLayout layout = ExtendedPanelLayout.load("wcwt_resonating_lightning_pattern_coding.json");
     private final Scrollbar lightningScrollbar = new Scrollbar(Scrollbar.SMALL);

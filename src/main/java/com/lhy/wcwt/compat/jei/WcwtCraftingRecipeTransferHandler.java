@@ -1,8 +1,6 @@
 package com.lhy.wcwt.compat.jei;
 
 import appeng.core.localization.ItemModText;
-import appeng.integration.modules.jeirei.CraftingHelper;
-import appeng.menu.me.items.CraftingTermMenu;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -11,23 +9,15 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.ModNetworking;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.network.ManualWorkspaceModePacket;
-import mezz.jei.api.constants.RecipeTypes;
-import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
-import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandler;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeType;
 
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 
 public class WcwtCraftingRecipeTransferHandler
@@ -114,15 +104,4 @@ public class WcwtCraftingRecipeTransferHandler
                 WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.CRAFTING.ordinal()));
     }
 
-    private static Map<Integer, net.minecraft.world.item.crafting.Ingredient> createCraftingSlotMap(CraftingRecipe recipe) {
-        var ingredients = appeng.util.CraftingRecipeUtil.ensure3by3CraftingMatrix(recipe);
-        Map<Integer, net.minecraft.world.item.crafting.Ingredient> result = new LinkedHashMap<>();
-        for (int i = 0; i < ingredients.size(); i++) {
-            var ingredient = ingredients.get(i);
-            if (!ingredient.isEmpty()) {
-                result.put(i, ingredient);
-            }
-        }
-        return result;
-    }
 }

@@ -47,18 +47,6 @@
       "top": 2,
       "width": 12,
       "height": 12
-    },
-    "toolkit_slot_icons": {
-      "$comment": "工具包前 11 个灰色槽位图标配置。图标会跟随前 11 个真实槽位一起滚动。offsetX/offsetY 是相对槽位左上角的像素偏移；textureU/textureV 是第一张图标在 wcwt_states.png 里的起点；stepX/stepY 是每个后续图标在贴图中的步进。",
-      "count": 11,
-      "offsetX": 0,
-      "offsetY": 0,
-      "textureU": 48,
-      "textureV": 16,
-      "width": 16,
-      "height": 16,
-      "stepX": 16,
-      "stepY": 0
     }
   }
 }

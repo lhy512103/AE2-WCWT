@@ -116,6 +116,7 @@ public abstract class WcwtMinecraftPickBlockMixin {
         WcwtWirelessFeatures.pickBlock(picked.copy());
     }
 
+    @SuppressWarnings("deprecation")
     private void wcwt$tryPickBlockBeforeOtherOverrides() {
         if (player == null) {
             wcwt$debugEarlySkip("player missing");
@@ -197,6 +198,7 @@ public abstract class WcwtMinecraftPickBlockMixin {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static String wcwt$describeStack(ItemStack stack) {
         if (stack == null || stack.isEmpty()) {
             return "<empty>";

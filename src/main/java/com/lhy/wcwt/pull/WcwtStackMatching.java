@@ -186,7 +186,7 @@ public final class WcwtStackMatching {
     }
 
     /** Returns true if the item has a durability bar (tools, armour, etc.). */
-    private static boolean isDamageable(ItemStack stack) {
+    public static boolean isDamageable(ItemStack stack) {
         return stack != null && !stack.isEmpty() && stack.getItem().canBeDepleted();
     }
 }

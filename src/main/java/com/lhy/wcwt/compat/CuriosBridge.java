@@ -75,11 +75,13 @@ public final class CuriosBridge {
         return result;
     }
 
+    @SuppressWarnings({"deprecation", "removal"})
     private static ICuriosItemHandler resolveCuriosHandler(Player player) {
         LazyOptional<ICuriosItemHandler> optional = CuriosApi.getCuriosHelper().getCuriosHandler(player);
         return optional.resolve().orElse(null);
     }
 
+    @SuppressWarnings("deprecation")
     private static ResourceLocation getSlotIcon(String identifier) {
         return CuriosApi.getSlot(identifier)
                 .map(ISlotType::getIcon)

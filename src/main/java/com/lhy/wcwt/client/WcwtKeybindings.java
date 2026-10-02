@@ -21,6 +21,8 @@ public final class WcwtKeybindings {
     public static final KeyMapping OPEN_RESONATING_LIGHTNING_PATTERN_CODING =
             create("open_resonating_lightning_pattern_coding");
     public static final KeyMapping TOGGLE_FAVORITE_ITEM = create("toggle_favorite_item", KeyConflictContext.IN_GAME);
+    public static final KeyMapping TOOLKIT_BAR_LEFT = create("toolkit_bar_left", GLFW.GLFW_KEY_LEFT);
+    public static final KeyMapping TOOLKIT_BAR_RIGHT = create("toolkit_bar_right", GLFW.GLFW_KEY_RIGHT);
     public static final KeyMapping TOGGLE_CRAFTING_LOCK = create("toggle_crafting_lock", KeyConflictContext.GUI);
     public static final KeyMapping FILL_RECIPE_VIEWER_SEARCH =
             create("fill_recipe_viewer_search", KeyConflictContext.GUI, GLFW.GLFW_KEY_F);
@@ -34,6 +36,10 @@ public final class WcwtKeybindings {
 
     private static KeyMapping create(String name, KeyConflictContext conflictContext) {
         return create(name, conflictContext, InputConstants.UNKNOWN.getValue());
+    }
+
+    private static KeyMapping create(String name, int defaultKey) {
+        return create(name, KeyConflictContext.IN_GAME, defaultKey);
     }
 
     private static KeyMapping create(String name, KeyConflictContext conflictContext, int keyCode) {

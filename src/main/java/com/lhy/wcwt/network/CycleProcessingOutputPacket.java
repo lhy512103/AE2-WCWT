@@ -5,7 +5,6 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
 import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record CycleProcessingOutputPacket() implements CustomPacketPayload {

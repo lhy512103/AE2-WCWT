@@ -12,13 +12,11 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.network.FriendlyByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.ByteBufCodecs;
 import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
 import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -29,7 +27,6 @@ import net.minecraftforge.fml.DistExecutor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 
 public record PatternProviderListPacket(List<Entry> entries) implements CustomPacketPayload {

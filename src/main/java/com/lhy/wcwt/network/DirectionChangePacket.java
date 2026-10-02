@@ -5,7 +5,6 @@ import net.minecraft.core.Direction;
 import com.lhy.wcwt.compat.minecraft.network.RegistryFriendlyByteBuf;
 import com.lhy.wcwt.compat.minecraft.network.codec.StreamCodec;
 import com.lhy.wcwt.compat.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
@@ -14,7 +13,6 @@ import org.jetbrains.annotations.Nullable;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
-import net.minecraft.network.FriendlyByteBuf;
 
 /**
  * 方向改变网络包

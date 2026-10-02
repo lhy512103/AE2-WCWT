@@ -14,6 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.lang.reflect.Field;
 import java.util.function.Supplier;
 
+@SuppressWarnings("public-target")
 @Mixin(targets = "com.extendedae_plus.network.crafting.OpenCraftFromJeiC2SPacket", remap = false)
 public abstract class WcwtEaepOpenCraftFromJeiC2SPacketMixin {
     @Unique

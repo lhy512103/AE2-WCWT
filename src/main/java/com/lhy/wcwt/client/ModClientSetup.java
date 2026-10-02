@@ -35,11 +35,13 @@ public class ModClientSetup {
     private static boolean ipnCompatInitialized;
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
 
+    @SuppressWarnings("removal")
     public static void init(IEventBus modBus) {
         ModLoadingContext.get().registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> new WcwtConfigScreen(parent)));
         modBus.addListener(ModClientSetup::onRegisterKeyMappings);
         modBus.addListener(ModClientSetup::onClientSetup);
+        modBus.addListener(WcwtClientGuiLayers::register);
     }
 
     private static void onClientSetup(FMLClientSetupEvent event) {
@@ -71,6 +73,8 @@ public class ModClientSetup {
         event.register(WcwtKeybindings.OPEN_TOOLKIT);
         event.register(WcwtKeybindings.OPEN_RESONATING_LIGHTNING_PATTERN_CODING);
         event.register(WcwtKeybindings.TOGGLE_FAVORITE_ITEM);
+        event.register(WcwtKeybindings.TOOLKIT_BAR_LEFT);
+        event.register(WcwtKeybindings.TOOLKIT_BAR_RIGHT);
         event.register(WcwtKeybindings.TOGGLE_CRAFTING_LOCK);
         event.register(WcwtKeybindings.FILL_RECIPE_VIEWER_SEARCH);
     }
