@@ -47,7 +47,9 @@ public final class WcwtToolkitAccess {
                 }
             }
         }
-        for (ItemStack stack : player.getInventory().items) {
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getContainerSize(); i++) {
+            ItemStack stack = inventory.getItem(i);
             if (isTerminalItem(stack)) {
                 return stack;
             }
