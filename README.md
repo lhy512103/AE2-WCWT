@@ -67,6 +67,7 @@ These mods are compile-time `compileOnly` / runtime optional. Missing them does 
 - Applied Mekanistics
 - Just Enough Characters
 - NeoECOAEExtension
+- Some Useless Things (2.4.6+): JEI Omniversal Alloy Furnace recipes preserve their selected recipe identity and molds when encoded, using the mod's own encoder and auto-upload setting.
 
 Notes:
 

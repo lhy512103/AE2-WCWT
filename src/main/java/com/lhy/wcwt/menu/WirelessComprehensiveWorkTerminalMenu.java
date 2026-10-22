@@ -202,6 +202,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private final WirelessComprehensiveWorkTerminalMenuHost menuHost;
     private final PatternEncodingLogic patternEncodingLogic;
+    @Nullable
+    private com.lhy.wcwt.compat.UselessModCompat.Selection pendingOmniversalRecipe;
     private final FakeSlot[] patternCraftingSlots = new FakeSlot[9];
     private final FakeSlot[] processingInputSlots = new FakeSlot[appeng.crafting.pattern.AEProcessingPattern.MAX_INPUT_SLOTS];
     private final FakeSlot[] processingOutputSlots = new FakeSlot[appeng.crafting.pattern.AEProcessingPattern.MAX_OUTPUT_SLOTS];
@@ -1489,6 +1491,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public void setPatternEncodingMode(EncodingMode mode) {
+        if (mode != EncodingMode.PROCESSING) pendingOmniversalRecipe = null;
         if (isClientSide()) {
             syncedPatternEncodingMode = mode.ordinal();
             PacketDistributor.sendToServer(new PatternEncodingModePacket(mode));
@@ -1706,6 +1709,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public void clearPatternEncoding() {
+        pendingOmniversalRecipe = null;
         if (patternEncodingLogic == null) {
             return;
         }
@@ -2090,6 +2094,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         ItemStack encodedPattern;
         try {
             encodedPattern = createEncodedPattern(mode);
+            if (mode == EncodingMode.PROCESSING && pendingOmniversalRecipe != null
+                    && encodedPattern != null && !encodedPattern.isEmpty()) {
+                encodedPattern = com.lhy.wcwt.compat.UselessModCompat.encode(
+                        encodedPattern, pendingOmniversalRecipe, getPlayer().level());
+                // A stale/mismatched selection must not consume a blank or overwrite an existing pattern.
+                if (encodedPattern.isEmpty()) return;
+            }
         } catch (Exception e) {
             if (DEBUG_ENCODE) {
                 com.lhy.wcwt.WcwtMod.LOGGER.warn("WCWT encode debug: exception mode={}", mode, e);
@@ -2098,6 +2109,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         if (encodedPattern == null || encodedPattern.isEmpty()) {
             logEncode("encoded pattern is empty, mode={}", mode);
+            if (pendingOmniversalRecipe != null) return;
             clearEncodedPatternOnly();
             return;
         }
@@ -2132,10 +2144,32 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 getPlayer().getScoreboardName(), PatternUploadMetadata.getProviderSearchText(encodedPattern), encodedPattern);
 
         boolean editingExisting = PatternDetailsHelper.isEncodedPattern(encodeOutput);
+        boolean omniversal = mode == EncodingMode.PROCESSING && pendingOmniversalRecipe != null;
+        pendingOmniversalRecipe = null;
         encodedPatternSlot.set(encodedPattern);
+        // Inventory callbacks may convert or upload the result; always use the actual output slot.
+        encodedPattern = encodedPatternSlot.getItem();
         updatePatternPreview(mode);
 
-        if (uploadEnabled) {
+        if (encodedPattern.isEmpty()) {
+            tryFillBlankPatternFromNetwork();
+            broadcastChanges();
+            return;
+        }
+        if (omniversal && getPlayer() instanceof ServerPlayer serverPlayer) {
+            var result = com.lhy.wcwt.compat.UselessModCompat.upload(menuHost, encodedPattern, serverPlayer);
+            if (result != com.lhy.wcwt.compat.UselessModCompat.UploadResult.SKIPPED) {
+                encodedPatternSlot.set(ItemStack.EMPTY);
+                if (result == com.lhy.wcwt.compat.UselessModCompat.UploadResult.DUPLICATE) {
+                    var remainder = patternEncodingLogic.getBlankPatternInv().addItems(AEItems.BLANK_PATTERN.stack());
+                    if (!remainder.isEmpty()) serverPlayer.getInventory().placeItemBackInInventory(remainder, false);
+                }
+                tryFillBlankPatternFromNetwork();
+                broadcastChanges();
+                return;
+            }
+        }
+        if (uploadEnabled && !omniversal) {
             if (tryUploadEncodedPattern(mode, encodedPattern, resolvedProviderSearchText)) {
                 encodedPatternSlot.set(ItemStack.EMPTY);
                 tryFillBlankPatternFromNetwork();
@@ -2808,6 +2842,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var inputList = java.util.Arrays.asList(inputs);
         var outputList = java.util.Arrays.asList(outputs);
         ItemStack encodedSlotPattern = encodedPatternSlot == null ? ItemStack.EMPTY : encodedPatternSlot.getItem();
+        if (pendingOmniversalRecipe != null) {
+            return PatternDetailsHelper.encodeProcessingPattern(inputList, outputList);
+        }
         ItemStack advPattern = AdvancedAePatternCompat.encodeProcessingPattern(
                 encodedSlotPattern, inputList, outputList, getPlayer().level());
         if (advPattern != null && !advPattern.isEmpty()) {
@@ -2982,6 +3019,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     public void transferJeiRecipe(List<@Nullable GenericStack> inputs, List<@Nullable GenericStack> outputs,
                                   boolean toCraftingGrid, EncodingMode mode) {
+        if (!toCraftingGrid) pendingOmniversalRecipe = null;
         if (inputs.stream().allMatch(java.util.Objects::isNull)
                 && outputs.stream().allMatch(java.util.Objects::isNull)) {
             return;
@@ -3020,6 +3058,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             outputInv.setStack(i, i < outputs.size() ? outputs.get(i) : null);
         }
         broadcastChanges();
+    }
+
+    public void transferOmniversalRecipe(List<@Nullable GenericStack> inputs, List<@Nullable GenericStack> outputs,
+                                        com.lhy.wcwt.compat.UselessModCompat.Selection selection) {
+        if (patternEncodingLogic == null || inputs.isEmpty() || outputs.isEmpty()
+                || inputs.size() > patternEncodingLogic.getEncodedInputInv().size()
+                || outputs.size() > patternEncodingLogic.getEncodedOutputInv().size()) return;
+        transferJeiRecipe(inputs, outputs, false, EncodingMode.PROCESSING);
+        pendingOmniversalRecipe = selection;
     }
 
     private static ItemStack toItemStack(@Nullable GenericStack stack) {

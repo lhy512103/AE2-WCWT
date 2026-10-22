@@ -77,6 +77,25 @@ public class WcwtRecipeTransferHandler
         if (!WcwtClientConfig.enableRecipePullTransfer()) {
             return null;
         }
+        if (com.lhy.wcwt.compat.UselessModCompat.isRecipe(recipe)) {
+            var transfer = com.lhy.wcwt.compat.UselessModCompat.transfer(recipe, menu);
+            if (transfer == null) return transferHelper.createInternalError();
+            var logic = menu.getMenuHost().getLogic();
+            if (transfer.inputs().size() > logic.getEncodedInputInv().size()
+                    || transfer.outputs().size() > logic.getEncodedOutputInv().size()) {
+                return transferHelper.createUserErrorWithTooltip(net.minecraft.network.chat.Component
+                        .translatable("gui.useless_mod.omniversal_pattern.too_many_slots"));
+            }
+            if (!doTransfer) {
+                return new WcwtEncodingRecipeTransferError(
+                        findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE));
+            }
+            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
+            PacketDistributor.sendToServer(new com.lhy.wcwt.network.OmniversalPatternTransferPacket(
+                    menu.containerId, transfer.selection(), new JeiCraftingTransferPacket(
+                            transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING)));
+            return null;
+        }
         if (WcwtMultiblockTransferCompat.isSupportedRecipe(recipe, recipeSlots)) {
             var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
             if (transfer == null) return transferHelper.createInternalError();

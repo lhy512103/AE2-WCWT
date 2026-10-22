@@ -15,6 +15,8 @@ public class WcwtPackets {
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar registrar = event.registrar(WcwtMod.MOD_ID);
+        registrar.playToServer(OmniversalPatternTransferPacket.TYPE,
+                OmniversalPatternTransferPacket.STREAM_CODEC, OmniversalPatternTransferPacket::handle);
         
         // 注册各种数据包
         registrar.playToServer(

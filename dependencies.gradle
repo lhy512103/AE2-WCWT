@@ -4,6 +4,7 @@ dependencies {
     compileOnly "de.mari_023:ae2wtlib:${ae2wtlib_version}"
 
     // AE2 addons
+    compileOnly "curse.maven:some-useless-things-1401600:9174458"
     compileOnly "curse.maven:advancedae-1084104:${advancedae_file}"
     compileOnly "curse.maven:ex-pattern-provider-892005:${extendedae_file}"
     compileOnly "curse.maven:extendedae-plus-1337639:${extendedae_plus_file}"
