@@ -924,6 +924,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         public void setMapping(long providerId, int providerSlot) {
+            if (this.providerId != providerId || this.providerSlot != providerSlot) {
+                this.clientDisplayStack = ItemStack.EMPTY;
+                this.clientDisplayDirty = false;
+            }
             this.providerId = providerId;
             this.providerSlot = providerSlot;
             this.active = providerId > 0 && providerSlot >= 0;

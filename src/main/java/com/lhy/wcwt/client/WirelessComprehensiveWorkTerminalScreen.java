@@ -5960,9 +5960,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         int slot = row.slots().get(col);
         if (slot < 0) {
-            return null;
+            slot = firstEmptyProviderSlot(row.entry());
         }
-        return new PatternManagementSlotHit(row.entry(), slot);
+        return slot < 0 ? null : new PatternManagementSlotHit(row.entry(), slot);
     }
 
     private static boolean inRect(int x, int y, int left, int top, int width, int height) {
