@@ -639,7 +639,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         widgets.add("wcwtEncodePattern", encodePatternButton);
 
         clearPatternEncodingButton = new ActionButton(appeng.api.config.ActionItems.S_CLOSE, () -> {
-            menu.clearPatternEncoding();
             PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
                     PatternEncodingOptionPacket.ACTION_CLEAR, false));
         });
@@ -760,7 +759,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 Icon.S_SUBSTITUTION_ENABLED,
                 Icon.S_SUBSTITUTION_DISABLED,
                 state -> {
-                    menu.setPatternSubstitute(state);
                     PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
                             PatternEncodingOptionPacket.ACTION_SUBSTITUTE, state));
                 });
@@ -780,7 +778,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 Icon.S_FLUID_SUBSTITUTION_ENABLED,
                 Icon.S_FLUID_SUBSTITUTION_DISABLED,
                 state -> {
-                    menu.setPatternFluidSubstitute(state);
                     PacketDistributor.sendToServer(new PatternEncodingOptionPacket(
                             PatternEncodingOptionPacket.ACTION_FLUID_SUBSTITUTE, state));
                 });
