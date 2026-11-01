@@ -38,6 +38,9 @@ java {
 
 configurations {
     localRuntime {
+        // Recipe viewers are selected by the client run, never by a shared transitive dependency.
+        exclude group: "mezz.jei"
+        exclude group: "dev.emi"
         exclude group: "curse.maven", module: "ae2-jei-integration-1074338"
         exclude group: "curse.maven", module: "imblocker-483760"
         exclude group: "curse.maven", module: "just-enough-characters-250702"
@@ -51,15 +54,17 @@ configurations {
 sourceSets {
     clientRuntime {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += output + compileClasspath + sourceSets.main.runtimeClasspath + configurations.clientLocalRuntime + configurations.jeiRuntime
+        // Compile-only compatibility APIs must not become runtime mods.
+        runtimeClasspath = (runtimeClasspath + sourceSets.main.runtimeClasspath + configurations.clientLocalRuntime + configurations.jeiRuntime)
+                .filter { file -> !file.name.toLowerCase().startsWith("emi-") }
     }
     clientRuntimeEmi {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath += output + sourceSets.main.runtimeClasspath
+        runtimeClasspath = (runtimeClasspath + sourceSets.main.runtimeClasspath + configurations.clientLocalRuntime + configurations.emiRuntime)
                 .filter { file ->
                     def n = file.name.toLowerCase()
-                    !n.contains("jei") && !n.contains("ae2-jei-integration")
-                } + configurations.clientLocalRuntime + configurations.emiRuntime
+                    !n.contains("jei") && !n.startsWith("just-enough-characters-") && !n.startsWith("ae2-utility-")
+                }
     }
 }
 

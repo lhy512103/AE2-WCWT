@@ -224,6 +224,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private final PatternProviderSlot[] patternProviderSlots =
             new PatternProviderSlot[PATTERN_PROVIDER_VISIBLE_SLOTS];
     private int syncedPatternEncodingMode = EncodingMode.PROCESSING.ordinal();
+    private boolean syncedPatternSubstitution;
+    private boolean syncedPatternFluidSubstitution;
     private final List<RecipeHolder<StonecutterRecipe>> stonecuttingRecipes = new ArrayList<>();
     @Nullable
     private RecipeHolder<CraftingRecipe> currentPatternCraftingRecipe;
@@ -269,6 +271,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         super(com.lhy.wcwt.init.ModMenus.WCWT_MENU_TYPE, id, ip, host, false);
         this.menuHost = host;
         this.patternEncodingLogic = host.getLogic();
+        this.syncedPatternSubstitution = patternEncodingLogic != null && patternEncodingLogic.isSubstitution();
+        this.syncedPatternFluidSubstitution = patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution();
         this.manualSmithingBridge = new ManualSmithingMenuBridge();
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
         this.manualCraftingItemSubstitution = host.isManualCraftingItemSubstitution();
@@ -382,6 +386,29 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
             @Override public void set(int v) {
                 syncedPatternEncodingMode = isValidEncodingModeOrdinal(v) ? v : EncodingMode.PROCESSING.ordinal();
+            }
+        });
+        // These flags are server-owned; button clicks only send C2S requests and need an S2C reply.
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return patternEncodingLogic != null && patternEncodingLogic.isSubstitution() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedPatternSubstitution = value != 0;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedPatternFluidSubstitution = value != 0;
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -1728,7 +1755,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public boolean isPatternSubstitute() {
-        return patternEncodingLogic != null && patternEncodingLogic.isSubstitution();
+        return isClientSide() ? syncedPatternSubstitution
+                : patternEncodingLogic != null && patternEncodingLogic.isSubstitution();
     }
 
     public void setPatternSubstitute(boolean substitute) {
@@ -1739,7 +1767,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public boolean isPatternFluidSubstitute() {
-        return patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution();
+        return isClientSide() ? syncedPatternFluidSubstitution
+                : patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution();
     }
 
     public void setPatternFluidSubstitute(boolean substitute) {
