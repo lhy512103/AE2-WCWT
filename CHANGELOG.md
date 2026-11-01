@@ -4,6 +4,7 @@
 
 1. 新增：配置加载前工具栏读取回归测试。 / Added: Regression coverage for toolkit reads before config loading.
 2. 修复：Better Combat 双持攻击复制工具并覆盖快捷栏物品。 / Fixed: Better Combat dual wield attacks duplicating toolkit items and overwriting hotbar slots.
+3. 修复：配方默认映射与 EAEP 使用相同的客户端语言。 / Fixed: Default recipe mappings use the same client language as EAEP.
 
 ## 未发布
 
