@@ -6,6 +6,7 @@
 2. 修复：Better Combat 双持攻击复制工具并覆盖快捷栏物品。 / Fixed: Better Combat dual wield attacks duplicating toolkit items and overwriting hotbar slots.
 3. 修复：配方默认映射与 EAEP 使用相同的客户端语言。 / Fixed: Default recipe mappings use the same client language as EAEP.
 4. 修复：部分组件配方编码优先保留真实材料的完整数据，避免核心样板卡合成。 / Fixed: Partial-component recipes encode full ingredient data to prevent stalled core crafting.
+5. 优化：开发约定明确中英文有序日志及逐项验证提交。 / Improved: Development rules require bilingual numbered logs and separately verified commits.
 
 ## 未发布
 
