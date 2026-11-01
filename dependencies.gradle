@@ -121,5 +121,6 @@ dependencies {
     clientLocalRuntime "curse.maven:imblocker-483760:${imblocker_file}"
     clientLocalRuntime "curse.maven:just-enough-characters-250702:${jech_file}"
     jeiRuntime "curse.maven:ae2-jei-integration-1074338:${ae2jei_integration_file}"
-    jeiRuntime "curse.maven:ae2-utility-1521605:8698335"
+    // AE2 Utility 1.7.8 targets removed JEI RecipeSlot internals and breaks recipe pages on newer JEI.
+    // WCWT's JEI integration works independently, so keep this optional test addon out of default runs.
 }

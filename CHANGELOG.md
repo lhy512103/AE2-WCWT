@@ -25,6 +25,7 @@
 19. Fixed: Corrected the local Mekanism dependency spelling to restore Gradle dependency resolution.
 20. Fixed: Pattern item and fluid substitution buttons now refresh from server-synchronized state without reopening the terminal.
 21. Fixed: Isolated recipe-viewer runtimes so runClient loads only JEI and runClientEMI loads only EMI.
+22. Removed: The incompatible AE2 Utility development addon that prevented JEI recipe pages from opening.
 
 ### 中文
 
@@ -49,6 +50,7 @@
 19. 修复：纠正本地 Mekanism 依赖名称拼写，恢复 Gradle 依赖解析。
 20. 修复：样板物品替换和流体替换按钮同步服务端状态，无需重开终端。
 21. 修复：隔离配方浏览器运行依赖，runClient 仅加载 JEI，runClientEMI 仅加载 EMI。
+22. 移除：不兼容的 AE2 Utility 开发测试依赖，避免 JEI 配方页空白或无法打开。
 
 
 ## v1.3.10
