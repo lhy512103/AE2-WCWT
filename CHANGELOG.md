@@ -1,26 +1,45 @@
 # Changelog
 
-## 修复核查 / Fix review
+## v1.3.11
 
-1. 新增：配置加载前工具栏读取回归测试。 / Added: Regression coverage for toolkit reads before config loading.
-2. 修复：Better Combat 双持攻击复制工具并覆盖快捷栏物品。 / Fixed: Better Combat dual wield attacks duplicating toolkit items and overwriting hotbar slots.
-3. 修复：配方默认映射与 EAEP 使用相同的客户端语言。 / Fixed: Default recipe mappings use the same client language as EAEP.
-4. 修复：部分组件配方编码优先保留真实材料的完整数据，避免核心样板卡合成。 / Fixed: Partial-component recipes encode full ingredient data to prevent stalled core crafting.
-5. 优化：开发约定明确中英文有序日志及逐项验证提交。 / Improved: Development rules require bilingual numbered logs and separately verified commits.
-6. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。 / Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
+### English
 
-## 未发布
+1. Fixed: Restricted Modrinth and LDLib dependency repositories to prevent unrelated repositories from blocking IDE sync.
+2. Improved: Updated Lightning Tech to 2.1.2-beta4 and aligned its Thunderbolt Core and LDLib2 dependencies.
+3. Added: Support for Useless Mod 2.4.6 omniversal pattern encoding, automatic upload and duplicate returns (#34).
+4. Fixed: Refreshed inventory counts after transfers to prevent overflow and infinite-storage cache drift (#35).
+5. Fixed: Compressed empty-slot click targeting and stale patterns after remapping (#37).
+6. Fixed: Pick block skips Neo Favorite Items locked slots to prevent network item loss (#32).
+7. Fixed: The recipe-pull button now appears with EMI's default settings (#30).
+8. Fixed: Toolkit hotbars recognize terminals held in the offhand (#31).
+9. Fixed: Reading toolkit hotbar settings before config loading no longer crashes startup (#36).
+10. Added: Regression coverage for toolkit reads before config loading.
+11. Fixed: Better Combat dual wield attacks no longer duplicate toolkit items or overwrite hotbar slots.
+12. Fixed: Default recipe mappings use the same client language as EAEP.
+13. Fixed: Partial-component recipes encode full ingredient data to prevent stalled core crafting.
+14. Improved: Development rules require bilingual numbered logs and separately verified commits.
+15. Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
+16. Improved: Changelog entries are grouped by version, with English before Chinese.
 
-- 修复：限定 Modrinth 和 LDLib 依赖仓库，避免 IDE 同步被无关仓库阻塞。
-- 优化：更新闪电科技至 2.1.2-beta4，并同步 Thunderbolt Core 和 LDLib2 配套依赖。
-- 新增：兼容无用之物 2.4.6 万象样板编码、自动上传及重复退还（#34）。
-- 修复：存取后重新读取库存数量，避免大数溢出和无限库存缓存漂移（#35）。
-- 修复：压缩空槽点击定位及重新映射后的样板残影（#37）。
-- 修复：选取方块时跳过 Neo Favorite Items 锁定槽位，避免网络物品丢失（#32）。
-- 修复：EMI 默认配置下不显示拉取物品按钮（#30）。
-- 修复：工具包快捷栏无法识别副手中的终端（#31）。
-- 修复：配置加载前访问工具包快捷栏导致启动崩溃（#36）。
-- 新增：每项功能更新日志并单独本地提交的开发约定。
+### 中文
+
+1. 修复：限定 Modrinth 和 LDLib 依赖仓库，避免 IDE 同步被无关仓库阻塞。
+2. 优化：更新闪电科技至 2.1.2-beta4，并同步 Thunderbolt Core 和 LDLib2 配套依赖。
+3. 新增：兼容无用之物 2.4.6 万象样板编码、自动上传及重复退还（#34）。
+4. 修复：存取后重新读取库存数量，避免大数溢出和无限库存缓存漂移（#35）。
+5. 修复：压缩空槽点击定位及重新映射后的样板残影（#37）。
+6. 修复：选取方块时跳过 Neo Favorite Items 锁定槽位，避免网络物品丢失（#32）。
+7. 修复：EMI 默认配置下不显示拉取物品按钮（#30）。
+8. 修复：工具包快捷栏无法识别副手中的终端（#31）。
+9. 修复：配置加载前访问工具包快捷栏导致启动崩溃（#36）。
+10. 新增：配置加载前工具栏读取回归测试。
+11. 修复：Better Combat 双持攻击复制工具并覆盖快捷栏物品。
+12. 修复：配方默认映射与 EAEP 使用相同的客户端语言。
+13. 修复：部分组件配方编码优先保留真实材料的完整数据，避免核心样板卡合成。
+14. 优化：开发约定明确中英文有序日志及逐项验证提交。
+15. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。
+16. 优化：更新日志按版本分组，英文在前、中文在后。
+
 
 ## v1.3.10
 
