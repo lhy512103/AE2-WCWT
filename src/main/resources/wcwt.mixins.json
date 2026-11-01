@@ -11,6 +11,7 @@
     "WcwtServerPlayerGameModeMixin",
     "WcwtInventoryMixin",
     "WcwtPlayerMixin",
+    "WcwtBetterCombatMixin",
     "WcwtMenuLocatorsMixin",
     "WcwtToolkitDropMixin"
   ],

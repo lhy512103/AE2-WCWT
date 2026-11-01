@@ -153,6 +153,18 @@ public final class WcwtToolkitHotbarState {
         writeCell(player, index, stack);
     }
 
+    /**
+     * Better Combat temporarily exposes the offhand as the main hand while attacking. Preserve the
+     * stack references (including a stack consumed by tool breakage) and bypass placement rules:
+     * this is a temporary hand swap, not an insertion or an item to return to the player's inventory.
+     */
+    public static ItemStack swapSelectedToolkitForAttributes(Player player, ItemStack stack) {
+        int index = toolkitIndex(player);
+        ItemStack previous = stackAt(player, index);
+        writeCell(player, index, stack);
+        return previous;
+    }
+
     private static void writeCell(Player player, int index, ItemStack stack) {
         if (player.level().isClientSide()) {
             state(player).clientItems[index] = stack;
