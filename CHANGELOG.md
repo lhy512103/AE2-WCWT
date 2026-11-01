@@ -20,6 +20,7 @@
 14. Improved: Development rules require bilingual numbered logs and separately verified commits.
 15. Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
 16. Improved: Changelog entries are grouped by version, with English before Chinese.
+17. Fixed: Pattern clearing and substitution toggles now synchronize through the server to prevent AE2LT crashes (#38).
 
 ### 中文
 
@@ -39,6 +40,7 @@
 14. 优化：开发约定明确中英文有序日志及逐项验证提交。
 15. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。
 16. 优化：更新日志按版本分组，英文在前、中文在后。
+17. 修复：清除样板和切换替换选项改由服务端统一同步，避免 AE2LT 崩溃（#38）。
 
 
 ## v1.3.10

@@ -155,7 +155,7 @@ public final class WcwtClientConfig {
     }
 
     public static boolean showToolkitHotbars() {
-        if (!SPEC.isLoaded()) {
+        if (SPEC == null || !SPEC.isLoaded()) {
             return false;
         }
         migrateLegacyToolkitSettings();
