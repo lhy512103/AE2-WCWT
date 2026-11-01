@@ -1,5 +1,9 @@
 # Changelog
 
+## 修复核查 / Fix review
+
+1. 新增：配置加载前工具栏读取回归测试。 / Added: Regression coverage for toolkit reads before config loading.
+
 ## 未发布
 
 - 修复：限定 Modrinth 和 LDLib 依赖仓库，避免 IDE 同步被无关仓库阻塞。
