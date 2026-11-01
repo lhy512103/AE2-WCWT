@@ -23,6 +23,7 @@
 17. Fixed: Pattern clearing and substitution toggles now synchronize through the server to prevent AE2LT crashes (#38).
 18. Fixed: Adapted to the EAEP 1.6.4 upload API split and moved auto-upload setting while retaining older-version support (#39).
 19. Fixed: Corrected the local Mekanism dependency spelling to restore Gradle dependency resolution.
+20. Fixed: Pattern item and fluid substitution buttons now refresh from server-synchronized state without reopening the terminal.
 
 ### 中文
 
@@ -45,6 +46,7 @@
 17. 修复：清除样板和切换替换选项改由服务端统一同步，避免 AE2LT 崩溃（#38）。
 18. 修复：兼容 EAEP 1.6.4 上传接口拆分和自动上传配置迁移，并保留旧版支持（#39）。
 19. 修复：纠正本地 Mekanism 依赖名称拼写，恢复 Gradle 依赖解析。
+20. 修复：样板物品替换和流体替换按钮同步服务端状态，无需重开终端。
 
 
 ## v1.3.10
