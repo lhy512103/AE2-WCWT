@@ -27,6 +27,7 @@ import appeng.client.gui.widgets.NumberEntryWidget;
 import appeng.client.Point;
 import appeng.api.config.Settings;
 import appeng.api.config.TypeFilter;
+import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.core.sync.network.NetworkHandler;
 import appeng.core.sync.packets.ConfigValuePacket;
 import appeng.core.localization.ButtonToolTips;
@@ -1701,7 +1702,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
 
         String query = searchKey.trim();
-        Map<String, PreferredUploadProviderGroup> groups = new LinkedHashMap<>();
+        Map<PatternContainerGroup, PreferredUploadProviderGroup> groups = new LinkedHashMap<>();
         for (var entry : patternProviders) {
             String name = getPatternProviderSearchName(entry);
             if (name == null || name.isBlank()) {
@@ -1711,7 +1712,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (emptySlots <= 0) {
                 continue;
             }
-            groups.compute(name, (ignored, group) -> {
+            groups.compute(entry.group(), (ignored, group) -> {
                 if (group == null) {
                     return new PreferredUploadProviderGroup(entry.providerId(), name, emptySlots);
                 }
@@ -3215,14 +3216,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         patternManagementRows.clear();
         String filter = patternManageSearchField != null ? patternManageSearchField.getValue().trim().toLowerCase() : "";
         boolean compactEmptySlots = WcwtClientConfig.patternManagementAutoCompactEmptySlots();
-        var groupedProviders = patternProviders.stream()
+        var groupedProviders = PatternManagementLayout.groupByTerminalGroup(patternProviders.stream()
                 .filter(this::isPatternProviderVisibleInManagement)
                 .filter(entry -> filter.isEmpty() || patternProviderMatches(entry, filter))
-                .sorted(Comparator.comparing(entry -> getPatternProviderSearchName(entry).toLowerCase()))
-                .collect(java.util.stream.Collectors.groupingBy(
-                        entry -> getPatternProviderSearchName(entry),
-                        LinkedHashMap::new,
-                        java.util.stream.Collectors.toList()));
+                .sorted(Comparator.comparing(entry -> getPatternProviderSearchName(entry).toLowerCase())),
+                PatternProviderListPacket.Entry::group);
         groupedProviders.values().forEach(groupEntries -> {
             var representative = groupEntries.get(0);
             patternManagementRows.add(new PatternManagementHeaderRow(representative, groupEntries.size()));
@@ -3251,18 +3249,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void appendPatternProviderSlotRows(PatternProviderListPacket.Entry entry, boolean compactEmptySlots) {
         if (compactEmptySlots) {
-            var displayedSlots = new ArrayList<Integer>();
-            int hiddenSlots = 0;
-            for (int slot = 0; slot < entry.inventorySize(); slot++) {
-                if (entry.slots().containsKey(slot) && !entry.slots().get(slot).isEmpty()) {
-                    displayedSlots.add(slot);
-                } else {
-                    hiddenSlots++;
-                }
-            }
-            if (hiddenSlots > 0) {
-                displayedSlots.add(-1);
-            }
+            var compactSlots = PatternManagementLayout.compactSlots(entry.inventorySize(),
+                    slot -> !entry.slots().getOrDefault(slot, ItemStack.EMPTY).isEmpty());
+            var displayedSlots = compactSlots.slots();
+            int hiddenSlots = compactSlots.emptySlotCount();
             for (int offset = 0; offset < displayedSlots.size(); offset += PATTERN_MANAGEMENT_COLS) {
                 patternManagementRows.add(new PatternManagementSlotsRow(entry,
                         new ArrayList<>(displayedSlots.subList(offset,
@@ -4292,7 +4282,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 guiGraphics.renderItem(displayStack, ix, iy);
                 guiGraphics.renderItemDecorations(font, displayStack, ix, iy);
             } else if (row.hiddenSlotCount() > 0) {
-                // The compact placeholder is intentionally not an inventory slot; its count is informational only.
+                // The summary shows remaining capacity; clicks resolve its current first empty inventory slot.
                 String hiddenCount = Integer.toString(row.hiddenSlotCount());
                 guiGraphics.drawString(font, hiddenCount, x + PATTERN_MANAGEMENT_SLOT_BG_SIZE - font.width(hiddenCount) - 1,
                         y + 1, 0xFFFFFF55, false);
@@ -5709,7 +5699,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 || relY < hitY || relY >= hitY + PATTERN_MANAGEMENT_SLOT_HIT_SIZE) {
             return null;
         }
-        int slot = row.slotIndices().get(col);
+        int slot = PatternManagementLayout.resolveSlot(row.slotIndices().get(col), row.entry().inventorySize(),
+                index -> !row.entry().slots().getOrDefault(index, ItemStack.EMPTY).isEmpty());
         return slot >= 0 ? new PatternManagementSlotHit(row.entry(), slot) : null;
     }
 
