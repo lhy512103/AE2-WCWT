@@ -173,17 +173,25 @@ repositories {
             includeGroup "de.mari_023"
         }
     }
-    maven {
-        name = "Modrinth Maven"
-        url = "https://api.modrinth.com/maven"
-        content {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "Modrinth Maven"
+                url = "https://api.modrinth.com/maven"
+            }
+        }
+        filter {
             includeGroup "maven.modrinth"
         }
     }
-    maven {
-        name = "LDLib Maven"
-        url = "https://maven.firstdarkdev.xyz/snapshots"
-        content {
+    exclusiveContent {
+        forRepository {
+            maven {
+                name = "LDLib Maven"
+                url = "https://maven.firstdarkdev.xyz/snapshots"
+            }
+        }
+        filter {
             includeGroup "com.lowdragmc.ldlib2"
         }
     }

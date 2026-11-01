@@ -312,9 +312,15 @@ public final class WcwtWirelessFeatures {
         var inventory = player.getInventory();
         int targetSlot = inventory.getSuitableHotbarSlot();
         var toReplace = inventory.getItem(targetSlot);
+        if (requestedStack.isEmpty()
+                || toReplace.isNotReplaceableByPickAction(player, targetSlot)
+                || com.lhy.wcwt.compat.NeoFavoriteItemsCompat.preventsReplace(inventory, targetSlot,
+                        requestedStack.copyWithCount(requestedStack.getMaxStackSize()))) {
+            return;
+        }
 
-        var insert = networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(), Actionable.SIMULATE,
-                playerSource);
+        var insert = toReplace.isEmpty() ? 0 : networkInventory.insert(AEItemKey.of(toReplace),
+                toReplace.getCount(), Actionable.SIMULATE, playerSource);
         if (insert < toReplace.getCount()) {
             return;
         }
@@ -335,8 +341,8 @@ public final class WcwtWirelessFeatures {
             return;
         }
 
-        insert = networkInventory.insert(AEItemKey.of(toReplace), toReplace.getCount(), Actionable.MODULATE,
-                playerSource);
+        insert = toReplace.isEmpty() ? 0 : networkInventory.insert(AEItemKey.of(toReplace),
+                toReplace.getCount(), Actionable.MODULATE, playerSource);
         if (insert < toReplace.getCount()) {
             toReplace.setCount(toReplace.getCount() - (int) insert);
             inventory.setItem(targetSlot, toReplace);

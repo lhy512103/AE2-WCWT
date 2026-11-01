@@ -11,13 +11,14 @@
     "WcwtServerPlayerGameModeMixin",
     "WcwtInventoryMixin",
     "WcwtPlayerMixin",
+    "WcwtBetterCombatMixin",
     "WcwtMenuLocatorsMixin",
     "WcwtToolkitDropMixin"
   ],
   "client": [
     "GuiMixin",
     "WcwtMinecraftPickBlockMixin",
-    "RecipeDisplayMixin"
+    "WcwtEmiRecipeDisplayMixin"
   ],
   "injectors": {
     "defaultRequire": 1

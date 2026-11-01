@@ -5,9 +5,12 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.emi.EmiStackCompat;
+import com.lhy.wcwt.compat.plus.PlusPresence;
+import com.lhy.wcwt.compat.plus.PlusRecipeMappingClient;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -27,7 +30,18 @@ public final class WcwtRecipeTransferCommon {
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
-        ExtendedAePlusUploadCompat.captureRecipeSearchKey(recipeBase, recipe, mode);
+        if (PlusPresence.available()) {
+            PlusRecipeMappingClient.captureJei(recipeBase, recipe, mode);
+        }
+    }
+
+    public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode,
+                                                    ResourceLocation categoryId,
+                                                    String categoryTitle) {
+        if (PlusPresence.available()) {
+            PlusRecipeMappingClient.captureCategory(
+                    recipeBase, recipe, mode, categoryId, categoryTitle);
+        }
     }
 
     public static Map<AEKey, Integer> getEmiFavoritePriorities() {

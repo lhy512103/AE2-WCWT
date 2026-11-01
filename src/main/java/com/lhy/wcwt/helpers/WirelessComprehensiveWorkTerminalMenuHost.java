@@ -331,7 +331,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
             long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
             long inserted = delegate.insert(what, amount, mode, source);
             if (mode == Actionable.MODULATE && inserted != 0) {
-                updateCachedStack(what, inserted);
+                cachedAvailableStacks = null;
             }
             logStorageMutation("insert", what, amount, inserted, mode, startNs);
             return inserted;
@@ -343,7 +343,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
             long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
             long extracted = delegate.extract(what, amount, mode, source);
             if (mode == Actionable.MODULATE && extracted != 0) {
-                updateCachedStack(what, -extracted);
+                cachedAvailableStacks = null;
             }
             logStorageMutation("extract", what, amount, extracted, mode, startNs);
             return extracted;
@@ -399,7 +399,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 return cachedAvailableStacks;
             }
             long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
-            KeyCounter fresh = delegate.getAvailableStacks();
+            KeyCounter fresh = copyCounter(delegate.getAvailableStacks());
             cachedAvailableStacks = fresh;
             cachedAvailableStacksTick = tick;
             if (DEBUG_PERF) {
@@ -414,20 +414,6 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 }
             }
             return fresh;
-        }
-
-        private void updateCachedStack(AEKey what, long delta) {
-            if (cachedAvailableStacks == null || STORAGE_CACHE_TICKS <= 0) {
-                return;
-            }
-
-            long current = cachedAvailableStacks.get(what);
-            long next = current + delta;
-            if (next <= 0) {
-                cachedAvailableStacks.remove(what);
-            } else {
-                cachedAvailableStacks.set(what, next);
-            }
         }
 
         private void logStorageMutation(String action, AEKey what, long requested, long changed, Actionable mode,

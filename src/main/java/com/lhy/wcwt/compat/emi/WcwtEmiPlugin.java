@@ -34,9 +34,8 @@ public class WcwtEmiPlugin implements EmiPlugin {
                         screen.getXSize(), screen.getYSize())));
     }
 
-    /** Called from {@code RecipeDisplayMixin}; see there for why this is not an EmiRecipeDecorator. */
     public static void addPullItemsButton(EmiRecipe recipe, List<Widget> widgets) {
-        if (!WcwtPullItemsSupport.shouldShowExtraButton()) {
+        if (recipe == null || !WcwtPullItemsSupport.shouldShowExtraButton()) {
             return;
         }
         var handler = new WcwtEmiRecipeHandler();
@@ -74,4 +73,5 @@ public class WcwtEmiPlugin implements EmiPlugin {
         }
         return new int[] {recipe.getDisplayWidth() + 5, Math.max(0, height - BUTTON)};
     }
+
 }

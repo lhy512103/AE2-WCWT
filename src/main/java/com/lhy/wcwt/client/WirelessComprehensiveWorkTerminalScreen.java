@@ -1989,10 +1989,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             encodePatternButton.setFocused(false);
         }
         setFocused(null);
+        boolean effectiveUpload = com.lhy.wcwt.compat.plus.PlusAutoUploadSettingsClient
+                .effectiveUploadEnabled(patternManagementUploadEnabled);
         logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, field={}, resolvedField={}",
-                patternEncodingMode, patternManagementUploadEnabled, searchKey, resolvedSearchKey,
+                patternEncodingMode, effectiveUpload, searchKey, resolvedSearchKey,
                 currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
-        PacketDistributor.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
+        PacketDistributor.sendToServer(new EncodePatternPacket(patternEncodingMode, effectiveUpload,
                 resolvedSearchKey,
                 WcwtClientConfig.patternUploadFailFallbackToEditor()));
     }
@@ -5957,9 +5959,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         int slot = row.slots().get(col);
         if (slot < 0) {
-            return null;
+            slot = firstEmptyProviderSlot(row.entry());
         }
-        return new PatternManagementSlotHit(row.entry(), slot);
+        return slot < 0 ? null : new PatternManagementSlotHit(row.entry(), slot);
     }
 
     private static boolean inRect(int x, int y, int left, int top, int width, int height) {

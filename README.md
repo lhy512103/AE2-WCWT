@@ -5,6 +5,17 @@ It is not just a wireless crafting terminal: it folds commonly used AE2 addon wo
 
 Current version: `v1.3.10`
 
+## IDE dependency refresh
+
+After dependency changes, refresh the Gradle project in your IDE. In VS Code, run
+**Java: Reload Projects**. If newly added mod packages are unresolved, regenerate
+the Eclipse classpath with `./gradlew eclipse --no-configuration-cache`
+(`.\gradlew.bat eclipse --no-configuration-cache` on Windows) and reload the project.
+The Eclipse generator does not support this project's configuration cache.
+With dependencies already cached, add `--offline` to avoid
+waiting for optional source downloads. Do not remove compatibility code to hide
+missing-class errors from a stale IDE classpath.
+
 ## Automated Publishing
 
 The repository contains a GitHub Actions workflow at `.github/workflows/publish.yml`. Publishing
@@ -67,6 +78,7 @@ These mods are compile-time `compileOnly` / runtime optional. Missing them does 
 - Applied Mekanistics
 - Just Enough Characters
 - NeoECOAEExtension
+- Some Useless Things (2.4.6+): JEI Omniversal Alloy Furnace recipes preserve their selected recipe identity and molds when encoded, using the mod's own encoder and auto-upload setting.
 
 Notes:
 

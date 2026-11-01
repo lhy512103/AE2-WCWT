@@ -2,8 +2,10 @@ package com.lhy.wcwt.compat;
 
 import appeng.api.networking.IGrid;
 import appeng.helpers.patternprovider.PatternContainer;
+import appeng.helpers.patternprovider.PatternProviderLogicHost;
+import com.lhy.wcwt.compat.plus.PlusPatternUploadApi;
 import com.extendedae_plus.content.matrix.PatternCorePlusBlockEntity;
-import com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil;
+import com.extendedae_plus.content.matrix.supermatrix.SuperAssemblerMatrixPart;
 import com.glodblock.github.extendedae.common.tileentities.matrix.TileAssemblerMatrixPattern;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -36,11 +38,43 @@ public final class ExtendedAePlusMatrixUploadCompat {
         if (ModList.get().isLoaded(EXTENDEDAE) && provider instanceof TileAssemblerMatrixPattern) {
             return true;
         }
-        return ModList.get().isLoaded(EXTENDEDAE_PLUS) && provider instanceof PatternCorePlusBlockEntity;
+        return ModList.get().isLoaded(EXTENDEDAE_PLUS)
+                && (provider instanceof PatternCorePlusBlockEntity || provider instanceof SuperAssemblerMatrixPart);
+    }
+
+    public static Object assemblerMatrixSystem(PatternContainer provider) {
+        if (!isUploadAvailable() || provider == null) {
+            return null;
+        }
+        if (provider instanceof SuperAssemblerMatrixPart part) {
+            var superCluster = part.eap$getSuperMatrixCluster();
+            if (superCluster != null) {
+                return superCluster;
+            }
+        }
+        if (provider instanceof TileAssemblerMatrixPattern matrix
+                && matrix.isFormed() && matrix.getMainNode().isActive()) {
+            var cluster = matrix.getCluster();
+            if (cluster != null) {
+                var members = cluster.getBlockEntities();
+                while (members.hasNext()) {
+                    if (members.next() instanceof com.extendedae_plus.content.matrix.UploadCoreBlockEntity) {
+                        return cluster;
+                    }
+                }
+            }
+            return null;
+        }
+        // EAEP's matrix uploader also accepts AE2CS hosts selected by this class-name check.
+        if (isUploadAvailable() && provider.getClass().getName().contains("MeteoritePatternProvider")
+                && provider instanceof PatternProviderLogicHost host) {
+            return host.getLogic();
+        }
+        return null;
     }
 
     public static boolean uploadPatternToMatrix(ServerPlayer player, ItemStack pattern, IGrid grid) {
         return isUploadAvailable()
-                && ExtendedAEPatternUploadUtil.uploadPatternToMatrix(player, pattern, grid);
+                && PlusPatternUploadApi.uploadPatternToMatrix(player, pattern, grid);
     }
 }

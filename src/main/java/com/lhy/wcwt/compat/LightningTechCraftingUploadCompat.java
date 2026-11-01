@@ -2,6 +2,8 @@ package com.lhy.wcwt.compat;
 
 import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
+import com.moakiee.ae2lt.blockentity.MatrixControllerBlockEntity;
+import com.moakiee.ae2lt.blockentity.MatrixPatternStorageBlockEntity;
 import com.moakiee.ae2lt.logic.tianshu.terminal.PatternEncodingDuplicateFilter;
 import com.moakiee.ae2lt.logic.tianshu.terminal.TianshuPatternUploadRouting;
 import net.minecraft.world.item.ItemStack;
@@ -32,6 +34,19 @@ public final class LightningTechCraftingUploadCompat {
         return isAvailable()
                 && provider != null
                 && TianshuPatternUploadRouting.isMatterWarpingMatrixGroup(provider.getTerminalGroup());
+    }
+
+    public static Object craftingArraySystem(PatternContainer provider) {
+        if (!isAvailable() || !(provider instanceof MatrixPatternStorageBlockEntity storage)) {
+            return null;
+        }
+        var level = storage.getLevel();
+        var controllerPos = storage.getControllerPos();
+        if (level == null || controllerPos == null || !level.isLoaded(controllerPos)) {
+            return null;
+        }
+        var controller = level.getBlockEntity(controllerPos);
+        return controller instanceof MatrixControllerBlockEntity matrix && matrix.isFormed() ? matrix : null;
     }
 
     public static int findDuplicateSlot(PatternContainer provider, ItemStack pattern, Level level) {
