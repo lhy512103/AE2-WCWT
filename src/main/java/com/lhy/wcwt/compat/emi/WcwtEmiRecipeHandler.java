@@ -15,6 +15,8 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import com.lhy.wcwt.pull.WcwtComponentIngredientEncoding;
+import appeng.util.CraftingRecipeUtil;
 import com.lhy.wcwt.pull.WcwtStackMatching;
 import dev.emi.emi.api.recipe.EmiInfoRecipe;
 import dev.emi.emi.api.recipe.EmiIngredientRecipe;
@@ -483,7 +485,7 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         if (mode == EncodingMode.CRAFTING) {
             List<@Nullable GenericStack> visualInputs = collectCraftingInputsFromWidgets(priorityContext, widgets);
             if (containsAnyStack(visualInputs)) {
-                return visualInputs;
+                return resolveComponentCraftingInputs(priorityContext, recipe, visualInputs);
             }
         }
         List<@Nullable GenericStack> sparseInputs = new ArrayList<>();
@@ -509,7 +511,39 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             }
             return List.of();
         }
-        return sparseInputs;
+        return mode == EncodingMode.CRAFTING
+                ? resolveComponentCraftingInputs(priorityContext, recipe, sparseInputs) : sparseInputs;
+    }
+
+    private static List<@Nullable GenericStack> resolveComponentCraftingInputs(
+            WcwtIngredientPriorities.PriorityContext priorityContext, EmiRecipe recipe,
+            List<@Nullable GenericStack> displayedInputs) {
+        var holder = recipe.getBackingRecipe();
+        if (holder == null || !(holder.value() instanceof net.minecraft.world.item.crafting.CraftingRecipe)) {
+            return displayedInputs;
+        }
+        var ingredients = CraftingRecipeUtil.ensure3by3CraftingMatrix(holder.value());
+        if (ingredients.stream().noneMatch(WcwtComponentIngredientEncoding::isPartialComponentIngredient)) {
+            return displayedInputs;
+        }
+        List<@Nullable GenericStack> resolved = new ArrayList<>(displayedInputs);
+        while (resolved.size() < ingredients.size()) {
+            resolved.add(null);
+        }
+        var recipeResults = WcwtComponentIngredientEncoding.recipeResults(Minecraft.getInstance().level);
+        for (int slot = 0; slot < ingredients.size(); slot++) {
+            Ingredient ingredient = ingredients.get(slot);
+            if (!WcwtComponentIngredientEncoding.isPartialComponentIngredient(ingredient)) {
+                continue;
+            }
+            GenericStack displayed = resolved.get(slot);
+            List<ItemStack> alternatives = displayed != null && displayed.what() instanceof AEItemKey item
+                    ? List.of(item.toStack()) : List.of();
+            ItemStack selected = WcwtComponentIngredientEncoding.resolve(priorityContext, ingredient,
+                    alternatives, recipeResults);
+            resolved.set(slot, selected.isEmpty() ? null : GenericStack.fromItemStack(selected.copyWithCount(1)));
+        }
+        return resolved;
     }
 
     private static List<Widget> collectRecipeWidgets(EmiRecipe recipe) {

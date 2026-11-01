@@ -18,6 +18,7 @@ import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import com.lhy.wcwt.pull.WcwtComponentIngredientEncoding;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -243,6 +244,7 @@ public class WcwtRecipeTransferHandler
                                                                   IRecipeSlotsView recipeSlots,
                                                                   EncodingMode mode) {
         var priorityContext = createPriorityContext(menu);
+        var recipeResults = WcwtComponentIngredientEncoding.recipeResults(menu.getPlayer().level());
         if (recipe != null && recipeHolder != null) {
             List<IRecipeSlotView> inputSlots = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream()
                     .limit(mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE)
@@ -252,7 +254,7 @@ public class WcwtRecipeTransferHandler
                 List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
                 for (int slot = 0; slot < ingredients.size(); slot++) {
                     List<ItemStack> slotAlternatives = collectPerSlotAlternatives(inputSlots, slot);
-                    resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), slotAlternatives));
+                    resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), slotAlternatives, recipeResults));
                 }
                 return resolved;
             }
@@ -357,8 +359,23 @@ public class WcwtRecipeTransferHandler
     public static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                   Ingredient ingredient,
                                                   List<ItemStack> visibleAlternatives) {
+        return toBestGenericStack(priorityContext, ingredient, visibleAlternatives,
+                WcwtComponentIngredientEncoding.recipeResults(Minecraft.getInstance().level));
+    }
+
+    @Nullable
+    private static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+                                                   Ingredient ingredient,
+                                                   List<ItemStack> visibleAlternatives,
+                                                   java.util.function.Supplier<List<ItemStack>> recipeResults) {
         if (ingredient.isEmpty()) {
             return null;
+        }
+
+        if (WcwtComponentIngredientEncoding.isPartialComponentIngredient(ingredient)) {
+            ItemStack selected = WcwtComponentIngredientEncoding.resolve(priorityContext, ingredient,
+                    visibleAlternatives, recipeResults);
+            return selected.isEmpty() ? null : GenericStack.fromItemStack(selected.copyWithCount(1));
         }
 
         if (priorityContext.hasFavoritePriorities()) {
