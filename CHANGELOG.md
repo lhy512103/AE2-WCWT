@@ -4,53 +4,35 @@
 
 ### English
 
-1. Fixed: Restricted Modrinth and LDLib dependency repositories to prevent unrelated repositories from blocking IDE sync.
-2. Improved: Updated Lightning Tech to 2.1.2-beta4 and aligned its Thunderbolt Core and LDLib2 dependencies.
-3. Added: Support for Useless Mod 2.4.6 omniversal pattern encoding, automatic upload and duplicate returns (#34).
-4. Fixed: Refreshed inventory counts after transfers to prevent overflow and infinite-storage cache drift (#35).
-5. Fixed: Compressed empty-slot click targeting and stale patterns after remapping (#37).
-6. Fixed: Pick block skips Neo Favorite Items locked slots to prevent network item loss (#32).
-7. Fixed: The recipe-pull button now appears with EMI's default settings (#30).
-8. Fixed: Toolkit hotbars recognize terminals held in the offhand (#31).
-9. Fixed: Reading toolkit hotbar settings before config loading no longer crashes startup (#36).
-10. Added: Regression coverage for toolkit reads before config loading.
-11. Fixed: Better Combat dual wield attacks no longer duplicate toolkit items or overwrite hotbar slots.
-12. Fixed: Default recipe mappings use the same client language as EAEP.
-13. Fixed: Partial-component recipes encode full ingredient data to prevent stalled core crafting.
-14. Improved: Development rules require bilingual numbered logs and separately verified commits.
-15. Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
-16. Improved: Changelog entries are grouped by version, with English before Chinese.
-17. Fixed: Pattern clearing and substitution toggles now synchronize through the server to prevent AE2LT crashes (#38).
-18. Fixed: Adapted to the EAEP 1.6.4 upload API split and moved auto-upload setting while retaining older-version support (#39).
-19. Fixed: Corrected the local Mekanism dependency spelling to restore Gradle dependency resolution.
-20. Fixed: Pattern item and fluid substitution buttons now refresh from server-synchronized state without reopening the terminal.
-21. Fixed: Isolated recipe-viewer runtimes so runClient loads only JEI and runClientEMI loads only EMI.
-22. Removed: The incompatible AE2 Utility development addon that prevented JEI recipe pages from opening.
+1. Added: Support for Useless Mod 2.4.6 omniversal pattern encoding, automatic upload and duplicate returns (#34).
+2. Fixed: Refreshed inventory counts after transfers to prevent overflow and infinite-storage cache drift (#35).
+3. Fixed: Compressed empty-slot click targeting and stale patterns after remapping (#37).
+4. Fixed: Pick block skips Neo Favorite Items locked slots to prevent network item loss (#32).
+5. Fixed: The recipe-pull button now appears with EMI's default settings (#30).
+6. Fixed: Toolkit hotbars recognize terminals held in the offhand (#31).
+7. Fixed: Reading toolkit hotbar settings before config loading no longer crashes startup (#36).
+8. Fixed: Better Combat dual wield attacks no longer duplicate toolkit items or overwrite hotbar slots.
+9. Fixed: Default recipe mappings use the same client language as EAEP.
+10. Fixed: Partial-component recipes encode full ingredient data to prevent stalled core crafting.
+11. Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
+12. Fixed: Pattern clearing and substitution toggles now synchronize through the server to prevent AE2LT crashes (#38).
+13. Fixed: Adapted to the EAEP 1.6.4 upload API split and moved auto-upload setting while retaining older-version support (#39).
 
 ### 中文
 
-1. 修复：限定 Modrinth 和 LDLib 依赖仓库，避免 IDE 同步被无关仓库阻塞。
-2. 优化：更新闪电科技至 2.1.2-beta4，并同步 Thunderbolt Core 和 LDLib2 配套依赖。
-3. 新增：兼容无用之物 2.4.6 万象样板编码、自动上传及重复退还（#34）。
-4. 修复：存取后重新读取库存数量，避免大数溢出和无限库存缓存漂移（#35）。
-5. 修复：压缩空槽点击定位及重新映射后的样板残影（#37）。
-6. 修复：选取方块时跳过 Neo Favorite Items 锁定槽位，避免网络物品丢失（#32）。
-7. 修复：EMI 默认配置下不显示拉取物品按钮（#30）。
-8. 修复：工具包快捷栏无法识别副手中的终端（#31）。
-9. 修复：配置加载前访问工具包快捷栏导致启动崩溃（#36）。
-10. 新增：配置加载前工具栏读取回归测试。
-11. 修复：Better Combat 双持攻击复制工具并覆盖快捷栏物品。
-12. 修复：配方默认映射与 EAEP 使用相同的客户端语言。
-13. 修复：部分组件配方编码优先保留真实材料的完整数据，避免核心样板卡合成。
-14. 优化：开发约定明确中英文有序日志及逐项验证提交。
-15. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。
-16. 优化：更新日志按版本分组，英文在前、中文在后。
-17. 修复：清除样板和切换替换选项改由服务端统一同步，避免 AE2LT 崩溃（#38）。
-18. 修复：兼容 EAEP 1.6.4 上传接口拆分和自动上传配置迁移，并保留旧版支持（#39）。
-19. 修复：纠正本地 Mekanism 依赖名称拼写，恢复 Gradle 依赖解析。
-20. 修复：样板物品替换和流体替换按钮同步服务端状态，无需重开终端。
-21. 修复：隔离配方浏览器运行依赖，runClient 仅加载 JEI，runClientEMI 仅加载 EMI。
-22. 移除：不兼容的 AE2 Utility 开发测试依赖，避免 JEI 配方页空白或无法打开。
+1. 新增：兼容无用之物 2.4.6 万象样板编码、自动上传及重复退还（#34）。
+2. 修复：存取后重新读取库存数量，避免大数溢出和无限库存缓存漂移（#35）。
+3. 修复：压缩空槽点击定位及重新映射后的样板残影（#37）。
+4. 修复：选取方块时跳过 Neo Favorite Items 锁定槽位，避免网络物品丢失（#32）。
+5. 修复：EMI 默认配置下不显示拉取物品按钮（#30）。
+6. 修复：工具包快捷栏无法识别副手中的终端（#31）。
+7. 修复：配置加载前访问工具包快捷栏导致启动崩溃（#36）。
+8. 修复：Better Combat 双持攻击复制工具并覆盖快捷栏物品。
+9. 修复：配方默认映射与 EAEP 使用相同的客户端语言。
+10. 修复：部分组件配方编码优先保留真实材料的完整数据，避免核心样板卡合成。
+11. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。
+12. 修复：清除样板和切换替换选项改由服务端统一同步，避免 AE2LT 崩溃（#38）。
+13. 修复：兼容 EAEP 1.6.4 上传接口拆分和自动上传配置迁移，并保留旧版支持（#39）。
 
 
 ## v1.3.10
