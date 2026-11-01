@@ -1992,10 +1992,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             encodePatternButton.setFocused(false);
         }
         setFocused(null);
+        boolean effectiveUpload = com.lhy.wcwt.compat.plus.PlusAutoUploadSettingsClient
+                .effectiveUploadEnabled(patternManagementUploadEnabled);
         logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, field={}, resolvedField={}",
-                patternEncodingMode, patternManagementUploadEnabled, searchKey, resolvedSearchKey,
+                patternEncodingMode, effectiveUpload, searchKey, resolvedSearchKey,
                 currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
-        PacketDistributor.sendToServer(new EncodePatternPacket(patternEncodingMode, patternManagementUploadEnabled,
+        PacketDistributor.sendToServer(new EncodePatternPacket(patternEncodingMode, effectiveUpload,
                 resolvedSearchKey,
                 WcwtClientConfig.patternUploadFailFallbackToEditor()));
     }

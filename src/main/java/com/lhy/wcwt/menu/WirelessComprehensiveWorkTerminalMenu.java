@@ -2215,9 +2215,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                         matrixUploadResult.state(), mode, encodedPattern);
                 return true;
             }
-            if (matrixUploadResult.state() == WcwtPatternUploadTargets.MatrixUploadState.DUPLICATE_ABORTED) {
-                logEncode("matrix duplicate detected but blank return failed, mode={}, encoded={}",
-                        mode, encodedPattern);
+            if (!matrixUploadResult.state().allowsProviderFallback()) {
+                logEncode("matrix upload stopped result={}, mode={}, encoded={}",
+                        matrixUploadResult.state(), mode, encodedPattern);
                 return false;
             }
         }

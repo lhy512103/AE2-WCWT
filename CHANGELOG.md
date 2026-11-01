@@ -7,6 +7,7 @@
 3. 修复：配方默认映射与 EAEP 使用相同的客户端语言。 / Fixed: Default recipe mappings use the same client language as EAEP.
 4. 修复：部分组件配方编码优先保留真实材料的完整数据，避免核心样板卡合成。 / Fixed: Partial-component recipes encode full ingredient data to prevent stalled core crafting.
 5. 优化：开发约定明确中英文有序日志及逐项验证提交。 / Improved: Development rules require bilingual numbered logs and separately verified commits.
+6. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。 / Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
 
 ## 未发布
 

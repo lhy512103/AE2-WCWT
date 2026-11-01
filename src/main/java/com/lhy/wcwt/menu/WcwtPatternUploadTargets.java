@@ -110,6 +110,77 @@ final class WcwtPatternUploadTargets {
             return MatrixUploadResult.FAILURE;
         }
 
+        WcwtAutoUploadSystems systems = craftingUploadSystems(currentGrid, uploadStack, serverPlayer);
+        return systems.uploadIfUnique(() -> uploadToOnlyCraftingSystem(uploadStack, serverPlayer, currentGrid),
+                MatrixUploadResult.FAILURE, MatrixUploadResult.AMBIGUOUS);
+    }
+
+    private WcwtAutoUploadSystems craftingUploadSystems(IGrid currentGrid, ItemStack pattern, ServerPlayer player) {
+        var systems = new WcwtAutoUploadSystems();
+        boolean tianshuCrafting = false;
+        try {
+            tianshuCrafting = LightningTechCraftingUploadCompat.isCraftingPattern(pattern, player.level());
+        } catch (Throwable ignored) {
+            systems.markUncertain();
+        }
+        // EAEP also uploads to hidden matrix inventories, so terminal visibility must not hide ambiguity.
+        try {
+            for (var machineClass : currentGrid.getMachineClasses()) {
+                if (!PatternContainer.class.isAssignableFrom(machineClass)) {
+                    continue;
+                }
+                Class<? extends PatternContainer> containerClass = machineClass.asSubclass(PatternContainer.class);
+                var activeProviders = currentGrid.getActiveMachines(containerClass);
+                for (var provider : currentGrid.getMachines(containerClass)) {
+                    if (provider == null) {
+                        continue;
+                    }
+                    var inventory = provider.getTerminalPatternInventory();
+                    if (inventory == null || inventory.size() == 0) {
+                        continue;
+                    }
+                    if (tianshuCrafting && activeProviders.contains(provider)) {
+                        try {
+                            if (LightningTechCraftingUploadCompat.isTianshuCraftingArray(provider)) {
+                                Object system = LightningTechCraftingUploadCompat.craftingArraySystem(provider);
+                                if (system == null) {
+                                    systems.markUncertain();
+                                } else {
+                                    systems.add(system);
+                                }
+                            }
+                        } catch (Throwable ignored) {
+                            systems.markUncertain();
+                        }
+                    }
+                    try {
+                        if (activeProviders.contains(provider) && NeoEcoApiCompat.isEcoPatternProvider(provider)) {
+                            // The service exists even without a bus: only count it once a real bus is found.
+                            Object system = NeoEcoApiCompat.patternStorageSystem(currentGrid);
+                            if (system == null) {
+                                systems.markUncertain();
+                            } else {
+                                systems.add(system);
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                        systems.markUncertain();
+                    }
+                    try {
+                        systems.add(ExtendedAePlusMatrixUploadCompat.assemblerMatrixSystem(provider));
+                    } catch (Throwable ignored) {
+                        systems.markUncertain();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+            systems.markUncertain();
+        }
+        return systems;
+    }
+
+    private MatrixUploadResult uploadToOnlyCraftingSystem(ItemStack uploadStack, ServerPlayer serverPlayer,
+                                                          IGrid currentGrid) {
         try {
             MatrixUploadResult tianshuUpload = uploadToTianshuCraftingArray(uploadStack, serverPlayer);
             if (tianshuUpload.state() != MatrixUploadState.FAILURE) {
@@ -322,6 +393,7 @@ final class WcwtPatternUploadTargets {
                 new MatrixUploadResult(MatrixUploadState.DUPLICATE_RETURNED, -1, -1);
         private static final MatrixUploadResult DUPLICATE_ABORTED =
                 new MatrixUploadResult(MatrixUploadState.DUPLICATE_ABORTED, -1, -1);
+        private static final MatrixUploadResult AMBIGUOUS = new MatrixUploadResult(MatrixUploadState.AMBIGUOUS, -1, -1);
         private static final MatrixUploadResult FAILURE = new MatrixUploadResult(MatrixUploadState.FAILURE, -1, -1);
 
         private static MatrixUploadResult uploaded(long providerId, int slot) {
@@ -333,7 +405,12 @@ final class WcwtPatternUploadTargets {
         UPLOADED,
         DUPLICATE_RETURNED,
         DUPLICATE_ABORTED,
-        FAILURE
+        AMBIGUOUS,
+        FAILURE;
+
+        boolean allowsProviderFallback() {
+            return this == FAILURE;
+        }
     }
 
     record UploadAttemptResult(boolean uploaded, boolean hadTarget, String providerName, long providerId, int slot) {
