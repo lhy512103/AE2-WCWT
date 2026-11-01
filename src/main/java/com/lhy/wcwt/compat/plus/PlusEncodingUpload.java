@@ -6,7 +6,6 @@ import appeng.api.networking.IGrid;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.extendedae_plus.network.ReturnLastPatternC2SPacket;
-import com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -30,7 +29,7 @@ public final class PlusEncodingUpload {
         if (query.isEmpty()) {
             return UniqueUploadResult.NO_TARGET;
         }
-        List<PatternContainer> providers = ExtendedAEPatternUploadUtil.listAvailableProvidersFromGrid(grid);
+        List<PatternContainer> providers = PlusPatternUploadApi.listAvailableProvidersFromGrid(grid);
         List<PatternContainer> matches = new ArrayList<>();
         String targetName = null;
         for (PatternContainer provider : providers) {
@@ -56,10 +55,10 @@ public final class PlusEncodingUpload {
                 continue;
             }
             ItemStack[] before = snapshot(inv);
-            remaining = ExtendedAEPatternUploadUtil.insertIntoAccessiblePatternSlots(provider, remaining, filter);
+            remaining = PlusPatternUploadApi.insertIntoAccessiblePatternSlots(provider, remaining, filter);
             int slot = firstChangedSlot(inv, before);
             if (slot >= 0) {
-                ExtendedAEPatternUploadUtil.recordProviderUpload(
+                PlusPatternUploadApi.recordProviderUpload(
                         player, encodeProviderIndex(providers, provider), provider, slot);
             }
             if (remaining.isEmpty()) {
@@ -74,8 +73,8 @@ public final class PlusEncodingUpload {
         if (player == null || grid == null || provider == null || slot < 0) {
             return;
         }
-        List<PatternContainer> providers = ExtendedAEPatternUploadUtil.listAvailableProvidersFromGrid(grid);
-        ExtendedAEPatternUploadUtil.recordProviderUpload(
+        List<PatternContainer> providers = PlusPatternUploadApi.listAvailableProvidersFromGrid(grid);
+        PlusPatternUploadApi.recordProviderUpload(
                 player, encodeProviderIndex(providers, provider), provider, slot);
     }
 

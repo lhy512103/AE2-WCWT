@@ -7,14 +7,18 @@ import java.util.function.Supplier;
 
 /** Reads EAEP's live client setting only when the client sends an automatic encoding request. */
 public final class PlusAutoUploadSettingsClient {
-    private static final String PROVIDER_SCREEN = "com.extendedae_plus.client.screen.ProviderSelectScreen";
-
     private PlusAutoUploadSettingsClient() {
     }
 
     public static boolean effectiveUploadEnabled(boolean wcwtUploadEnabled) {
-        return effectiveUploadEnabled(wcwtUploadEnabled, PlusPresence.available(),
-                () -> WcwtReflect.findClass(PlusPresence.MOD_ID, PROVIDER_SCREEN));
+        if (!wcwtUploadEnabled) {
+            return false;
+        }
+        try {
+            return !PlusPresence.available() || PlusPatternUploadApi.effectiveUniqueUploadEnabled();
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     static boolean effectiveUploadEnabled(boolean wcwtUploadEnabled, boolean plusAvailable,

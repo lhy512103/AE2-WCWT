@@ -21,6 +21,26 @@ class PlusAutoUploadSettingsClientTest {
     }
 
     @Test
+    void readsTheModernPublicConfigValueOnEveryEncodeRequest() {
+        ModernConfig.UNIQUE_PROVIDER_AUTO_UPLOAD_ENABLE.value = true;
+        assertTrue(PlusPatternUploadApi.readModernUniqueUploadSetting(ModernConfig.class));
+        ModernConfig.UNIQUE_PROVIDER_AUTO_UPLOAD_ENABLE.value = false;
+        assertFalse(PlusPatternUploadApi.readModernUniqueUploadSetting(ModernConfig.class));
+    }
+
+    public static final class ModernConfig {
+        public static final BooleanConfigValue UNIQUE_PROVIDER_AUTO_UPLOAD_ENABLE = new BooleanConfigValue();
+    }
+
+    public static final class BooleanConfigValue {
+        boolean value;
+
+        public boolean get() {
+            return value;
+        }
+    }
+
+    @Test
     void wcwtSettingCanDisableUploadWithoutResolvingTheEaepScreen() {
         AtomicInteger lookups = new AtomicInteger();
         assertFalse(PlusAutoUploadSettingsClient.effectiveUploadEnabled(false, true, () -> {

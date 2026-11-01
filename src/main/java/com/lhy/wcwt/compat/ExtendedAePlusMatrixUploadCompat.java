@@ -3,9 +3,9 @@ package com.lhy.wcwt.compat;
 import appeng.api.networking.IGrid;
 import appeng.helpers.patternprovider.PatternContainer;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
+import com.lhy.wcwt.compat.plus.PlusPatternUploadApi;
 import com.extendedae_plus.content.matrix.PatternCorePlusBlockEntity;
 import com.extendedae_plus.content.matrix.supermatrix.SuperAssemblerMatrixPart;
-import com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil;
 import com.glodblock.github.extendedae.common.tileentities.matrix.TileAssemblerMatrixPattern;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -75,6 +75,6 @@ public final class ExtendedAePlusMatrixUploadCompat {
 
     public static boolean uploadPatternToMatrix(ServerPlayer player, ItemStack pattern, IGrid grid) {
         return isUploadAvailable()
-                && ExtendedAEPatternUploadUtil.uploadPatternToMatrix(player, pattern, grid);
+                && PlusPatternUploadApi.uploadPatternToMatrix(player, pattern, grid);
     }
 }

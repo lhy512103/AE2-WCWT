@@ -21,6 +21,7 @@
 15. Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
 16. Improved: Changelog entries are grouped by version, with English before Chinese.
 17. Fixed: Pattern clearing and substitution toggles now synchronize through the server to prevent AE2LT crashes (#38).
+18. Fixed: Adapted to the EAEP 1.6.4 upload API split and moved auto-upload setting while retaining older-version support (#39).
 
 ### 中文
 
@@ -41,6 +42,7 @@
 15. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。
 16. 优化：更新日志按版本分组，英文在前、中文在后。
 17. 修复：清除样板和切换替换选项改由服务端统一同步，避免 AE2LT 崩溃（#38）。
+18. 修复：兼容 EAEP 1.6.4 上传接口拆分和自动上传配置迁移，并保留旧版支持（#39）。
 
 
 ## v1.3.10

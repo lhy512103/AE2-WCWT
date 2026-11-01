@@ -1,8 +1,6 @@
 package com.lhy.wcwt.compat.plus;
 
 import appeng.parts.encoding.EncodingMode;
-import com.extendedae_plus.compat.JeiRuntimeCompat;
-import com.extendedae_plus.util.uploadPattern.ExtendedAEPatternUploadUtil;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.Nullable;
@@ -14,9 +12,9 @@ public final class PlusRecipeMappingClient {
 
     public static void captureJei(@Nullable Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode) {
         if (mode == EncodingMode.PROCESSING) {
-            String key = JeiRuntimeCompat.getRecipeCategorySearchKey(recipeBase);
+            String key = PlusPatternUploadApi.getJeiRecipeCategorySearchKey(recipeBase);
             if (key != null && !key.isBlank()) {
-                ExtendedAEPatternUploadUtil.setLastProviderSearchKey(key);
+                PlusPatternUploadApi.setLastProviderSearchKey(key);
                 return;
             }
         }
@@ -36,11 +34,11 @@ public final class PlusRecipeMappingClient {
             return false;
         }
         // EAEP keeps explicit names and aliases ahead of the localized category title.
-        String key = ExtendedAEPatternUploadUtil.resolveRecipeTypeSearchKey(categoryId, categoryTitle);
+        String key = PlusPatternUploadApi.resolveRecipeTypeSearchKey(categoryId, categoryTitle);
         if (key == null || key.isBlank()) {
             return false;
         }
-        ExtendedAEPatternUploadUtil.setLastProviderSearchKey(key);
+        PlusPatternUploadApi.setLastProviderSearchKey(key);
         return true;
     }
 }
