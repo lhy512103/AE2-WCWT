@@ -1,3 +1,16 @@
+# 1.20.1.12 (Unreleased)
+
+### English
+
+1. Fixed: pattern management groups providers by their full terminal group identity so different machines with the same display name remain separate.
+2. Fixed: clicking the compacted empty-slot summary inserts a pattern into a real empty provider slot and refreshes the remaining slot count.
+
+### 中文
+
+1. 修复：样板管理按完整终端分组身份归类供应器，避免显示名称相同的不同机器被错误合并。
+2. 修复：点击压缩空槽汇总可将样板放入供应器真实空槽，并更新剩余空槽数量。
+
+
 # 1.20.1.11
 
 ## English
