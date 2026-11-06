@@ -22,6 +22,9 @@ public final class WcwtToolkitPlayerState {
     AppEngInternalInventory items;
     @Nullable
     AppEngInternalInventory memory;
+    /** Slot writes since the last flush to player data; see {@link WcwtToolkitStore#flushDirty}. */
+    boolean itemsDirty;
+    boolean memoryDirty;
 
     @Nullable
     ItemStack[] lastSentItems;

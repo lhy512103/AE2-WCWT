@@ -43,6 +43,15 @@ public final class WcwtToolkitEvents {
         }
     }
 
+    /** Pending toolkit writes of the dying player must reach the clone's persisted data. */
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        if (event.getOriginal() instanceof ServerPlayer original
+                && event.getEntity() instanceof ServerPlayer replacement) {
+            WcwtToolkitStore.copyOnClone(original, replacement);
+        }
+    }
+
     /** Respawn and dimension travel give the client a fresh player with an empty toolkit copy. */
     @SubscribeEvent
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {

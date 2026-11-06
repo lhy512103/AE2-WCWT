@@ -16,6 +16,7 @@ public final class WcwtToolkitSync {
 
     /** Server tick: refresh whether the toolkit card is carried, then send whatever changed. */
     public static void tick(ServerPlayer player) {
+        WcwtToolkitStore.flushDirty(player);
         WcwtToolkitHotbarState.setHasCard(player, WcwtToolkitAccess.hasToolkitCard(player));
         send(player, false, false);
     }
