@@ -2,14 +2,11 @@ package com.lhy.wcwt.pull;
 
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
-import appeng.api.stacks.AEKeyType;
-import appeng.api.stacks.AEKeyTypes;
-import appeng.api.stacks.AEKeyTypesInternal;
 import appeng.api.stacks.GenericStack;
 import appeng.parts.encoding.EncodingMode;
+import com.lhy.wcwt.TestBootstrap;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import io.netty.buffer.Unpooled;
-import net.minecraft.SharedConstants;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
@@ -22,7 +19,6 @@ import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.common.crafting.DataComponentIngredient;
-import net.neoforged.fml.loading.LoadingModList;
 import net.neoforged.neoforge.registries.RegistryBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -36,18 +32,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class WcwtComponentIngredientEncodingTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        // NeoForge's FeatureFlags bootstrap reads loading metadata even in a vanilla-only fixture.
-        if (LoadingModList.get() == null) {
-            LoadingModList.of(List.of(), List.of(), List.of(), List.of(), Map.of());
-        }
-        // src/test/resources supplies an empty en_us map: unit tests have no Minecraft client assets.
-        // Translation content is irrelevant to component matching; this fixture never ships in the mod.
-        Bootstrap.bootStrap();
-        var keyTypes = new RegistryBuilder<>(AEKeyType.REGISTRY_KEY).disableRegistrationCheck().create();
-        AEKeyTypesInternal.setRegistry(keyTypes);
-        AEKeyTypes.register(AEKeyType.items());
-        keyTypes.freeze();
+        // Shared with the other bootstrapped tests: registries can only be set up once per JVM.
+        TestBootstrap.ensure();
     }
 
     @Test

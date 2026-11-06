@@ -154,8 +154,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
      *  元件被换出/换入时由 {@link #invalidateCellCaches()} 清空。 */
     private IUpgradeInventory cachedCellUpgrades = null;
     
-    // 扩展UI状态
+    // 扩展UI状态。快捷键预设的扩展面板只在首次读取时才从玩家数据取走，
+    // 这样只为定位物品而临时构造的宿主不会把它消费掉。
     private ExtendedUIType currentExtendedUI = ExtendedUIType.NONE;
+    private boolean pendingExtendedUiConsumed;
     // 样板选中索引（用于高级编码）
     private int selectedPatternIndex = -1;
     /** 样板管理区“启用上传样板功能”开关，持久化到终端物品自身。 */
@@ -273,10 +275,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         this.processingMaterialsMerge = getItemStack().getOrDefault(
                 ModComponents.PROCESSING_MATERIALS_MERGE.get(), false);
         this.manualAnvilName = getItemStack().getOrDefault(ModComponents.MANUAL_ANVIL_NAME.get(), "");
-        this.currentExtendedUI = consumePendingExtendedUi(player);
         if (DEBUG_TOOLKIT) {
-            WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, consumedPendingUi={}, locator={}",
-                    player.getScoreboardName(), this.currentExtendedUI, locator);
+            WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, locator={}",
+                    player.getScoreboardName(), locator);
         }
 
         // 父类构造期间会通过动态分派调用到本类的 updateConnectedAccessPoint/updateLinkStatus，
@@ -791,11 +792,16 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
     // 实现IExtendedUIHost接口
     @Override
     public ExtendedUIType getCurrentExtendedUI() {
+        if (!pendingExtendedUiConsumed) {
+            pendingExtendedUiConsumed = true;
+            currentExtendedUI = consumePendingExtendedUi(getPlayer());
+        }
         return currentExtendedUI;
     }
-    
+
     @Override
     public void setCurrentExtendedUI(ExtendedUIType type) {
+        pendingExtendedUiConsumed = true;
         this.currentExtendedUI = type;
         // 当关闭扩展UI时，清除样板选中状态
         if (type == ExtendedUIType.NONE) {

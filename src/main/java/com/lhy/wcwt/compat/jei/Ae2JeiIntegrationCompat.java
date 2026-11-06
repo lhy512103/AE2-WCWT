@@ -1,5 +1,6 @@
 package com.lhy.wcwt.compat.jei;
 
+import com.lhy.wcwt.WcwtMod;
 import appeng.api.stacks.GenericStack;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -12,6 +13,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class Ae2JeiIntegrationCompat {
+    /** Set once the AE2 JEI Integration API fails to link. */
+    private static volatile boolean broken;
     private static final String MOD_ID = "ae2jeiintegration";
 
     private Ae2JeiIntegrationCompat() {
@@ -33,6 +36,9 @@ public final class Ae2JeiIntegrationCompat {
         if (!available()) {
             return null;
         }
+        if (broken) {
+            return null;
+        }
         return Impl.convert(ingredient);
     }
 
@@ -47,7 +53,12 @@ public final class Ae2JeiIntegrationCompat {
         static GenericStack convert(ITypedIngredient<?> ingredient) {
             try {
                 return convertTyped(ingredient);
-            } catch (Throwable ignored) {
+            } catch (LinkageError e) {
+                // Asked for every slot of every previewed recipe each tick: stop after the API fails to link.
+                broken = true;
+                WcwtMod.LOGGER.warn("WCWT: AE2 JEI Integration ingredient conversion disabled, its API changed", e);
+                return null;
+            } catch (RuntimeException ignored) {
                 return null;
             }
         }

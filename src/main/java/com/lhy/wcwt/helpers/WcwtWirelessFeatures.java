@@ -44,6 +44,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
@@ -56,6 +57,11 @@ public final class WcwtWirelessFeatures {
     private static final double DEFAULT_MAGNET_RANGE = 16.0;
     private static final boolean DEBUG_MAGNET = Boolean.getBoolean("wcwt.debug.magnet");
     private static final WeakHashMap<ServerPlayer, Integer> RESTOCK_SYNC_TICKS = new WeakHashMap<>();
+    /** Pickup and insert partition lists per player, rebuilt only when the terminal's filter config changes. */
+    private static final WeakHashMap<ServerPlayer, Map<net.minecraft.core.component.DataComponentType<CompoundTag>, CachedFilter>>
+            FILTER_CACHE = new WeakHashMap<>();
+    @Nullable
+    private static Item magnetCardItem;
     private static final WeakHashMap<ServerPlayer, Integer> MAGNET_DEBUG_TICKS = new WeakHashMap<>();
 
     private WcwtWirelessFeatures() {
@@ -553,16 +559,36 @@ public final class WcwtWirelessFeatures {
     private static IPartitionList createFilter(ItemStack terminal,
                                                net.minecraft.core.component.DataComponentType<CompoundTag> component,
                                                Player player) {
-        ConfigInventory config = ConfigInventory.configTypes(27)
+        CompoundTag config = terminal.getOrDefault(component, new CompoundTag());
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return buildFilter(config, player);
+        }
+        // The magnet asks for this every tick and the pickup path once per item entity; parsing 27 config
+        // slots each time was the bulk of that work.
+        var perPlayer = FILTER_CACHE.computeIfAbsent(serverPlayer, ignored -> new HashMap<>());
+        CachedFilter cached = perPlayer.get(component);
+        if (cached != null && cached.config().equals(config)) {
+            return cached.filter();
+        }
+        IPartitionList filter = buildFilter(config, player);
+        perPlayer.put(component, new CachedFilter(config.copy(), filter));
+        return filter;
+    }
+
+    private static IPartitionList buildFilter(CompoundTag config, Player player) {
+        ConfigInventory inventory = ConfigInventory.configTypes(27)
                 .supportedType(appeng.api.stacks.AEKeyType.items())
                 .build();
-        config.readFromChildTag(terminal.getOrDefault(component, new CompoundTag()), "", player.registryAccess());
+        inventory.readFromChildTag(config, "", player.registryAccess());
         IPartitionList.Builder builder = IPartitionList.builder();
         builder.fuzzyMode(FuzzyMode.IGNORE_ALL);
-        for (int i = 0; i < config.size(); i++) {
-            builder.add(config.getKey(i));
+        for (int i = 0; i < inventory.size(); i++) {
+            builder.add(inventory.getKey(i));
         }
         return builder.build();
+    }
+
+    private record CachedFilter(CompoundTag config, IPartitionList filter) {
     }
 
     /** 终端物品是否已安装 ae2wtlib 磁力卡（用于 UI 显示「磁力过滤器」入口）。 */
@@ -571,7 +597,11 @@ public final class WcwtWirelessFeatures {
     }
 
     private static boolean hasMagnetCard(ItemStack terminal) {
-        Item card = BuiltInRegistries.ITEM.get(MAGNET_CARD_ID);
+        Item card = magnetCardItem;
+        if (card == null) {
+            card = BuiltInRegistries.ITEM.get(MAGNET_CARD_ID);
+            magnetCardItem = card;
+        }
         return card != null
                 && terminal.getItem() instanceof IUpgradeableItem upgradeable
                 && upgradeable.getUpgrades(terminal).isInstalled(card);

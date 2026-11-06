@@ -8,6 +8,7 @@ import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.compat.AppliedMekanisticsCompat;
+import com.lhy.wcwt.compat.CreateBasinCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -63,6 +64,9 @@ import java.util.WeakHashMap;
 public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehensiveWorkTerminalMenu> {
     private static final Map<EmiRecipe, CachedPreview> LOCKED_PREVIEW_CACHE = new WeakHashMap<>();
     private static final long PREVIEW_TTL_TICKS = 10L;
+    private static Set<AEKey> cachedAvailableNetworkKeys = Set.of();
+    private static long cachedAvailableNetworkKeysTick = Long.MIN_VALUE;
+    private static int cachedAvailableNetworkKeysRepoId;
 
     private record CachedPreview(EncodingMode mode, int inventoryHash, long computedAtTick,
             PreviewResult result) {
@@ -363,10 +367,16 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return EncodingMode.PROCESSING;
     }
 
+    /** Rebuilt at most once per client tick: EMI calls {@code render} for every visible recipe every frame. */
     private static Set<AEKey> collectAvailableNetworkKeys(WirelessComprehensiveWorkTerminalMenu menu) {
         var repo = menu.getClientRepo();
         if (repo == null) {
             return Set.of();
+        }
+        long tick = currentClientTick();
+        int repoId = System.identityHashCode(repo);
+        if (cachedAvailableNetworkKeysTick == tick && cachedAvailableNetworkKeysRepoId == repoId) {
+            return cachedAvailableNetworkKeys;
         }
 
         Set<AEKey> availableKeys = new HashSet<>();
@@ -375,7 +385,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 availableKeys.add(entry.getWhat());
             }
         }
-        return availableKeys;
+        cachedAvailableNetworkKeys = availableKeys.isEmpty() ? Set.of() : availableKeys;
+        cachedAvailableNetworkKeysTick = tick;
+        cachedAvailableNetworkKeysRepoId = repoId;
+        return cachedAvailableNetworkKeys;
     }
 
     private static boolean isAvailableFromNetwork(Set<AEKey> availableNetworkKeys, EmiIngredient ingredient) {
@@ -499,15 +512,12 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 return sparseInputs.stream().filter(Objects::nonNull).toList();
             }
             var backingRecipe = recipe.getBackingRecipe() != null ? recipe.getBackingRecipe().value() : null;
-            if (backingRecipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basinRecipe) {
-                List<@Nullable GenericStack> fallback = new ArrayList<>();
-                for (Ingredient ingredient : basinRecipe.getIngredients()) {
-                    fallback.add(WcwtRecipeTransferCommon.toBestGenericStack(priorityContext, ingredient, List.of()));
-                }
-                for (var fluidIngredient : basinRecipe.getFluidIngredients()) {
-                    fallback.add(WcwtRecipeTransferCommon.toGenericStack(fluidIngredient));
-                }
-                return fallback.stream().filter(Objects::nonNull).toList();
+            // Create's BasinRecipe may only be referenced once Create is loaded; see CreateBasinCompat.
+            List<@Nullable GenericStack> basinInputs = CreateBasinCompat.collectInputs(backingRecipe,
+                    ingredient -> WcwtRecipeTransferCommon.toBestGenericStack(priorityContext, ingredient, List.of()),
+                    WcwtRecipeTransferCommon::toGenericStack);
+            if (basinInputs != null) {
+                return basinInputs.stream().filter(Objects::nonNull).toList();
             }
             return List.of();
         }
@@ -564,17 +574,9 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return displayed;
         }
         var backingRecipe = recipe.getBackingRecipe() != null ? recipe.getBackingRecipe().value() : null;
-        if (backingRecipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> fallback = new ArrayList<>();
-            for (var result : basinRecipe.getRollableResults()) {
-                fallback.add(GenericStack.fromItemStack(result.getStack().copy()));
-            }
-            for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
-                if (!fluidStack.isEmpty()) {
-                    fallback.add(GenericStack.fromFluidStack(fluidStack.copy()));
-                }
-            }
-            return fallback.stream().filter(Objects::nonNull).toList();
+        List<@Nullable GenericStack> basinOutputs = CreateBasinCompat.collectOutputs(backingRecipe);
+        if (basinOutputs != null) {
+            return basinOutputs.stream().filter(Objects::nonNull).toList();
         }
         return displayed;
     }

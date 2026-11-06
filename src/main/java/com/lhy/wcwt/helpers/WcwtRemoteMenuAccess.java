@@ -85,6 +85,15 @@ public final class WcwtRemoteMenuAccess {
         }
     }
 
+    /** A disconnect never closes the container, so the session is dropped with the player. */
+    public static void clear(ServerPlayer player) {
+        SESSIONS.remove(player.getUUID());
+    }
+
+    public static void clearAll() {
+        SESSIONS.clear();
+    }
+
     private record Session(AbstractContainerMenu menu, ResourceKey<Level> dimension, BlockPos pos,
                            Block block, @Nullable BlockEntity blockEntity) {
     }

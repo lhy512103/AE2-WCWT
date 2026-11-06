@@ -7,6 +7,7 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -248,8 +249,13 @@ public final class WcwtToolkitHotbarState {
             return false;
         }
         inventory.setItemDirect(slot, entityStack.copyWithCount(1));
+        Item pickedUp = entityStack.getItem();
+        player.take(entity, 1);
         entityStack.shrink(1);
-        player.awardStat(Stats.ITEM_PICKED_UP.get(entityStack.getItem()), 1);
+        if (entityStack.isEmpty()) {
+            entity.discard();
+        }
+        player.awardStat(Stats.ITEM_PICKED_UP.get(pickedUp), 1);
         player.onItemPickup(entity);
         return true;
     }

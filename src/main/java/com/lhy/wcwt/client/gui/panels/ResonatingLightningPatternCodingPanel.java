@@ -406,7 +406,8 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
             return List.of();
         }
 
-        var details = PatternDetailsHelper.decodePattern(selectedStack, Minecraft.getInstance().level);
+        var level = Minecraft.getInstance().level;
+        var details = level != null ? PatternDetailsHelper.decodePattern(selectedStack, level) : null;
         if (details == null) {
             return List.of();
         }

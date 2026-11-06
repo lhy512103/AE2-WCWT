@@ -141,8 +141,7 @@ public final class WcwtReflect {
         try {
             return Optional.ofNullable(method.invoke(target, args));
         } catch (Throwable t) {
-            logDebug("invoke failed: {} on {}", method.getName(),
-                    target == null ? method.getDeclaringClass().getName() : target.getClass().getName(), t);
+            invokeFailed(method, target, t);
             return Optional.empty();
         }
     }
@@ -160,8 +159,7 @@ public final class WcwtReflect {
             method.invoke(target, args);
             return true;
         } catch (Throwable t) {
-            logDebug("invoke failed: {} on {}", method.getName(),
-                    target == null ? method.getDeclaringClass().getName() : target.getClass().getName(), t);
+            invokeFailed(method, target, t);
             return false;
         }
     }
@@ -187,7 +185,7 @@ public final class WcwtReflect {
         try {
             return Optional.ofNullable(field.get(target));
         } catch (Throwable t) {
-            logDebug("read field failed: {}", field.getName(), t);
+            warnOnce(field.getDeclaringClass().getName() + "#" + field.getName() + "#read", "read failed", t);
             return Optional.empty();
         }
     }
@@ -206,7 +204,7 @@ public final class WcwtReflect {
             field.set(target, value);
             return true;
         } catch (Throwable t) {
-            logDebug("write field failed: {}", field.getName(), t);
+            warnOnce(field.getDeclaringClass().getName() + "#" + field.getName() + "#write", "write failed", t);
             return false;
         }
     }
@@ -325,6 +323,12 @@ public final class WcwtReflect {
             builder.append(parameterTypes[i] == null ? "<null>" : parameterTypes[i].getName());
         }
         return builder.append(')').toString();
+    }
+
+    /** A member that was found but cannot be used is as unavailable as a missing one; say so once, not silently. */
+    private static void invokeFailed(Method method, @Nullable Object target, Throwable t) {
+        String owner = target == null ? method.getDeclaringClass().getName() : target.getClass().getName();
+        warnOnce(owner + "#" + method.getName() + "#invoke", "invocation failed", t);
     }
 
     private static void warnOnce(String key, String message) {

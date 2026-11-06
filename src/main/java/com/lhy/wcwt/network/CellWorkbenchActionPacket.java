@@ -3,7 +3,6 @@ package com.lhy.wcwt.network;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -28,9 +27,8 @@ public record CellWorkbenchActionPacket(Action action) implements CustomPacketPa
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "cell_workbench_action"));
 
     public static final StreamCodec<FriendlyByteBuf, CellWorkbenchActionPacket> STREAM_CODEC =
-            ByteBufCodecs.VAR_INT
-                    .map(i -> new CellWorkbenchActionPacket(Action.values()[i]),
-                            p -> p.action().ordinal())
+            WcwtPacketLimits.enumCodec(Action.values(), "cell workbench action")
+                    .map(CellWorkbenchActionPacket::new, CellWorkbenchActionPacket::action)
                     .cast();
 
     @Override
