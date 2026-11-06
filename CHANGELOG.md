@@ -19,6 +19,8 @@
 13. Fixed: JEI previews of Useless Mod alloy furnace and multiblock recipes no longer build the full transfer, which sorted the whole client inventory every tick; the slot counts a preview needs are computed once per recipe.
 14. Fixed: The advanced coding panel reads the cell's config inventory from a copy parsed once per cell item instead of re-parsing it about twenty times per frame, and the MEGA compression cutoff is only resolved when the cell changes; a cell without a config inventory no longer crashes the panel.
 15. Fixed: The terminal screen checks the installed upgrade cards once per client tick instead of rebuilding the upgrade inventory seven times per frame.
+16. Fixed: Favorite lookups use a hash set instead of a linear search per slot per frame, and the favorites-first view is skipped entirely while no item is favorited.
+17. Fixed: Rebuilding the pattern management rows computes each provider's sort key once and keeps the translated input and output names of every pattern, instead of decoding every pattern and re-resolving names on each keystroke and list refresh.
 
 ### 中文
 
@@ -37,6 +39,8 @@
 13. 修复：JEI 预览无用之物合金炉与多方块配方时不再构建完整传输数据（每 tick 排序整个客户端库存），预览所需槽位数改为每个配方只算一次。
 14. 修复：高级编码面板读取元件配置改为每个元件只解析一次，不再每帧重建约二十次，MEGA 压缩截断只在元件变化时解析，没有配置库存的元件不再让面板崩溃。
 15. 修复：终端界面每个客户端 tick 检查一次已安装的升级卡，不再每帧重建七次升级卡库存。
+16. 修复：收藏判断改用哈希集合，不再每槽每帧线性查找，没有收藏时直接跳过收藏优先视图的重建。
+17. 修复：样板管理行重建时每个供应器只算一次排序键，并缓存每张样板已翻译的输入输出名称，不再在每次键入和列表刷新时重新解码全部样板。
 
 
 ## v1.3.11

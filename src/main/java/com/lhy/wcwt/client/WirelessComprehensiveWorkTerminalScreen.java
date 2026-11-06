@@ -117,6 +117,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -1126,6 +1127,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     public void init() {
+        patternSearchTextCache.clear();
         super.init();
         refreshPatternManagementLayout();
         relayoutPatternManagementTextFields();
@@ -1216,7 +1218,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         rebuildingFavoriteRepoView = true;
         try {
-            if (!WcwtFavorites.isEnabled()) {
+            if (!WcwtFavorites.isEnabled() || WcwtFavorites.isEmpty()) {
                 return;
             }
 
@@ -3194,6 +3196,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
+    /** Translated names of each encoded pattern seen in the management list, bounded; cleared when the screen (re)initialises. */
+    private final Map<PatternSearchKey, PatternSearchText> patternSearchTextCache = new LinkedHashMap<>(256, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<PatternSearchKey, PatternSearchText> eldest) {
+            return size() > 4096;
+        }
+    };
+
     private void rebuildPatternManagementRows() {
         long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
         patternManagementRows.clear();
@@ -3203,10 +3213,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         String filter = (!resolvedFilter.isEmpty() ? resolvedFilter : rawFilter).toLowerCase(Locale.ROOT);
         Map<PatternContainerGroup, List<PatternProviderListPacket.Entry>> providersByGroup = new LinkedHashMap<>();
         boolean compactEmptySlots = WcwtClientConfig.patternManagementAutoCompactEmptySlots();
+        // Resolving a display name translates a component; compute each entry's sort key once, not per comparison.
+        Map<PatternProviderListPacket.Entry, String> sortKeys = new IdentityHashMap<>();
         patternProviders.stream()
                 .filter(this::isPatternProviderVisibleInManagement)
                 .filter(entry -> filter.isEmpty() || patternProviderMatches(entry, filter))
-                .sorted(Comparator.comparing(entry -> providerDisplayText(entry).toLowerCase(Locale.ROOT)))
+                .sorted(Comparator.comparing(entry -> sortKeys.computeIfAbsent(entry,
+                        ignored -> providerDisplayText(entry).toLowerCase(Locale.ROOT))))
                 .forEach(entry -> providersByGroup
                         .computeIfAbsent(entry.group(), ignored -> new ArrayList<>())
                         .add(entry));
@@ -3306,27 +3319,57 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private boolean patternStackMatches(ItemStack stack, String filter) {
         var level = Minecraft.getInstance().level;
-        var details = level != null ? appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level) : null;
-        if (details == null) {
+        if (level == null) {
+            return JecSearchCompat.contains(stack.getHoverName().getString(), filter);
+        }
+        // Decoding a pattern and translating every input and output name is the expensive part, and the
+        // rows are rebuilt on every keystroke and every list refresh, so those names are kept per pattern.
+        var key = new PatternSearchKey(ItemStack.hashItemAndComponents(stack), stack.getItem());
+        PatternSearchText searchText = patternSearchTextCache.computeIfAbsent(key,
+                ignored -> decodePatternSearchText(stack, level));
+        if (searchText.outputs() == null || searchText.inputs() == null) {
             return JecSearchCompat.contains(stack.getHoverName().getString(), filter);
         }
         if (patternManagementSearchMode.searchOutputs()) {
-            for (var output : details.getOutputs()) {
-                if (JecSearchCompat.contains(output.what().getDisplayName().getString(), filter)) {
+            for (String output : searchText.outputs()) {
+                if (JecSearchCompat.contains(output, filter)) {
                     return true;
                 }
             }
         }
         if (patternManagementSearchMode.searchInputs()) {
-            for (var input : details.getInputs()) {
-                for (var candidate : input.getPossibleInputs()) {
-                    if (JecSearchCompat.contains(candidate.what().getDisplayName().getString(), filter)) {
-                        return true;
-                    }
+            for (String input : searchText.inputs()) {
+                if (JecSearchCompat.contains(input, filter)) {
+                    return true;
                 }
             }
         }
         return false;
+    }
+
+    private static PatternSearchText decodePatternSearchText(ItemStack stack, net.minecraft.world.level.Level level) {
+        var details = appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level);
+        if (details == null) {
+            return PatternSearchText.NOT_A_PATTERN;
+        }
+        List<String> outputs = new ArrayList<>();
+        for (var output : details.getOutputs()) {
+            outputs.add(output.what().getDisplayName().getString());
+        }
+        List<String> inputs = new ArrayList<>();
+        for (var input : details.getInputs()) {
+            for (var candidate : input.getPossibleInputs()) {
+                inputs.add(candidate.what().getDisplayName().getString());
+            }
+        }
+        return new PatternSearchText(List.copyOf(outputs), List.copyOf(inputs));
+    }
+
+    private record PatternSearchKey(int hash, net.minecraft.world.item.Item item) {
+    }
+
+    private record PatternSearchText(@Nullable List<String> outputs, @Nullable List<String> inputs) {
+        private static final PatternSearchText NOT_A_PATTERN = new PatternSearchText(null, null);
     }
 
     private void updatePatternManagement() {
