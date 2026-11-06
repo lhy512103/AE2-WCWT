@@ -33,7 +33,7 @@ public abstract class WcwtInventoryMixin {
         }
         ItemStack removed = selected.copyWithCount(all ? selected.getCount() : 1);
         selected.shrink(removed.getCount());
-        WcwtToolkitHotbarState.setSelectedToolkit(inventory.player, selected);
+        WcwtToolkitHotbarState.setSelectedToolkit(inventory.player, selected.isEmpty() ? ItemStack.EMPTY : selected);
         cir.setReturnValue(removed);
     }
 
