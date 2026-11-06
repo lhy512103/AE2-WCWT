@@ -36,6 +36,10 @@ import java.util.List;
 
 public record PatternProviderListPacket(List<Entry> entries, String resolvedSearchText) implements CustomPacketPayload {
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
+    /** More providers than this in one list is not a real network; entries past it are dropped with a warning. */
+    private static final int MAX_SYNCED_PROVIDERS = 4096;
+    private static final java.util.concurrent.atomic.AtomicBoolean TOTAL_LIMIT_WARNED =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     public static final Type<PatternProviderListPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list"));
@@ -166,9 +170,16 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         int copiedNonEmptySlots = 0;
         int totalInventorySlots = 0;
         int maxSyncedSlots = WcwtServerConfig.maxSyncedSlotsPerProvider();
+        // The whole packet has to fit Minecraft's size limit; the per-provider limit alone does not bound it.
+        int maxSyncedTotal = WcwtServerConfig.maxSyncedSlotsTotal();
+        int droppedProviders = 0;
         for (var container : providers) {
             InternalInventory inv = container.getTerminalPatternInventory();
             if (inv == null || container.getTerminalGroup() == null) {
+                continue;
+            }
+            if (entries.size() >= MAX_SYNCED_PROVIDERS) {
+                droppedProviders++;
                 continue;
             }
             totalInventorySlots += inv.size();
@@ -181,14 +192,14 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
                 if (stack.isEmpty()) {
                     continue;
                 }
-                if (slots.size() >= maxSyncedSlots || i > Short.MAX_VALUE) {
+                if (slots.size() >= maxSyncedSlots || i > Short.MAX_VALUE || copiedNonEmptySlots >= maxSyncedTotal) {
                     truncatedSlots++;
                     continue;
                 }
                 slots.put(i, stack.copy());
                 copiedNonEmptySlots++;
             }
-            if (truncatedSlots > 0) {
+            if (truncatedSlots > 0 && copiedNonEmptySlots < maxSyncedTotal) {
                 WcwtMod.LOGGER.warn(
                         "Pattern provider '{}' has too many pattern slots to sync; {} non-empty slots not shown in the terminal (limit {} per provider, configurable via maxSyncedSlotsPerProvider)",
                         providerLogName(container), truncatedSlots, maxSyncedSlots);
@@ -198,6 +209,11 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
                     location.pos, location.dimension, location.face));
         }
 
+        if ((copiedNonEmptySlots >= maxSyncedTotal || droppedProviders > 0) && TOTAL_LIMIT_WARNED.compareAndSet(false, true)) {
+            WcwtMod.LOGGER.warn(
+                    "Pattern provider list for '{}' hit the sync limit ({} providers dropped, at most {} patterns synced, configurable via maxSyncedSlotsTotal); patterns beyond it are not shown in the terminal",
+                    player.getScoreboardName(), droppedProviders, maxSyncedTotal);
+        }
         if (DEBUG_PERF) {
             long totalNs = System.nanoTime() - totalStartNs;
             WcwtMod.LOGGER.info(

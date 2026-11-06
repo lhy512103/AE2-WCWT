@@ -21,6 +21,7 @@
 15. Fixed: The terminal screen checks the installed upgrade cards once per client tick instead of rebuilding the upgrade inventory seven times per frame.
 16. Fixed: Favorite lookups use a hash set instead of a linear search per slot per frame, and the favorites-first view is skipped entirely while no item is favorited.
 17. Fixed: Rebuilding the pattern management rows computes each provider's sort key once and keeps the translated input and output names of every pattern, instead of decoding every pattern and re-resolving names on each keystroke and list refresh.
+18. Fixed: The provider list sent to the terminal is capped in total synced patterns (new server option maxSyncedSlotsTotal) and providers, so very large networks can no longer produce a packet that disconnects the player.
 
 ### 中文
 
@@ -41,6 +42,7 @@
 15. 修复：终端界面每个客户端 tick 检查一次已安装的升级卡，不再每帧重建七次升级卡库存。
 16. 修复：收藏判断改用哈希集合，不再每槽每帧线性查找，没有收藏时直接跳过收藏优先视图的重建。
 17. 修复：样板管理行重建时每个供应器只算一次排序键，并缓存每张样板已翻译的输入输出名称，不再在每次键入和列表刷新时重新解码全部样板。
+18. 修复：发给终端的供应器列表增加样板总数（新增服务端配置 maxSyncedSlotsTotal）和供应器数上限，超大网络不再生成会把玩家踢下线的网络包。
 
 
 ## v1.3.11

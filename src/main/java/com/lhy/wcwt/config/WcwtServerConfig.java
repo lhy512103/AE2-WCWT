@@ -14,6 +14,9 @@ public final class WcwtServerConfig {
     public static final int MIN_SYNCED_PROVIDER_SLOTS = 64;
     public static final int MAX_SYNCED_PROVIDER_SLOTS = 8192;
     private static final int DEFAULT_SYNCED_PROVIDER_SLOTS = 1024;
+    public static final int MIN_SYNCED_SLOTS_TOTAL = 256;
+    public static final int MAX_SYNCED_SLOTS_TOTAL = 65536;
+    private static final int DEFAULT_SYNCED_SLOTS_TOTAL = 8192;
 
     public static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
     public static final ModConfigSpec SPEC;
@@ -21,6 +24,7 @@ public final class WcwtServerConfig {
     public static final ModConfigSpec.IntValue TOOLKIT_SLOT_COUNT;
     public static final ModConfigSpec.BooleanValue PATTERN_PROVIDER_ACTIVE_REFRESH;
     public static final ModConfigSpec.IntValue MAX_SYNCED_SLOTS_PER_PROVIDER;
+    public static final ModConfigSpec.IntValue MAX_SYNCED_SLOTS_TOTAL_VALUE;
 
     static {
         TOOLKIT_SLOT_COUNT = BUILDER
@@ -38,6 +42,13 @@ public final class WcwtServerConfig {
                 .translation("wcwt.config.maxSyncedSlotsPerProvider")
                 .defineInRange("maxSyncedSlotsPerProvider", DEFAULT_SYNCED_PROVIDER_SLOTS,
                         MIN_SYNCED_PROVIDER_SLOTS, MAX_SYNCED_PROVIDER_SLOTS);
+        MAX_SYNCED_SLOTS_TOTAL_VALUE = BUILDER
+                .comment("Max non-empty pattern slots synced to the client across all providers in one list.",
+                        "Patterns beyond this limit are hidden in the terminal (a warning is logged once).",
+                        "Keeps the provider list packet under Minecraft's packet size limit on very large networks.")
+                .translation("wcwt.config.maxSyncedSlotsTotal")
+                .defineInRange("maxSyncedSlotsTotal", DEFAULT_SYNCED_SLOTS_TOTAL,
+                        MIN_SYNCED_SLOTS_TOTAL, MAX_SYNCED_SLOTS_TOTAL);
         SPEC = BUILDER.build();
     }
 
@@ -59,6 +70,10 @@ public final class WcwtServerConfig {
 
     public static int maxSyncedSlotsPerProvider() {
         return MAX_SYNCED_SLOTS_PER_PROVIDER.get();
+    }
+
+    public static int maxSyncedSlotsTotal() {
+        return MAX_SYNCED_SLOTS_TOTAL_VALUE.get();
     }
 
     public static void setPatternProviderActiveRefresh(boolean value) {
