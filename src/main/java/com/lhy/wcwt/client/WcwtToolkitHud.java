@@ -38,6 +38,8 @@ import org.lwjgl.glfw.GLFW;
  */
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public final class WcwtToolkitHud {
+    /** The vanilla hotbar selection sprite; the HUD mixin compares against it on every frame. */
+    public static final ResourceLocation HOTBAR_SELECTION_SPRITE = ResourceLocation.withDefaultNamespace("hud/hotbar_selection");
     private static final ResourceLocation HOTBAR = ResourceLocation.withDefaultNamespace("hud/hotbar");
     private static final ResourceLocation SELECTION = ResourceLocation.withDefaultNamespace("hud/hotbar_selection");
     private static final Bar[] CYCLE_ORDER = {Bar.LEFT, Bar.CENTER, Bar.RIGHT};

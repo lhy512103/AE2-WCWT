@@ -1,5 +1,6 @@
 package com.lhy.wcwt.client.gui.panels;
 
+import org.jetbrains.annotations.Nullable;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
@@ -7,6 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,6 +23,8 @@ public final class ExtendedPanelLayout {
     private static final String BASE_PATH = "screens/terminals/encoding/";
 
     private final JsonObject root;
+    /** Parsed once per group and id: the screen asks for the same rectangles every frame. */
+    private final Map<String, Map<String, ParsedRect>> parsedRects = new HashMap<>();
 
     private ExtendedPanelLayout(JsonObject root) {
         this.root = root;
@@ -85,19 +90,45 @@ public final class ExtendedPanelLayout {
     }
 
     private Rect readRect(String groupName, String id, Rect fallback, int containerWidth, int containerHeight) {
-        JsonObject object = getObject(groupName, id);
-        if (object == null) {
+        ParsedRect parsed = parsedRects.computeIfAbsent(groupName, ignored -> new HashMap<>())
+                .computeIfAbsent(id, ignored -> parseRect(groupName, id));
+        if (parsed == ParsedRect.MISSING) {
             return fallback;
         }
-        int width = getInt(object, "width", fallback.width());
-        int height = getInt(object, "height", fallback.height());
-        int left = getPosition(object, "left", "right", fallback.left(), width, containerWidth);
-        int top = getPosition(object, "top", "bottom", fallback.top(), height, containerHeight);
-        return new Rect(
-                left,
-                top,
-                width,
-                height);
+        int width = parsed.width() != null ? parsed.width() : fallback.width();
+        int height = parsed.height() != null ? parsed.height() : fallback.height();
+        int left = position(parsed.left(), parsed.right(), fallback.left(), containerWidth);
+        int top = position(parsed.top(), parsed.bottom(), fallback.top(), containerHeight);
+        return new Rect(left, top, width, height);
+    }
+
+    private ParsedRect parseRect(String groupName, String id) {
+        JsonObject object = getObject(groupName, id);
+        if (object == null) {
+            return ParsedRect.MISSING;
+        }
+        return new ParsedRect(optInt(object, "width"), optInt(object, "height"), optInt(object, "left"),
+                optInt(object, "right"), optInt(object, "top"), optInt(object, "bottom"));
+    }
+
+    private static int position(@Nullable Integer direct, @Nullable Integer opposite, int fallback, int containerSize) {
+        if (direct != null) {
+            return direct;
+        }
+        if (containerSize >= 0 && opposite != null) {
+            return containerSize - opposite;
+        }
+        return fallback;
+    }
+
+    @Nullable
+    private static Integer optInt(JsonObject object, String key) {
+        return object.has(key) ? object.get(key).getAsInt() : null;
+    }
+
+    private record ParsedRect(@Nullable Integer width, @Nullable Integer height, @Nullable Integer left,
+                              @Nullable Integer right, @Nullable Integer top, @Nullable Integer bottom) {
+        private static final ParsedRect MISSING = new ParsedRect(null, null, null, null, null, null);
     }
 
     private JsonObject getObject(String groupName, String id) {
@@ -113,17 +144,6 @@ public final class ExtendedPanelLayout {
 
     private static int getInt(JsonObject object, String key, int fallback) {
         return object.has(key) ? object.get(key).getAsInt() : fallback;
-    }
-
-    private static int getPosition(JsonObject object, String directKey, String oppositeKey,
-                                   int fallback, int size, int containerSize) {
-        if (object.has(directKey)) {
-            return object.get(directKey).getAsInt();
-        }
-        if (containerSize >= 0 && object.has(oppositeKey)) {
-            return containerSize - object.get(oppositeKey).getAsInt();
-        }
-        return fallback;
     }
 
     public record Rect(int left, int top, int width, int height) {

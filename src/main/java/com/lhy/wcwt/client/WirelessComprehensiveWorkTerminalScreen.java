@@ -175,6 +175,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final long PERF_LOG_THRESHOLD_NS = 1_000_000L;
     private static final long PATTERN_PROVIDER_REFRESH_DEBOUNCE_MS = 180L;
     private static final long PATTERN_PROVIDER_SUBSCRIPTION_KEEPALIVE_MS = 3_000L;
+    private static final Component PATTERN_MANAGEMENT_ADD_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.add_mapping");
+    private static final Component PATTERN_MANAGEMENT_RELOAD_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.reload_mapping");
+    private static final Component PATTERN_MANAGEMENT_DELETE_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.delete_mapping");
+    private static final Component PATTERN_MANAGEMENT_CANCEL_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.cancel");
 
     // === DEBUG_FRAME_SYNC 计数器（仅诊断用，每秒 flush 一次） ===
     private long frameSyncWindowStartMs;
@@ -265,6 +273,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private EditBox patternManageMappingField;
     private int extendedUiAvailabilityMask = -1;
     private boolean extendedUiAvailabilityMaskResolved;
+    private final boolean[] cosmeticArmorVisible = new boolean[4];
     /** Game time seen by the previous frame; work that can only change once per tick is gated on it. */
     private long lastUpdateGameTime = Long.MIN_VALUE;
     private boolean firstFrameOfTick = true;
@@ -2643,7 +2652,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void updateKeyTypeFilterButtons() {
-        if (itemDisplayButton == null || fluidDisplayButton == null || otherTypesDisplayButton == null) {
+        if (itemDisplayButton == null || fluidDisplayButton == null || otherTypesDisplayButton == null
+                || !firstFrameOfTick) {
             return;
         }
 
@@ -4073,10 +4083,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var poseStack = guiGraphics.pose();
         poseStack.pushPose();
         poseStack.translate(0, 0, 400);
+        if (firstFrameOfTick) {
+            // Each check is a reflective call into Cosmetic Armor Reworked; once per tick is plenty.
+            for (int cosmeticIndex = 0; cosmeticIndex < 4; cosmeticIndex++) {
+                cosmeticArmorVisible[cosmeticIndex] = isCosmeticArmorVisible(cosmeticIndex);
+            }
+        }
         for (int cosmeticIndex = 0; cosmeticIndex < 4; cosmeticIndex++) {
             int iconX = bounds.getX() + 3 + cosmeticIndex * 18;
             int iconY = bounds.getY() + 15;
-            int texX = isCosmeticArmorVisible(cosmeticIndex) ? 208 : 192;
+            int texX = cosmeticArmorVisible[cosmeticIndex] ? 208 : 192;
             guiGraphics.blit(WCWT_STATES_TEXTURE, iconX, iconY, texX, 0, 5, 5, 256, 256);
         }
         poseStack.popPose();
@@ -4328,13 +4344,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 EAE_ICONS_TEXTURE, 64, 64, mouseX, mouseY, false);
 
         renderPatternManagementButtonText(guiGraphics, patternManagementAddButton,
-                Component.translatable("gui.wcwt.pattern_management.add_mapping"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_ADD_TEXT, 0xFFFFFF, mouseX, mouseY);
         renderPatternManagementButtonText(guiGraphics, patternManagementReloadButton,
-                Component.translatable("gui.wcwt.pattern_management.reload_mapping"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_RELOAD_TEXT, 0xFFFFFF, mouseX, mouseY);
         renderPatternManagementButtonText(guiGraphics, patternManagementDeleteButton,
-                Component.translatable("gui.wcwt.pattern_management.delete_mapping"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_DELETE_TEXT, 0xFFFFFF, mouseX, mouseY);
         renderPatternManagementButtonText(guiGraphics, patternManagementCancelButton,
-                Component.translatable("gui.wcwt.pattern_management.cancel"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_CANCEL_TEXT, 0xFFFFFF, mouseX, mouseY);
 
         renderBatchProcessingLabels(guiGraphics, textColor);
         renderBatchPropertyButton(guiGraphics, batchItemReplacementButton, batchItemSubstitutions, mouseX, mouseY);
@@ -4847,12 +4863,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (totalHeight <= listHeight) {
             return 0;
         }
+        // Suffix sum from the end: the first row from which the remaining rows fill the list.
         int maxScroll = patternManagementRows.size() - 1;
+        int height = 0;
         while (maxScroll > 0) {
-            int height = 0;
-            for (int index = maxScroll; index < patternManagementRows.size(); index++) {
-                height += patternManagementRowHeight(patternManagementRows.get(index));
-            }
+            height += patternManagementRowHeight(patternManagementRows.get(maxScroll));
             if (height >= listHeight) {
                 break;
             }

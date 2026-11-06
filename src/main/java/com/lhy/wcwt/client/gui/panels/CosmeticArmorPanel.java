@@ -64,10 +64,11 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
         var poseStack = guiGraphics.pose();
         poseStack.pushPose();
         poseStack.translate(0, 0, 300);
+        refreshSkinArmorStateOncePerTick();
         for (int i = 0; i < 4; i++) {
             int iconX = x + TOGGLE_X + i * SLOT_SPACING;
             int iconY = y + TOGGLE_Y;
-            int texX = isSkinArmor(i) ? 208 : 192;
+            int texX = skinArmorState[i] ? 208 : 192;
 
             guiGraphics.blit(STATES_TEXTURE, iconX, iconY, texX, 0, 5, 5, 256, 256);
         }
@@ -110,6 +111,22 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
 
     public int getSlotRelativeY(int index) {
         return slots[index].top();
+    }
+
+    private long skinArmorStateTick = Long.MIN_VALUE;
+    private final boolean[] skinArmorState = new boolean[4];
+
+    /** Each check is a reflective call into Cosmetic Armor Reworked; the four are refreshed once per tick. */
+    private void refreshSkinArmorStateOncePerTick() {
+        var level = Minecraft.getInstance().level;
+        long tick = level != null ? level.getGameTime() : skinArmorStateTick + 1;
+        if (tick == skinArmorStateTick) {
+            return;
+        }
+        skinArmorStateTick = tick;
+        for (int i = 0; i < 4; i++) {
+            skinArmorState[i] = isSkinArmor(i);
+        }
     }
 
     private boolean isSkinArmor(int index) {
