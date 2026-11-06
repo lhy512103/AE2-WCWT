@@ -4,7 +4,6 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import io.netty.buffer.ByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
@@ -19,10 +18,7 @@ public record ExtendedUIPacket(IExtendedUIHost.ExtendedUIType uiType) implements
         new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "extended_ui"));
     
     public static final StreamCodec<ByteBuf, ExtendedUIPacket> STREAM_CODEC = StreamCodec.composite(
-        ByteBufCodecs.VAR_INT.map(
-            ordinal -> IExtendedUIHost.ExtendedUIType.values()[ordinal],
-            IExtendedUIHost.ExtendedUIType::ordinal
-        ),
+        WcwtPacketLimits.enumCodec(IExtendedUIHost.ExtendedUIType.values(), "extended ui type"),
         ExtendedUIPacket::uiType,
         ExtendedUIPacket::new
     );

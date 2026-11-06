@@ -119,9 +119,13 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         public static final StreamCodec<ByteBuf, Request> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.BOOL,
                 Request::subscribe,
-                ByteBufCodecs.STRING_UTF8,
+                ByteBufCodecs.stringUtf8(WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH),
                 Request::searchText,
                 Request::new);
+
+        public Request {
+            searchText = WcwtPacketLimits.truncate(searchText, WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
+        }
 
         @Override
         public Type<? extends CustomPacketPayload> type() {

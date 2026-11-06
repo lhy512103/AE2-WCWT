@@ -10,6 +10,8 @@
 4. Fixed: Recipe pulls take one network snapshot and resolve each ingredient's candidate items once instead of rescanning every stored key per ingredient and per transfer set, and a request is capped in total alternatives and to one per tick.
 5. Fixed: Pattern providers are sorted with keys computed once per provider instead of resolving the terminal group on every comparison, the per-tick scan no longer sorts unless a list is needed, and provider slots resolve through an id map.
 6. Fixed: Provider list requests are only served to the terminal that shows the list, management actions are throttled and reuse the menu's per-tick provider cache, and several actions in one tick share a single list refresh.
+7. Fixed: Enum ordinals in seven packets are range-checked while decoding and reported as decoder errors instead of array index errors.
+8. Fixed: Provider search text, mapping text and dimension ids carried in packets are capped in length on both sides, so a client can no longer bloat encoded patterns with oversized search text.
 
 ### 中文
 
@@ -19,6 +21,8 @@
 4. 修复：锤子拉取改为一次网络快照并预先筛选每格候选物品，不再按每格、每轮扫描全网，并限制备选总数与每 tick 请求次数。
 5. 修复：样板供应器排序改为每个供应器只算一次排序键，每 tick 扫描不再无谓排序，供应器槽位改用 id 映射查找。
 6. 修复：供应器列表请求只响应打开终端的玩家，管理动作加节流并复用菜单的供应器缓存，同一 tick 的多个动作只刷新一次列表。
+7. 修复：七个数据包的枚举序号在解码时做范围检查，越界按解码错误报告而非数组越界。
+8. 修复：数据包中的供应器搜索文本、映射文本和维度 id 双端限长，客户端无法再用超长搜索文本撑大样板数据。
 
 
 ## v1.3.11

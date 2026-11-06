@@ -46,33 +46,45 @@ public record PatternManagementActionPacket(Action action,
                                             int providerFaceOrdinal) implements CustomPacketPayload {
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
     private static final boolean DEBUG_PROVIDER_UI = Boolean.getBoolean("wcwt.debug.providerUi");
+    private static final StreamCodec<ByteBuf, Action> ACTION_CODEC =
+            WcwtPacketLimits.enumCodec(Action.values(), "pattern management action");
+    private static final StreamCodec<ByteBuf, String> SEARCH_TEXT_CODEC =
+            ByteBufCodecs.stringUtf8(WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
+    private static final StreamCodec<ByteBuf, String> MAPPING_TEXT_CODEC =
+            ByteBufCodecs.stringUtf8(WcwtPacketLimits.MAX_MAPPING_TEXT_LENGTH);
+
+    public PatternManagementActionPacket {
+        searchText = WcwtPacketLimits.truncate(searchText, WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
+        mappingText = WcwtPacketLimits.truncate(mappingText, WcwtPacketLimits.MAX_MAPPING_TEXT_LENGTH);
+        providerDimensionId = WcwtPacketLimits.truncate(providerDimensionId, WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
+    }
 
     public static final Type<PatternManagementActionPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_action"));
 
     public static final StreamCodec<ByteBuf, PatternManagementActionPacket> STREAM_CODEC = StreamCodec.of(
             (buf, packet) -> {
-                ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal).encode(buf, packet.action());
+                ACTION_CODEC.encode(buf, packet.action());
                 ByteBufCodecs.VAR_LONG.encode(buf, packet.providerId());
                 ByteBufCodecs.VAR_INT.encode(buf, packet.cacheSlot());
-                ByteBufCodecs.STRING_UTF8.encode(buf, packet.searchText());
-                ByteBufCodecs.STRING_UTF8.encode(buf, packet.mappingText());
+                SEARCH_TEXT_CODEC.encode(buf, packet.searchText());
+                MAPPING_TEXT_CODEC.encode(buf, packet.mappingText());
                 ByteBufCodecs.BOOL.encode(buf, packet.shiftQuickEnabled());
                 ByteBufCodecs.BOOL.encode(buf, packet.hasProviderLocation());
                 ByteBufCodecs.VAR_LONG.encode(buf, packet.providerPosLong());
-                ByteBufCodecs.STRING_UTF8.encode(buf, packet.providerDimensionId());
+                SEARCH_TEXT_CODEC.encode(buf, packet.providerDimensionId());
                 ByteBufCodecs.VAR_INT.encode(buf, packet.providerFaceOrdinal());
             },
             buf -> new PatternManagementActionPacket(
-                    ByteBufCodecs.idMapper(id -> Action.values()[id], Action::ordinal).decode(buf),
+                    ACTION_CODEC.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
                     ByteBufCodecs.VAR_INT.decode(buf),
-                    ByteBufCodecs.STRING_UTF8.decode(buf),
-                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    SEARCH_TEXT_CODEC.decode(buf),
+                    MAPPING_TEXT_CODEC.decode(buf),
                     ByteBufCodecs.BOOL.decode(buf),
                     ByteBufCodecs.BOOL.decode(buf),
                     ByteBufCodecs.VAR_LONG.decode(buf),
-                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    SEARCH_TEXT_CODEC.decode(buf),
                     ByteBufCodecs.VAR_INT.decode(buf)));
 
     @Override
