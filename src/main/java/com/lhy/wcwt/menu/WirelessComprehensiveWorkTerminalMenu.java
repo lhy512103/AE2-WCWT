@@ -249,6 +249,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     /** Network snapshot shared by every craft of one manual crafting action; {@code null} outside an action. */
     @Nullable
     private WcwtMeIngredientExtraction.AvailableItems manualCraftingActionSnapshot;
+    /** Encoding inputs the processing merge last saw; it runs every server tick while merging is on. */
+    @Nullable
+    private List<GenericStack> lastMergedProcessingInputs;
 
     /** 处理样板：合并相同输入材料（JEI 编码与手动编辑时行为对齐 AE2 EncodingHelper）。 */
     private boolean processingMaterialsMerge;
@@ -3076,8 +3079,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return false;
         }
         ConfigInventory inputInv = patternEncodingLogic.getEncodedInputInv();
+        List<GenericStack> inputs = snapshotPatternPreviewInputs();
+        if (inputs.equals(lastMergedProcessingInputs)) {
+            return false;
+        }
         List<GenericStack> merged = mergeDenseProcessingInputsFromInventory(inputInv);
         if (slotsMatchMergedProcessingInputs(inputInv, merged)) {
+            lastMergedProcessingInputs = inputs;
             return false;
         }
         inputInv.beginBatch();
@@ -3088,6 +3096,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         } finally {
             inputInv.endBatch();
         }
+        lastMergedProcessingInputs = snapshotPatternPreviewInputs();
         return true;
     }
 
