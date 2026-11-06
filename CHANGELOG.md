@@ -31,6 +31,7 @@
 25. Fixed: ExtendedAE Plus class lookups are cached, including misses, so each pattern upload no longer throws and swallows a ClassNotFoundException per provider on 1.6.4 and later.
 26. Fixed: The processing input merge that runs every server tick while merging is enabled now returns immediately unless the encoding inputs changed.
 27. Fixed: Several per-frame constant costs in the terminal screen were removed: layout rectangles are parsed from JSON once, button texts are constants, key-type filter buttons and Cosmetic Armor toggles refresh once per tick, the pattern management scroll limit is computed in one pass, and the HUD mixin no longer allocates a resource location per frame.
+28. Removed: The slot protection mixin, which never matched (it compared lower-case names against upper-case ids) and duplicated what AE2 already does for those slot semantics.
 
 ### 中文
 
@@ -61,6 +62,7 @@
 25. 修复：ExtendedAE Plus 的类查找加缓存（含未命中），1.6.4 及以上每次上传不再对每个供应器抛出并吞掉一次类未找到异常。
 26. 修复：开启材料合并时每 tick 执行的处理输入合并，在编码输入未变化时直接返回。
 27. 修复：移除终端界面若干每帧常数开销：布局矩形只从 JSON 解析一次，按钮文本改为常量，类型过滤按钮与装饰盔甲开关每 tick 刷新一次，样板管理滚动上限单次遍历计算，HUD mixin 不再每帧分配资源路径。
+28. 移除：从未生效的槽位保护 mixin（用小写名称匹配大写 id），其作用 AE2 对这些槽位语义本就已提供。
 
 
 ## v1.3.11
