@@ -24,6 +24,7 @@
 18. Fixed: The provider list sent to the terminal is capped in total synced patterns (new server option maxSyncedSlotsTotal) and providers, so very large networks can no longer produce a packet that disconnects the player.
 19. Fixed: The pattern multiplier overflow check no longer overflows itself, and two pattern decoding calls no longer assume the client level exists.
 20. Fixed: The terminal hotkey path only consults JEI's search focus when JEI is loaded, and JEI's internal info recipe classes are matched by name instead of being referenced directly.
+21. Fixed: Remote provider menu sessions are dropped when the player logs out or the server stops, instead of keeping the old player and block entity referenced.
 
 ### 中文
 
@@ -47,6 +48,7 @@
 18. 修复：发给终端的供应器列表增加样板总数（新增服务端配置 maxSyncedSlotsTotal）和供应器数上限，超大网络不再生成会把玩家踢下线的网络包。
 19. 修复：样板倍增器的溢出检查自身不再溢出，两处样板解码不再假定客户端世界存在。
 20. 修复：终端快捷键只在装有 JEI 时查询其搜索框焦点，JEI 内部信息配方类改为按名称匹配而非直接引用。
+21. 修复：玩家登出或服务器停止时清理远程供应器菜单会话，不再持有旧玩家与方块实体引用。
 
 
 ## v1.3.11
