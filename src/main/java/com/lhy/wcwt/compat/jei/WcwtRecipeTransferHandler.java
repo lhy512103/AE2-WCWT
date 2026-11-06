@@ -8,6 +8,7 @@ import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.itemlists.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.compat.AppliedMekanisticsCompat;
 import com.lhy.wcwt.compat.CreateBasinCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
@@ -26,8 +27,6 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import mezz.jei.api.recipe.transfer.IUniversalRecipeTransferHandler;
-import mezz.jei.library.plugins.jei.info.IngredientInfoRecipe;
-import mezz.jei.library.plugins.jei.tags.ITagInfoRecipe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
@@ -521,8 +520,18 @@ public class WcwtRecipeTransferHandler
         return priorities;
     }
 
+    /** JEI's own info pages are library internals, not API; matched by name so a JEI that moves them cannot break every preview. */
+    private static final String[] JEI_INFO_RECIPE_CLASSES = {
+            "mezz.jei.library.plugins.jei.tags.ITagInfoRecipe",
+            "mezz.jei.library.plugins.jei.info.IngredientInfoRecipe"};
+
     public static boolean shouldSkipTransferAnalysis(Object recipe) {
-        return recipe instanceof ITagInfoRecipe || recipe instanceof IngredientInfoRecipe;
+        for (String className : JEI_INFO_RECIPE_CLASSES) {
+            if (WcwtReflect.findClass("jei", className).map(type -> type.isInstance(recipe)).orElse(false)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Nullable

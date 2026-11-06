@@ -23,6 +23,7 @@
 17. Fixed: Rebuilding the pattern management rows computes each provider's sort key once and keeps the translated input and output names of every pattern, instead of decoding every pattern and re-resolving names on each keystroke and list refresh.
 18. Fixed: The provider list sent to the terminal is capped in total synced patterns (new server option maxSyncedSlotsTotal) and providers, so very large networks can no longer produce a packet that disconnects the player.
 19. Fixed: The pattern multiplier overflow check no longer overflows itself, and two pattern decoding calls no longer assume the client level exists.
+20. Fixed: The terminal hotkey path only consults JEI's search focus when JEI is loaded, and JEI's internal info recipe classes are matched by name instead of being referenced directly.
 
 ### 中文
 
@@ -45,6 +46,7 @@
 17. 修复：样板管理行重建时每个供应器只算一次排序键，并缓存每张样板已翻译的输入输出名称，不再在每次键入和列表刷新时重新解码全部样板。
 18. 修复：发给终端的供应器列表增加样板总数（新增服务端配置 maxSyncedSlotsTotal）和供应器数上限，超大网络不再生成会把玩家踢下线的网络包。
 19. 修复：样板倍增器的溢出检查自身不再溢出，两处样板解码不再假定客户端世界存在。
+20. 修复：终端快捷键只在装有 JEI 时查询其搜索框焦点，JEI 内部信息配方类改为按名称匹配而非直接引用。
 
 
 ## v1.3.11
