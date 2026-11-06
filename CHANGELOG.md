@@ -38,6 +38,7 @@
 32. Fixed: A failing upload integration no longer leaves an encode half finished; the pattern stays in the output slot as a normal un-uploaded encode and the cause is logged once.
 33. Fixed: The Just Enough Characters and AE2 JEI Integration bridges switch themselves off after their API fails to link, instead of throwing and swallowing a linkage error on every search entry or previewed slot.
 34. Changed: Every optional integration mod the code checks for is now declared as an optional dependency in neoforge.mods.toml, so it loads before this mod.
+35. Changed: The mod version is 1.3.12 and the README states the same version.
 
 ### 中文
 
@@ -75,6 +76,7 @@
 32. 修复：上传集成抛出异常时不再让编码中途中断，样板按未上传的正常流程留在输出槽，原因只记录一次。
 33. 修复：Just Enough Characters 与 AE2 JEI Integration 桥接在 API 链接失败后自行关闭，不再对每个搜索条目或预览槽位反复抛出并吞掉链接错误。
 34. 优化：代码中检测过的全部可选集成模组都在 neoforge.mods.toml 中声明为可选依赖，保证其先于本模组加载。
+35. 优化：版本号升至 1.3.12，README 同步更新。
 
 
 ## v1.3.11
