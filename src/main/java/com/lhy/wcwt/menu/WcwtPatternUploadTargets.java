@@ -20,7 +20,9 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
@@ -40,11 +42,17 @@ final class WcwtPatternUploadTargets {
 
     /**
      * Vanilla {@code broadcastChanges} reads every provider slot each tick and each read resolves its
-     * provider, so a network-wide scan is reused for the rest of the server tick.
+     * provider, so a network-wide scan is reused for the rest of the server tick. The scan itself is cheap;
+     * sorting needs every provider's terminal group, so the sorted view is only built once something asks for
+     * it, and slot lookups go through an id map instead.
      */
-    private long cachedProvidersTick = Long.MIN_VALUE;
+    private long cachedScanTick = Long.MIN_VALUE;
     @Nullable
-    private List<PatternContainer> cachedProviders;
+    private List<PatternContainer> cachedScan;
+    @Nullable
+    private Map<Long, PatternContainer> cachedById;
+    @Nullable
+    private List<PatternContainer> cachedSorted;
 
     WcwtPatternUploadTargets(Supplier<@Nullable IGrid> grid, Supplier<Player> player, BooleanSupplier serverSide,
                              IntPredicate returnBlankPatterns) {
@@ -54,18 +62,61 @@ final class WcwtPatternUploadTargets {
         this.returnBlankPatterns = returnBlankPatterns;
     }
 
+    /** Visible providers in terminal order. */
     List<PatternContainer> providers() {
-        Player currentPlayer = player.get();
-        if (serverSide.getAsBoolean() && currentPlayer != null) {
-            long tick = currentPlayer.level().getGameTime();
-            if (cachedProviders != null && cachedProvidersTick == tick) {
-                return cachedProviders;
-            }
-            cachedProviders = scanProviders();
-            cachedProvidersTick = tick;
-            return cachedProviders;
+        if (!refreshScanForTick()) {
+            return sortedCopy(scanProviders());
         }
-        return scanProviders();
+        if (cachedSorted == null) {
+            cachedSorted = sortedCopy(cachedScan);
+        }
+        return cachedSorted;
+    }
+
+    /** The provider a client slot mapping refers to, or {@code null} once it is gone. */
+    @Nullable
+    PatternContainer providerById(long id) {
+        if (id <= 0) {
+            return null;
+        }
+        if (!refreshScanForTick()) {
+            return PatternProviderIds.find(scanProviders(), id);
+        }
+        if (cachedById == null) {
+            var byId = new HashMap<Long, PatternContainer>(cachedScan.size() * 2);
+            for (var provider : cachedScan) {
+                byId.put(PatternProviderIds.idOf(provider), provider);
+            }
+            cachedById = byId;
+        }
+        return cachedById.get(id);
+    }
+
+    /** @return whether the per-tick cache applies; {@code cachedScan} is current when it does */
+    private boolean refreshScanForTick() {
+        Player currentPlayer = player.get();
+        if (!serverSide.getAsBoolean() || currentPlayer == null) {
+            return false;
+        }
+        long tick = currentPlayer.level().getGameTime();
+        if (cachedScan == null || cachedScanTick != tick) {
+            cachedScan = scanProviders();
+            cachedScanTick = tick;
+            cachedById = null;
+            cachedSorted = null;
+        }
+        return true;
+    }
+
+    private static List<PatternContainer> sortedCopy(List<PatternContainer> scanned) {
+        var sorted = new ArrayList<PatternContainer>(scanned.size());
+        for (var provider : scanned) {
+            if (provider.getTerminalGroup() != null) {
+                sorted.add(provider);
+            }
+        }
+        PatternProviderSorts.sortStable(sorted);
+        return sorted;
     }
 
     /**
@@ -257,13 +308,11 @@ final class WcwtPatternUploadTargets {
                 if (container != null
                         && container.isVisibleInTerminal()
                         && container.getTerminalPatternInventory() != null
-                        && container.getTerminalPatternInventory().size() > 0
-                        && container.getTerminalGroup() != null) {
+                        && container.getTerminalPatternInventory().size() > 0) {
                     providers.add(container);
                 }
             }
         }
-        providers.sort(PatternProviderSorts.STABLE);
         return providers;
     }
 

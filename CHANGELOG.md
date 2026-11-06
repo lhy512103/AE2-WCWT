@@ -8,6 +8,8 @@
 2. Fixed: The toolkit network tool locator and toolbox lookup read the shared toolkit directly instead of building a full terminal menu host on every AE2 menu tick.
 3. Fixed: The extended panel requested by the toolkit hotkey is only consumed when the opened terminal reads it, so temporary hosts no longer discard it.
 4. Fixed: Recipe pulls take one network snapshot and resolve each ingredient's candidate items once instead of rescanning every stored key per ingredient and per transfer set, and a request is capped in total alternatives and to one per tick.
+5. Fixed: Pattern providers are sorted with keys computed once per provider instead of resolving the terminal group on every comparison, the per-tick scan no longer sorts unless a list is needed, and provider slots resolve through an id map.
+6. Fixed: Provider list requests are only served to the terminal that shows the list, management actions are throttled and reuse the menu's per-tick provider cache, and several actions in one tick share a single list refresh.
 
 ### 中文
 
@@ -15,6 +17,8 @@
 2. 修复：工具包网络工具定位器与工具箱查找直接读取共享工具包，不再在每个 AE2 菜单 tick 构造完整终端宿主。
 3. 修复：工具包快捷键预设的扩展面板改为在终端真正读取时消费，临时宿主不再把它清掉。
 4. 修复：锤子拉取改为一次网络快照并预先筛选每格候选物品，不再按每格、每轮扫描全网，并限制备选总数与每 tick 请求次数。
+5. 修复：样板供应器排序改为每个供应器只算一次排序键，每 tick 扫描不再无谓排序，供应器槽位改用 id 映射查找。
+6. 修复：供应器列表请求只响应打开终端的玩家，管理动作加节流并复用菜单的供应器缓存，同一 tick 的多个动作只刷新一次列表。
 
 
 ## v1.3.11

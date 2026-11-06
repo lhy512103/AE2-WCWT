@@ -1,5 +1,6 @@
 package com.lhy.wcwt.menu;
 
+import appeng.helpers.patternprovider.PatternContainer;
 import appeng.api.config.CopyMode;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
@@ -66,7 +67,6 @@ import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtMeIngredientExtraction;
 import com.lhy.wcwt.pull.WcwtStackMatching;
 import com.lhy.wcwt.util.PatternUploadMetadata;
-import com.lhy.wcwt.util.PatternProviderIds;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
@@ -259,6 +259,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      * {@link Long#MIN_VALUE} 表示「本会话尚未推送过」，用于保证订阅后至少推一次。
      */
     private long lastSyncedProviderSignature = Long.MIN_VALUE;
+    /** Set by management actions; the next {@code broadcastChanges} pushes one list for all of them. */
+    private boolean pendingProviderListRefresh;
+    @Nullable
+    private String pendingProviderListSearchText;
     private boolean initializingMenu = true;
     private final ManualSmithingMenuBridge manualSmithingBridge;
     private final ManualAnvilMenuBridge manualAnvilBridge;
@@ -975,7 +979,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (providerId <= 0 || providerSlot < 0 || isClientSide()) {
                 return null;
             }
-            var provider = PatternProviderIds.find(uploadTargets.providers(), providerId);
+            var provider = uploadTargets.providerById(providerId);
             if (provider == null) {
                 return null;
             }
@@ -1868,6 +1872,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 wcwtMergeProcessingGuard = false;
             }
         }
+        if (isServerSide() && pendingProviderListRefresh && getPlayer() instanceof ServerPlayer serverPlayer) {
+            pendingProviderListRefresh = false;
+            PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer,
+                    pendingProviderListSearchText, uploadTargets.providers()));
+            lastSyncedProviderSignature = uploadTargets.signature();
+            patternProviderSyncCooldown = PATTERN_PROVIDER_SYNC_INTERVAL_TICKS;
+        }
         if (isServerSide() && getPlayer() instanceof ServerPlayer serverPlayer) {
             boolean shouldSyncProviders = shouldSyncPatternProviders(serverPlayer);
             if (shouldSyncProviders && patternProviderSyncCooldown <= 0) {
@@ -1875,7 +1886,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 // 内容签名去重：内容未变则跳过整包构建 + 序列化 + 发送，消除每秒重复推送上千样板的浪费。
                 long signature = uploadTargets.signature();
                 if (signature != lastSyncedProviderSignature) {
-                    PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer));
+                    PacketDistributor.sendToPlayer(serverPlayer,
+                            PatternProviderListPacket.buildForPlayer(serverPlayer, "", uploadTargets.providers()));
                     lastSyncedProviderSignature = signature;
                     didProviderSync = true;
                 }
@@ -1995,6 +2007,22 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         long gameTime = serverPlayer.serverLevel().getGameTime();
         return gameTime - lastPatternProviderRequestTick >= 5L;
+    }
+
+    /** Visible pattern providers in terminal order, scanned at most once per server tick. */
+    public List<PatternContainer> getPatternProviders() {
+        return uploadTargets.providers();
+    }
+
+    @Nullable
+    public PatternContainer findPatternProvider(long providerId) {
+        return uploadTargets.providerById(providerId);
+    }
+
+    /** Pushes a fresh provider list on the next {@code broadcastChanges}, coalescing several actions per tick. */
+    public void markPatternProvidersDirty(@Nullable String searchText) {
+        pendingProviderListRefresh = true;
+        pendingProviderListSearchText = searchText;
     }
 
     private boolean shouldSyncPatternProviders(ServerPlayer serverPlayer) {
@@ -2281,8 +2309,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             serverPlayer.sendSystemMessage(Component.translatable(
                     "extendedae_plus.screen.upload.auto_upload_success", providerName));
         }
-        PacketDistributor.sendToPlayer(serverPlayer,
-                PatternProviderListPacket.buildForPlayer(serverPlayer, resolvedProviderSearchText));
+        PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer,
+                resolvedProviderSearchText, uploadTargets.providers()));
         if (providerId > 0 && slot >= 0) {
             PacketDistributor.sendToPlayer(serverPlayer, new PatternProviderFocusPacket(providerId, slot));
         }

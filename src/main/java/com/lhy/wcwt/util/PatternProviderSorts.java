@@ -7,18 +7,46 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
 
 public final class PatternProviderSorts {
+    private static final Comparator<SortKey> ORDER = Comparator
+            .comparing(SortKey::groupName)
+            .thenComparing(SortKey::dimension)
+            .thenComparingLong(SortKey::blockPos)
+            .thenComparingInt(SortKey::face)
+            .thenComparing(SortKey::className);
+
     private PatternProviderSorts() {
     }
 
-    public static final Comparator<PatternContainer> STABLE = Comparator
-            .comparing((PatternContainer provider) -> provider.getTerminalGroup().name().getString().toLowerCase())
-            .thenComparing(PatternProviderSorts::dimensionKey)
-            .thenComparingLong(PatternProviderSorts::blockPosKey)
-            .thenComparingInt(PatternProviderSorts::faceKey)
-            .thenComparing(provider -> provider.getClass().getName());
+    /**
+     * Sorts providers by terminal group name, then dimension, position, face and class. Every key is computed
+     * once per provider up front: {@code getTerminalGroup()} resolves the neighbouring machines on each call,
+     * so a comparator that re-derives it on every comparison costs N log N such lookups.
+     */
+    public static void sortStable(List<PatternContainer> providers) {
+        if (providers.size() < 2) {
+            return;
+        }
+        List<SortKey> keys = new ArrayList<>(providers.size());
+        for (PatternContainer provider : providers) {
+            keys.add(new SortKey(provider, groupNameKey(provider), dimensionKey(provider), blockPosKey(provider),
+                    faceKey(provider), provider.getClass().getName()));
+        }
+        keys.sort(ORDER);
+        for (int i = 0; i < keys.size(); i++) {
+            providers.set(i, keys.get(i).provider());
+        }
+    }
+
+    private static String groupNameKey(PatternContainer provider) {
+        var group = provider.getTerminalGroup();
+        return group == null ? "" : group.name().getString().toLowerCase(Locale.ROOT);
+    }
 
     private static String dimensionKey(PatternContainer provider) {
         if (provider instanceof BlockEntity be && be.getLevel() != null) {
@@ -48,5 +76,9 @@ public final class PatternProviderSorts {
             return side != null ? side.ordinal() : -1;
         }
         return -1;
+    }
+
+    private record SortKey(PatternContainer provider, String groupName, String dimension, long blockPos, int face,
+                           String className) {
     }
 }

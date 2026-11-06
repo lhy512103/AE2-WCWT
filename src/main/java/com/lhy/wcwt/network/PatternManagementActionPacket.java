@@ -11,7 +11,6 @@ import com.lhy.wcwt.helpers.WcwtRemoteMenuAccess;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.util.PatternUploadMetadata;
 import com.lhy.wcwt.util.PatternProviderIds;
-import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -30,7 +29,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.ArrayList;
@@ -86,6 +84,10 @@ public record PatternManagementActionPacket(Action action,
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player
                     && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+                // Every action may walk the provider list; a hand-paced client sends far fewer than this.
+                if (!WcwtPacketThrottle.tryAcquire(player, "pattern_management_action", 4)) {
+                    return;
+                }
                 menu.requestPatternProviderSyncSubscription();
                 boolean refreshProviderList = true;
                 switch (packet.action) {
@@ -109,8 +111,7 @@ public record PatternManagementActionPacket(Action action,
                     }
                 }
                 if (refreshProviderList) {
-                    PacketDistributor.sendToPlayer(player,
-                            PatternProviderListPacket.buildForPlayer(player, packet.searchText));
+                    menu.markPatternProvidersDirty(packet.searchText);
                 }
             }
         });
@@ -223,7 +224,7 @@ public record PatternManagementActionPacket(Action action,
         }
         logDebug("quick insert target preferredProviderId={}, resolvedPatternSearchText={}, targetName={}, sourceStack={}",
                 preferredProviderId, patternSearchText, getProviderDisplayName(provider), sourceStack);
-        InsertResult result = insertPatternIntoProviderGroup(providers, provider, sourceStack);
+        InsertResult result = insertPatternIntoProviderGroup(buildSameNameTryList(providers, provider), sourceStack);
         int inserted = result.inserted();
         if (inserted <= 0) {
             player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.upload_failed"), true);
@@ -254,6 +255,8 @@ public record PatternManagementActionPacket(Action action,
         }
         logDebug("upload cache target providerId={}, targetName={}, cacheSize={}",
                 providerId, getProviderDisplayName(provider), patternCache.size());
+        // Same target for every cached pattern, so the same-name provider list is resolved once.
+        List<PatternContainer> tryList = buildSameNameTryList(providers, provider);
         int insertedTotal = 0;
         boolean foundPattern = false;
         for (int cacheSlot = 0; cacheSlot < patternCache.size(); cacheSlot++) {
@@ -263,7 +266,7 @@ public record PatternManagementActionPacket(Action action,
             }
 
             foundPattern = true;
-            InsertResult result = insertPatternIntoProviderGroup(providers, provider, pattern);
+            InsertResult result = insertPatternIntoProviderGroup(tryList, pattern);
             int inserted = result.inserted();
             logDebug("upload cache slot={}, metadata={}, inserted={}, remaining={}, targetName={}",
                     cacheSlot, PatternUploadMetadata.getProviderSearchText(pattern), inserted,
@@ -447,25 +450,25 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static PatternContainer getProviderById(ServerPlayer player, long providerId) {
-        var providers = listProviders(player);
-        return getProviderById(providers, providerId);
+        if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+            return menu.findPatternProvider(providerId);
+        }
+        return null;
     }
 
     private static PatternContainer getProviderById(List<PatternContainer> providers, long providerId) {
         return PatternProviderIds.find(providers, providerId);
     }
 
-    private static InsertResult insertPatternIntoProviderGroup(List<PatternContainer> providers,
-                                                               PatternContainer targetProvider,
-                                                               ItemStack pattern) {
-        if (targetProvider == null || pattern.isEmpty()
+    private static InsertResult insertPatternIntoProviderGroup(List<PatternContainer> tryList, ItemStack pattern) {
+        if (tryList.isEmpty() || pattern.isEmpty()
                 || !appeng.api.crafting.PatternDetailsHelper.isEncodedPattern(pattern)) {
             return new InsertResult(0, pattern);
         }
 
         ItemStack remaining = PatternUploadMetadata.copyWithoutUploadData(pattern);
         int insertedTotal = 0;
-        for (PatternContainer provider : buildSameNameTryList(providers, targetProvider)) {
+        for (PatternContainer provider : tryList) {
             ItemStack beforeInsert = remaining.copy();
             ItemStack afterInsert = insertPatternIntoProvider(provider, beforeInsert);
             insertedTotal += remaining.getCount() - afterInsert.getCount();
@@ -504,36 +507,10 @@ public record PatternManagementActionPacket(Action action,
     }
 
     private static List<PatternContainer> listProviders(ServerPlayer player) {
-        if (!(player.containerMenu instanceof appeng.menu.AEBaseMenu baseMenu)) {
-            return List.of();
+        if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+            return menu.getPatternProviders();
         }
-        var target = baseMenu.getTarget();
-        if (!(target instanceof appeng.api.networking.security.IActionHost host) || host.getActionableNode() == null) {
-            return List.of();
-        }
-        var grid = host.getActionableNode().getGrid();
-        if (grid == null) {
-            return List.of();
-        }
-
-        var providers = new ArrayList<PatternContainer>();
-        for (var machineClass : grid.getMachineClasses()) {
-            if (!PatternContainer.class.isAssignableFrom(machineClass)) {
-                continue;
-            }
-            @SuppressWarnings("unchecked")
-            Class<? extends PatternContainer> containerClass = (Class<? extends PatternContainer>) machineClass;
-            for (var container : grid.getActiveMachines(containerClass)) {
-                if (container != null && container.isVisibleInTerminal()
-                        && container.getTerminalPatternInventory() != null
-                        && container.getTerminalPatternInventory().size() > 0
-                        && container.getTerminalGroup() != null) {
-                    providers.add(container);
-                }
-            }
-        }
-        providers.sort(PatternProviderSorts.STABLE);
-        return providers;
+        return List.of();
     }
 
     private static PatternContainer findMatchingProviderBySearchText(List<PatternContainer> providers, String searchText) {

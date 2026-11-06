@@ -130,15 +130,16 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
 
         public static void handle(Request packet, IPayloadContext context) {
             context.enqueueWork(() -> {
-                if (context.player() instanceof ServerPlayer player) {
-                    if (player.containerMenu instanceof com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu menu) {
-                        boolean serveNow = menu.shouldServeImmediatePatternProviderRequest();
-                        menu.requestPatternProviderSyncSubscription(packet.subscribe());
-                        if (!serveNow) {
-                            return;
-                        }
+                // Only the terminal that shows the list may ask for it; any other menu would get a full
+                // network scan and a list-sized reply for a ten-byte request, with no throttle.
+                if (context.player() instanceof ServerPlayer player
+                        && player.containerMenu instanceof com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu menu) {
+                    boolean serveNow = menu.shouldServeImmediatePatternProviderRequest();
+                    menu.requestPatternProviderSyncSubscription(packet.subscribe());
+                    if (serveNow) {
+                        PacketDistributor.sendToPlayer(player,
+                                buildForPlayer(player, packet.searchText, menu.getPatternProviders()));
                     }
-                    PacketDistributor.sendToPlayer(player, buildForPlayer(player, packet.searchText));
                 }
             });
         }
@@ -148,54 +149,24 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         return buildForPlayer(player, "");
     }
 
-    public static PatternProviderListPacket buildForPlayer(ServerPlayer player, String searchText) {
+    public static PatternProviderListPacket buildForPlayer(ServerPlayer player, @Nullable String searchText) {
+        return buildForPlayer(player, searchText, scanProvidersFor(player));
+    }
+
+    /** Builds the list from providers the caller already resolved, usually the menu's per-tick cache. */
+    public static PatternProviderListPacket buildForPlayer(ServerPlayer player, @Nullable String searchText,
+                                                            List<PatternContainer> providers) {
         long totalStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
         String resolvedSearchText = normalizeSearchText(searchText);
         var entries = new ArrayList<Entry>();
-        var menu = player.containerMenu;
-        if (!(menu instanceof appeng.menu.AEBaseMenu baseMenu)) {
-            return new PatternProviderListPacket(List.of(), resolvedSearchText);
-        }
-        var target = baseMenu.getTarget();
-        if (!(target instanceof appeng.api.networking.security.IActionHost host) || host.getActionableNode() == null) {
-            return new PatternProviderListPacket(List.of(), resolvedSearchText);
-        }
-        var grid = host.getActionableNode().getGrid();
-        if (grid == null) {
-            return new PatternProviderListPacket(List.of(), resolvedSearchText);
-        }
-
-        var providers = new ArrayList<PatternContainer>();
-        int machineClassCount = 0;
-        for (var machineClass : grid.getMachineClasses()) {
-            machineClassCount++;
-            if (!PatternContainer.class.isAssignableFrom(machineClass)) {
-                continue;
-            }
-            @SuppressWarnings("unchecked")
-            Class<? extends PatternContainer> containerClass = (Class<? extends PatternContainer>) machineClass;
-            for (var container : grid.getActiveMachines(containerClass)) {
-                if (container == null || !container.isVisibleInTerminal()) {
-                    continue;
-                }
-                InternalInventory inv = container.getTerminalPatternInventory();
-                if (inv == null || inv.size() <= 0) {
-                    continue;
-                }
-                var group = container.getTerminalGroup();
-                if (group == null) {
-                    continue;
-                }
-                providers.add(container);
-            }
-        }
-
-        providers.sort(PatternProviderSorts.STABLE);
         int copiedNonEmptySlots = 0;
         int totalInventorySlots = 0;
         int maxSyncedSlots = WcwtServerConfig.maxSyncedSlotsPerProvider();
         for (var container : providers) {
             InternalInventory inv = container.getTerminalPatternInventory();
+            if (inv == null || container.getTerminalGroup() == null) {
+                continue;
+            }
             totalInventorySlots += inv.size();
             var slots = new Int2ObjectArrayMap<ItemStack>();
             // SLOTS_CODEC 的 map 上限为 MAX_SYNCED_PROVIDER_SLOTS，slot 索引以 short 编码；
@@ -226,16 +197,55 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         if (DEBUG_PERF) {
             long totalNs = System.nanoTime() - totalStartNs;
             WcwtMod.LOGGER.info(
-                    "WCWT perf: providerList build player={}, totalMs={}, machineClasses={}, providers={}, inventorySlots={}, copiedStacks={}",
+                    "WCWT perf: providerList build player={}, totalMs={}, providers={}, inventorySlots={}, copiedStacks={}",
                     player.getScoreboardName(),
                     String.format(java.util.Locale.ROOT, "%.3f", totalNs / 1_000_000.0D),
-                    machineClassCount,
                     providers.size(),
                     totalInventorySlots,
                     copiedNonEmptySlots);
         }
 
         return new PatternProviderListPacket(entries, resolvedSearchText);
+    }
+
+    /** A fresh scan for callers without a terminal menu cache. */
+    private static List<PatternContainer> scanProvidersFor(ServerPlayer player) {
+        var menu = player.containerMenu;
+        if (!(menu instanceof appeng.menu.AEBaseMenu baseMenu)) {
+            return List.of();
+        }
+        var target = baseMenu.getTarget();
+        if (!(target instanceof appeng.api.networking.security.IActionHost host) || host.getActionableNode() == null) {
+            return List.of();
+        }
+        var grid = host.getActionableNode().getGrid();
+        if (grid == null) {
+            return List.of();
+        }
+
+        var providers = new ArrayList<PatternContainer>();
+        for (var machineClass : grid.getMachineClasses()) {
+            if (!PatternContainer.class.isAssignableFrom(machineClass)) {
+                continue;
+            }
+            @SuppressWarnings("unchecked")
+            Class<? extends PatternContainer> containerClass = (Class<? extends PatternContainer>) machineClass;
+            for (var container : grid.getActiveMachines(containerClass)) {
+                if (container == null || !container.isVisibleInTerminal()) {
+                    continue;
+                }
+                InternalInventory inv = container.getTerminalPatternInventory();
+                if (inv == null || inv.size() <= 0) {
+                    continue;
+                }
+                if (container.getTerminalGroup() == null) {
+                    continue;
+                }
+                providers.add(container);
+            }
+        }
+        PatternProviderSorts.sortStable(providers);
+        return providers;
     }
 
     private static Location getLocation(PatternContainer container) {
@@ -274,7 +284,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         return provider.getTerminalGroup().name().getString();
     }
 
-    private static String normalizeSearchText(String searchText) {
+    private static String normalizeSearchText(@Nullable String searchText) {
         if (searchText == null) {
             return "";
         }
