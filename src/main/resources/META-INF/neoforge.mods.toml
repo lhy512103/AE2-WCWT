@@ -102,3 +102,10 @@ type="optional"
 versionRange="[0,)"
 ordering="NONE"
 side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="create"
+type="optional"
+versionRange="[0,)"
+ordering="AFTER"
+side="BOTH"

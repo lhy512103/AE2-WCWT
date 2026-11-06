@@ -8,8 +8,8 @@ import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.itemlists.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
-import com.simibubi.create.content.processing.basin.BasinRecipe;
 import com.lhy.wcwt.compat.AppliedMekanisticsCompat;
+import com.lhy.wcwt.compat.CreateBasinCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.client.WcwtFavorites;
@@ -314,15 +314,12 @@ public class WcwtRecipeTransferHandler
             return fromDisplayedSlots;
         }
 
-        if (recipe instanceof BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> fallback = new ArrayList<>();
-            for (Ingredient ingredient : basinRecipe.getIngredients()) {
-                fallback.add(toBestGenericStack(priorityContext, ingredient, List.of()));
-            }
-            for (SizedFluidIngredient fluidIngredient : basinRecipe.getFluidIngredients()) {
-                fallback.add(toGenericStack(fluidIngredient));
-            }
-            return fallback;
+        // Create's BasinRecipe may only be referenced once Create is loaded; see CreateBasinCompat.
+        List<@Nullable GenericStack> basinInputs = CreateBasinCompat.collectInputs(recipe,
+                ingredient -> toBestGenericStack(priorityContext, ingredient, List.of()),
+                fluidIngredient -> toGenericStack(fluidIngredient));
+        if (basinInputs != null) {
+            return basinInputs;
         }
         return fromDisplayedSlots;
     }
@@ -336,17 +333,9 @@ public class WcwtRecipeTransferHandler
             return fromDisplayedSlots;
         }
 
-        if (recipe instanceof BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> fallback = new ArrayList<>();
-            for (var result : basinRecipe.getRollableResults()) {
-                fallback.add(GenericStack.fromItemStack(result.getStack().copy()));
-            }
-            for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
-                if (!fluidStack.isEmpty()) {
-                    fallback.add(GenericStack.fromFluidStack(fluidStack.copy()));
-                }
-            }
-            return fallback;
+        List<@Nullable GenericStack> basinOutputs = CreateBasinCompat.collectOutputs(recipe);
+        if (basinOutputs != null) {
+            return basinOutputs;
         }
         return fromDisplayedSlots;
     }

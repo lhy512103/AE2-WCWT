@@ -8,6 +8,7 @@ import appeng.integration.modules.itemlists.TransferHelper;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.client.WcwtFavorites;
 import com.lhy.wcwt.compat.AppliedMekanisticsCompat;
+import com.lhy.wcwt.compat.CreateBasinCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.config.WcwtClientConfig;
@@ -499,15 +500,12 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 return sparseInputs.stream().filter(Objects::nonNull).toList();
             }
             var backingRecipe = recipe.getBackingRecipe() != null ? recipe.getBackingRecipe().value() : null;
-            if (backingRecipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basinRecipe) {
-                List<@Nullable GenericStack> fallback = new ArrayList<>();
-                for (Ingredient ingredient : basinRecipe.getIngredients()) {
-                    fallback.add(WcwtRecipeTransferCommon.toBestGenericStack(priorityContext, ingredient, List.of()));
-                }
-                for (var fluidIngredient : basinRecipe.getFluidIngredients()) {
-                    fallback.add(WcwtRecipeTransferCommon.toGenericStack(fluidIngredient));
-                }
-                return fallback.stream().filter(Objects::nonNull).toList();
+            // Create's BasinRecipe may only be referenced once Create is loaded; see CreateBasinCompat.
+            List<@Nullable GenericStack> basinInputs = CreateBasinCompat.collectInputs(backingRecipe,
+                    ingredient -> WcwtRecipeTransferCommon.toBestGenericStack(priorityContext, ingredient, List.of()),
+                    WcwtRecipeTransferCommon::toGenericStack);
+            if (basinInputs != null) {
+                return basinInputs.stream().filter(Objects::nonNull).toList();
             }
             return List.of();
         }
@@ -564,17 +562,9 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
             return displayed;
         }
         var backingRecipe = recipe.getBackingRecipe() != null ? recipe.getBackingRecipe().value() : null;
-        if (backingRecipe instanceof com.simibubi.create.content.processing.basin.BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> fallback = new ArrayList<>();
-            for (var result : basinRecipe.getRollableResults()) {
-                fallback.add(GenericStack.fromItemStack(result.getStack().copy()));
-            }
-            for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
-                if (!fluidStack.isEmpty()) {
-                    fallback.add(GenericStack.fromFluidStack(fluidStack.copy()));
-                }
-            }
-            return fallback.stream().filter(Objects::nonNull).toList();
+        List<@Nullable GenericStack> basinOutputs = CreateBasinCompat.collectOutputs(backingRecipe);
+        if (basinOutputs != null) {
+            return basinOutputs.stream().filter(Objects::nonNull).toList();
         }
         return displayed;
     }

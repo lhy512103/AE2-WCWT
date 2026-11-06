@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.3.12
+
+### English
+
+1. Fixed: Create basin recipes are only referenced while Create is loaded, so transferring a recipe whose displayed inputs or outputs cannot be converted no longer crashes the client without Create.
+
+### 中文
+
+1. 修复：仅在加载 Create 时引用工作盆配方类，未装 Create 时传输无法转换材料的配方不再崩溃客户端。
+
+
 ## v1.3.11
 
 ### English
