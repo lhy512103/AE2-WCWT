@@ -64,6 +64,9 @@ import java.util.WeakHashMap;
 public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehensiveWorkTerminalMenu> {
     private static final Map<EmiRecipe, CachedPreview> LOCKED_PREVIEW_CACHE = new WeakHashMap<>();
     private static final long PREVIEW_TTL_TICKS = 10L;
+    private static Set<AEKey> cachedAvailableNetworkKeys = Set.of();
+    private static long cachedAvailableNetworkKeysTick = Long.MIN_VALUE;
+    private static int cachedAvailableNetworkKeysRepoId;
 
     private record CachedPreview(EncodingMode mode, int inventoryHash, long computedAtTick,
             PreviewResult result) {
@@ -364,10 +367,16 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
         return EncodingMode.PROCESSING;
     }
 
+    /** Rebuilt at most once per client tick: EMI calls {@code render} for every visible recipe every frame. */
     private static Set<AEKey> collectAvailableNetworkKeys(WirelessComprehensiveWorkTerminalMenu menu) {
         var repo = menu.getClientRepo();
         if (repo == null) {
             return Set.of();
+        }
+        long tick = currentClientTick();
+        int repoId = System.identityHashCode(repo);
+        if (cachedAvailableNetworkKeysTick == tick && cachedAvailableNetworkKeysRepoId == repoId) {
+            return cachedAvailableNetworkKeys;
         }
 
         Set<AEKey> availableKeys = new HashSet<>();
@@ -376,7 +385,10 @@ public class WcwtEmiRecipeHandler implements EmiRecipeHandler<WirelessComprehens
                 availableKeys.add(entry.getWhat());
             }
         }
-        return availableKeys;
+        cachedAvailableNetworkKeys = availableKeys.isEmpty() ? Set.of() : availableKeys;
+        cachedAvailableNetworkKeysTick = tick;
+        cachedAvailableNetworkKeysRepoId = repoId;
+        return cachedAvailableNetworkKeys;
     }
 
     private static boolean isAvailableFromNetwork(Set<AEKey> availableNetworkKeys, EmiIngredient ingredient) {

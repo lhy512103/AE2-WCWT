@@ -15,6 +15,8 @@
 9. Fixed: The Better Combat and EMI mixins no longer refuse to start or hard-crash when those mods change shape; a mismatch now only loses the paired feature, and the EMI button reads EMI internals reflectively.
 10. Fixed: The client recomputes the pattern preview only when the encoding inputs, mode or selected stonecutting recipe change, instead of running a full crafting or smithing recipe lookup every frame.
 11. Fixed: The stonecutting recipe list is cached per input and only consulted in stonecutting mode, instead of scanning every stonecutting recipe each frame whenever the first encoding slot held an item.
+12. Fixed: The EMI fill button rebuilds the set of available network items at most once per client tick instead of once per recipe per frame.
+13. Fixed: JEI previews of Useless Mod alloy furnace and multiblock recipes no longer build the full transfer, which sorted the whole client inventory every tick; the slot counts a preview needs are computed once per recipe.
 
 ### 中文
 
@@ -29,6 +31,8 @@
 9. 修复：Better Combat 与 EMI 的 mixin 在对方版本变动时不再拒绝启动或硬崩，只会失去对应功能，EMI 按钮改为反射读取其内部成员。
 10. 修复：客户端只在编码输入、模式或所选切石配方变化时重算样板预览，不再每帧做整表合成或锻造配方查找。
 11. 修复：切石配方列表按输入缓存且仅在切石模式下读取，不再在第一格有物品时每帧扫描全部切石配方。
+12. 修复：EMI 填充按钮每个客户端 tick 最多重建一次可用网络物品集合，不再每个配方每帧重建。
+13. 修复：JEI 预览无用之物合金炉与多方块配方时不再构建完整传输数据（每 tick 排序整个客户端库存），预览所需槽位数改为每个配方只算一次。
 
 
 ## v1.3.11

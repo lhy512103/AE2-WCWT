@@ -41,6 +41,7 @@ import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.WeakHashMap;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -79,17 +80,26 @@ public class WcwtRecipeTransferHandler
             return null;
         }
         if (com.lhy.wcwt.compat.UselessModCompat.isRecipe(recipe)) {
+            var logic = menu.getMenuHost().getLogic();
+            if (!doTransfer) {
+                // JEI previews every visible recipe each tick. The preview only needs the slot counts, which
+                // never change, so the full transfer (it sorts the whole client repo) is built once per recipe.
+                int[] slotCounts = uselessRecipeSlotCounts(recipe, menu);
+                if (slotCounts == null) return transferHelper.createInternalError();
+                if (slotCounts[0] > logic.getEncodedInputInv().size()
+                        || slotCounts[1] > logic.getEncodedOutputInv().size()) {
+                    return transferHelper.createUserErrorWithTooltip(net.minecraft.network.chat.Component
+                            .translatable("gui.useless_mod.omniversal_pattern.too_many_slots"));
+                }
+                return new WcwtEncodingRecipeTransferError(
+                        findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE));
+            }
             var transfer = com.lhy.wcwt.compat.UselessModCompat.transfer(recipe, menu);
             if (transfer == null) return transferHelper.createInternalError();
-            var logic = menu.getMenuHost().getLogic();
             if (transfer.inputs().size() > logic.getEncodedInputInv().size()
                     || transfer.outputs().size() > logic.getEncodedOutputInv().size()) {
                 return transferHelper.createUserErrorWithTooltip(net.minecraft.network.chat.Component
                         .translatable("gui.useless_mod.omniversal_pattern.too_many_slots"));
-            }
-            if (!doTransfer) {
-                return new WcwtEncodingRecipeTransferError(
-                        findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE));
             }
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
             PacketDistributor.sendToServer(new com.lhy.wcwt.network.OmniversalPatternTransferPacket(
@@ -98,12 +108,13 @@ public class WcwtRecipeTransferHandler
             return null;
         }
         if (WcwtMultiblockTransferCompat.isSupportedRecipe(recipe, recipeSlots)) {
-            var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
-            if (transfer == null) return transferHelper.createInternalError();
             if (!doTransfer) {
+                // Building the transfer data sorts the whole client repo; the preview does not need it.
                 return new WcwtEncodingRecipeTransferError(
                         findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE));
             }
+            var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
+            if (transfer == null) return transferHelper.createInternalError();
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
             PacketDistributor.sendToServer(new JeiCraftingTransferPacket(
                     transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING));
@@ -168,6 +179,22 @@ public class WcwtRecipeTransferHandler
                     return key != null && craftableKeys.contains(key);
                 }))
                 .toList();
+    }
+
+    private static final Map<Object, int[]> USELESS_RECIPE_SLOT_COUNTS = new WeakHashMap<>();
+    private static final int[] USELESS_RECIPE_INVALID = new int[0];
+
+    /** Input and output slot counts of a Useless Mod alloy furnace recipe; {@code null} when it cannot transfer. */
+    @Nullable
+    private static int[] uselessRecipeSlotCounts(Object recipe, WirelessComprehensiveWorkTerminalMenu menu) {
+        int[] counts = USELESS_RECIPE_SLOT_COUNTS.get(recipe);
+        if (counts == null) {
+            var transfer = com.lhy.wcwt.compat.UselessModCompat.transfer(recipe, menu);
+            counts = transfer == null ? USELESS_RECIPE_INVALID
+                    : new int[] {transfer.inputs().size(), transfer.outputs().size()};
+            USELESS_RECIPE_SLOT_COUNTS.put(recipe, counts);
+        }
+        return counts.length == 0 ? null : counts;
     }
 
     private static Set<AEKey> craftableKeysForTick(WirelessComprehensiveWorkTerminalMenu menu) {
