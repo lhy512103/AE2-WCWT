@@ -33,6 +33,7 @@
 27. Fixed: Several per-frame constant costs in the terminal screen were removed: layout rectangles are parsed from JSON once, button texts are constants, key-type filter buttons and Cosmetic Armor toggles refresh once per tick, the pattern management scroll limit is computed in one pass, and the HUD mixin no longer allocates a resource location per frame.
 28. Removed: The slot protection mixin, which never matched (it compared lower-case names against upper-case ids) and duplicated what AE2 already does for those slot semantics.
 29. Fixed: Items pulled for a recipe that fit neither the inventory nor the network (out of power or storage) are dropped at the player instead of disappearing.
+30. Fixed: Reflective calls into optional mods that resolve but fail at invocation are now reported once in the log instead of silently degrading.
 
 ### 中文
 
@@ -65,6 +66,7 @@
 27. 修复：移除终端界面若干每帧常数开销：布局矩形只从 JSON 解析一次，按钮文本改为常量，类型过滤按钮与装饰盔甲开关每 tick 刷新一次，样板管理滚动上限单次遍历计算，HUD mixin 不再每帧分配资源路径。
 28. 移除：从未生效的槽位保护 mixin（用小写名称匹配大写 id），其作用 AE2 对这些槽位语义本就已提供。
 29. 修复：拉取配方材料时背包放不下且网络也收不回（无电或存储满）的物品改为掉落在玩家处，不再消失。
+30. 修复：可选模组的反射调用在查找成功但执行失败时在日志中报告一次，不再静默降级。
 
 
 ## v1.3.11
