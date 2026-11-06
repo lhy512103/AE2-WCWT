@@ -26,6 +26,7 @@
 20. Fixed: The terminal hotkey path only consults JEI's search focus when JEI is loaded, and JEI's internal info recipe classes are matched by name instead of being referenced directly.
 21. Fixed: Remote provider menu sessions are dropped when the player logs out or the server stops, instead of keeping the old player and block entity referenced.
 22. Fixed: Manual crafting with item substitution takes one indexed network snapshot per action instead of copying the whole network inventory per craft and walking every stored key per emptied slot.
+23. Fixed: Magnet pickup and insert filters are rebuilt only when the terminal's filter config changes, instead of once per tick and once per nearby item entity.
 
 ### 中文
 
@@ -51,6 +52,7 @@
 20. 修复：终端快捷键只在装有 JEI 时查询其搜索框焦点，JEI 内部信息配方类改为按名称匹配而非直接引用。
 21. 修复：玩家登出或服务器停止时清理远程供应器菜单会话，不再持有旧玩家与方块实体引用。
 22. 修复：开启材料替换的手动合成改为每次操作只取一次网络索引快照，不再每次合成复制整张网络库存并逐格遍历全部物品。
+23. 修复：磁力拾取与存入过滤器只在终端过滤配置变化时重建，不再每 tick 和每个附近物品各重建一次。
 
 
 ## v1.3.11
