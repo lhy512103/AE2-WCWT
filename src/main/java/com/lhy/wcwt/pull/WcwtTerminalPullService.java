@@ -164,8 +164,11 @@ public final class WcwtTerminalPullService {
                 if (!remainder.isEmpty()) {
                     skippedItems.add(remainder.copy());
                     var remainderKey = AEItemKey.of(remainder);
-                    if (remainderKey != null) {
-                        StorageHelper.poweredInsert(energy, storage, remainderKey, remainder.getCount(), actionSource);
+                    long returned = remainderKey == null ? 0L
+                            : StorageHelper.poweredInsert(energy, storage, remainderKey, remainder.getCount(), actionSource);
+                    if (returned < remainder.getCount()) {
+                        // Out of power or storage: whatever the network would not take back is dropped, never lost.
+                        serverPlayer.drop(remainder.copyWithCount((int) (remainder.getCount() - returned)), false);
                     }
                 }
             }
