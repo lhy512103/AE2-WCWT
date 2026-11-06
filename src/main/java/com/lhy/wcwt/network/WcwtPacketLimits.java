@@ -8,6 +8,8 @@ import net.minecraft.network.codec.ByteBufCodecs;
 public final class WcwtPacketLimits {
     public static final int MAX_RECIPE_INGREDIENTS = 256;
     public static final int MAX_INGREDIENT_ALTERNATIVES = 1024;
+    /** Across all ingredients of one request; a client trims to this before sending. */
+    public static final int MAX_TOTAL_INGREDIENT_ALTERNATIVES = 8192;
     public static final int MAX_TRANSFER_STACKS = 256;
     public static final int MAX_SLOT_INDICES = 256;
 

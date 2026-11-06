@@ -1,10 +1,12 @@
 package com.lhy.wcwt.pull;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.jetbrains.annotations.Nullable;
@@ -22,7 +24,7 @@ import appeng.api.networking.energy.IEnergySource;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
-import appeng.api.storage.MEStorage;
+import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.StorageHelper;
 import appeng.helpers.ICraftingGridMenu;
 import appeng.items.storage.ViewCellItem;
@@ -32,6 +34,7 @@ import appeng.util.prioritylist.IPartitionList;
 
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
+import com.lhy.wcwt.network.WcwtPacketThrottle;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 
@@ -51,6 +54,10 @@ public final class WcwtTerminalPullService {
         }
 
         if (!(serverPlayer.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)) {
+            return;
+        }
+        // One pull per tick per player: a click never produces more, and each pull scans the whole network.
+        if (!WcwtPacketThrottle.tryAcquire(serverPlayer, "pull_recipe_inputs", 1)) {
             return;
         }
 
@@ -89,8 +96,11 @@ public final class WcwtTerminalPullService {
         var playerInventorySnapshot = snapshotInventory(playerInventory.items);
         var craftingGridSnapshot = craftingGrid != null ? snapshotInventory(craftingGrid) : List.<ItemStack>of();
         var reservedCraftingGridItems = craftingGrid != null ? new int[craftingGridSnapshot.size()] : null;
+        // One network snapshot serves the whole request instead of one aggregation per ingredient.
+        KeyCounter availableSnapshot = storage.getAvailableStacks();
+        var availableItems = WcwtMeIngredientExtraction.AvailableItems.of(availableSnapshot, filter);
         int transferSets = payload.maxTransfer()
-                ? Math.max(1, computeMaxTransferSets(menu, storage, filter, craftingService, payload.craftMissing(),
+                ? Math.max(1, computeMaxTransferSets(menu, availableSnapshot, filter, craftingService, payload.craftMissing(),
                         requestedIngredients, playerInventorySnapshot, craftingGridSnapshot, targetMode))
                 : 1;
         List<RequestedIngredient> scaledIngredients = scaleRequestedIngredients(requestedIngredients, transferSets);
@@ -122,8 +132,8 @@ public final class WcwtTerminalPullService {
                 missingAmount = 0;
             }
 
-            List<ItemStack> extractedStacks = WcwtMeIngredientExtraction.extractAlternatives(storage, energy, actionSource,
-                    filter, requested.alternatives(), missingAmount);
+            List<ItemStack> extractedStacks = WcwtMeIngredientExtraction.extractAlternatives(storage, availableItems,
+                    energy, actionSource, filter, requested.alternatives(), missingAmount);
             pulledStacks.addAll(extractedStacks);
             int extractedCount = extractedStacks.stream().mapToInt(ItemStack::getCount).sum();
             int remainingToHandle = missingAmount - extractedCount;
@@ -266,7 +276,7 @@ public final class WcwtTerminalPullService {
         return snapshot;
     }
 
-    private static int computeMaxTransferSets(MEStorageMenu menu, MEStorage storage, @Nullable IPartitionList filter,
+    private static int computeMaxTransferSets(MEStorageMenu menu, KeyCounter availableSnapshot, @Nullable IPartitionList filter,
             @Nullable ICraftingService craftingService, boolean craftMissing, List<RequestedIngredient> requestedIngredients,
             List<ItemStack> playerInventorySnapshot, List<ItemStack> craftingGridSnapshot,
             WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode targetMode) {
@@ -281,7 +291,7 @@ public final class WcwtTerminalPullService {
         for (ItemStack stack : craftingGridSnapshot) {
             addStackAmount(availableByKey, stack);
         }
-        for (var entry : storage.getAvailableStacks()) {
+        for (var entry : availableSnapshot) {
             if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
                 continue;
             }
@@ -294,29 +304,39 @@ public final class WcwtTerminalPullService {
         List<RequestedIngredient> orderedIngredients = new ArrayList<>(requestedIngredients);
         orderedIngredients.sort((left, right) -> Integer.compare(left.alternatives().size(), right.alternatives().size()));
 
+        // Resolve each ingredient's candidate keys once. The per-set loop below then only copies and reserves
+        // from those keys instead of rescanning every key in the network on every round.
+        List<ReservationPlan> plans = new ArrayList<>(orderedIngredients.size());
+        Set<AEItemKey> relevantKeys = new HashSet<>();
+        for (RequestedIngredient ingredient : orderedIngredients) {
+            if (ingredient.alternatives().isEmpty()) {
+                return 0;
+            }
+            var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(ingredient.alternatives());
+            List<AEItemKey> candidates = WcwtMeIngredientExtraction.reservationCandidates(availableByKey,
+                    ingredient.alternatives(), wideIngredient);
+            relevantKeys.addAll(candidates);
+            plans.add(new ReservationPlan(ingredient, candidates));
+        }
+        availableByKey.keySet().retainAll(relevantKeys);
+
         int completedSets = 0;
         int maxSets = getMaxTransferSetsForTarget(targetMode, requestedIngredients);
         while (completedSets < maxSets
-                && tryReserveSingleSet(availableByKey, orderedIngredients, filter, craftingService, craftMissing)) {
+                && tryReserveSingleSet(availableByKey, plans, filter, craftingService, craftMissing)) {
             completedSets++;
         }
         return completedSets;
     }
 
-    private static boolean tryReserveSingleSet(Map<AEItemKey, Long> availableByKey, List<RequestedIngredient> orderedIngredients,
+    private static boolean tryReserveSingleSet(Map<AEItemKey, Long> availableByKey, List<ReservationPlan> plans,
             @Nullable IPartitionList filter, @Nullable ICraftingService craftingService, boolean craftMissing) {
         Map<AEItemKey, Long> remaining = new LinkedHashMap<>(availableByKey);
 
-        for (RequestedIngredient ingredient : orderedIngredients) {
-            if (ingredient.alternatives().isEmpty()) {
-                return false;
-            }
-            var wideIngredient = WcwtMeIngredientExtraction.ingredientFromItemStacks(ingredient.alternatives());
-            int reserved = WcwtMeIngredientExtraction.reserveAmount(remaining, ingredient.alternatives(), wideIngredient,
-                    ingredient.count());
-            if (reserved < ingredient.count()
-                    && !(craftMissing && craftingService != null
-                            && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null)) {
+        for (ReservationPlan plan : plans) {
+            int reserved = WcwtMeIngredientExtraction.reserveFromCandidates(remaining, plan.candidates(),
+                    plan.ingredient().count());
+            if (reserved < plan.ingredient().count() && !plan.craftable(filter, craftingService, craftMissing)) {
                 return false;
             }
         }
@@ -324,6 +344,36 @@ public final class WcwtTerminalPullService {
         availableByKey.clear();
         availableByKey.putAll(remaining);
         return true;
+    }
+
+    /** An ingredient's candidate keys, plus a craftability check done at most once. */
+    private static final class ReservationPlan {
+        private final RequestedIngredient ingredient;
+        private final List<AEItemKey> candidates;
+        @Nullable
+        private Boolean craftable;
+
+        ReservationPlan(RequestedIngredient ingredient, List<AEItemKey> candidates) {
+            this.ingredient = ingredient;
+            this.candidates = candidates;
+        }
+
+        RequestedIngredient ingredient() {
+            return ingredient;
+        }
+
+        List<AEItemKey> candidates() {
+            return candidates;
+        }
+
+        boolean craftable(@Nullable IPartitionList filter, @Nullable ICraftingService craftingService,
+                boolean craftMissing) {
+            if (craftable == null) {
+                craftable = craftMissing && craftingService != null
+                        && findCraftableAlternative(ingredient.alternatives(), filter, craftingService) != null;
+            }
+            return craftable;
+        }
     }
 
     private static void addStackAmount(Map<AEItemKey, Long> availableByKey, ItemStack stack) {
