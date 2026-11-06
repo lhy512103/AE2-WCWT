@@ -35,6 +35,7 @@
 29. Fixed: Items pulled for a recipe that fit neither the inventory nor the network (out of power or storage) are dropped at the player instead of disappearing.
 30. Fixed: Reflective calls into optional mods that resolve but fail at invocation are now reported once in the log instead of silently degrading.
 31. Fixed: Dropping the selected extra-bar item no longer leaves an empty shell stack in the toolkit, and toolkit pickups credit the right item statistic and play the pickup animation.
+32. Fixed: A failing upload integration no longer leaves an encode half finished; the pattern stays in the output slot as a normal un-uploaded encode and the cause is logged once.
 
 ### 中文
 
@@ -69,6 +70,7 @@
 29. 修复：拉取配方材料时背包放不下且网络也收不回（无电或存储满）的物品改为掉落在玩家处，不再消失。
 30. 修复：可选模组的反射调用在查找成功但执行失败时在日志中报告一次，不再静默降级。
 31. 修复：丢弃副页选中物品不再在工具包里留下空壳物品栈，工具包拾取记录正确的物品统计并播放拾取动画。
+32. 修复：上传集成抛出异常时不再让编码中途中断，样板按未上传的正常流程留在输出槽，原因只记录一次。
 
 
 ## v1.3.11

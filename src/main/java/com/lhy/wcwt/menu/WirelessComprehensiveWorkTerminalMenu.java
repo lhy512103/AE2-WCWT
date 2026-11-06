@@ -2250,7 +2250,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
         }
         if (uploadEnabled && !omniversal) {
-            if (tryUploadEncodedPattern(mode, encodedPattern, resolvedProviderSearchText)) {
+            boolean uploaded;
+            try {
+                uploaded = tryUploadEncodedPattern(mode, encodedPattern, resolvedProviderSearchText);
+            } catch (RuntimeException | LinkageError e) {
+                // The pattern is already in the output slot. An upload integration failing must not leave the
+                // encode half done, so it ends as a plain "not uploaded" encode and the cause is reported once.
+                warnUploadFailureOnce(e);
+                uploaded = false;
+            }
+            if (uploaded) {
                 encodedPatternSlot.set(ItemStack.EMPTY);
                 tryFillBlankPatternFromNetwork();
                 broadcastChanges();
@@ -2281,6 +2290,17 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             case SMITHING_TABLE -> encodeSmithingTablePattern();
             case STONECUTTING -> encodeStonecuttingPattern();
         };
+    }
+
+    private static final java.util.concurrent.atomic.AtomicBoolean UPLOAD_FAILURE_WARNED =
+            new java.util.concurrent.atomic.AtomicBoolean();
+
+    private static void warnUploadFailureOnce(Throwable cause) {
+        if (UPLOAD_FAILURE_WARNED.compareAndSet(false, true)) {
+            WcwtMod.LOGGER.warn("WCWT pattern auto-upload failed; the pattern stays in the output slot. Further failures are logged at debug level.", cause);
+        } else {
+            WcwtMod.LOGGER.debug("WCWT pattern auto-upload failed", cause);
+        }
     }
 
     private boolean tryUploadEncodedPattern(EncodingMode mode, ItemStack encodedPattern,
