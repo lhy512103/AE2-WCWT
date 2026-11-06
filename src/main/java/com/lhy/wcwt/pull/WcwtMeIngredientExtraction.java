@@ -78,11 +78,11 @@ public final class WcwtMeIngredientExtraction {
             return result;
         }
 
-        List<AEItemKey> keysFor(Item item) {
+        public List<AEItemKey> keysFor(Item item) {
             return keysByItem.getOrDefault(item, List.of());
         }
 
-        long amount(AEItemKey key) {
+        public long amount(AEItemKey key) {
             return amounts.getLong(key);
         }
     }

@@ -11,7 +11,6 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
-import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.ITerminalHost;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.StorageHelper;
@@ -113,7 +112,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.common.math.LongMath;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
 
 
 import java.util.ArrayList;
@@ -248,6 +246,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private ConfigInventory cachedCellConfigInventory;
     private boolean cachedCellConfigIsCell;
     private boolean cachedCellConfigResolved;
+    /** Network snapshot shared by every craft of one manual crafting action; {@code null} outside an action. */
+    @Nullable
+    private WcwtMeIngredientExtraction.AvailableItems manualCraftingActionSnapshot;
 
     /** 处理样板：合并相同输入材料（JEI 编码与手动编辑时行为对齐 AE2 EncodingHelper）。 */
     private boolean processingMaterialsMerge;
@@ -3592,6 +3593,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         boolean craftedAny = false;
         RecipeHolder<CraftingRecipe> cachedAlternativesRecipe = null;
         ManualCraftingRecipeAlternatives cachedAlternatives = null;
+        manualCraftingActionSnapshot = null;
         try {
             for (int crafted = 0; crafted < maxTimesToCraft; crafted++) {
                 CraftingInput input = createManualCraftingInput(craftingMatrix);
@@ -3635,6 +3637,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 }
             }
         } finally {
+            manualCraftingActionSnapshot = null;
             if (craftedAny) {
                 slotsChanged(craftingMatrix.toContainer());
                 // Let the normal server menu tick perform the full inventory broadcast once for the whole action.
@@ -3733,7 +3736,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
         var filter = ViewCellItem.createItemFilter(getViewCells());
-        KeyCounter availableStacks = null;
+        WcwtMeIngredientExtraction.AvailableItems availableStacks = null;
         for (int slot = 0; slot < Math.min(craftingMatrix.size(), before.length); slot++) {
             ItemStack previous = before[slot];
             if (previous == null || previous.isEmpty()) {
@@ -3749,7 +3752,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 continue;
             }
             if (availableStacks == null) {
-                availableStacks = storage.getAvailableStacks();
+                // One indexed snapshot per action: "craft all" used to copy the whole network inventory per craft
+                // and then walk every key of it per emptied slot.
+                if (manualCraftingActionSnapshot == null) {
+                    manualCraftingActionSnapshot = WcwtMeIngredientExtraction.AvailableItems.of(
+                            storage.getAvailableStacks(), filter);
+                }
+                availableStacks = manualCraftingActionSnapshot;
             }
             ItemStack replacement = extractManualCraftingReplacement(slot, previous, before, recipe, expectedOutput,
                     filter, availableStacks, recipeAlternatives);
@@ -3761,7 +3770,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private ItemStack extractManualCraftingReplacement(int slot, ItemStack previous, ItemStack[] before,
             RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
-            KeyCounter availableStacks, @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
+            WcwtMeIngredientExtraction.AvailableItems availableStacks, @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
         ItemStack exact = extractManualCraftingExactReplacement(previous, filter);
         if (!exact.isEmpty()) {
             return exact;
@@ -3793,7 +3802,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private ItemStack extractManualCraftingAlternativeReplacement(int slot, ItemStack[] before,
             RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
-            KeyCounter availableStacks, List<ItemStack> alternatives) {
+            WcwtMeIngredientExtraction.AvailableItems availableStacks, List<ItemStack> alternatives) {
         if (alternatives.isEmpty()) {
             return ItemStack.EMPTY;
         }
@@ -3858,34 +3867,31 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private List<AEItemKey> manualCraftingReplacementCandidates(List<ItemStack> alternatives,
             @Nullable net.minecraft.world.item.crafting.Ingredient wideIngredient, @Nullable IPartitionList filter,
-            KeyCounter availableStacks) {
-        List<AEItemKey> candidates = new ArrayList<>();
-        for (ItemStack alternative : WcwtIngredientPriorities.deduplicateItemAlternatives(alternatives)) {
+            WcwtMeIngredientExtraction.AvailableItems availableStacks) {
+        List<ItemStack> orderedAlternatives = WcwtIngredientPriorities.deduplicateItemAlternatives(alternatives);
+        java.util.LinkedHashSet<AEItemKey> candidates = new java.util.LinkedHashSet<>();
+        for (ItemStack alternative : orderedAlternatives) {
             AEItemKey key = AEItemKey.of(alternative);
-            if (key != null
-                    && availableStacks.get(key) > 0
-                    && (filter == null || filter.isListed(key))
-                    && !candidates.contains(key)) {
+            if (key != null && availableStacks.amount(key) > 0 && (filter == null || filter.isListed(key))) {
                 candidates.add(key);
             }
         }
         if (WcwtStackMatching.requiresExactItemKeyMatch(alternatives)) {
-            return candidates;
+            return new ArrayList<>(candidates);
         }
-        for (Object2LongMap.Entry<AEKey> entry : availableStacks) {
-            if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
+        // The snapshot is indexed by item and already filtered by the view cells. Only keys of the alternatives'
+        // items can match, so the whole network is never walked per slot.
+        for (ItemStack alternative : orderedAlternatives) {
+            if (alternative.isEmpty()) {
                 continue;
             }
-            if (filter != null && !filter.isListed(itemKey)) {
-                continue;
+            for (AEItemKey key : availableStacks.keysFor(alternative.getItem())) {
+                if (!candidates.contains(key) && WcwtStackMatching.matchesItemKey(key, alternatives, wideIngredient)) {
+                    candidates.add(key);
+                }
             }
-            if (!WcwtStackMatching.matchesItemKey(itemKey, alternatives, wideIngredient)
-                    || candidates.contains(itemKey)) {
-                continue;
-            }
-            candidates.add(itemKey);
         }
-        return candidates;
+        return new ArrayList<>(candidates);
     }
 
     private boolean isManualCraftingReplacementValid(int slot, ItemStack candidate, ItemStack[] before,
