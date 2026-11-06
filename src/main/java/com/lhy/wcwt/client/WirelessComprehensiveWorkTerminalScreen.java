@@ -263,6 +263,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private EditBox patternManageSearchField;
     private EditBox patternManageMappingField;
     private int extendedUiAvailabilityMask = -1;
+    private boolean extendedUiAvailabilityMaskResolved;
+    /** Game time seen by the previous frame; work that can only change once per tick is gated on it. */
+    private long lastUpdateGameTime = Long.MIN_VALUE;
+    private boolean firstFrameOfTick = true;
     private int lastExtendedUiButtonMask = -1;
     private IExtendedUIHost.ExtendedUIType lastExtendedUiVisibilityType = null;
     private boolean lastExtendedUiToolkitInManagementArea;
@@ -1441,6 +1445,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private int refreshExtendedUiAvailabilityMask() {
+        if (extendedUiAvailabilityMaskResolved && !firstFrameOfTick) {
+            return extendedUiAvailabilityMask;
+        }
+        extendedUiAvailabilityMaskResolved = true;
         var host = menu.getMenuHost();
         if (host == null) {
             return updateExtendedUiAvailabilityMask(0);
@@ -1939,6 +1947,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean triggerExtendedUiHotkey(IExtendedUIHost.ExtendedUIType type) {
+        // A deliberate refresh: bypass the per-tick gate.
+        extendedUiAvailabilityMaskResolved = false;
         refreshExtendedUiAvailabilityMask();
         if (!isExtendedUIAvailable(type)) {
             return false;
@@ -2434,6 +2444,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        var clientLevel = Minecraft.getInstance().level;
+        long gameTime = clientLevel != null ? clientLevel.getGameTime() : lastUpdateGameTime + 1;
+        firstFrameOfTick = gameTime != lastUpdateGameTime;
+        lastUpdateGameTime = gameTime;
         if (DEBUG_FRAME_SYNC) {
             recordFrameSyncTick();
         }
@@ -2493,7 +2507,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             rebuildPatternManagementRows();
             patternProviderSlotLayoutDirty = true;
         }
-        if (magnetCardMenuButton != null) {
+        if (magnetCardMenuButton != null && firstFrameOfTick) {
+            // Reads the upgrade inventory off the item, so once per tick rather than once per frame.
             var host = menu.getMenuHost();
             boolean hasMagnet = host != null && WcwtWirelessFeatures.hasMagnetCardInstalled(host.getItemStack());
             magnetCardMenuButton.visible = hasMagnet;

@@ -242,6 +242,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private EncodingMode lastPatternPreviewMode;
     @Nullable
     private ResourceLocation lastPatternPreviewStonecuttingRecipe;
+    /** Config inventory parsed from the current cell item; the advanced coding panel reads it ~20 times per frame. */
+    private ItemStack cachedCellConfigStack = ItemStack.EMPTY;
+    @Nullable
+    private ConfigInventory cachedCellConfigInventory;
+    private boolean cachedCellConfigIsCell;
+    private boolean cachedCellConfigResolved;
 
     /** 处理样板：合并相同输入材料（JEI 编码与手动编辑时行为对齐 AE2 EncodingHelper）。 */
     private boolean processingMaterialsMerge;
@@ -4168,12 +4174,29 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      *  - 其他：0
      */
     public int getCellConfigInventorySize() {
-        var stack = getCurrentCellStack();
-        if (!stack.isEmpty() && stack.getItem() instanceof ICellWorkbenchItem cwi) {
-            var inv = cwi.getConfigInventory(stack);
+        var inv = currentCellConfigInventory();
+        if (cachedCellConfigIsCell) {
             return inv == null ? 0 : inv.size();
         }
         return cellCopyMode == CopyMode.KEEP_ON_REMOVE ? 63 : 0;
+    }
+
+    /**
+     * The config inventory of the current cell item, parsed again only when that item changes. Reading it is
+     * read-only on both sides; the server writes through the host's own copy.
+     */
+    @Nullable
+    private ConfigInventory currentCellConfigInventory() {
+        var stack = getCurrentCellStack();
+        if (!cachedCellConfigResolved || !ItemStack.matches(stack, cachedCellConfigStack)) {
+            cachedCellConfigStack = stack.copy();
+            cachedCellConfigIsCell = !stack.isEmpty() && stack.getItem() instanceof ICellWorkbenchItem;
+            cachedCellConfigInventory = cachedCellConfigIsCell
+                    ? ((ICellWorkbenchItem) stack.getItem()).getConfigInventory(stack)
+                    : null;
+            cachedCellConfigResolved = true;
+        }
+        return cachedCellConfigInventory;
     }
 
     /**
@@ -4182,9 +4205,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      */
     @Nullable
     public GenericStack getCellConfigStack(int idx) {
-        var stack = getCurrentCellStack();
-        if (stack.isEmpty() || !(stack.getItem() instanceof ICellWorkbenchItem cwi)) return null;
-        var inv = cwi.getConfigInventory(stack);
+        var inv = currentCellConfigInventory();
         if (inv == null || idx < 0 || idx >= inv.size()) return null;
         return inv.getStack(idx);
     }
@@ -4193,11 +4214,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (key == null) {
             return true;
         }
-        var stack = getCurrentCellStack();
-        if (stack.isEmpty() || !(stack.getItem() instanceof ICellWorkbenchItem cwi)) {
-            return false;
-        }
-        var inv = cwi.getConfigInventory(stack);
+        var inv = currentCellConfigInventory();
         return inv != null && idx >= 0 && idx < inv.size() && inv.isAllowedIn(idx, key);
     }
 
@@ -4211,7 +4228,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         var cwi = menuHost.getStorageCellWorkbenchItem();
         if (cwi != null && cellCopyMode == CopyMode.CLEAR_ON_REMOVE) {
-            return idx < cwi.getConfigInventory(menuHost.getStorageCellItem()).size();
+            // getConfigInventory may return null for third-party cells.
+            var inv = currentCellConfigInventory();
+            return inv != null && idx < inv.size();
         }
         return cellCopyMode == CopyMode.KEEP_ON_REMOVE;
     }
