@@ -2823,7 +2823,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             patternEncodingScrollbar.setVisible(processingVisible && maxScroll > 0);
         }
         if (stonecuttingPatternScrollbar != null) {
-            int rows = (menu.getStonecuttingRecipes().size() + STONECUTTING_RESULT_COLS - 1) / STONECUTTING_RESULT_COLS;
+            // Only the stonecutting mode shows the list; computing it in other modes scanned every recipe per frame.
+            int rows = patternEncodingMode == EncodingMode.STONECUTTING
+                    ? (menu.getStonecuttingRecipes().size() + STONECUTTING_RESULT_COLS - 1) / STONECUTTING_RESULT_COLS
+                    : 0;
             stonecuttingPatternScrollbar.setRange(0, Math.max(0, rows - STONECUTTING_RESULT_ROWS), STONECUTTING_RESULT_ROWS);
             var inputBase = mainLayout.slot("PROCESSING_INPUTS",
                     new ExtendedPanelLayout.Rect(185, imageHeight - 213, 18, 18), imageWidth, imageHeight);
@@ -2838,7 +2841,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int scroll = processingVisible && patternEncodingScrollbar != null
                 ? patternEncodingScrollbar.getCurrentScroll()
                 : 0;
-        menu.updatePatternPreview(patternEncodingMode);
+        menu.updatePatternPreviewIfInputsChanged(patternEncodingMode);
         updatePatternCraftingSlots(menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_CRAFTING_GRID),
                 patternEncodingMode == EncodingMode.CRAFTING);
         updatePatternProcessingInputSlots(processingInputSlots, processingVisible, scroll);

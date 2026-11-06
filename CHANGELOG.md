@@ -13,6 +13,8 @@
 7. Fixed: Enum ordinals in seven packets are range-checked while decoding and reported as decoder errors instead of array index errors.
 8. Fixed: Provider search text, mapping text and dimension ids carried in packets are capped in length on both sides, so a client can no longer bloat encoded patterns with oversized search text.
 9. Fixed: The Better Combat and EMI mixins no longer refuse to start or hard-crash when those mods change shape; a mismatch now only loses the paired feature, and the EMI button reads EMI internals reflectively.
+10. Fixed: The client recomputes the pattern preview only when the encoding inputs, mode or selected stonecutting recipe change, instead of running a full crafting or smithing recipe lookup every frame.
+11. Fixed: The stonecutting recipe list is cached per input and only consulted in stonecutting mode, instead of scanning every stonecutting recipe each frame whenever the first encoding slot held an item.
 
 ### 中文
 
@@ -25,6 +27,8 @@
 7. 修复：七个数据包的枚举序号在解码时做范围检查，越界按解码错误报告而非数组越界。
 8. 修复：数据包中的供应器搜索文本、映射文本和维度 id 双端限长，客户端无法再用超长搜索文本撑大样板数据。
 9. 修复：Better Combat 与 EMI 的 mixin 在对方版本变动时不再拒绝启动或硬崩，只会失去对应功能，EMI 按钮改为反射读取其内部成员。
+10. 修复：客户端只在编码输入、模式或所选切石配方变化时重算样板预览，不再每帧做整表合成或锻造配方查找。
+11. 修复：切石配方列表按输入缓存且仅在切石模式下读取，不再在第一格有物品时每帧扫描全部切石配方。
 
 
 ## v1.3.11

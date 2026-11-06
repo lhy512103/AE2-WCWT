@@ -78,6 +78,7 @@ import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -229,6 +230,18 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private final List<RecipeHolder<StonecutterRecipe>> stonecuttingRecipes = new ArrayList<>();
     @Nullable
     private RecipeHolder<CraftingRecipe> currentPatternCraftingRecipe;
+    /** Input the stonecutting list was last computed for; the client asks for that list every frame. */
+    @Nullable
+    private AEItemKey stonecuttingRecipesInputKey;
+    @Nullable
+    private RecipeManager stonecuttingRecipesManager;
+    /** What the pattern preview was last computed for; the client asks for the preview every frame. */
+    @Nullable
+    private List<GenericStack> lastPatternPreviewInputs;
+    @Nullable
+    private EncodingMode lastPatternPreviewMode;
+    @Nullable
+    private ResourceLocation lastPatternPreviewStonecuttingRecipe;
 
     /** 处理样板：合并相同输入材料（JEI 编码与手动编辑时行为对齐 AE2 EncodingHelper）。 */
     private boolean processingMaterialsMerge;
@@ -2709,6 +2722,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (patternPreviewSlot == null || patternEncodingLogic == null) {
             return;
         }
+        lastPatternPreviewMode = mode;
+        lastPatternPreviewInputs = snapshotPatternPreviewInputs();
+        lastPatternPreviewStonecuttingRecipe = patternEncodingLogic.getStonecuttingRecipeId();
 
         ItemStack preview = switch (mode) {
             case CRAFTING -> getCraftingPatternPreview();
@@ -2718,6 +2734,33 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         };
         patternPreviewSlot.setResultItem(preview);
         patternPreviewSlot.setActive(mode != EncodingMode.PROCESSING);
+    }
+
+    /**
+     * Client: the screen asks for the preview every frame, but it only changes with the mode, the encoding
+     * inputs or the selected stonecutting recipe. Recomputing it each frame meant a full crafting recipe
+     * lookup per frame while the grid held no matching recipe. Server-side callers use
+     * {@link #updatePatternPreview} directly so recipe selection changes always recompute.
+     */
+    public void updatePatternPreviewIfInputsChanged(EncodingMode mode) {
+        if (patternPreviewSlot == null || patternEncodingLogic == null) {
+            return;
+        }
+        if (mode == lastPatternPreviewMode
+                && Objects.equals(patternEncodingLogic.getStonecuttingRecipeId(), lastPatternPreviewStonecuttingRecipe)
+                && snapshotPatternPreviewInputs().equals(lastPatternPreviewInputs)) {
+            return;
+        }
+        updatePatternPreview(mode);
+    }
+
+    private List<GenericStack> snapshotPatternPreviewInputs() {
+        var inv = patternEncodingLogic.getEncodedInputInv();
+        List<GenericStack> inputs = new ArrayList<>(inv.size());
+        for (int i = 0; i < inv.size(); i++) {
+            inputs.add(inv.getStack(i));
+        }
+        return inputs;
     }
 
     private ItemStack getCraftingPatternPreview() {
@@ -2990,16 +3033,31 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private void updateStonecuttingRecipes() {
+        AEItemKey inputKey = patternEncodingLogic != null
+                && patternEncodingLogic.getEncodedInputInv().getKey(0) instanceof AEItemKey key ? key : null;
+        RecipeManager recipeManager = inputKey == null ? null : getPlayer().level().getRecipeManager();
+        // The list only changes with the input or a recipe reload; the client asks for it every frame.
+        if (Objects.equals(inputKey, stonecuttingRecipesInputKey) && recipeManager == stonecuttingRecipesManager) {
+            validateStonecuttingSelection();
+            return;
+        }
+        stonecuttingRecipesInputKey = inputKey;
+        stonecuttingRecipesManager = recipeManager;
         stonecuttingRecipes.clear();
-        if (patternEncodingLogic == null
-                || !(patternEncodingLogic.getEncodedInputInv().getKey(0) instanceof AEItemKey inputKey)) {
+        if (inputKey == null) {
             return;
         }
 
         var level = getPlayer().level();
         var recipeInput = new SingleRecipeInput(inputKey.toStack());
         stonecuttingRecipes.addAll(level.getRecipeManager().getRecipesFor(RecipeType.STONECUTTING, recipeInput, level));
+        validateStonecuttingSelection();
+    }
 
+    private void validateStonecuttingSelection() {
+        if (patternEncodingLogic == null) {
+            return;
+        }
         var selected = patternEncodingLogic.getStonecuttingRecipeId();
         if (selected != null && stonecuttingRecipes.stream().noneMatch(recipe -> recipe.id().equals(selected))) {
             patternEncodingLogic.setStonecuttingRecipeId(null);
