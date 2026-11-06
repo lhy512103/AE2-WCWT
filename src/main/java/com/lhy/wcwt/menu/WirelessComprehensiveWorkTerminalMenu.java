@@ -4401,7 +4401,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             for (var stack : stacks) {
                 if (stack != null) {
                     long maxAmount = 999999L * stack.what().getAmountPerUnit();
-                    if (stack.amount() * scale > maxAmount) {
+                    // Divide instead of multiply: amount * scale could wrap around for absurd amounts.
+                    if (stack.amount() > maxAmount / scale) {
                         return false;
                     }
                 }

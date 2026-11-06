@@ -4217,8 +4217,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     STONECUTTING_RESULT_SRC_X, srcY, STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H,
                     256, 256);
 
-            ItemStack result = recipe.value().getResultItem(Objects.requireNonNull(Minecraft.getInstance().level)
-                    .registryAccess());
+            ItemStack result = recipe.value().getResultItem(menu.getPlayer().registryAccess());
             int itemY = offsetY + bounds.top() + (selected || hover ? 3 : 2);
             guiGraphics.renderItem(result, offsetX + bounds.left() + 2, itemY);
             guiGraphics.renderItemDecorations(font, result, offsetX + bounds.left() + 2, itemY);
