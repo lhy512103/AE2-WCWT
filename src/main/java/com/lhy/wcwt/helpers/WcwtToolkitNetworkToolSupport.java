@@ -6,7 +6,6 @@ import appeng.core.definitions.AEItems;
 import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.items.contents.NetworkToolMenuHost;
 import appeng.items.tools.NetworkToolItem;
-import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
@@ -116,20 +115,13 @@ public final class WcwtToolkitNetworkToolSupport {
     @Nullable
     private static NetworkToolMenuHost<?> createHostFromTerminal(Player player, ItemStack terminalStack,
             WcwtToolkitNetworkToolLocator baseLocator) {
-        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
+        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
             return null;
         }
 
-        var terminalLocator = switch (baseLocator.sourceKind()) {
-            case INVENTORY -> MenuLocators.forInventorySlot(baseLocator.sourceSlot());
-            case CURIOS -> MenuLocators.forCurioSlot(baseLocator.sourceSlot());
-        };
-        var terminalHost = terminalItem.getMenuHost(player, terminalLocator, null);
-        if (terminalHost == null) {
-            return null;
-        }
-
-        var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
+        // The toolkit is one shared inventory per player on the server. Building a terminal menu host just
+        // to read it parsed the whole terminal item and scanned access points on every lookup.
+        var toolkit = WcwtToolkitStore.items(player, terminalStack);
         if (toolkit == null) {
             return null;
         }
@@ -140,13 +132,7 @@ public final class WcwtToolkitNetworkToolSupport {
                 continue;
             }
             var locator = new WcwtToolkitNetworkToolLocator(baseLocator.sourceKind(), baseLocator.sourceSlot(), toolkitSlot);
-            return new WcwtToolkitNetworkToolMenuHost(
-                    networkToolItem,
-                    player,
-                    locator,
-                    null,
-                    terminalHost,
-                    toolkitSlot);
+            return new WcwtToolkitNetworkToolMenuHost(networkToolItem, player, locator, null, toolkitSlot);
         }
         return null;
     }

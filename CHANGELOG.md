@@ -5,10 +5,14 @@
 ### English
 
 1. Fixed: Create basin recipes are only referenced while Create is loaded, so transferring a recipe whose displayed inputs or outputs cannot be converted no longer crashes the client without Create.
+2. Fixed: The toolkit network tool locator and toolbox lookup read the shared toolkit directly instead of building a full terminal menu host on every AE2 menu tick.
+3. Fixed: The extended panel requested by the toolkit hotkey is only consumed when the opened terminal reads it, so temporary hosts no longer discard it.
 
 ### 中文
 
 1. 修复：仅在加载 Create 时引用工作盆配方类，未装 Create 时传输无法转换材料的配方不再崩溃客户端。
+2. 修复：工具包网络工具定位器与工具箱查找直接读取共享工具包，不再在每个 AE2 菜单 tick 构造完整终端宿主。
+3. 修复：工具包快捷键预设的扩展面板改为在终端真正读取时消费，临时宿主不再把它清掉。
 
 
 ## v1.3.11

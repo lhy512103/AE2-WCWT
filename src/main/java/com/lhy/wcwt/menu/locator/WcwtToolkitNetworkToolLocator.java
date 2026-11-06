@@ -3,11 +3,11 @@ package com.lhy.wcwt.menu.locator;
 
 import org.jetbrains.annotations.Nullable;
 
+import appeng.api.inventories.InternalInventory;
 import appeng.core.definitions.AEItems;
 import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.menu.locator.ItemMenuHostLocator;
-import appeng.menu.locator.MenuLocators;
-import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
+import com.lhy.wcwt.helpers.WcwtToolkitStore;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import net.minecraft.network.FriendlyByteBuf;
@@ -17,6 +17,9 @@ import net.minecraft.world.phys.BlockHitResult;
 
 /**
  * 定位 WCWT 终端工具包中的 AE 网络工具。
+ *
+ * <p>AE2 在菜单打开期间每个服务端 tick 都会重新定位宿主物品，所以这里只读取按玩家共享的工具包库存，
+ * 不再为了读一格而构造整个终端宿主（那会解析终端 NBT 并扫描无线接入点）。
  */
 public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlot, int toolkitSlot)
         implements ItemMenuHostLocator {
@@ -37,20 +40,12 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
             return AEItems.NETWORK_TOOL.stack();
         }
 
-        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem wcwtItem)) {
+        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
             return ItemStack.EMPTY;
         }
-        ItemMenuHostLocator terminalLocator = switch (sourceKind) {
-            case INVENTORY -> MenuLocators.forInventorySlot(sourceSlot);
-            case CURIOS -> MenuLocators.forCurioSlot(sourceSlot);
-        };
-        var terminalHost = wcwtItem.getMenuHost(player, terminalLocator, null);
-        if (terminalHost == null) {
-            return ItemStack.EMPTY;
-        }
-
-        var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
-        if (toolkit == null || toolkitSlot < 0 || toolkitSlot >= toolkit.size()) {
+        // 客户端没有共享工具包，和以前一样定位为空。
+        InternalInventory toolkit = WcwtToolkitStore.items(player, terminalStack);
+        if (toolkit == null || toolkitSlot >= toolkit.size()) {
             return ItemStack.EMPTY;
         }
         return toolkit.getStackInSlot(toolkitSlot);

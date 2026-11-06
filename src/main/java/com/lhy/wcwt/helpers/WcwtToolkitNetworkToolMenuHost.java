@@ -26,16 +26,14 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost<NetworkT
     private static final int FLUSH_INTERVAL_TICKS = Math.max(1,
             Integer.getInteger("wcwt.toolkitNetworkToolFlushTicks", 10));
 
-    private final WirelessComprehensiveWorkTerminalMenuHost terminalHost;
     private final int toolkitSlot;
     private final AppEngInternalInventory toolkitInventory;
     private boolean toolkitInventoryDirty;
     private int ticksUntilFlush = FLUSH_INTERVAL_TICKS;
 
     public WcwtToolkitNetworkToolMenuHost(NetworkToolItem item, Player player, ItemMenuHostLocator locator,
-            @Nullable IInWorldGridNodeHost host, WirelessComprehensiveWorkTerminalMenuHost terminalHost, int toolkitSlot) {
+            @Nullable IInWorldGridNodeHost host, int toolkitSlot) {
         super(item, player, locator, host);
-        this.terminalHost = terminalHost;
         this.toolkitSlot = toolkitSlot;
         this.toolkitInventory = createToolkitAwareNetworkToolInventory(player);
     }
@@ -108,7 +106,8 @@ public class WcwtToolkitNetworkToolMenuHost extends NetworkToolMenuHost<NetworkT
             return;
         }
 
-        var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
+        // 服务端工具包按玩家共享，直接写回它，不经过终端宿主。
+        var toolkit = WcwtToolkitStore.items(getPlayer(), null);
         if (toolkit == null || toolkitSlot < 0 || toolkitSlot >= toolkit.size()) {
             return;
         }
