@@ -14,6 +14,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 
@@ -224,12 +226,17 @@ public final class PlusPatternUploadApi {
         return Optional.empty();
     }
 
+    /** Misses are cached too: on EAEP 1.6.4+ the legacy class is asked for on every call and never exists. */
+    private static final Map<String, Optional<Class<?>>> CLASS_CACHE = new ConcurrentHashMap<>();
+
     private static Optional<Class<?>> findClass(String name) {
-        try {
-            return Optional.of(Class.forName(name, false, PlusPatternUploadApi.class.getClassLoader()));
-        } catch (Throwable missing) {
-            return Optional.empty();
-        }
+        return CLASS_CACHE.computeIfAbsent(name, className -> {
+            try {
+                return Optional.of(Class.forName(className, false, PlusPatternUploadApi.class.getClassLoader()));
+            } catch (Throwable missing) {
+                return Optional.empty();
+            }
+        });
     }
 
     private static Optional<Object> readDeclaredStaticField(Class<?> owner, String name) {

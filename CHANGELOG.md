@@ -28,6 +28,7 @@
 22. Fixed: Manual crafting with item substitution takes one indexed network snapshot per action instead of copying the whole network inventory per craft and walking every stored key per emptied slot.
 23. Fixed: Magnet pickup and insert filters are rebuilt only when the terminal's filter config changes, instead of once per tick and once per nearby item entity.
 24. Fixed: Toolkit slot writes mark the toolkit dirty and are written to player data once per server tick, before any reload, on logout and across the respawn clone, instead of serialising the whole toolkit on every write.
+25. Fixed: ExtendedAE Plus class lookups are cached, including misses, so each pattern upload no longer throws and swallows a ClassNotFoundException per provider on 1.6.4 and later.
 
 ### 中文
 
@@ -55,6 +56,7 @@
 22. 修复：开启材料替换的手动合成改为每次操作只取一次网络索引快照，不再每次合成复制整张网络库存并逐格遍历全部物品。
 23. 修复：磁力拾取与存入过滤器只在终端过滤配置变化时重建，不再每 tick 和每个附近物品各重建一次。
 24. 修复：工具包格子写入改为标脏后每 tick 写回一次玩家数据，重载前、登出时和重生克隆时也会写回，不再每次写入都序列化整个工具包。
+25. 修复：ExtendedAE Plus 的类查找加缓存（含未命中），1.6.4 及以上每次上传不再对每个供应器抛出并吞掉一次类未找到异常。
 
 
 ## v1.3.11
