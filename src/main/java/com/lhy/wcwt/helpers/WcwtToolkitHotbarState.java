@@ -178,7 +178,9 @@ public final class WcwtToolkitHotbarState {
 
     /** Drops the selected extra-bar cell without touching the vanilla hotbar. */
     public static void dropSelected(ServerPlayer player, boolean all) {
-        if (!isToolkitSelected(player)) {
+        // A vanilla client only drops the held item with no screen open. While a menu is open, a toolkit cell
+        // may back it (for example a network tool's upgrade inventory), and emptying it would orphan that menu.
+        if (!isToolkitSelected(player) || player.containerMenu != player.inventoryMenu) {
             return;
         }
         ItemStack selected = getSelectedToolkit(player);
@@ -254,10 +256,22 @@ public final class WcwtToolkitHotbarState {
         return true;
     }
 
+    /** Client view of the toolkit slot holding the network tool that backs AE2's toolbox; -1 for none. */
+    public static int clientNetworkToolSlot(Player player) {
+        return state(player).clientNetworkToolSlot;
+    }
+
+    /** Server toolkit size as synced to the client, or -1 before the first sync. */
+    public static int clientToolkitSize(Player player) {
+        return state(player).clientToolkitSize;
+    }
+
     public static void applyClientSync(Player player, boolean hasCard, List<ItemStack> items, List<ItemStack> memory,
-                                       int page) {
+                                       int page, int networkToolSlot, int toolkitSize) {
         var state = state(player);
         state.hasCard = hasCard;
+        state.clientNetworkToolSlot = networkToolSlot;
+        state.clientToolkitSize = toolkitSize;
         copyInto(state.clientItems, items);
         copyInto(state.clientMemory, memory);
         if (page >= 0 && page < Bar.values().length) {

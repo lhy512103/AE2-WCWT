@@ -3,7 +3,7 @@
 AE2 WCWT (Wireless Comprehensive Work Terminal) is an integrated wireless terminal for **Applied Energistics 2 / NeoForge 1.21.1**.
 It is not just a wireless crafting terminal: it folds commonly used AE2 addon workflows into a single terminal item and a single UI.
 
-Current version: `v1.3.10`
+Current version: `v1.3.11`
 
 ## IDE dependency refresh
 
@@ -159,7 +159,6 @@ Aligned with ExtendedAE / ExtendedAE Plus:
 - Show or compact empty provider slots
 - Automatic upload toggle (stored on the terminal item)
 - Upload cached patterns, open the provider's target UI, highlight the provider in-world
-- Optional ExtendedAE Plus provider-select screen when several providers share a name
 - Lightning Tech Tianshu Supercomputing Array crafting-pattern auto-upload
 - Assembler-matrix upload uses ExtendedAE Plus public APIs (no reflection)
 
@@ -186,7 +185,6 @@ Configurable in Controls:
 
 - Open ME Comprehensive Work Terminal (independent of the generic AE wireless-terminal hotkey)
 - Open Advanced Coding / Cosmetic Armor / Curios / Card Box / Toolkit / Resonating Overload Encoder
-- Toggle crafting-grid lock (also works from JEI/EMI opened off the terminal)
 - Favorite hovered storage item
 
 The Toolkit hotkey works while the main terminal is closed. The other extension-UI hotkeys are intended for use while the terminal is open.
@@ -262,7 +260,7 @@ MIT License.
 AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistics 2 / NeoForge 1.21.1** 的综合型无线终端。
 目标不是只做“无线合成终端”，而是把 AE2 生态里常用、常切换、常要开很多界面的功能，集中到一把终端里。
 
-当前版本：`v1.3.10`
+当前版本：`v1.3.11`
 
 ## 特性概览
 
@@ -291,7 +289,7 @@ AE2WTLib **是硬依赖**，不是可选模组。WCWT 作为 WTLib 终端注册�
 
 编译期全部 `compileOnly`，运行时按 `ModList` 判断。缺模组不会阻断启动；对应功能隐藏或跳过。
 
-AdvancedAE、ExtendedAE、ExtendedAE Plus、Curios、Cosmetic Armor Reworked、EMI、JEI、AE2 JEI Integration、MEGA Cells、Polymorph、AE2 Crystal Science、AE2 Lightning Tech、Extreme Sound Muffler、Inventory Profiles Next / Inventory Tweaks ReFoxed、AE2 Import/Export Card、Applied Mekanistics、Just Enough Characters、NeoECOAEExtension。
+AdvancedAE、ExtendedAE、ExtendedAE Plus、Curios、Cosmetic Armor Reworked、EMI、JEI、AE2 JEI Integration、MEGA Cells、Polymorph、AE2 Crystal Science、AE2 Lightning Tech、Extreme Sound Muffler、Inventory Profiles Next / Inventory Tweaks ReFoxed、AE2 Import/Export Card、Applied Mekanistics、Just Enough Characters、NeoECOAEExtension、无用之物（2.4.6+，JEI 万象合金炉配方编码时保留所选配方身份与模具，并使用该模组自己的编码器和自动上传开关）。
 
 说明：
 
@@ -334,7 +332,7 @@ AdvancedAE、ExtendedAE、ExtendedAE Plus、Curios、Cosmetic Armor Reworked、E
 
 ## 样板管理
 
-对齐 ExtendedAE / ExtendedAE Plus：供应器搜索（可拼音）、映射增删重载、显示模式（全部 / 可见 / 未满）、搜索模式（输入 / 输出 / 输入+输出）、空槽压缩、自动上传开关（存在终端物品上）、上传、打开目标 UI、世界高亮。同名供应器可选打开 ExtendedAE Plus 选择界面。闪电科技天枢超算阵列的合成样板自动上传已接入。装配矩阵上传改走 ExtendedAE Plus 公开 API，不再反射。
+对齐 ExtendedAE / ExtendedAE Plus：供应器搜索（可拼音）、映射增删重载、显示模式（全部 / 可见 / 未满）、搜索模式（输入 / 输出 / 输入+输出）、空槽压缩、自动上传开关（存在终端物品上）、上传、打开目标 UI、世界高亮。闪电科技天枢超算阵列的合成样板自动上传已接入。装配矩阵上传改走 ExtendedAE Plus 公开 API，不再反射。
 
 Shift 快取/快放是客户端选项。服务端 `maxSyncedSlotsPerProvider`（默认 1024）限制单个供应器同步的非空槽位数，避免大网络把客户端打断。
 

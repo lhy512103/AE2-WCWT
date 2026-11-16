@@ -11,7 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record PatternEncodingModePacket(EncodingMode mode) implements CustomPacketPayload {
+public record PatternEncodingModePacket(int containerId, EncodingMode mode) implements CustomPacketPayload {
     public static final Type<PatternEncodingModePacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_encoding_mode"));
 
@@ -20,6 +20,8 @@ public record PatternEncodingModePacket(EncodingMode mode) implements CustomPack
 
     public static final StreamCodec<RegistryFriendlyByteBuf, PatternEncodingModePacket> STREAM_CODEC =
             StreamCodec.composite(
+                    ByteBufCodecs.VAR_INT,
+                    PatternEncodingModePacket::containerId,
                     MODE_STREAM_CODEC,
                     PatternEncodingModePacket::mode,
                     PatternEncodingModePacket::new);
@@ -31,7 +33,7 @@ public record PatternEncodingModePacket(EncodingMode mode) implements CustomPack
 
     public static void handle(PatternEncodingModePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+            if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu && menu.containerId == packet.containerId()) {
                 menu.setPatternEncodingMode(packet.mode());
             }
         });

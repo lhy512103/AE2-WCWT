@@ -290,6 +290,10 @@ public final class WcwtWirelessFeatures {
         }
 
         held.shrink((int) inserted);
+        if (held.isEmpty()) {
+            // The held stack may be a live toolkit cell; leave it empty rather than a zero-count shell.
+            serverPlayer.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, ItemStack.EMPTY);
+        }
         return true;
     }
 

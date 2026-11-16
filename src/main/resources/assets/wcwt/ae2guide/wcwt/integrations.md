@@ -36,6 +36,10 @@ Supplies lightning AEKeys and overload patterns. Once loaded, the special encode
 
 Supplies resonating patterns and their conversion. Once loaded, the panel shows 21 resonating storage slots and its batch conversion action.
 
+## Some Useless Things
+
+Requires Some Useless Things 2.4.6 or newer. Transferring an Omniversal Alloy Furnace recipe from JEI encodes a processing pattern through the mod's own encoder, so the selected recipe identity and molds are preserved. When the mod's omniversal auto-upload option is enabled, the encoded pattern is uploaded by the mod's uploader; if an identical pattern already exists, the blank pattern is returned instead.
+
 ## Mekanism
 
 Mekanism chemicals can be used as special processing-pattern and replacement materials when the pack also exposes them as AE2-recognized storage keys. Mekanism by itself is not enough for WCWT to extract a chemical from ME storage without the corresponding AE2 chemical-storage bridge.

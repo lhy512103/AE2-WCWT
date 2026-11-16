@@ -192,8 +192,7 @@ final class WcwtPatternUploadTargets {
             EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(uploadStack);
             if (ecoDuplicate.duplicate()) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
-                recordEaepProviderUpload(ecoDuplicate.provider(), ecoDuplicate.slot());
-                return MatrixUploadResult.uploaded(ecoDuplicate.providerId(), ecoDuplicate.slot());
+                return duplicateResult(uploadStack);
             }
             if (NeoEcoApiCompat.uploadPatternToEcoStorage(currentGrid, uploadStack.copy())) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
@@ -204,9 +203,7 @@ final class WcwtPatternUploadTargets {
         try {
             if (assemblerMatrixContainsPattern(uploadStack)) {
                 serverPlayer.sendSystemMessage(Component.translatable("extendedae_plus.message.matrix.duplicate"));
-                return returnBlankPatterns.test(uploadStack.getCount())
-                        ? MatrixUploadResult.DUPLICATE_RETURNED
-                        : MatrixUploadResult.DUPLICATE_ABORTED;
+                return duplicateResult(uploadStack);
             }
             if (ExtendedAePlusMatrixUploadCompat.uploadPatternToMatrix(serverPlayer, uploadStack.copy(), currentGrid)) {
                 return findMatrixUploadResult(uploadStack);
@@ -214,6 +211,13 @@ final class WcwtPatternUploadTargets {
         } catch (Throwable ignored) {
         }
         return MatrixUploadResult.FAILURE;
+    }
+
+    /** Nothing was inserted for a duplicate, so the blank pattern spent on encoding is handed back. */
+    private MatrixUploadResult duplicateResult(ItemStack encodedPattern) {
+        return returnBlankPatterns.test(encodedPattern.getCount())
+                ? MatrixUploadResult.DUPLICATE_RETURNED
+                : MatrixUploadResult.DUPLICATE_ABORTED;
     }
 
     UploadAttemptResult uploadToMatchingProvider(ItemStack encodedPattern, String searchText) {
@@ -294,8 +298,7 @@ final class WcwtPatternUploadTargets {
                     provider, encodedPattern, serverPlayer.level());
             if (duplicateSlot >= 0) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_duplicate"));
-                recordEaepProviderUpload(provider, duplicateSlot);
-                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), duplicateSlot);
+                return duplicateResult(encodedPattern);
             }
             if (target == null && LightningTechCraftingUploadCompat.insertCraftingPattern(provider, encodedPattern, true)) {
                 target = provider;

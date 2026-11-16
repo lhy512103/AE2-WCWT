@@ -11,11 +11,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record ToolkitMemorySlotPacket(int slotIndex, boolean remember) implements CustomPacketPayload {
+public record ToolkitMemorySlotPacket(int containerId, int slotIndex, boolean remember) implements CustomPacketPayload {
     public static final Type<ToolkitMemorySlotPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_memory_slot"));
 
     public static final StreamCodec<ByteBuf, ToolkitMemorySlotPacket> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT,
+            ToolkitMemorySlotPacket::containerId,
             ByteBufCodecs.VAR_INT,
             ToolkitMemorySlotPacket::slotIndex,
             ByteBufCodecs.BOOL,
@@ -30,7 +32,7 @@ public record ToolkitMemorySlotPacket(int slotIndex, boolean remember) implement
     public static void handle(ToolkitMemorySlotPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player
-                    && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+                    && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu && menu.containerId == packet.containerId()) {
                 menu.setToolkitMemorySlot(packet.slotIndex(), packet.remember());
                 WcwtToolkitSync.sendNow(player);
             }

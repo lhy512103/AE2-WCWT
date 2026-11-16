@@ -18,7 +18,7 @@ import java.util.List;
  * the server changed it, so it cannot undo a selection the client is already showing.
  */
 public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack> memories, boolean hasCard,
-                                          int page) implements CustomPacketPayload {
+                                          int page, int networkToolSlot, int toolkitSize) implements CustomPacketPayload {
     public static final int PAGE_UNCHANGED = -1;
     public static final Type<WcwtToolkitHotbarSyncPacket> TYPE = new Type<>(
             ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_hotbar_sync"));
@@ -36,6 +36,8 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
         writeHotbar(buf, packet.memories);
         buf.writeBoolean(packet.hasCard);
         buf.writeByte(packet.page);
+        buf.writeVarInt(packet.networkToolSlot + 1);
+        buf.writeVarInt(packet.toolkitSize);
     }
 
     private static WcwtToolkitHotbarSyncPacket read(RegistryFriendlyByteBuf buf) {
@@ -43,10 +45,15 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
         List<ItemStack> memories = readHotbar(buf);
         boolean hasCard = buf.readBoolean();
         int page = buf.readByte();
+        int networkToolSlot = buf.readVarInt() - 1;
+        if (networkToolSlot < -1) {
+            networkToolSlot = -1;
+        }
+        int toolkitSize = buf.readVarInt();
         if (page != PAGE_UNCHANGED && (page < 0 || page >= WcwtToolkitHotbarState.Bar.values().length)) {
             page = PAGE_UNCHANGED;
         }
-        return new WcwtToolkitHotbarSyncPacket(stacks, memories, hasCard, page);
+        return new WcwtToolkitHotbarSyncPacket(stacks, memories, hasCard, page, networkToolSlot, toolkitSize);
     }
 
     private static void writeHotbar(RegistryFriendlyByteBuf buf, List<ItemStack> stacks) {
@@ -72,7 +79,7 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
         context.enqueueWork(() -> {
             if (context.player() != null && context.player().level().isClientSide()) {
                 WcwtToolkitHotbarState.applyClientSync(context.player(), packet.hasCard, packet.stacks,
-                        packet.memories, packet.page);
+                        packet.memories, packet.page, packet.networkToolSlot, packet.toolkitSize);
             }
         });
     }

@@ -42,14 +42,14 @@ class WcwtPacketLimitsTest {
 
     @Test
     void slotSyncRoundTripsAndRejectsMoreMappingsThanVisibleSlots() {
-        var packet = new PatternProviderSlotSyncPacket(List.of(
+        var packet = new PatternProviderSlotSyncPacket(12, List.of(
                 new PatternProviderSlotSyncPacket.Mapping(0, 7L, 3),
                 new PatternProviderSlotSyncPacket.Mapping(35, 9L, 0)));
         ByteBuf buf = Unpooled.buffer();
         PatternProviderSlotSyncPacket.STREAM_CODEC.encode(buf, packet);
         assertEquals(packet, PatternProviderSlotSyncPacket.STREAM_CODEC.decode(buf));
 
-        ByteBuf oversized = varInts(WirelessComprehensiveWorkTerminalMenu.PATTERN_PROVIDER_VISIBLE_SLOTS + 1);
+        ByteBuf oversized = varInts(12, WirelessComprehensiveWorkTerminalMenu.PATTERN_PROVIDER_VISIBLE_SLOTS + 1);
         assertThrows(DecoderException.class, () -> PatternProviderSlotSyncPacket.STREAM_CODEC.decode(oversized));
     }
 

@@ -80,7 +80,28 @@ public class WcwtWirelessFeatureEvents {
             return;
         }
 
-        ItemStack crafted = event.getCrafting();
+        releaseCraftingLeftovers(player, event.getCrafting());
+    }
+
+    /**
+     * Terminals crafted without a player crafting event (crafter block, molecular assembler, ...) still
+     * carry their leftover upgrade cards; hand them out once such a terminal reaches a player's inventory.
+     */
+    @SubscribeEvent
+    public static void onPlayerTickReleaseLeftovers(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % 20 != 0) {
+            return;
+        }
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (!stack.isEmpty() && stack.has(ModComponents.CRAFTING_UPGRADE_LEFTOVERS.get())) {
+                releaseCraftingLeftovers(player, stack);
+            }
+        }
+    }
+
+    private static void releaseCraftingLeftovers(net.minecraft.world.entity.player.Player player, ItemStack crafted) {
         var leftovers = crafted.remove(ModComponents.CRAFTING_UPGRADE_LEFTOVERS.get());
         if (leftovers == null) {
             return;

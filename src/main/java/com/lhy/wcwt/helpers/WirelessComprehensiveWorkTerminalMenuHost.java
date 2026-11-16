@@ -1215,12 +1215,12 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         }
         if (memory) {
             if (clientToolkitMemoryInv == null) {
-                clientToolkitMemoryInv = WcwtToolkitStore.clientInventory(true);
+                clientToolkitMemoryInv = WcwtToolkitStore.clientInventory(player, true);
             }
             return clientToolkitMemoryInv;
         }
         if (clientToolkitInv == null) {
-            clientToolkitInv = WcwtToolkitStore.clientInventory(false);
+            clientToolkitInv = WcwtToolkitStore.clientInventory(player, false);
         }
         return clientToolkitInv;
     }
@@ -1267,6 +1267,11 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
             WcwtMod.LOGGER.info("WCWT toolkit debug: set pending UI player={}, type={}",
                     player.getScoreboardName(), type);
         }
+    }
+
+    /** Drops a pending panel that no host consumed, so a later ordinary open does not land in it. */
+    public static void clearPendingExtendedUi(Player player) {
+        getOrCreateWcwtPlayerData(player).remove(PLAYER_PENDING_EXTENDED_UI_TAG);
     }
 
     private static ExtendedUIType consumePendingExtendedUi(Player player) {

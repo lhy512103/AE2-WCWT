@@ -1563,7 +1563,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         host.closeExtendedUI();
         rememberManagementToolkitOpenState(false);
-        PacketDistributor.sendToServer(new ExtendedUIPacket(IExtendedUIHost.ExtendedUIType.NONE));
+        PacketDistributor.sendToServer(new ExtendedUIPacket(menu.containerId, IExtendedUIHost.ExtendedUIType.NONE));
         updateExtendedUIVisibility();
     }
 
@@ -1777,7 +1777,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         rememberManagementToolkitOpenState(newType == IExtendedUIHost.ExtendedUIType.TOOLKIT);
         
         // 发送网络数据包同步状态
-        PacketDistributor.sendToServer(new ExtendedUIPacket(newType));
+        PacketDistributor.sendToServer(new ExtendedUIPacket(menu.containerId, newType));
         markExtendedUiLayoutDirty();
         updateExtendedUIVisibility();
     }
@@ -1794,7 +1794,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (currentUI != IExtendedUIHost.ExtendedUIType.NONE && !isExtendedUIAvailable(currentUI)) {
             currentUI = IExtendedUIHost.ExtendedUIType.NONE;
             host.closeExtendedUI();
-            PacketDistributor.sendToServer(new ExtendedUIPacket(currentUI));
+            PacketDistributor.sendToServer(new ExtendedUIPacket(menu.containerId, currentUI));
         }
         boolean toolkitInManagementArea = isToolkitExpandedInManagementArea();
 
@@ -3478,7 +3478,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             frameSyncProviderSlotPacketSends++;
         }
         lastPatternProviderSlotSync = List.copyOf(mappings);
-        PacketDistributor.sendToServer(new PatternProviderSlotSyncPacket(mappings));
+        PacketDistributor.sendToServer(new PatternProviderSlotSyncPacket(menu.containerId, mappings));
     }
 
     private boolean isPatternManagementActive() {
@@ -5670,7 +5670,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         long now = System.currentTimeMillis();
         if (lastAeNetworkToolkitDoubleClickSlot != null && hit == lastAeNetworkToolkitDoubleClickSlot
                 && now - lastAeNetworkToolkitDoubleClickMs <= 550L) {
-            PacketDistributor.sendToServer(new ToolkitNetworkToolDepositPacket(
+            PacketDistributor.sendToServer(new ToolkitNetworkToolDepositPacket(menu.containerId,
                     ((WirelessComprehensiveWorkTerminalMenu.ToolkitSlot) hit).toolkitLogicalIndex()));
             playPatternManagementClickSound();
             lastAeNetworkToolkitDoubleClickSlot = null;
@@ -5718,7 +5718,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (button == 0 && toolkitSlot.getItem().isEmpty()) {
             return true;
         }
-        PacketDistributor.sendToServer(new ToolkitMemorySlotPacket(slotIndex, button == 0));
+        PacketDistributor.sendToServer(new ToolkitMemorySlotPacket(menu.containerId, slotIndex, button == 0));
         menu.setToolkitMemorySlot(slotIndex, button == 0);
         playPatternManagementClickSound();
         return true;
@@ -6236,7 +6236,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         host.setCurrentExtendedUI(IExtendedUIHost.ExtendedUIType.TOOLKIT);
-        PacketDistributor.sendToServer(new ExtendedUIPacket(IExtendedUIHost.ExtendedUIType.TOOLKIT));
+        PacketDistributor.sendToServer(new ExtendedUIPacket(menu.containerId, IExtendedUIHost.ExtendedUIType.TOOLKIT));
         updateExtendedUIVisibility();
     }
 

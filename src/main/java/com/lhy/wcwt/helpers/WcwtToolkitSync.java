@@ -1,6 +1,7 @@
 package com.lhy.wcwt.helpers;
 
 import appeng.api.inventories.InternalInventory;
+import appeng.items.tools.NetworkToolItem;
 import com.lhy.wcwt.network.WcwtToolkitHotbarSyncPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
@@ -30,8 +31,33 @@ public final class WcwtToolkitSync {
         send(player, true, true);
     }
 
+    /**
+     * Called while the server builds a menu whose slot layout depends on the toolkit: the WCWT terminal
+     * (toolkit size) or an AE2 toolbox backed by a toolkit network tool. A menu is constructed before its
+     * open-screen packet is sent, so syncing here makes the client lay out the same slots.
+     */
+    public static void ensureLayoutSynced(ServerPlayer player) {
+        send(player, false, false);
+    }
+
+    /** First toolkit slot holding a network tool, or -1. */
+    public static int findNetworkToolSlot(@Nullable InternalInventory toolkit) {
+        if (toolkit == null) {
+            return -1;
+        }
+        for (int slot = 0; slot < toolkit.size(); slot++) {
+            if (toolkit.getStackInSlot(slot).getItem() instanceof NetworkToolItem) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
     private static void send(ServerPlayer player, boolean force, boolean includePage) {
         var state = WcwtToolkitHotbarState.state(player);
+        // Only a toolkit that is already loaded can back a toolbox; loading it here would migrate every player.
+        int networkToolSlot = findNetworkToolSlot(state.items);
+        int toolkitSize = state.items != null ? state.items.size() : WcwtToolkitStore.configuredSize();
         boolean hasCard = state.hasCard;
         InternalInventory items = hasCard ? WcwtToolkitStore.items(player, null) : null;
         InternalInventory memory = hasCard ? WcwtToolkitStore.memory(player, null) : null;
@@ -40,7 +66,9 @@ public final class WcwtToolkitSync {
         boolean changed = pageChanged
                 || itemsChanged
                 || !matchesLive(state.lastSentMemory, memory)
-                || state.lastSentHasCard != hasCard;
+                || state.lastSentHasCard != hasCard
+                || state.lastSentNetworkToolSlot != networkToolSlot
+                || state.lastSentToolkitSize != toolkitSize;
         if (!force && !changed) {
             return;
         }
@@ -52,9 +80,12 @@ public final class WcwtToolkitSync {
         state.lastSentMemory = snapshot(memory);
         state.lastSentHasCard = hasCard;
         state.lastSentPageRevision = state.pageRevision;
+        state.lastSentNetworkToolSlot = networkToolSlot;
+        state.lastSentToolkitSize = toolkitSize;
         PacketDistributor.sendToPlayer(player, new WcwtToolkitHotbarSyncPacket(
                 Arrays.asList(state.lastSentItems), Arrays.asList(state.lastSentMemory), hasCard,
-                pageChanged ? state.page.ordinal() : WcwtToolkitHotbarSyncPacket.PAGE_UNCHANGED));
+                pageChanged ? state.page.ordinal() : WcwtToolkitHotbarSyncPacket.PAGE_UNCHANGED,
+                networkToolSlot, toolkitSize));
     }
 
     private static ItemStack[] snapshot(@Nullable InternalInventory inventory) {

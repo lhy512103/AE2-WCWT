@@ -11,7 +11,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 import java.util.List;
 
-public record PatternProviderSlotSyncPacket(List<Mapping> mappings) implements CustomPacketPayload {
+public record PatternProviderSlotSyncPacket(int containerId, List<Mapping> mappings) implements CustomPacketPayload {
     public static final Type<PatternProviderSlotSyncPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_slot_sync"));
 
@@ -25,6 +25,7 @@ public record PatternProviderSlotSyncPacket(List<Mapping> mappings) implements C
     }
 
     private static PatternProviderSlotSyncPacket read(ByteBuf buf) {
+        int containerId = ByteBufCodecs.VAR_INT.decode(buf);
         int count = WcwtPacketLimits.readCount(buf,
                 WirelessComprehensiveWorkTerminalMenu.PATTERN_PROVIDER_VISIBLE_SLOTS, "pattern provider slot mapping");
         var mappings = new java.util.ArrayList<Mapping>(count);
@@ -34,10 +35,11 @@ public record PatternProviderSlotSyncPacket(List<Mapping> mappings) implements C
                     ByteBufCodecs.VAR_LONG.decode(buf),
                     ByteBufCodecs.VAR_INT.decode(buf)));
         }
-        return new PatternProviderSlotSyncPacket(mappings);
+        return new PatternProviderSlotSyncPacket(containerId, mappings);
     }
 
     private static void write(ByteBuf buf, PatternProviderSlotSyncPacket packet) {
+        ByteBufCodecs.VAR_INT.encode(buf, packet.containerId());
         ByteBufCodecs.VAR_INT.encode(buf, packet.mappings().size());
         for (var mapping : packet.mappings()) {
             ByteBufCodecs.VAR_INT.encode(buf, mapping.visibleSlot());
@@ -49,7 +51,7 @@ public record PatternProviderSlotSyncPacket(List<Mapping> mappings) implements C
     public static void handle(PatternProviderSlotSyncPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             if (context.player() instanceof net.minecraft.server.level.ServerPlayer player
-                    && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+                    && player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu && menu.containerId == packet.containerId()) {
                 menu.setPatternProviderSlotSync(packet.mappings());
             }
         });

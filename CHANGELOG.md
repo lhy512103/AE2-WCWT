@@ -17,6 +17,21 @@
 11. Fixed: Automatic uploads respect EAEP settings and retain patterns when multiple crafting systems are available.
 12. Fixed: Pattern clearing and substitution toggles now synchronize through the server to prevent AE2LT crashes (#38).
 13. Fixed: Adapted to the EAEP 1.6.4 upload API split and moved auto-upload setting while retaining older-version support (#39).
+14. Changed: README and the GuideME integrations page now reflect v1.3.11, including Some Useless Things support and removing features dropped in v1.3.9.
+15. Fixed: Shift-clicking a manual anvil or smithing result moves the whole result or nothing, so inputs are no longer lost or duplicated when the inventory is nearly full.
+16. Fixed: Re-encoding a pattern that already exists in NeoECO or a Tianshu array returns the blank pattern instead of consuming it.
+17. Fixed: Resonating conversion is refused while its panel is closed and checks each write, so cached patterns are no longer lost.
+18. Fixed: A network tool kept in the toolkit and runtime changes to toolkitSlotCount no longer give client and server different slot layouts, which disconnected players or shifted slots.
+19. Fixed: Pattern-management settings synced from the server now update the client display.
+20. Fixed: Combining terminals keeps stored items such as crafting-grid contents and singularities, returning any that cannot be merged.
+21. Fixed: Leftover upgrade cards on a terminal crafted by automation are returned once the terminal reaches a player's inventory.
+22. Fixed: Migrating old toolkit data no longer wipes unmigrated toolkits or deletes items that do not fit, with unit tests for the merge.
+23. Fixed: Items put back into the network after a cancelled transfer go to the player when the network cannot take them.
+24. Fixed: Moving everything into the network no longer leaves zero-count stacks in slots.
+25. Fixed: Shift-taking from a pattern provider slot only hands out what the provider actually released.
+26. Fixed: The selected toolkit cell can no longer be dropped while a menu is open, so a network tool's upgrade cards are no longer lost.
+27. Fixed: Terminal action packets carry the menu id, so late packets no longer act on a closed or reopened terminal.
+28. Fixed: A failed toolkit hotkey open no longer makes the next normal open start in the toolkit panel.
 
 ### 中文
 
@@ -33,6 +48,21 @@
 11. 修复：自动上传遵循 EAEP 开关，存在多个可上传合成系统时保留样板。
 12. 修复：清除样板和切换替换选项改由服务端统一同步，避免 AE2LT 崩溃（#38）。
 13. 修复：兼容 EAEP 1.6.4 上传接口拆分和自动上传配置迁移，并保留旧版支持（#39）。
+14. 优化：同步 README 与指南至 v1.3.11，补充无用之物说明，移除已删除功能描述。
+15. 修复：背包将满时 shift 取出手动铁砧或锻造结果丢失输入或复制物品。
+16. 修复：NeoECO 或天枢阵列判定重复样板时吞掉空白样板。
+17. 修复：谐振面板未打开时转换丢失缓存样板。
+18. 修复：工具包放入网络工具或运行时修改工具包槽数导致掉线或槽位错位。
+19. 修复：样板管理设置的服务端同步在客户端不生效。
+20. 修复：合并终端时覆盖合成网格、奇点等已存物品。
+21. 修复：自动化合成的终端中剩余升级卡无法取回。
+22. 修复：旧版工具包迁移清空未迁移数据或丢弃放不下的物品，新增：迁移合并单元测试。
+23. 修复：回存网络失败时物品消失。
+24. 修复：全部存入网络后槽位残留数量为 0 的物品。
+25. 修复：样板供应器拒绝取出时 shift 取出复制样板。
+26. 修复：打开界面时丢弃工具包选中物品导致网络工具升级卡丢失。
+27. 修复：延迟到达的终端操作包作用到已关闭或新打开的终端。
+28. 修复：工具包快捷键打开失败后下次打开终端误入工具包面板。
 
 
 ## v1.3.10

@@ -11,6 +11,7 @@ import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -129,25 +130,28 @@ public final class WcwtToolkitNetworkToolSupport {
             return null;
         }
 
-        var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
-        if (toolkit == null) {
+        // AE2 adds the toolbox's 9 slots before every other slot of the menu, so both sides must agree on
+        // whether it exists. The client cannot see the whole toolkit and uses the slot the server synced.
+        int toolkitSlot;
+        if (player.level().isClientSide()) {
+            toolkitSlot = WcwtToolkitHotbarState.clientNetworkToolSlot(player);
+        } else {
+            toolkitSlot = WcwtToolkitSync.findNetworkToolSlot(
+                    terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT));
+            if (player instanceof ServerPlayer serverPlayer) {
+                WcwtToolkitSync.ensureLayoutSynced(serverPlayer);
+            }
+        }
+        if (toolkitSlot < 0) {
             return null;
         }
-
-        for (int toolkitSlot = 0; toolkitSlot < toolkit.size(); toolkitSlot++) {
-            ItemStack stack = toolkit.getStackInSlot(toolkitSlot);
-            if (!(stack.getItem() instanceof NetworkToolItem networkToolItem)) {
-                continue;
-            }
-            var locator = new WcwtToolkitNetworkToolLocator(baseLocator.sourceKind(), baseLocator.sourceSlot(), toolkitSlot);
-            return new WcwtToolkitNetworkToolMenuHost(
-                    networkToolItem,
-                    player,
-                    locator,
-                    null,
-                    terminalHost,
-                    toolkitSlot);
-        }
-        return null;
+        var locator = new WcwtToolkitNetworkToolLocator(baseLocator.sourceKind(), baseLocator.sourceSlot(), toolkitSlot);
+        return new WcwtToolkitNetworkToolMenuHost(
+                (NetworkToolItem) AEItems.NETWORK_TOOL.asItem(),
+                player,
+                locator,
+                null,
+                terminalHost,
+                toolkitSlot);
     }
 }

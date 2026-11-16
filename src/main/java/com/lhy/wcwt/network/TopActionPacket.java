@@ -9,12 +9,13 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record TopActionPacket(Action action) implements CustomPacketPayload {
+public record TopActionPacket(int containerId, Action action) implements CustomPacketPayload {
     public static final Type<TopActionPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "top_action"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, TopActionPacket> STREAM_CODEC =
-            StreamCodec.composite(ByteBufCodecs.VAR_INT.map(Action::fromId, Action::id), TopActionPacket::action,
+            StreamCodec.composite(ByteBufCodecs.VAR_INT, TopActionPacket::containerId,
+                    ByteBufCodecs.VAR_INT.map(Action::fromId, Action::id), TopActionPacket::action,
                     TopActionPacket::new);
 
     @Override
@@ -24,7 +25,7 @@ public record TopActionPacket(Action action) implements CustomPacketPayload {
 
     public static void handle(TopActionPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+            if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu && menu.containerId == packet.containerId()) {
                 menu.handleTopAction(packet.action());
             }
         });

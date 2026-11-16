@@ -10,7 +10,6 @@ import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -69,8 +68,13 @@ public final class WcwtToolkitStore {
         return state.memory;
     }
 
-    /** A plain inventory for a client-side terminal menu; menu slot sync fills it. */
-    public static AppEngInternalInventory clientInventory(boolean memory) {
+    /**
+     * A plain inventory for a client-side terminal menu; menu slot sync fills it. It is sized like the
+     * server toolkit, which the server syncs before opening the menu, because the client's copy of the
+     * server config is only refreshed at login and {@code toolkitSlotCount} can change at runtime.
+     */
+    public static AppEngInternalInventory clientInventory(Player player, boolean memory) {
+        int syncedSize = WcwtToolkitHotbarState.clientToolkitSize(player);
         var inventory = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
@@ -80,7 +84,7 @@ public final class WcwtToolkitStore {
             public boolean isClientSide() {
                 return true;
             }
-        }, configuredSize());
+        }, syncedSize > 0 ? syncedSize : configuredSize());
         if (!memory) {
             inventory.setFilter(new ToolkitItemFilter());
         }
@@ -121,27 +125,63 @@ public final class WcwtToolkitStore {
 
     private static AppEngInternalInventory loadItems(Player player, ItemStack terminal) {
         var inventory = newServerInventory(player, false);
+        var legacy = terminal.isEmpty() ? null : terminal.get(ModComponents.TOOLKIT_INV.get());
         withLoadSuppressed(() -> {
             var shared = playerData(player).getCompound(PLAYER_TOOLKIT_DATA_TAG);
-            if (shared.isEmpty()) {
-                inventory.fromItemContainerContents(
-                        terminal.getOrDefault(ModComponents.TOOLKIT_INV.get(), ItemContainerContents.EMPTY));
-                debug("migrated item-bound toolkit into player data for player={}", player);
-            } else if (shared.contains(ITEMS_TAG, Tag.TAG_LIST)) {
+            // Player data without an item list (for example only remembered slots) has not been migrated yet.
+            boolean migrated = shared.contains(ITEMS_TAG, Tag.TAG_LIST);
+            if (migrated) {
                 readSlots(player, shared, inventory, true);
-            } else {
-                inventory.fromItemContainerContents(ItemContainerContents.CODEC
-                        .parse(player.registryAccess().createSerializationContext(NbtOps.INSTANCE), shared)
-                        .result()
-                        .orElse(ItemContainerContents.EMPTY));
-                debug("upgraded legacy shared toolkit codec data for player={}", player);
+            }
+            if (legacy != null) {
+                mergeLegacyToolkit(legacy.stream().toList(), inventory, stack -> returnToPlayer(player, stack));
+                debug("merged item-bound toolkit into player data for player={}", player);
             }
         });
-        if (!terminal.isEmpty()) {
+        if (legacy != null) {
             terminal.remove(ModComponents.TOOLKIT_INV.get());
         }
         saveItems(player, inventory);
         return inventory;
+    }
+
+    /**
+     * Folds a toolkit that older versions stored on a terminal into the shared toolkit. Each item keeps its
+     * slot when that slot is free, otherwise takes the first free slot, and anything that does not fit goes
+     * back to the player instead of being deleted with the component.
+     */
+    static void mergeLegacyToolkit(java.util.List<ItemStack> legacy, InternalInventory inventory,
+                                   java.util.function.Consumer<ItemStack> overflow) {
+        for (int slot = 0; slot < legacy.size(); slot++) {
+            ItemStack stack = legacy.get(slot);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            int target = slot < inventory.size() && inventory.getStackInSlot(slot).isEmpty() ? slot : -1;
+            if (target < 0) {
+                target = firstFreeSlot(inventory);
+            }
+            if (target >= 0) {
+                inventory.setItemDirect(target, stack.copy());
+            } else {
+                overflow.accept(stack.copy());
+            }
+        }
+    }
+
+    private static int firstFreeSlot(InternalInventory inventory) {
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            if (inventory.getStackInSlot(slot).isEmpty()) {
+                return slot;
+            }
+        }
+        return -1;
+    }
+
+    private static void returnToPlayer(Player player, ItemStack stack) {
+        if (!stack.isEmpty() && !player.getInventory().add(stack)) {
+            player.drop(stack, false);
+        }
     }
 
     private static AppEngInternalInventory loadMemory(Player player, ItemStack terminal) {
