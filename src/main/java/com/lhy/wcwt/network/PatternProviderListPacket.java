@@ -36,6 +36,10 @@ import java.util.List;
 
 public record PatternProviderListPacket(List<Entry> entries, String resolvedSearchText) implements CustomPacketPayload {
     private static final boolean DEBUG_PERF = Boolean.getBoolean("wcwt.debug.perf");
+    /** More providers than this in one list is not a real network; entries past it are dropped with a warning. */
+    private static final int MAX_SYNCED_PROVIDERS = 4096;
+    private static final java.util.concurrent.atomic.AtomicBoolean TOTAL_LIMIT_WARNED =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     public static final Type<PatternProviderListPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list"));
@@ -119,9 +123,13 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         public static final StreamCodec<ByteBuf, Request> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.BOOL,
                 Request::subscribe,
-                ByteBufCodecs.STRING_UTF8,
+                ByteBufCodecs.stringUtf8(WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH),
                 Request::searchText,
                 Request::new);
+
+        public Request {
+            searchText = WcwtPacketLimits.truncate(searchText, WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
+        }
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -130,15 +138,16 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
 
         public static void handle(Request packet, IPayloadContext context) {
             context.enqueueWork(() -> {
-                if (context.player() instanceof ServerPlayer player) {
-                    if (player.containerMenu instanceof com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu menu) {
-                        boolean serveNow = menu.shouldServeImmediatePatternProviderRequest();
-                        menu.requestPatternProviderSyncSubscription(packet.subscribe());
-                        if (!serveNow) {
-                            return;
-                        }
+                // Only the terminal that shows the list may ask for it; any other menu would get a full
+                // network scan and a list-sized reply for a ten-byte request, with no throttle.
+                if (context.player() instanceof ServerPlayer player
+                        && player.containerMenu instanceof com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu menu) {
+                    boolean serveNow = menu.shouldServeImmediatePatternProviderRequest();
+                    menu.requestPatternProviderSyncSubscription(packet.subscribe());
+                    if (serveNow) {
+                        PacketDistributor.sendToPlayer(player,
+                                buildForPlayer(player, packet.searchText, menu.getPatternProviders()));
                     }
-                    PacketDistributor.sendToPlayer(player, buildForPlayer(player, packet.searchText));
                 }
             });
         }
@@ -148,27 +157,94 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         return buildForPlayer(player, "");
     }
 
-    public static PatternProviderListPacket buildForPlayer(ServerPlayer player, String searchText) {
+    public static PatternProviderListPacket buildForPlayer(ServerPlayer player, @Nullable String searchText) {
+        return buildForPlayer(player, searchText, scanProvidersFor(player));
+    }
+
+    /** Builds the list from providers the caller already resolved, usually the menu's per-tick cache. */
+    public static PatternProviderListPacket buildForPlayer(ServerPlayer player, @Nullable String searchText,
+                                                            List<PatternContainer> providers) {
         long totalStartNs = DEBUG_PERF ? System.nanoTime() : 0L;
         String resolvedSearchText = normalizeSearchText(searchText);
         var entries = new ArrayList<Entry>();
+        int copiedNonEmptySlots = 0;
+        int totalInventorySlots = 0;
+        int maxSyncedSlots = WcwtServerConfig.maxSyncedSlotsPerProvider();
+        // The whole packet has to fit Minecraft's size limit; the per-provider limit alone does not bound it.
+        int maxSyncedTotal = WcwtServerConfig.maxSyncedSlotsTotal();
+        int droppedProviders = 0;
+        for (var container : providers) {
+            InternalInventory inv = container.getTerminalPatternInventory();
+            if (inv == null || container.getTerminalGroup() == null) {
+                continue;
+            }
+            if (entries.size() >= MAX_SYNCED_PROVIDERS) {
+                droppedProviders++;
+                continue;
+            }
+            totalInventorySlots += inv.size();
+            var slots = new Int2ObjectArrayMap<ItemStack>();
+            // SLOTS_CODEC 的 map 上限为 MAX_SYNCED_PROVIDER_SLOTS，slot 索引以 short 编码；
+            // 超限会导致整包编码失败并断开客户端，这里截断并告警。
+            int truncatedSlots = 0;
+            for (int i = 0; i < inv.size(); i++) {
+                var stack = inv.getStackInSlot(i);
+                if (stack.isEmpty()) {
+                    continue;
+                }
+                if (slots.size() >= maxSyncedSlots || i > Short.MAX_VALUE || copiedNonEmptySlots >= maxSyncedTotal) {
+                    truncatedSlots++;
+                    continue;
+                }
+                slots.put(i, stack.copy());
+                copiedNonEmptySlots++;
+            }
+            if (truncatedSlots > 0 && copiedNonEmptySlots < maxSyncedTotal) {
+                WcwtMod.LOGGER.warn(
+                        "Pattern provider '{}' has too many pattern slots to sync; {} non-empty slots not shown in the terminal (limit {} per provider, configurable via maxSyncedSlotsPerProvider)",
+                        providerLogName(container), truncatedSlots, maxSyncedSlots);
+            }
+            var location = getLocation(container);
+            entries.add(new Entry(PatternProviderIds.idOf(container), container.getTerminalGroup(), getMappedProviderDisplayName(container), inv.size(), slots,
+                    location.pos, location.dimension, location.face));
+        }
+
+        if ((copiedNonEmptySlots >= maxSyncedTotal || droppedProviders > 0) && TOTAL_LIMIT_WARNED.compareAndSet(false, true)) {
+            WcwtMod.LOGGER.warn(
+                    "Pattern provider list for '{}' hit the sync limit ({} providers dropped, at most {} patterns synced, configurable via maxSyncedSlotsTotal); patterns beyond it are not shown in the terminal",
+                    player.getScoreboardName(), droppedProviders, maxSyncedTotal);
+        }
+        if (DEBUG_PERF) {
+            long totalNs = System.nanoTime() - totalStartNs;
+            WcwtMod.LOGGER.info(
+                    "WCWT perf: providerList build player={}, totalMs={}, providers={}, inventorySlots={}, copiedStacks={}",
+                    player.getScoreboardName(),
+                    String.format(java.util.Locale.ROOT, "%.3f", totalNs / 1_000_000.0D),
+                    providers.size(),
+                    totalInventorySlots,
+                    copiedNonEmptySlots);
+        }
+
+        return new PatternProviderListPacket(entries, resolvedSearchText);
+    }
+
+    /** A fresh scan for callers without a terminal menu cache. */
+    private static List<PatternContainer> scanProvidersFor(ServerPlayer player) {
         var menu = player.containerMenu;
         if (!(menu instanceof appeng.menu.AEBaseMenu baseMenu)) {
-            return new PatternProviderListPacket(List.of(), resolvedSearchText);
+            return List.of();
         }
         var target = baseMenu.getTarget();
         if (!(target instanceof appeng.api.networking.security.IActionHost host) || host.getActionableNode() == null) {
-            return new PatternProviderListPacket(List.of(), resolvedSearchText);
+            return List.of();
         }
         var grid = host.getActionableNode().getGrid();
         if (grid == null) {
-            return new PatternProviderListPacket(List.of(), resolvedSearchText);
+            return List.of();
         }
 
         var providers = new ArrayList<PatternContainer>();
-        int machineClassCount = 0;
         for (var machineClass : grid.getMachineClasses()) {
-            machineClassCount++;
             if (!PatternContainer.class.isAssignableFrom(machineClass)) {
                 continue;
             }
@@ -182,60 +258,14 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
                 if (inv == null || inv.size() <= 0) {
                     continue;
                 }
-                var group = container.getTerminalGroup();
-                if (group == null) {
+                if (container.getTerminalGroup() == null) {
                     continue;
                 }
                 providers.add(container);
             }
         }
-
-        providers.sort(PatternProviderSorts.STABLE);
-        int copiedNonEmptySlots = 0;
-        int totalInventorySlots = 0;
-        int maxSyncedSlots = WcwtServerConfig.maxSyncedSlotsPerProvider();
-        for (var container : providers) {
-            InternalInventory inv = container.getTerminalPatternInventory();
-            totalInventorySlots += inv.size();
-            var slots = new Int2ObjectArrayMap<ItemStack>();
-            // SLOTS_CODEC 的 map 上限为 MAX_SYNCED_PROVIDER_SLOTS，slot 索引以 short 编码；
-            // 超限会导致整包编码失败并断开客户端，这里截断并告警。
-            int truncatedSlots = 0;
-            for (int i = 0; i < inv.size(); i++) {
-                var stack = inv.getStackInSlot(i);
-                if (stack.isEmpty()) {
-                    continue;
-                }
-                if (slots.size() >= maxSyncedSlots || i > Short.MAX_VALUE) {
-                    truncatedSlots++;
-                    continue;
-                }
-                slots.put(i, stack.copy());
-                copiedNonEmptySlots++;
-            }
-            if (truncatedSlots > 0) {
-                WcwtMod.LOGGER.warn(
-                        "Pattern provider '{}' has too many pattern slots to sync; {} non-empty slots not shown in the terminal (limit {} per provider, configurable via maxSyncedSlotsPerProvider)",
-                        providerLogName(container), truncatedSlots, maxSyncedSlots);
-            }
-            var location = getLocation(container);
-            entries.add(new Entry(PatternProviderIds.idOf(container), container.getTerminalGroup(), getMappedProviderDisplayName(container), inv.size(), slots,
-                    location.pos, location.dimension, location.face));
-        }
-
-        if (DEBUG_PERF) {
-            long totalNs = System.nanoTime() - totalStartNs;
-            WcwtMod.LOGGER.info(
-                    "WCWT perf: providerList build player={}, totalMs={}, machineClasses={}, providers={}, inventorySlots={}, copiedStacks={}",
-                    player.getScoreboardName(),
-                    String.format(java.util.Locale.ROOT, "%.3f", totalNs / 1_000_000.0D),
-                    machineClassCount,
-                    providers.size(),
-                    totalInventorySlots,
-                    copiedNonEmptySlots);
-        }
-
-        return new PatternProviderListPacket(entries, resolvedSearchText);
+        PatternProviderSorts.sortStable(providers);
+        return providers;
     }
 
     private static Location getLocation(PatternContainer container) {
@@ -274,7 +304,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
         return provider.getTerminalGroup().name().getString();
     }
 
-    private static String normalizeSearchText(String searchText) {
+    private static String normalizeSearchText(@Nullable String searchText) {
         if (searchText == null) {
             return "";
         }

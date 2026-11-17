@@ -1,5 +1,6 @@
 package com.lhy.wcwt.mixin;
 
+import com.lhy.wcwt.client.WcwtToolkitHud;
 import com.lhy.wcwt.client.WcwtRestockState;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
@@ -48,7 +49,7 @@ public class GuiMixin {
             target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V"))
     private boolean wcwt$skipVanillaHotbarSelection(GuiGraphics graphics, ResourceLocation sprite, int x, int y,
                                                     int width, int height) {
-        if (!ResourceLocation.withDefaultNamespace("hud/hotbar_selection").equals(sprite)) {
+        if (!WcwtToolkitHud.HOTBAR_SELECTION_SPRITE.equals(sprite)) {
             return true;
         }
         Player player = minecraft.player;

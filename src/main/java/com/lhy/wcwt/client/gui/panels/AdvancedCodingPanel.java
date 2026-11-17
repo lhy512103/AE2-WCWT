@@ -161,6 +161,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
      */
     private final HashMap<Integer, AEKey> localCellConfigOverrides = new HashMap<>();
     private net.minecraft.world.item.ItemStack lastCellStackForOverrides = net.minecraft.world.item.ItemStack.EMPTY;
+    private boolean bulkCompressionCutoffDirty = true;
 
     /** 样板替换区两个 ghost 标记：左侧为被替换对象，右侧为空时表示删除匹配项。 */
     private @Nullable AEKey replaceWhatKey;
@@ -556,6 +557,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         if (!net.minecraft.world.item.ItemStack.matches(stack, lastCellStackForOverrides)) {
             localCellConfigOverrides.clear();
             lastCellStackForOverrides = stack.copy();
+            bulkCompressionCutoffDirty = true;
         }
     }
 
@@ -761,10 +763,12 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
 
     }
 
+    /** Resolving the cutoff builds the cell's inventory, so it only runs when the cell item changed. */
     private void updateBulkCompressionCutoffButton() {
-        if (bulkCompressionCutoffBtn == null) {
+        if (bulkCompressionCutoffBtn == null || !bulkCompressionCutoffDirty) {
             return;
         }
+        bulkCompressionCutoffDirty = false;
         bulkCompressionCutoffBtn.setItem(WcwtMegaCellsCompat.getCompressionCutoffItem(getCellStack()));
     }
 

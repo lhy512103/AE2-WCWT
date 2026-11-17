@@ -35,10 +35,28 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
             List<RequestedIngredient> requestedIngredients, int manualWorkspaceMode) {
         this.maxTransfer = maxTransfer;
         this.craftMissing = craftMissing;
-        this.requestedIngredients = requestedIngredients.stream().map(RequestedIngredient::copy).toList();
+        this.requestedIngredients = limitTotalAlternatives(requestedIngredients);
         this.manualWorkspaceMode = WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode
                 .fromOrdinal(manualWorkspaceMode)
                 .ordinal();
+    }
+
+    /**
+     * Keeps the alternatives of a whole request within {@link WcwtPacketLimits#MAX_TOTAL_INGREDIENT_ALTERNATIVES}
+     * by trimming later ingredients, so the server never has to look at more than that many stacks.
+     */
+    private static List<RequestedIngredient> limitTotalAlternatives(List<RequestedIngredient> ingredients) {
+        int budget = WcwtPacketLimits.MAX_TOTAL_INGREDIENT_ALTERNATIVES;
+        List<RequestedIngredient> limited = new ArrayList<>(ingredients.size());
+        for (RequestedIngredient ingredient : ingredients) {
+            RequestedIngredient copy = ingredient.copy();
+            if (copy.alternatives().size() > budget) {
+                copy = new RequestedIngredient(copy.alternatives().subList(0, budget), copy.count(), copy.slotIndex());
+            }
+            budget -= copy.alternatives().size();
+            limited.add(copy);
+        }
+        return List.copyOf(limited);
     }
 
     private static WcwtPullRecipeInputsPacket decode(RegistryFriendlyByteBuf buffer) {
@@ -46,8 +64,13 @@ public record WcwtPullRecipeInputsPacket(boolean maxTransfer, boolean craftMissi
         boolean craftMissing = buffer.readBoolean();
         int size = WcwtPacketLimits.readCount(buffer, WcwtPacketLimits.MAX_RECIPE_INGREDIENTS, "requested ingredient");
         List<RequestedIngredient> ingredients = new ArrayList<>(size);
+        int totalAlternatives = 0;
         for (int i = 0; i < size; i++) {
-            ingredients.add(RequestedIngredient.decode(buffer));
+            RequestedIngredient ingredient = RequestedIngredient.decode(buffer);
+            // A client trims to the limit before sending, so exceeding it on the wire is a malformed packet.
+            totalAlternatives = WcwtPacketLimits.checkCount(totalAlternatives + ingredient.alternatives().size(),
+                    WcwtPacketLimits.MAX_TOTAL_INGREDIENT_ALTERNATIVES, "ingredient alternative total");
+            ingredients.add(ingredient);
         }
         int manualWorkspaceMode = buffer.readVarInt();
         return new WcwtPullRecipeInputsPacket(maxTransfer, craftMissing, ingredients, manualWorkspaceMode);

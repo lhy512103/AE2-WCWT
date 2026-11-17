@@ -51,6 +51,7 @@ public final class WcwtToolkitStore {
         }
         var state = WcwtToolkitHotbarState.state(player);
         if (state.items == null || needsResize(player, state.items)) {
+            flushDirty(player);
             state.items = loadItems(player, resolveTerminal(player, terminalHint));
         }
         return state.items;
@@ -63,6 +64,7 @@ public final class WcwtToolkitStore {
         }
         var state = WcwtToolkitHotbarState.state(player);
         if (state.memory == null || needsResize(player, state.memory)) {
+            flushDirty(player);
             state.memory = loadMemory(player, resolveTerminal(player, terminalHint));
         }
         return state.memory;
@@ -99,6 +101,34 @@ public final class WcwtToolkitStore {
         }
         if (state.memory != null) {
             saveMemory(player, state.memory);
+        }
+        state.itemsDirty = false;
+        state.memoryDirty = false;
+    }
+
+    /**
+     * Writes back whatever changed since the last flush. Slot writes only mark the inventory dirty, since
+     * serialising a 640-slot toolkit on every write (several times per attack with Better Combat) added up;
+     * this runs once per server tick, before any reload, on logout and on respawn.
+     */
+    public static void flushDirty(Player player) {
+        var state = WcwtToolkitHotbarState.state(player);
+        if (state.itemsDirty && state.items != null) {
+            saveItems(player, state.items);
+        }
+        if (state.memoryDirty && state.memory != null) {
+            saveMemory(player, state.memory);
+        }
+        state.itemsDirty = false;
+        state.memoryDirty = false;
+    }
+
+    /** The respawn clone copies persisted data before the event fires, so pending writes are carried over here. */
+    public static void copyOnClone(Player original, Player replacement) {
+        flushDirty(original);
+        var source = playerData(original).getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        if (!source.isEmpty()) {
+            playerData(replacement).put(PLAYER_TOOLKIT_DATA_TAG, source.copy());
         }
     }
 
@@ -209,10 +239,11 @@ public final class WcwtToolkitStore {
                 if (LOADING.get()) {
                     return;
                 }
+                var state = WcwtToolkitHotbarState.state(player);
                 if (memory) {
-                    saveMemory(player, inv);
+                    state.memoryDirty = true;
                 } else {
-                    saveItems(player, inv);
+                    state.itemsDirty = true;
                 }
             }
 

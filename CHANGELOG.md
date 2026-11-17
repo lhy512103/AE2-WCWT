@@ -1,5 +1,86 @@
 # Changelog
 
+## v1.3.12
+
+### English
+
+1. Fixed: Create basin recipes are only referenced while Create is loaded, so transferring a recipe whose displayed inputs or outputs cannot be converted no longer crashes the client without Create.
+2. Fixed: The toolkit network tool locator and toolbox lookup read the shared toolkit directly instead of building a full terminal menu host on every AE2 menu tick.
+3. Fixed: The extended panel requested by the toolkit hotkey is only consumed when the opened terminal reads it, so temporary hosts no longer discard it.
+4. Fixed: Recipe pulls take one network snapshot and resolve each ingredient's candidate items once instead of rescanning every stored key per ingredient and per transfer set, and a request is capped in total alternatives and to one per tick.
+5. Fixed: Pattern providers are sorted with keys computed once per provider instead of resolving the terminal group on every comparison, the per-tick scan no longer sorts unless a list is needed, and provider slots resolve through an id map.
+6. Fixed: Provider list requests are only served to the terminal that shows the list, management actions are throttled and reuse the menu's per-tick provider cache, and several actions in one tick share a single list refresh.
+7. Fixed: Enum ordinals in seven packets are range-checked while decoding and reported as decoder errors instead of array index errors.
+8. Fixed: Provider search text, mapping text and dimension ids carried in packets are capped in length on both sides, so a client can no longer bloat encoded patterns with oversized search text.
+9. Fixed: The Better Combat and EMI mixins no longer refuse to start or hard-crash when those mods change shape; a mismatch now only loses the paired feature, and the EMI button reads EMI internals reflectively.
+10. Fixed: The client recomputes the pattern preview only when the encoding inputs, mode or selected stonecutting recipe change, instead of running a full crafting or smithing recipe lookup every frame.
+11. Fixed: The stonecutting recipe list is cached per input and only consulted in stonecutting mode, instead of scanning every stonecutting recipe each frame whenever the first encoding slot held an item.
+12. Fixed: The EMI fill button rebuilds the set of available network items at most once per client tick instead of once per recipe per frame.
+13. Fixed: JEI previews of Useless Mod alloy furnace and multiblock recipes no longer build the full transfer, which sorted the whole client inventory every tick; the slot counts a preview needs are computed once per recipe.
+14. Fixed: The advanced coding panel reads the cell's config inventory from a copy parsed once per cell item instead of re-parsing it about twenty times per frame, and the MEGA compression cutoff is only resolved when the cell changes; a cell without a config inventory no longer crashes the panel.
+15. Fixed: The terminal screen checks the installed upgrade cards once per client tick instead of rebuilding the upgrade inventory seven times per frame.
+16. Fixed: Favorite lookups use a hash set instead of a linear search per slot per frame, and the favorites-first view is skipped entirely while no item is favorited.
+17. Fixed: Rebuilding the pattern management rows computes each provider's sort key once and keeps the translated input and output names of every pattern, instead of decoding every pattern and re-resolving names on each keystroke and list refresh.
+18. Fixed: The provider list sent to the terminal is capped in total synced patterns (new server option maxSyncedSlotsTotal) and providers, so very large networks can no longer produce a packet that disconnects the player.
+19. Fixed: The pattern multiplier overflow check no longer overflows itself, and two pattern decoding calls no longer assume the client level exists.
+20. Fixed: The terminal hotkey path only consults JEI's search focus when JEI is loaded, and JEI's internal info recipe classes are matched by name instead of being referenced directly.
+21. Fixed: Remote provider menu sessions are dropped when the player logs out or the server stops, instead of keeping the old player and block entity referenced.
+22. Fixed: Manual crafting with item substitution takes one indexed network snapshot per action instead of copying the whole network inventory per craft and walking every stored key per emptied slot.
+23. Fixed: Magnet pickup and insert filters are rebuilt only when the terminal's filter config changes, instead of once per tick and once per nearby item entity.
+24. Fixed: Toolkit slot writes mark the toolkit dirty and are written to player data once per server tick, before any reload, on logout and across the respawn clone, instead of serialising the whole toolkit on every write.
+25. Fixed: ExtendedAE Plus class lookups are cached, including misses, so each pattern upload no longer throws and swallows a ClassNotFoundException per provider on 1.6.4 and later.
+26. Fixed: The processing input merge that runs every server tick while merging is enabled now returns immediately unless the encoding inputs changed.
+27. Fixed: Several per-frame constant costs in the terminal screen were removed: layout rectangles are parsed from JSON once, button texts are constants, key-type filter buttons and Cosmetic Armor toggles refresh once per tick, the pattern management scroll limit is computed in one pass, and the HUD mixin no longer allocates a resource location per frame.
+28. Removed: The slot protection mixin, which never matched (it compared lower-case names against upper-case ids) and duplicated what AE2 already does for those slot semantics.
+29. Fixed: Items pulled for a recipe that fit neither the inventory nor the network (out of power or storage) are dropped at the player instead of disappearing.
+30. Fixed: Reflective calls into optional mods that resolve but fail at invocation are now reported once in the log instead of silently degrading.
+31. Fixed: Dropping the selected extra-bar item no longer leaves an empty shell stack in the toolkit, and toolkit pickups credit the right item statistic and play the pickup animation.
+32. Fixed: A failing upload integration no longer leaves an encode half finished; the pattern stays in the output slot as a normal un-uploaded encode and the cause is logged once.
+33. Fixed: The Just Enough Characters and AE2 JEI Integration bridges switch themselves off after their API fails to link, instead of throwing and swallowing a linkage error on every search entry or previewed slot.
+34. Changed: Every optional integration mod the code checks for is now declared as an optional dependency in neoforge.mods.toml, so it loads before this mod.
+35. Changed: The mod version is 1.3.12 and the README states the same version.
+36. Added: Unit tests for the pull candidate index and reservation order, provider sorting, the enum packet codec, string clamping and the request-wide alternative limit, with one shared test bootstrap.
+
+### 中文
+
+1. 修复：仅在加载 Create 时引用工作盆配方类，未装 Create 时传输无法转换材料的配方不再崩溃客户端。
+2. 修复：工具包网络工具定位器与工具箱查找直接读取共享工具包，不再在每个 AE2 菜单 tick 构造完整终端宿主。
+3. 修复：工具包快捷键预设的扩展面板改为在终端真正读取时消费，临时宿主不再把它清掉。
+4. 修复：锤子拉取改为一次网络快照并预先筛选每格候选物品，不再按每格、每轮扫描全网，并限制备选总数与每 tick 请求次数。
+5. 修复：样板供应器排序改为每个供应器只算一次排序键，每 tick 扫描不再无谓排序，供应器槽位改用 id 映射查找。
+6. 修复：供应器列表请求只响应打开终端的玩家，管理动作加节流并复用菜单的供应器缓存，同一 tick 的多个动作只刷新一次列表。
+7. 修复：七个数据包的枚举序号在解码时做范围检查，越界按解码错误报告而非数组越界。
+8. 修复：数据包中的供应器搜索文本、映射文本和维度 id 双端限长，客户端无法再用超长搜索文本撑大样板数据。
+9. 修复：Better Combat 与 EMI 的 mixin 在对方版本变动时不再拒绝启动或硬崩，只会失去对应功能，EMI 按钮改为反射读取其内部成员。
+10. 修复：客户端只在编码输入、模式或所选切石配方变化时重算样板预览，不再每帧做整表合成或锻造配方查找。
+11. 修复：切石配方列表按输入缓存且仅在切石模式下读取，不再在第一格有物品时每帧扫描全部切石配方。
+12. 修复：EMI 填充按钮每个客户端 tick 最多重建一次可用网络物品集合，不再每个配方每帧重建。
+13. 修复：JEI 预览无用之物合金炉与多方块配方时不再构建完整传输数据（每 tick 排序整个客户端库存），预览所需槽位数改为每个配方只算一次。
+14. 修复：高级编码面板读取元件配置改为每个元件只解析一次，不再每帧重建约二十次，MEGA 压缩截断只在元件变化时解析，没有配置库存的元件不再让面板崩溃。
+15. 修复：终端界面每个客户端 tick 检查一次已安装的升级卡，不再每帧重建七次升级卡库存。
+16. 修复：收藏判断改用哈希集合，不再每槽每帧线性查找，没有收藏时直接跳过收藏优先视图的重建。
+17. 修复：样板管理行重建时每个供应器只算一次排序键，并缓存每张样板已翻译的输入输出名称，不再在每次键入和列表刷新时重新解码全部样板。
+18. 修复：发给终端的供应器列表增加样板总数（新增服务端配置 maxSyncedSlotsTotal）和供应器数上限，超大网络不再生成会把玩家踢下线的网络包。
+19. 修复：样板倍增器的溢出检查自身不再溢出，两处样板解码不再假定客户端世界存在。
+20. 修复：终端快捷键只在装有 JEI 时查询其搜索框焦点，JEI 内部信息配方类改为按名称匹配而非直接引用。
+21. 修复：玩家登出或服务器停止时清理远程供应器菜单会话，不再持有旧玩家与方块实体引用。
+22. 修复：开启材料替换的手动合成改为每次操作只取一次网络索引快照，不再每次合成复制整张网络库存并逐格遍历全部物品。
+23. 修复：磁力拾取与存入过滤器只在终端过滤配置变化时重建，不再每 tick 和每个附近物品各重建一次。
+24. 修复：工具包格子写入改为标脏后每 tick 写回一次玩家数据，重载前、登出时和重生克隆时也会写回，不再每次写入都序列化整个工具包。
+25. 修复：ExtendedAE Plus 的类查找加缓存（含未命中），1.6.4 及以上每次上传不再对每个供应器抛出并吞掉一次类未找到异常。
+26. 修复：开启材料合并时每 tick 执行的处理输入合并，在编码输入未变化时直接返回。
+27. 修复：移除终端界面若干每帧常数开销：布局矩形只从 JSON 解析一次，按钮文本改为常量，类型过滤按钮与装饰盔甲开关每 tick 刷新一次，样板管理滚动上限单次遍历计算，HUD mixin 不再每帧分配资源路径。
+28. 移除：从未生效的槽位保护 mixin（用小写名称匹配大写 id），其作用 AE2 对这些槽位语义本就已提供。
+29. 修复：拉取配方材料时背包放不下且网络也收不回（无电或存储满）的物品改为掉落在玩家处，不再消失。
+30. 修复：可选模组的反射调用在查找成功但执行失败时在日志中报告一次，不再静默降级。
+31. 修复：丢弃副页选中物品不再在工具包里留下空壳物品栈，工具包拾取记录正确的物品统计并播放拾取动画。
+32. 修复：上传集成抛出异常时不再让编码中途中断，样板按未上传的正常流程留在输出槽，原因只记录一次。
+33. 修复：Just Enough Characters 与 AE2 JEI Integration 桥接在 API 链接失败后自行关闭，不再对每个搜索条目或预览槽位反复抛出并吞掉链接错误。
+34. 优化：代码中检测过的全部可选集成模组都在 neoforge.mods.toml 中声明为可选依赖，保证其先于本模组加载。
+35. 优化：版本号升至 1.3.12，README 同步更新。
+36. 新增：拉取候选索引与预留顺序、供应器排序、枚举包编解码、字符串限长和请求级备选上限的单元测试，并统一测试启动引导。
+
+
 ## v1.3.11
 
 ### English

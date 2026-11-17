@@ -93,6 +93,24 @@ class WcwtPacketLimitsTest {
         assertThrows(DecoderException.class, () -> ResonatingLightningPatternActionPacket.STREAM_CODEC.decode(huge));
     }
 
+    @Test
+    void enumCodecRoundTripsAndRejectsUnknownOrdinals() {
+        var codec = WcwtPacketLimits.enumCodec(Mode.values(), "mode");
+        ByteBuf buf = Unpooled.buffer();
+        codec.encode(buf, Mode.A);
+        assertEquals(Mode.A, codec.decode(buf));
+        assertEquals(Mode.B, codec.decode(varInts(1)));
+        assertThrows(DecoderException.class, () -> codec.decode(varInts(2)));
+        assertThrows(DecoderException.class, () -> codec.decode(varInts(-1)));
+    }
+
+    @Test
+    void truncateClampsToTheLimitAndMapsNullToEmpty() {
+        assertEquals("", WcwtPacketLimits.truncate(null, 4));
+        assertEquals("abcd", WcwtPacketLimits.truncate("abcdef", 4));
+        assertEquals("ab", WcwtPacketLimits.truncate("ab", 4));
+    }
+
     private static ByteBuf varInts(int... values) {
         ByteBuf buf = Unpooled.buffer();
         for (int value : values) {

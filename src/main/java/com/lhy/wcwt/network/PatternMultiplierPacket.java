@@ -25,10 +25,7 @@ public record PatternMultiplierPacket(
         );
     
     public static final StreamCodec<ByteBuf, PatternMultiplierPacket> STREAM_CODEC = StreamCodec.composite(
-        ByteBufCodecs.VAR_INT.map(
-            ordinal -> PatternMultiplierButton.MultiplierType.values()[ordinal],
-            PatternMultiplierButton.MultiplierType::ordinal
-        ),
+        WcwtPacketLimits.enumCodec(PatternMultiplierButton.MultiplierType.values(), "pattern multiplier"),
         PatternMultiplierPacket::multiplierType,
         ByteBufCodecs.BOOL,
         PatternMultiplierPacket::applyToEditorProcessing,

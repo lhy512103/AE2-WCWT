@@ -1,10 +1,13 @@
 package com.lhy.wcwt.compat;
 
+import com.lhy.wcwt.WcwtMod;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
 public final class JecSearchCompat {
     private static final String MOD_ID = "jecharacters";
+    /** Set once the Just Enough Characters API fails to link, so every searched entry does not retry it. */
+    private static volatile boolean broken;
 
     private JecSearchCompat() {
     }
@@ -16,7 +19,7 @@ public final class JecSearchCompat {
         if (query == null || query.isEmpty()) {
             return true;
         }
-        if (ModList.get().isLoaded(MOD_ID) && Impl.contains(text, query)) {
+        if (!broken && ModList.get().isLoaded(MOD_ID) && Impl.contains(text, query)) {
             return true;
         }
         return text.toLowerCase(java.util.Locale.ROOT)
@@ -33,7 +36,11 @@ public final class JecSearchCompat {
                         || me.towdium.jecharacters.utils.Match.contains(
                                 text.toLowerCase(java.util.Locale.ROOT),
                                 (CharSequence) query.toLowerCase(java.util.Locale.ROOT));
-            } catch (Throwable ignored) {
+            } catch (LinkageError e) {
+                broken = true;
+                WcwtMod.LOGGER.warn("WCWT: Just Enough Characters search integration disabled, its API changed", e);
+                return false;
+            } catch (RuntimeException ignored) {
                 return false;
             }
         }

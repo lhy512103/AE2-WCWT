@@ -1,6 +1,7 @@
 package com.lhy.wcwt.pull;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
@@ -18,9 +19,11 @@ import net.minecraft.world.item.crafting.Ingredient;
 import appeng.api.networking.energy.IEnergySource;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.MEStorage;
 import appeng.api.storage.StorageHelper;
 import appeng.util.prioritylist.IPartitionList;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 
 /** 自 ae2utility MeIngredientExtraction 迁入。 */
 public final class WcwtMeIngredientExtraction {
@@ -28,6 +31,11 @@ public final class WcwtMeIngredientExtraction {
     private WcwtMeIngredientExtraction() {
     }
 
+    /**
+     * The "wide" ingredient is built with {@link Ingredient#of(ItemStack...)}, which matches by item only.
+     * The candidate searches below rely on that: a key whose item is not among the alternatives can never
+     * match it, so they only look at keys of those items instead of testing every key in the network.
+     */
     @Nullable
     public static Ingredient ingredientFromItemStacks(List<ItemStack> alternativeStacks) {
         ItemStack[] stacks = alternativeStacks.stream()
@@ -41,12 +49,56 @@ public final class WcwtMeIngredientExtraction {
         return Ingredient.of(stacks);
     }
 
+    /**
+     * What the network held when a pull started, indexed by item. One snapshot serves every ingredient of
+     * the request; aggregating the whole network again for each ingredient was the dominant cost on big
+     * networks. Amounts are only used to order candidates, so a snapshot that is a few extractions stale is
+     * harmless: a key that ran out simply extracts nothing.
+     */
+    public static final class AvailableItems {
+        private final Map<Item, List<AEItemKey>> keysByItem = new HashMap<>();
+        private final Object2LongOpenHashMap<AEItemKey> amounts = new Object2LongOpenHashMap<>();
+
+        private AvailableItems() {
+            amounts.defaultReturnValue(0L);
+        }
+
+        public static AvailableItems of(KeyCounter available, @Nullable IPartitionList filter) {
+            var result = new AvailableItems();
+            for (var entry : available) {
+                if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
+                    continue;
+                }
+                if (filter != null && !filter.isListed(itemKey)) {
+                    continue;
+                }
+                result.keysByItem.computeIfAbsent(itemKey.getItem(), ignored -> new ArrayList<>()).add(itemKey);
+                result.amounts.put(itemKey, entry.getLongValue());
+            }
+            return result;
+        }
+
+        public List<AEItemKey> keysFor(Item item) {
+            return keysByItem.getOrDefault(item, List.of());
+        }
+
+        public long amount(AEItemKey key) {
+            return amounts.getLong(key);
+        }
+    }
+
     public static List<ItemStack> extractAlternatives(MEStorage storage, IEnergySource energy, IActionSource actionSource,
             @Nullable IPartitionList filter, List<ItemStack> alternativeStacks, int amount) {
+        return extractAlternatives(storage, AvailableItems.of(storage.getAvailableStacks(), filter), energy, actionSource,
+                filter, alternativeStacks, amount);
+    }
+
+    public static List<ItemStack> extractAlternatives(MEStorage storage, AvailableItems available, IEnergySource energy,
+            IActionSource actionSource, @Nullable IPartitionList filter, List<ItemStack> alternativeStacks, int amount) {
         List<ItemStack> orderedAlts = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks);
         Ingredient wide = ingredientFromItemStacks(orderedAlts);
         boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
-        List<AEItemKey> candidates = buildCandidateKeys(storage, filter, orderedAlts, wide, exactOnly);
+        List<AEItemKey> candidates = buildCandidateKeys(available, filter, orderedAlts, wide, exactOnly);
 
         Map<AEItemKey, Integer> extractedByKey = new LinkedHashMap<>();
         int remaining = Math.max(0, amount);
@@ -67,7 +119,11 @@ public final class WcwtMeIngredientExtraction {
                 .toList();
     }
 
-    private static List<AEItemKey> buildCandidateKeys(MEStorage storage, @Nullable IPartitionList filter,
+    /**
+     * Exact alternatives first, then every network key of the alternatives' items by descending amount, keys
+     * the wide ingredient accepts ahead of the rest.
+     */
+    private static List<AEItemKey> buildCandidateKeys(AvailableItems available, @Nullable IPartitionList filter,
             List<ItemStack> orderedAlts, @Nullable Ingredient wide, boolean exactOnly) {
         LinkedHashSet<AEItemKey> candidates = new LinkedHashSet<>();
         orderedAlts.stream()
@@ -79,30 +135,27 @@ public final class WcwtMeIngredientExtraction {
             return List.copyOf(candidates);
         }
 
-        List<AvailableCandidate> available = new ArrayList<>();
-        for (var entry : storage.getAvailableStacks()) {
-            if (entry.getLongValue() > 0 && entry.getKey() instanceof AEItemKey itemKey
-                    && (filter == null || filter.isListed(itemKey))) {
-                available.add(new AvailableCandidate(itemKey, entry.getLongValue()));
-            }
-        }
-        available.sort((left, right) -> Long.compare(right.amount(), left.amount()));
-        if (wide != null) {
-            available.stream()
-                    .map(AvailableCandidate::key)
-                    .filter(key -> key.matches(wide))
-                    .forEach(candidates::add);
-        }
-        Set<Item> fallbackItems = new HashSet<>();
+        Set<Item> alternativeItems = new HashSet<>();
+        List<AvailableCandidate> matched = new ArrayList<>();
         for (ItemStack alt : orderedAlts) {
-            if (!alt.isEmpty()) {
-                fallbackItems.add(alt.getItem());
+            if (alt.isEmpty() || !alternativeItems.add(alt.getItem())) {
+                continue;
+            }
+            for (AEItemKey key : available.keysFor(alt.getItem())) {
+                matched.add(new AvailableCandidate(key, available.amount(key)));
             }
         }
-        available.stream()
-                .map(AvailableCandidate::key)
-                .filter(key -> fallbackItems.contains(key.getItem()))
-                .forEach(candidates::add);
+        matched.sort((left, right) -> Long.compare(right.amount(), left.amount()));
+        if (wide != null) {
+            for (AvailableCandidate candidate : matched) {
+                if (candidate.key().matches(wide)) {
+                    candidates.add(candidate.key());
+                }
+            }
+        }
+        for (AvailableCandidate candidate : matched) {
+            candidates.add(candidate.key());
+        }
         return List.copyOf(candidates);
     }
 
@@ -116,6 +169,17 @@ public final class WcwtMeIngredientExtraction {
         if (requestedAmount <= 0) {
             return 0;
         }
+        return reserveFromCandidates(remaining, reservationCandidates(remaining, alternativeStacks, wideIngredient),
+                requestedAmount);
+    }
+
+    /**
+     * The keys of {@code remaining} an ingredient may draw from, in the order a reservation tries them: exact
+     * alternatives, then keys the wide ingredient accepts, then other keys of the same items. Computed once per
+     * ingredient and reused across reservation rounds; the map is scanned a single time.
+     */
+    public static List<AEItemKey> reservationCandidates(Map<AEItemKey, Long> remaining, List<ItemStack> alternativeStacks,
+            @Nullable Ingredient wideIngredient) {
         List<ItemStack> orderedAlts = WcwtIngredientPriorities.deduplicateItemAlternatives(alternativeStacks);
         boolean exactOnly = WcwtStackMatching.requiresExactItemKeyMatch(orderedAlts);
         LinkedHashSet<AEItemKey> candidates = new LinkedHashSet<>();
@@ -123,30 +187,40 @@ public final class WcwtMeIngredientExtraction {
                 .map(AEItemKey::of)
                 .filter(Objects::nonNull)
                 .forEach(candidates::add);
-
-        if (!exactOnly && wideIngredient != null) {
-            for (var e : remaining.entrySet()) {
-                AEItemKey key = e.getKey();
-                if (e.getValue() > 0 && key.matches(wideIngredient)) {
-                    candidates.add(key);
-                }
-            }
-        }
-        if (!exactOnly) {
-            Set<Item> fallbackItems = new HashSet<>();
-            for (ItemStack alt : orderedAlts) {
-                if (!alt.isEmpty()) {
-                    fallbackItems.add(alt.getItem());
-                }
-            }
-            for (var e : remaining.entrySet()) {
-                AEItemKey key = e.getKey();
-                if (e.getValue() > 0 && fallbackItems.contains(key.getItem())) {
-                    candidates.add(key);
-                }
-            }
+        if (exactOnly) {
+            return List.copyOf(candidates);
         }
 
+        Set<Item> alternativeItems = new HashSet<>();
+        for (ItemStack alt : orderedAlts) {
+            if (!alt.isEmpty()) {
+                alternativeItems.add(alt.getItem());
+            }
+        }
+        List<AEItemKey> wideMatches = new ArrayList<>();
+        List<AEItemKey> itemMatches = new ArrayList<>();
+        for (var e : remaining.entrySet()) {
+            AEItemKey key = e.getKey();
+            if (e.getValue() <= 0 || !alternativeItems.contains(key.getItem())) {
+                continue;
+            }
+            if (wideIngredient != null && key.matches(wideIngredient)) {
+                wideMatches.add(key);
+            } else {
+                itemMatches.add(key);
+            }
+        }
+        candidates.addAll(wideMatches);
+        candidates.addAll(itemMatches);
+        return List.copyOf(candidates);
+    }
+
+    /** Reserves up to {@code requestedAmount} from {@code remaining}, trying the candidates in order. */
+    public static int reserveFromCandidates(Map<AEItemKey, Long> remaining, List<AEItemKey> candidates,
+            int requestedAmount) {
+        if (requestedAmount <= 0) {
+            return 0;
+        }
         int reserved = 0;
         for (AEItemKey candidate : candidates) {
             long available = remaining.getOrDefault(candidate, 0L);

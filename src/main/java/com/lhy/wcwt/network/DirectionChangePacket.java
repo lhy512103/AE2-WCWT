@@ -1,5 +1,6 @@
 package com.lhy.wcwt.network;
 
+import io.netty.handler.codec.DecoderException;
 import com.lhy.wcwt.WcwtMod;
 import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
@@ -50,6 +51,9 @@ public record DirectionChangePacket(
                 public Direction decode(RegistryFriendlyByteBuf buf) {
                     int ordinal = buf.readByte();
                     if (ordinal < 0) return null;
+                    if (ordinal >= Direction.values().length) {
+                        throw new DecoderException("Unknown direction ordinal " + ordinal);
+                    }
                     return Direction.values()[ordinal];
                 }
                 

@@ -181,6 +181,8 @@
   "wcwt.config.patternProviderActiveRefresh.tooltip": "開：樣板管理區打開時，供應器內容變化會主動刷新列表。關：僅在明確請求時刷新。",
   "wcwt.config.maxSyncedSlotsPerProvider": "單個供應器最大同步樣板槽位數",
   "wcwt.config.maxSyncedSlotsPerProvider.tooltip": "樣板管理區中每個供應器同步到客戶端的非空樣板槽位上限。超出的槽位不顯示（日誌會警告）。數值越大網路封包越大。",
+  "wcwt.config.maxSyncedSlotsTotal": "全部供應器最大同步樣板槽位總數",
+  "wcwt.config.maxSyncedSlotsTotal.tooltip": "一次列表中同步到客戶端的非空樣板槽位總上限（所有供應器合計）。超出的樣板不顯示（日誌只警告一次）。用於在超大網路上讓供應器列表不超過 Minecraft 的網路封包大小限制。",
   "wcwt.config.patternUploadFailFallbackToEditor": "上傳失敗優先回退到樣板編輯槽",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "關：優先回退到樣板緩存區，緩存區放不下再回退到樣板編輯槽。開：優先回退到樣板編輯槽。",
   "wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled": "未開啟上傳時自動填充供應器搜索框",

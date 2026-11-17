@@ -117,6 +117,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -174,6 +175,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final long PERF_LOG_THRESHOLD_NS = 1_000_000L;
     private static final long PATTERN_PROVIDER_REFRESH_DEBOUNCE_MS = 180L;
     private static final long PATTERN_PROVIDER_SUBSCRIPTION_KEEPALIVE_MS = 3_000L;
+    private static final Component PATTERN_MANAGEMENT_ADD_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.add_mapping");
+    private static final Component PATTERN_MANAGEMENT_RELOAD_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.reload_mapping");
+    private static final Component PATTERN_MANAGEMENT_DELETE_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.delete_mapping");
+    private static final Component PATTERN_MANAGEMENT_CANCEL_TEXT =
+            Component.translatable("gui.wcwt.pattern_management.cancel");
 
     // === DEBUG_FRAME_SYNC 计数器（仅诊断用，每秒 flush 一次） ===
     private long frameSyncWindowStartMs;
@@ -263,6 +272,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private EditBox patternManageSearchField;
     private EditBox patternManageMappingField;
     private int extendedUiAvailabilityMask = -1;
+    private boolean extendedUiAvailabilityMaskResolved;
+    private final boolean[] cosmeticArmorVisible = new boolean[4];
+    /** Game time seen by the previous frame; work that can only change once per tick is gated on it. */
+    private long lastUpdateGameTime = Long.MIN_VALUE;
+    private boolean firstFrameOfTick = true;
     private int lastExtendedUiButtonMask = -1;
     private IExtendedUIHost.ExtendedUIType lastExtendedUiVisibilityType = null;
     private boolean lastExtendedUiToolkitInManagementArea;
@@ -1122,6 +1136,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     @Override
     public void init() {
+        patternSearchTextCache.clear();
         super.init();
         refreshPatternManagementLayout();
         relayoutPatternManagementTextFields();
@@ -1212,7 +1227,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         rebuildingFavoriteRepoView = true;
         try {
-            if (!WcwtFavorites.isEnabled()) {
+            if (!WcwtFavorites.isEnabled() || WcwtFavorites.isEmpty()) {
                 return;
             }
 
@@ -1441,6 +1456,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private int refreshExtendedUiAvailabilityMask() {
+        if (extendedUiAvailabilityMaskResolved && !firstFrameOfTick) {
+            return extendedUiAvailabilityMask;
+        }
+        extendedUiAvailabilityMaskResolved = true;
         var host = menu.getMenuHost();
         if (host == null) {
             return updateExtendedUiAvailabilityMask(0);
@@ -1939,6 +1958,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean triggerExtendedUiHotkey(IExtendedUIHost.ExtendedUIType type) {
+        // A deliberate refresh: bypass the per-tick gate.
+        extendedUiAvailabilityMaskResolved = false;
         refreshExtendedUiAvailabilityMask();
         if (!isExtendedUIAvailable(type)) {
             return false;
@@ -2434,6 +2455,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     @Override
     protected void updateBeforeRender() {
         super.updateBeforeRender();
+        var clientLevel = Minecraft.getInstance().level;
+        long gameTime = clientLevel != null ? clientLevel.getGameTime() : lastUpdateGameTime + 1;
+        firstFrameOfTick = gameTime != lastUpdateGameTime;
+        lastUpdateGameTime = gameTime;
         if (DEBUG_FRAME_SYNC) {
             recordFrameSyncTick();
         }
@@ -2493,7 +2518,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             rebuildPatternManagementRows();
             patternProviderSlotLayoutDirty = true;
         }
-        if (magnetCardMenuButton != null) {
+        if (magnetCardMenuButton != null && firstFrameOfTick) {
+            // Reads the upgrade inventory off the item, so once per tick rather than once per frame.
             var host = menu.getMenuHost();
             boolean hasMagnet = host != null && WcwtWirelessFeatures.hasMagnetCardInstalled(host.getItemStack());
             magnetCardMenuButton.visible = hasMagnet;
@@ -2626,7 +2652,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void updateKeyTypeFilterButtons() {
-        if (itemDisplayButton == null || fluidDisplayButton == null || otherTypesDisplayButton == null) {
+        if (itemDisplayButton == null || fluidDisplayButton == null || otherTypesDisplayButton == null
+                || !firstFrameOfTick) {
             return;
         }
 
@@ -2823,7 +2850,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             patternEncodingScrollbar.setVisible(processingVisible && maxScroll > 0);
         }
         if (stonecuttingPatternScrollbar != null) {
-            int rows = (menu.getStonecuttingRecipes().size() + STONECUTTING_RESULT_COLS - 1) / STONECUTTING_RESULT_COLS;
+            // Only the stonecutting mode shows the list; computing it in other modes scanned every recipe per frame.
+            int rows = patternEncodingMode == EncodingMode.STONECUTTING
+                    ? (menu.getStonecuttingRecipes().size() + STONECUTTING_RESULT_COLS - 1) / STONECUTTING_RESULT_COLS
+                    : 0;
             stonecuttingPatternScrollbar.setRange(0, Math.max(0, rows - STONECUTTING_RESULT_ROWS), STONECUTTING_RESULT_ROWS);
             var inputBase = mainLayout.slot("PROCESSING_INPUTS",
                     new ExtendedPanelLayout.Rect(185, imageHeight - 213, 18, 18), imageWidth, imageHeight);
@@ -2838,7 +2868,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int scroll = processingVisible && patternEncodingScrollbar != null
                 ? patternEncodingScrollbar.getCurrentScroll()
                 : 0;
-        menu.updatePatternPreview(patternEncodingMode);
+        menu.updatePatternPreviewIfInputsChanged(patternEncodingMode);
         updatePatternCraftingSlots(menu.getSlots(WcwtSlotSemantics.WCWT_PATTERN_CRAFTING_GRID),
                 patternEncodingMode == EncodingMode.CRAFTING);
         updatePatternProcessingInputSlots(processingInputSlots, processingVisible, scroll);
@@ -3176,6 +3206,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
+    /** Translated names of each encoded pattern seen in the management list, bounded; cleared when the screen (re)initialises. */
+    private final Map<PatternSearchKey, PatternSearchText> patternSearchTextCache = new LinkedHashMap<>(256, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<PatternSearchKey, PatternSearchText> eldest) {
+            return size() > 4096;
+        }
+    };
+
     private void rebuildPatternManagementRows() {
         long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
         patternManagementRows.clear();
@@ -3185,10 +3223,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         String filter = (!resolvedFilter.isEmpty() ? resolvedFilter : rawFilter).toLowerCase(Locale.ROOT);
         Map<PatternContainerGroup, List<PatternProviderListPacket.Entry>> providersByGroup = new LinkedHashMap<>();
         boolean compactEmptySlots = WcwtClientConfig.patternManagementAutoCompactEmptySlots();
+        // Resolving a display name translates a component; compute each entry's sort key once, not per comparison.
+        Map<PatternProviderListPacket.Entry, String> sortKeys = new IdentityHashMap<>();
         patternProviders.stream()
                 .filter(this::isPatternProviderVisibleInManagement)
                 .filter(entry -> filter.isEmpty() || patternProviderMatches(entry, filter))
-                .sorted(Comparator.comparing(entry -> providerDisplayText(entry).toLowerCase(Locale.ROOT)))
+                .sorted(Comparator.comparing(entry -> sortKeys.computeIfAbsent(entry,
+                        ignored -> providerDisplayText(entry).toLowerCase(Locale.ROOT))))
                 .forEach(entry -> providersByGroup
                         .computeIfAbsent(entry.group(), ignored -> new ArrayList<>())
                         .add(entry));
@@ -3288,27 +3329,57 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private boolean patternStackMatches(ItemStack stack, String filter) {
         var level = Minecraft.getInstance().level;
-        var details = level != null ? appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level) : null;
-        if (details == null) {
+        if (level == null) {
+            return JecSearchCompat.contains(stack.getHoverName().getString(), filter);
+        }
+        // Decoding a pattern and translating every input and output name is the expensive part, and the
+        // rows are rebuilt on every keystroke and every list refresh, so those names are kept per pattern.
+        var key = new PatternSearchKey(ItemStack.hashItemAndComponents(stack), stack.getItem());
+        PatternSearchText searchText = patternSearchTextCache.computeIfAbsent(key,
+                ignored -> decodePatternSearchText(stack, level));
+        if (searchText.outputs() == null || searchText.inputs() == null) {
             return JecSearchCompat.contains(stack.getHoverName().getString(), filter);
         }
         if (patternManagementSearchMode.searchOutputs()) {
-            for (var output : details.getOutputs()) {
-                if (JecSearchCompat.contains(output.what().getDisplayName().getString(), filter)) {
+            for (String output : searchText.outputs()) {
+                if (JecSearchCompat.contains(output, filter)) {
                     return true;
                 }
             }
         }
         if (patternManagementSearchMode.searchInputs()) {
-            for (var input : details.getInputs()) {
-                for (var candidate : input.getPossibleInputs()) {
-                    if (JecSearchCompat.contains(candidate.what().getDisplayName().getString(), filter)) {
-                        return true;
-                    }
+            for (String input : searchText.inputs()) {
+                if (JecSearchCompat.contains(input, filter)) {
+                    return true;
                 }
             }
         }
         return false;
+    }
+
+    private static PatternSearchText decodePatternSearchText(ItemStack stack, net.minecraft.world.level.Level level) {
+        var details = appeng.api.crafting.PatternDetailsHelper.decodePattern(stack, level);
+        if (details == null) {
+            return PatternSearchText.NOT_A_PATTERN;
+        }
+        List<String> outputs = new ArrayList<>();
+        for (var output : details.getOutputs()) {
+            outputs.add(output.what().getDisplayName().getString());
+        }
+        List<String> inputs = new ArrayList<>();
+        for (var input : details.getInputs()) {
+            for (var candidate : input.getPossibleInputs()) {
+                inputs.add(candidate.what().getDisplayName().getString());
+            }
+        }
+        return new PatternSearchText(List.copyOf(outputs), List.copyOf(inputs));
+    }
+
+    private record PatternSearchKey(int hash, net.minecraft.world.item.Item item) {
+    }
+
+    private record PatternSearchText(@Nullable List<String> outputs, @Nullable List<String> inputs) {
+        private static final PatternSearchText NOT_A_PATTERN = new PatternSearchText(null, null);
     }
 
     private void updatePatternManagement() {
@@ -4012,10 +4083,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         var poseStack = guiGraphics.pose();
         poseStack.pushPose();
         poseStack.translate(0, 0, 400);
+        if (firstFrameOfTick) {
+            // Each check is a reflective call into Cosmetic Armor Reworked; once per tick is plenty.
+            for (int cosmeticIndex = 0; cosmeticIndex < 4; cosmeticIndex++) {
+                cosmeticArmorVisible[cosmeticIndex] = isCosmeticArmorVisible(cosmeticIndex);
+            }
+        }
         for (int cosmeticIndex = 0; cosmeticIndex < 4; cosmeticIndex++) {
             int iconX = bounds.getX() + 3 + cosmeticIndex * 18;
             int iconY = bounds.getY() + 15;
-            int texX = isCosmeticArmorVisible(cosmeticIndex) ? 208 : 192;
+            int texX = cosmeticArmorVisible[cosmeticIndex] ? 208 : 192;
             guiGraphics.blit(WCWT_STATES_TEXTURE, iconX, iconY, texX, 0, 5, 5, 256, 256);
         }
         poseStack.popPose();
@@ -4156,8 +4233,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     STONECUTTING_RESULT_SRC_X, srcY, STONECUTTING_RESULT_SLOT_W, STONECUTTING_RESULT_SLOT_H,
                     256, 256);
 
-            ItemStack result = recipe.value().getResultItem(Objects.requireNonNull(Minecraft.getInstance().level)
-                    .registryAccess());
+            ItemStack result = recipe.value().getResultItem(menu.getPlayer().registryAccess());
             int itemY = offsetY + bounds.top() + (selected || hover ? 3 : 2);
             guiGraphics.renderItem(result, offsetX + bounds.left() + 2, itemY);
             guiGraphics.renderItemDecorations(font, result, offsetX + bounds.left() + 2, itemY);
@@ -4268,13 +4344,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 EAE_ICONS_TEXTURE, 64, 64, mouseX, mouseY, false);
 
         renderPatternManagementButtonText(guiGraphics, patternManagementAddButton,
-                Component.translatable("gui.wcwt.pattern_management.add_mapping"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_ADD_TEXT, 0xFFFFFF, mouseX, mouseY);
         renderPatternManagementButtonText(guiGraphics, patternManagementReloadButton,
-                Component.translatable("gui.wcwt.pattern_management.reload_mapping"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_RELOAD_TEXT, 0xFFFFFF, mouseX, mouseY);
         renderPatternManagementButtonText(guiGraphics, patternManagementDeleteButton,
-                Component.translatable("gui.wcwt.pattern_management.delete_mapping"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_DELETE_TEXT, 0xFFFFFF, mouseX, mouseY);
         renderPatternManagementButtonText(guiGraphics, patternManagementCancelButton,
-                Component.translatable("gui.wcwt.pattern_management.cancel"), 0xFFFFFF, mouseX, mouseY);
+                PATTERN_MANAGEMENT_CANCEL_TEXT, 0xFFFFFF, mouseX, mouseY);
 
         renderBatchProcessingLabels(guiGraphics, textColor);
         renderBatchPropertyButton(guiGraphics, batchItemReplacementButton, batchItemSubstitutions, mouseX, mouseY);
@@ -4787,12 +4863,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (totalHeight <= listHeight) {
             return 0;
         }
+        // Suffix sum from the end: the first row from which the remaining rows fill the list.
         int maxScroll = patternManagementRows.size() - 1;
+        int height = 0;
         while (maxScroll > 0) {
-            int height = 0;
-            for (int index = maxScroll; index < patternManagementRows.size(); index++) {
-                height += patternManagementRowHeight(patternManagementRows.get(index));
-            }
+            height += patternManagementRowHeight(patternManagementRows.get(maxScroll));
             if (height >= listHeight) {
                 break;
             }

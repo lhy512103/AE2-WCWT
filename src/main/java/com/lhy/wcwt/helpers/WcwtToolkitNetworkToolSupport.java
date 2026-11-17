@@ -6,7 +6,6 @@ import appeng.core.definitions.AEItems;
 import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.items.contents.NetworkToolMenuHost;
 import appeng.items.tools.NetworkToolItem;
-import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
@@ -117,7 +116,7 @@ public final class WcwtToolkitNetworkToolSupport {
     @Nullable
     private static NetworkToolMenuHost<?> createHostFromTerminal(Player player, ItemStack terminalStack,
             WcwtToolkitNetworkToolLocator baseLocator) {
-        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
+        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
             return null;
         }
 

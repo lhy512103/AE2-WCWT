@@ -11,8 +11,10 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * WCWT 客户端收藏项管理。
@@ -20,6 +22,8 @@ import java.util.Map;
  */
 public final class WcwtFavorites {
     private static final Map<String, AEKey> FAVORITES = new LinkedHashMap<>();
+    /** The same keys as a set: the screen asks per slot per frame whether a key is favorited. */
+    private static final Set<AEKey> FAVORITE_KEYS = new HashSet<>();
     private static boolean loaded;
 
     private WcwtFavorites() {
@@ -35,10 +39,12 @@ public final class WcwtFavorites {
         }
         loaded = true;
         FAVORITES.clear();
+        FAVORITE_KEYS.clear();
         for (String serialized : WcwtClientConfig.favoritedKeys()) {
             AEKey key = deserializeKey(serialized);
             if (key != null) {
                 FAVORITES.put(serialized, key);
+                FAVORITE_KEYS.add(key);
             }
         }
     }
@@ -53,7 +59,12 @@ public final class WcwtFavorites {
 
     public static boolean isFavorited(AEKey key) {
         ensureLoaded();
-        return key != null && FAVORITES.containsValue(key);
+        return key != null && FAVORITE_KEYS.contains(key);
+    }
+
+    public static boolean isEmpty() {
+        ensureLoaded();
+        return FAVORITE_KEYS.isEmpty();
     }
 
     public static boolean toggle(AEKey key) {
@@ -67,10 +78,14 @@ public final class WcwtFavorites {
         }
         boolean nowFavorited;
         if (FAVORITES.containsKey(serialized)) {
-            FAVORITES.remove(serialized);
+            AEKey removed = FAVORITES.remove(serialized);
+            if (removed != null && !FAVORITES.containsValue(removed)) {
+                FAVORITE_KEYS.remove(removed);
+            }
             nowFavorited = false;
         } else {
             FAVORITES.put(serialized, key);
+            FAVORITE_KEYS.add(key);
             nowFavorited = true;
         }
         save();

@@ -10,6 +10,7 @@ import com.lhy.wcwt.network.OpenTerminalHotkeyPacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
 import net.neoforged.api.distmarker.Dist;
@@ -58,7 +59,7 @@ public class ModClientSetup {
             return;
         }
         if (!screen.isTypingInPatternManagementField() && screen.getFocused() == null
-                && !WcwtJeiBookmarkKeys.isSearchFieldFocused()
+                && !(ModList.get().isLoaded("jei") && WcwtJeiBookmarkKeys.isSearchFieldFocused())
                 && screen.handleExtendedUiHotkey(event.getKeyCode(), event.getScanCode())) {
             event.setCanceled(true);
             return;
