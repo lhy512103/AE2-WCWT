@@ -40,6 +40,7 @@
 34. Changed: Every optional integration mod the code checks for is now declared as an optional dependency in neoforge.mods.toml, so it loads before this mod.
 35. Changed: The mod version is 1.3.12 and the README states the same version.
 36. Added: Unit tests for the pull candidate index and reservation order, provider sorting, the enum packet codec, string clamping and the request-wide alternative limit, with one shared test bootstrap.
+37. Fixed: The toolkit layout sync and packet container checks compile with direct toolkit lookup and bounded enum decoding.
 
 ### 中文
 
@@ -79,6 +80,7 @@
 34. 优化：代码中检测过的全部可选集成模组都在 neoforge.mods.toml 中声明为可选依赖，保证其先于本模组加载。
 35. 优化：版本号升至 1.3.12，README 同步更新。
 36. 新增：拉取候选索引与预留顺序、供应器排序、枚举包编解码、字符串限长和请求级备选上限的单元测试，并统一测试启动引导。
+37. 修复：工具包布局同步与容器校验兼容直接读取工具包和枚举范围校验。
 
 
 ## v1.3.11

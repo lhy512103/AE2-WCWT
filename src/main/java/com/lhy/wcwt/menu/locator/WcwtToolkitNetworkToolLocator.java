@@ -7,9 +7,8 @@ import appeng.api.inventories.InternalInventory;
 import appeng.core.definitions.AEItems;
 import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.menu.locator.ItemMenuHostLocator;
-import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
-import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
+import com.lhy.wcwt.helpers.WcwtToolkitStore;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import net.minecraft.network.FriendlyByteBuf;
@@ -52,7 +51,6 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
         if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
             return ItemStack.EMPTY;
         }
-        // 客户端没有共享工具包，和以前一样定位为空。
         InternalInventory toolkit = WcwtToolkitStore.items(player, terminalStack);
         if (toolkit == null || toolkitSlot >= toolkit.size()) {
             return ItemStack.EMPTY;

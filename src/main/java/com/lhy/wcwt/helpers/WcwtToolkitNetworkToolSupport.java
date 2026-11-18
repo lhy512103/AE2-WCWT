@@ -120,23 +120,13 @@ public final class WcwtToolkitNetworkToolSupport {
             return null;
         }
 
-        var terminalLocator = switch (baseLocator.sourceKind()) {
-            case INVENTORY -> MenuLocators.forInventorySlot(baseLocator.sourceSlot());
-            case CURIOS -> MenuLocators.forCurioSlot(baseLocator.sourceSlot());
-        };
-        var terminalHost = terminalItem.getMenuHost(player, terminalLocator, null);
-        if (terminalHost == null) {
-            return null;
-        }
-
         // AE2 adds the toolbox's 9 slots before every other slot of the menu, so both sides must agree on
         // whether it exists. The client cannot see the whole toolkit and uses the slot the server synced.
         int toolkitSlot;
         if (player.level().isClientSide()) {
             toolkitSlot = WcwtToolkitHotbarState.clientNetworkToolSlot(player);
         } else {
-            toolkitSlot = WcwtToolkitSync.findNetworkToolSlot(
-                    terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT));
+            toolkitSlot = WcwtToolkitSync.findNetworkToolSlot(WcwtToolkitStore.items(player, terminalStack));
             if (player instanceof ServerPlayer serverPlayer) {
                 WcwtToolkitSync.ensureLayoutSynced(serverPlayer);
             }
@@ -150,7 +140,6 @@ public final class WcwtToolkitNetworkToolSupport {
                 player,
                 locator,
                 null,
-                terminalHost,
                 toolkitSlot);
     }
 }
