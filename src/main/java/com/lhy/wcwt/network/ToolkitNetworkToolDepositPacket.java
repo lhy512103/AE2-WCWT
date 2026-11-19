@@ -18,12 +18,13 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 /**
  * 将 AE 网络工具从鼠标携带或背包放入工具包槽（双击槽位触发），绕过部分客户端拖拽限制。
  */
-public record ToolkitNetworkToolDepositPacket(int slotIndex) implements CustomPacketPayload {
+public record ToolkitNetworkToolDepositPacket(int containerId, int slotIndex) implements CustomPacketPayload {
     public static final Type<ToolkitNetworkToolDepositPacket> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_network_tool_deposit"));
 
     public static final StreamCodec<ByteBuf, ToolkitNetworkToolDepositPacket> STREAM_CODEC =
-            StreamCodec.composite(ByteBufCodecs.VAR_INT, ToolkitNetworkToolDepositPacket::slotIndex,
+            StreamCodec.composite(ByteBufCodecs.VAR_INT, ToolkitNetworkToolDepositPacket::containerId,
+                    ByteBufCodecs.VAR_INT, ToolkitNetworkToolDepositPacket::slotIndex,
                     ToolkitNetworkToolDepositPacket::new);
 
     @Override
@@ -36,7 +37,8 @@ public record ToolkitNetworkToolDepositPacket(int slotIndex) implements CustomPa
             if (!(context.player() instanceof ServerPlayer player)) {
                 return;
             }
-            if (!(player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)) {
+            if (!(player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu)
+                    || menu.containerId != packet.containerId()) {
                 return;
             }
 

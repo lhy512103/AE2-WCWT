@@ -7,6 +7,7 @@ import appeng.api.inventories.InternalInventory;
 import appeng.core.definitions.AEItems;
 import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.menu.locator.ItemMenuHostLocator;
+import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import com.lhy.wcwt.helpers.WcwtToolkitStore;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
@@ -39,11 +40,17 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
         if (toolkitSlot < 0) {
             return AEItems.NETWORK_TOOL.stack();
         }
+        if (player.level().isClientSide()) {
+            // The client only mirrors the 18 extra-bar cells; the toolbox title still needs a network tool.
+            ItemStack mirrored = WcwtToolkitHotbarState.stackAt(player, toolkitSlot);
+            return mirrored.getItem() instanceof appeng.items.tools.NetworkToolItem
+                    ? mirrored
+                    : AEItems.NETWORK_TOOL.stack();
+        }
 
         if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
             return ItemStack.EMPTY;
         }
-        // 客户端没有共享工具包，和以前一样定位为空。
         InternalInventory toolkit = WcwtToolkitStore.items(player, terminalStack);
         if (toolkit == null || toolkitSlot >= toolkit.size()) {
             return ItemStack.EMPTY;

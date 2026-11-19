@@ -1,7 +1,6 @@
 package com.lhy.wcwt.recipe;
 
 import appeng.api.config.Actionable;
-import appeng.api.ids.AEComponents;
 import appeng.api.upgrades.IUpgradeableItem;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModRecipes;
@@ -63,7 +62,7 @@ public final class WirelessComprehensiveWorkTerminalRecipe implements CraftingRe
         List<ItemStack> leftovers = mergeUpgrades(input, result);
 
         resultItem.updatePowerMultiplier(result);
-        mergeTerminalState(input, result, resultItem);
+        mergeTerminalState(input, result, resultItem, leftovers);
 
         if (!leftovers.isEmpty()) {
             result.set(ModComponents.CRAFTING_UPGRADE_LEFTOVERS.get(), ItemContainerContents.fromItems(leftovers));
@@ -72,7 +71,7 @@ public final class WirelessComprehensiveWorkTerminalRecipe implements CraftingRe
     }
 
     private static void mergeTerminalState(CraftingInput input, ItemStack result,
-            WirelessComprehensiveWorkTerminalItem resultItem) {
+            WirelessComprehensiveWorkTerminalItem resultItem, List<ItemStack> leftovers) {
         for (int i = 0; i < input.size(); i++) {
             ItemStack terminal = input.getItem(i);
             if (terminal.isEmpty() || !(terminal.getItem() instanceof ItemWT terminalItem)) {
@@ -84,11 +83,7 @@ public final class WirelessComprehensiveWorkTerminalRecipe implements CraftingRe
                     terminalItem.getAECurrentPower(terminal),
                     Actionable.MODULATE);
 
-            var components = terminal.getComponentsPatch()
-                    .forget(type -> type == AEComponents.STORED_ENERGY)
-                    .forget(type -> type == AEComponents.ENERGY_CAPACITY)
-                    .forget(type -> type == AEComponents.UPGRADES);
-            result.applyComponents(components);
+            WcwtTerminalMergeSupport.applyTerminalComponents(result, terminal, leftovers);
         }
     }
 

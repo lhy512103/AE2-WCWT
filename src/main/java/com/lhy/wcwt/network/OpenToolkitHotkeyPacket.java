@@ -44,10 +44,10 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
                                 : player.containerMenu.getClass().getName());
             }
 
-            if (openFromInventory(player)) {
+            if (openFromInventory(player) || openFromCurios(player)) {
                 return;
             }
-            openFromCurios(player);
+            WirelessComprehensiveWorkTerminalMenuHost.clearPendingExtendedUi(player);
         });
     }
 

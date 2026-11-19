@@ -31,6 +31,10 @@ public final class WcwtToolkitPlayerState {
     @Nullable
     ItemStack[] lastSentMemory;
     boolean lastSentHasCard;
+    /** Toolkit slot whose network tool backs AE2's toolbox, as last told to the client; -1 for none. */
+    int lastSentNetworkToolSlot = -1;
+    /** Server toolkit size as last told to the client; -1 before the first sync. */
+    int lastSentToolkitSize = -1;
     int lastSentPageRevision = -1;
 
     long budgetTick = Long.MIN_VALUE;
@@ -38,6 +42,8 @@ public final class WcwtToolkitPlayerState {
 
     final ItemStack[] clientItems = emptyHotbar();
     final ItemStack[] clientMemory = emptyHotbar();
+    int clientNetworkToolSlot = -1;
+    int clientToolkitSize = -1;
 
     static ItemStack[] emptyHotbar() {
         ItemStack[] stacks = new ItemStack[WcwtToolkitAccess.HOTBAR_SLOTS];
