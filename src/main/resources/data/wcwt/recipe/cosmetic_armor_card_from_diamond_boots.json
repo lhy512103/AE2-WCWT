@@ -8,12 +8,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "item": "minecraft:diamond_boots"
-    }
+    "ae2:advanced_card",
+    "minecraft:diamond_boots"
   ],
   "result": {
     "count": 1,

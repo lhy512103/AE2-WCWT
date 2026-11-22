@@ -9,10 +9,10 @@ import com.lhy.wcwt.network.WcwtToolkitHotbarDropPacket;
 import com.lhy.wcwt.network.WcwtToolkitHotbarSelectionPacket;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
@@ -39,9 +39,9 @@ import org.lwjgl.glfw.GLFW;
 @EventBusSubscriber(modid = WcwtMod.MOD_ID, value = Dist.CLIENT)
 public final class WcwtToolkitHud {
     /** The vanilla hotbar selection sprite; the HUD mixin compares against it on every frame. */
-    public static final ResourceLocation HOTBAR_SELECTION_SPRITE = ResourceLocation.withDefaultNamespace("hud/hotbar_selection");
-    private static final ResourceLocation HOTBAR = ResourceLocation.withDefaultNamespace("hud/hotbar");
-    private static final ResourceLocation SELECTION = ResourceLocation.withDefaultNamespace("hud/hotbar_selection");
+    public static final Identifier HOTBAR_SELECTION_SPRITE = Identifier.withDefaultNamespace("hud/hotbar_selection");
+    private static final Identifier HOTBAR = Identifier.withDefaultNamespace("hud/hotbar");
+    private static final Identifier SELECTION = Identifier.withDefaultNamespace("hud/hotbar_selection");
     private static final Bar[] CYCLE_ORDER = {Bar.LEFT, Bar.CENTER, Bar.RIGHT};
     private static final int CELLS = CYCLE_ORDER.length * WcwtToolkitAccess.HOTBAR_SIZE;
     private static final int BAR_HEIGHT = 22;
@@ -61,7 +61,7 @@ public final class WcwtToolkitHud {
         if (!isHudVisible(minecraft)) {
             if (player != null && WcwtToolkitHotbarState.isToolkitSelected(player)
                     && (!WcwtClientConfig.showToolkitHotbars() || !WcwtToolkitHotbarState.hasToolkitCard(player))) {
-                setSelection(player, Bar.CENTER, player.getInventory().selected);
+                setSelection(player, Bar.CENTER, player.getInventory().getSelectedSlot());
             }
             return;
         }
@@ -74,12 +74,12 @@ public final class WcwtToolkitHud {
         }
         if (WcwtToolkitHotbarState.isToolkitSelected(player)) {
             while (minecraft.options.keyDrop.consumeClick()) {
-                PacketDistributor.sendToServer(new WcwtToolkitHotbarDropPacket(Screen.hasControlDown()));
+                com.lhy.wcwt.network.WcwtPackets.sendToServer(new WcwtToolkitHotbarDropPacket(minecraft.hasControlDown()));
             }
         }
     }
 
-    public static void renderGuiLayer(GuiGraphics graphics, net.minecraft.client.DeltaTracker deltaTracker) {
+    public static void renderGuiLayer(GuiGraphicsExtractor graphics, net.minecraft.client.DeltaTracker deltaTracker) {
         Minecraft minecraft = Minecraft.getInstance();
         if (!isHudVisible(minecraft) || minecraft.options.hideGui) {
             return;
@@ -172,7 +172,7 @@ public final class WcwtToolkitHud {
             }
         }
         if (WcwtToolkitHotbarState.isToolkitSelected(player)) {
-            setSelection(player, Bar.CENTER, player.getInventory().selected);
+            setSelection(player, Bar.CENTER, player.getInventory().getSelectedSlot());
         }
     }
 
@@ -182,26 +182,22 @@ public final class WcwtToolkitHud {
         }
         if (minecraft.hitResult instanceof BlockHitResult blockHit && blockHit.getType() == HitResult.Type.BLOCK) {
             BlockState state = minecraft.level.getBlockState(blockHit.getBlockPos());
-            return state.getCloneItemStack(blockHit, minecraft.level, blockHit.getBlockPos(), minecraft.player);
+            return state.getCloneItemStack(minecraft.level, blockHit.getBlockPos(), true);
         }
         if (minecraft.hitResult instanceof EntityHitResult entityHit) {
-            ItemStack stack = entityHit.getEntity().getPickedResult(entityHit);
+            ItemStack stack = entityHit.getEntity().getPickResult();
             return stack == null ? ItemStack.EMPTY : stack;
         }
         return ItemStack.EMPTY;
     }
 
-    private static void renderBar(GuiGraphics graphics, LocalPlayer player, int x, int y, int firstIndex,
+    private static void renderBar(GuiGraphicsExtractor graphics, LocalPlayer player, int x, int y, int firstIndex,
                                   int slot, boolean selected, int selectedSlot, int seedOffset) {
-        RenderSystem.enableBlend();
-        graphics.pose().pushPose();
-        graphics.pose().translate(0.0F, 0.0F, -90.0F);
-        graphics.blitSprite(HOTBAR, x, y, barWidth(slot), BAR_HEIGHT);
+        graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, HOTBAR, x, y, barWidth(slot), BAR_HEIGHT);
         if (selected) {
-            graphics.blitSprite(SELECTION, x - 1 + selectedSlot * slot, y - 1, slot + 4, SELECTION_HEIGHT);
+            graphics.blitSprite(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, SELECTION,
+                    x - 1 + selectedSlot * slot, y - 1, slot + 4, SELECTION_HEIGHT);
         }
-        graphics.pose().popPose();
-        RenderSystem.disableBlend();
         Minecraft minecraft = Minecraft.getInstance();
         for (int i = 0; i < WcwtToolkitAccess.HOTBAR_SIZE; i++) {
             ItemStack stack = WcwtToolkitHotbarState.stackAt(player, firstIndex + i);
@@ -209,12 +205,11 @@ public final class WcwtToolkitHud {
             int itemX = x + 3 + i * slot;
             int itemY = y + 3;
             if (!stack.isEmpty()) {
-                graphics.renderItem(player, stack, itemX, itemY, seedOffset + i);
-                graphics.renderItemDecorations(minecraft.font, stack, itemX, itemY);
+                graphics.item(player, stack, itemX, itemY, seedOffset + i);
+                graphics.itemDecorations(minecraft.font, stack, itemX, itemY);
             } else if (!memory.isEmpty()) {
-                graphics.setColor(1.0F, 1.0F, 1.0F, 0.38F);
-                graphics.renderItem(player, memory, itemX, itemY, seedOffset + i);
-                graphics.setColor(1.0F, 1.0F, 1.0F, 1.0F);
+                graphics.item(player, memory, itemX, itemY, seedOffset + i);
+                graphics.fill(itemX, itemY, itemX + 16, itemY + 16, 0x80202020);
             }
         }
     }
@@ -272,7 +267,7 @@ public final class WcwtToolkitHud {
 
     private static void setSelection(LocalPlayer player, Bar bar, int slot) {
         WcwtToolkitHotbarState.setSelection(player, bar, slot);
-        PacketDistributor.sendToServer(new WcwtToolkitHotbarSelectionPacket(
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new WcwtToolkitHotbarSelectionPacket(
                 WcwtToolkitHotbarState.getBar(player).ordinal(), WcwtToolkitHotbarState.getSlot(player)));
     }
 

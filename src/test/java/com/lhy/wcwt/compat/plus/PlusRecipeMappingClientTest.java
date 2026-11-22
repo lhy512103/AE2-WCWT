@@ -1,6 +1,6 @@
 package com.lhy.wcwt.compat.plus;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.loading.FMLPaths;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -10,16 +10,13 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlusRecipeMappingClientTest {
-    private static final ResourceLocation CATEGORY = ResourceLocation.fromNamespaceAndPath("wcwt_test", "pressing");
+    private static final Identifier CATEGORY = Identifier.fromNamespaceAndPath("wcwt_test", "pressing");
 
     @org.junit.jupiter.api.BeforeAll
     static void bootstrap() {
-        net.minecraft.SharedConstants.tryDetectVersion();
-        if (net.neoforged.fml.loading.LoadingModList.get() == null) {
-            net.neoforged.fml.loading.LoadingModList.of(java.util.List.of(), java.util.List.of(),
-                    java.util.List.of(), java.util.List.of(), java.util.Map.of());
-        }
-        net.minecraft.server.Bootstrap.bootStrap();
+        com.lhy.wcwt.TestBootstrap.ensure();
+        org.junit.jupiter.api.Assumptions.assumeTrue(PlusPresence.available(),
+                "extendedae_plus is optional and not loaded in core unitTest runtime");
     }
 
     @AfterEach
@@ -84,9 +81,9 @@ class PlusRecipeMappingClientTest {
     @Test
     void removeMappingsByValueDeletesAllMatchesAndPreservesOtherValues(@TempDir Path gameDir) {
         FMLPaths.loadAbsolutePaths(gameDir);
-        ResourceLocation first = ResourceLocation.fromNamespaceAndPath("wcwt_test", "pressing_a");
-        ResourceLocation second = ResourceLocation.fromNamespaceAndPath("wcwt_test", "pressing_b");
-        ResourceLocation kept = ResourceLocation.fromNamespaceAndPath("wcwt_test", "pressing_c");
+        Identifier first = Identifier.fromNamespaceAndPath("wcwt_test", "pressing_a");
+        Identifier second = Identifier.fromNamespaceAndPath("wcwt_test", "pressing_b");
+        Identifier kept = Identifier.fromNamespaceAndPath("wcwt_test", "pressing_c");
         String shared = "共享压印器";
         assertTrue(PlusPatternUploadApi.addOrUpdateRecipeTypeMapping(first.toString(), shared));
         assertTrue(PlusPatternUploadApi.addOrUpdateRecipeTypeMapping(second.toString(), shared));

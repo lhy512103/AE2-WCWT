@@ -101,7 +101,7 @@ public class WcwtRecipeTransferHandler
                         .translatable("gui.useless_mod.omniversal_pattern.too_many_slots"));
             }
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
-            PacketDistributor.sendToServer(new com.lhy.wcwt.network.OmniversalPatternTransferPacket(
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new com.lhy.wcwt.network.OmniversalPatternTransferPacket(
                     menu.containerId, transfer.selection(), new JeiCraftingTransferPacket(
                             transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING)));
             return null;
@@ -115,7 +115,7 @@ public class WcwtRecipeTransferHandler
             var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
             if (transfer == null) return transferHelper.createInternalError();
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
-            PacketDistributor.sendToServer(new JeiCraftingTransferPacket(
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new JeiCraftingTransferPacket(
                     transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING));
             return null;
         }
@@ -152,7 +152,7 @@ public class WcwtRecipeTransferHandler
         if (doTransfer) {
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
             updateEaepProviderSearchKey(recipe, minecraftRecipe, mode);
-            PacketDistributor.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         }
         return null;
     }
@@ -280,7 +280,9 @@ public class WcwtRecipeTransferHandler
                 List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
                 for (int slot = 0; slot < ingredients.size(); slot++) {
                     List<ItemStack> slotAlternatives = collectPerSlotAlternatives(inputSlots, slot);
-                    resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), slotAlternatives, recipeResults));
+                    var opt = ingredients.get(slot);
+                    resolved.add(opt.isEmpty() ? null
+                            : toBestGenericStack(priorityContext, opt.get(), slotAlternatives, recipeResults));
                 }
                 return resolved;
             }
@@ -289,7 +291,8 @@ public class WcwtRecipeTransferHandler
             for (int slot = 0; slot < ingredients.size(); slot++) {
                 // For non-crafting modes (smithing/stonecutting), JEI slots may not map 1:1
                 // to recipe ingredients. Pass empty alternatives to avoid cross-slot contamination.
-                resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), List.of()));
+                var opt = ingredients.get(slot);
+                resolved.add(opt.isEmpty() ? null : toBestGenericStack(priorityContext, opt.get(), List.of()));
             }
             return resolved;
         }
@@ -539,20 +542,19 @@ public class WcwtRecipeTransferHandler
         if (ingredient.isEmpty()) {
             return null;
         }
-        ItemStack[] items = ingredient.getItems();
-        if (items.length == 0 || items[0].isEmpty()) {
+        var first = ingredient.items().findFirst();
+        if (first.isEmpty()) {
             return null;
         }
-        return GenericStack.fromItemStack(items[0].copyWithCount(1));
+        return GenericStack.fromItemStack(new ItemStack(first.get().value(), 1));
     }
 
     @Nullable
     public static GenericStack toGenericStack(SizedFluidIngredient ingredient) {
-        for (FluidStack fluidStack : ingredient.getFluids()) {
+        for (var holder : ingredient.ingredient().fluids()) {
+            FluidStack fluidStack = new FluidStack(holder.value(), Math.max(1, ingredient.amount()));
             if (!fluidStack.isEmpty()) {
-                FluidStack copy = fluidStack.copy();
-                copy.setAmount(Math.max(1, ingredient.amount()));
-                return GenericStack.fromFluidStack(copy);
+                return GenericStack.fromFluidStack(fluidStack);
             }
         }
         return null;

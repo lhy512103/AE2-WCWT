@@ -3,6 +3,7 @@ package com.lhy.wcwt.client;
 import com.lhy.wcwt.WcwtMod;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.settings.KeyConflictContext;
 import org.lwjgl.glfw.GLFW;
 
@@ -10,7 +11,8 @@ import org.lwjgl.glfw.GLFW;
  * WCWT 自定义按键。
  */
 public final class WcwtKeybindings {
-    public static final String CATEGORY = "key.wcwt.category";
+    public static final KeyMapping.Category CATEGORY =
+            new KeyMapping.Category(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "category"));
 
     public static final KeyMapping OPEN_ADVANCED_CODING = create("open_advanced_coding");
     public static final KeyMapping OPEN_COSMETIC_ARMOR = create("open_cosmetic_armor");

@@ -6,7 +6,7 @@ import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -21,7 +21,7 @@ public record WcwtToolkitHotbarSyncPacket(List<ItemStack> stacks, List<ItemStack
                                           int page, int networkToolSlot, int toolkitSize) implements CustomPacketPayload {
     public static final int PAGE_UNCHANGED = -1;
     public static final Type<WcwtToolkitHotbarSyncPacket> TYPE = new Type<>(
-            ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_hotbar_sync"));
+            Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_hotbar_sync"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, WcwtToolkitHotbarSyncPacket> STREAM_CODEC =
             StreamCodec.of(WcwtToolkitHotbarSyncPacket::write, WcwtToolkitHotbarSyncPacket::read);

@@ -5,12 +5,12 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record CycleProcessingOutputPacket() implements CustomPacketPayload {
     public static final Type<CycleProcessingOutputPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "cycle_processing_output"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "cycle_processing_output"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CycleProcessingOutputPacket> STREAM_CODEC =
             StreamCodec.unit(new CycleProcessingOutputPacket());

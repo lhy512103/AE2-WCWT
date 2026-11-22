@@ -1,32 +1,22 @@
 package com.lhy.wcwt.client.gui.widgets;
 
-import appeng.client.gui.Icon;
+import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.ITooltip;
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.gui.GuiGraphics;
+import appeng.util.Icon;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Supplier;
-import org.jetbrains.annotations.Nullable;
 
-/**
- * 通用图标按钮：
- * - 从某张精灵图的两组 UV 中读取 normal / hover 两种状态
- * - 支持把原始尺寸的纹理缩放绘制到任意宽高（例：把 24×24 的纹理画进 12×12 的按钮里）
- * - 实现 AE2 的 {@link ITooltip}，自动接入 AE2 的 tooltip 渲染管线
- *
- * 命名约定：
- *   normalU/V + texW/texH  ⇒ 默认状态在精灵图中的矩形
- *   hoverU/V  + texW/texH  ⇒ 悬停状态在精灵图中的矩形
- *   width/height           ⇒ 按钮在屏幕上的实际尺寸（可与 texW/H 不同 → 走缩放路径）
- */
 public class IconButton extends Button implements ITooltip {
 
-    private final ResourceLocation texture;
+    private final Identifier texture;
     private final int normalU;
     private final int normalV;
     private final int hoverU;
@@ -34,18 +24,18 @@ public class IconButton extends Button implements ITooltip {
     private final int texW;
     private final int texH;
     private List<Component> tooltipMessages;
-    /** 可选叠加图标（如 AE2 的 COG/CLEAR/COPY_MODE_ON）。supplier 形式以支持 toggle 类按钮动态切换图标。 */
     @Nullable
     private Supplier<Icon> overlayIcon;
     private int overlayOffsetY = 0;
     private boolean scaleTextureToButton = true;
     private boolean pressOffsetOnHover = true;
+    private boolean useAE2ToolbarBg = false;
 
     public IconButton(int x, int y, int w, int h,
                       int normalU, int normalV,
                       int hoverU, int hoverV,
                       int texW, int texH,
-                      ResourceLocation texture,
+                      Identifier texture,
                       Component tooltip,
                       OnPress onPress) {
         super(x, y, w, h, tooltip != null ? tooltip : Component.empty(), onPress, Button.DEFAULT_NARRATION);
@@ -64,7 +54,6 @@ public class IconButton extends Button implements ITooltip {
         return this;
     }
 
-    /** 设置叠加图标。null 表示无叠加；用 supplier 支持运行时切换（如 COPY_MODE_ON ↔ OFF）。 */
     public IconButton setOverlayIcon(@Nullable Supplier<Icon> overlayIcon) {
         this.overlayIcon = overlayIcon;
         return this;
@@ -74,13 +63,6 @@ public class IconButton extends Button implements ITooltip {
         this.overlayOffsetY = overlayOffsetY;
         return this;
     }
-
-    /**
-     * 使用 AE2 Toolbar 按钮底图替代 wcwt_states.png 里的底图。
-     * 设置后，renderWidget 将用 Icon.TOOLBAR_BUTTON_BACKGROUND（normal/hover）来绘制底图，
-     * 忽略 normalU/V、hoverU/V、texture 字段。
-     */
-    private boolean useAE2ToolbarBg = false;
 
     public IconButton useAE2ToolbarBackground() {
         this.useAE2ToolbarBg = true;
@@ -98,61 +80,57 @@ public class IconButton extends Button implements ITooltip {
     }
 
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+    protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
         int pressOffsetY = pressOffsetOnHover && isHoveredOrFocused() ? 1 : 0;
 
-        // ── 底图 ──
         if (useAE2ToolbarBg) {
-            // 使用 AE2 Toolbar 按钮底图（18×20），缩放到按钮实际尺寸
             Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER : Icon.TOOLBAR_BUTTON_BACKGROUND;
             float scaleX = (float) width / 18f;
             float scaleY = (float) height / 20f;
-            PoseStack pose = guiGraphics.pose();
-            pose.pushPose();
-            pose.translate(getX(), getY(), 0);
-            pose.scale(scaleX, scaleY, 1.0f);
-            bgIcon.getBlitter().dest(0, 0).blit(guiGraphics);
-            pose.popPose();
+            var pose = guiGraphics.pose();
+            pose.pushMatrix();
+            pose.translate(getX(), getY());
+            pose.scale(scaleX, scaleY);
+            Blitter.icon(bgIcon).dest(0, 0).blit(guiGraphics);
+            pose.popMatrix();
         } else {
             int u = isHovered() ? hoverU : normalU;
             int v = isHovered() ? hoverV : normalV;
             if (!scaleTextureToButton) {
-                guiGraphics.blit(texture, getX(), getY() + pressOffsetY, u, v, texW, texH, 256, 256);
+                guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, getX(), getY() + pressOffsetY, u, v, texW, texH, 256, 256);
             } else if (texW == width && texH == height) {
-                guiGraphics.blit(texture, getX(), getY(), u, v, texW, texH, 256, 256);
+                guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, getX(), getY(), u, v, texW, texH, 256, 256);
             } else {
                 float scaleX = (float) width / texW;
                 float scaleY = (float) height / texH;
-                PoseStack pose = guiGraphics.pose();
-                pose.pushPose();
-                pose.translate(getX(), getY(), 0);
-                pose.scale(scaleX, scaleY, 1.0f);
-                guiGraphics.blit(texture, 0, 0, u, v, texW, texH, 256, 256);
-                pose.popPose();
+                var pose = guiGraphics.pose();
+                pose.pushMatrix();
+                pose.translate(getX(), getY());
+                pose.scale(scaleX, scaleY);
+                guiGraphics.blit(RenderPipelines.GUI_TEXTURED, texture, 0, 0, u, v, texW, texH, 256, 256);
+                pose.popMatrix();
             }
         }
 
-        // ── 叠加 AE2 图标（居中，按实际图标尺寸缩放到按钮 12×12 / 16×16 内部）──
         if (overlayIcon != null) {
             Icon icon = overlayIcon.get();
             if (icon != null) {
-                // 图标始终缩放到按钮内部
                 float iconScale = Math.min((float) Math.max(1, width - 2) / icon.width,
                         (float) Math.max(1, height - 2) / icon.height);
-                int renderW = (int)(icon.width  * iconScale);
-                int renderH = (int)(icon.height * iconScale);
-                int iconX = getX() + (width  - renderW) / 2;
+                int renderW = (int) (icon.width * iconScale);
+                int renderH = (int) (icon.height * iconScale);
+                int iconX = getX() + (width - renderW) / 2;
                 int iconY = getY() + (height - renderH) / 2 + overlayOffsetY;
                 if (iconScale == 1f) {
-                    icon.getBlitter().dest(iconX, iconY).blit(guiGraphics);
+                    Blitter.icon(icon).dest(iconX, iconY).blit(guiGraphics);
                 } else {
-                    PoseStack pose = guiGraphics.pose();
-                    pose.pushPose();
-                    pose.translate(iconX, iconY, 0);
-                    pose.scale(iconScale, iconScale, 1.0f);
-                    icon.getBlitter().dest(0, 0).blit(guiGraphics);
-                    pose.popPose();
+                    var pose = guiGraphics.pose();
+                    pose.pushMatrix();
+                    pose.translate(iconX, iconY);
+                    pose.scale(iconScale, iconScale);
+                    Blitter.icon(icon).dest(0, 0).blit(guiGraphics);
+                    pose.popMatrix();
                 }
             }
         }

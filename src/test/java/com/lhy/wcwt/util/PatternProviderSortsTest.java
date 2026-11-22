@@ -13,6 +13,11 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 class PatternProviderSortsTest {
+    @org.junit.jupiter.api.BeforeAll
+    static void bootstrap() {
+        com.lhy.wcwt.TestBootstrap.ensure();
+    }
+
     @Test
     void sortsByGroupNameIgnoringCase() {
         var b = stub("beta");

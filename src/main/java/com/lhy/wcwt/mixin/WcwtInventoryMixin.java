@@ -4,7 +4,6 @@ import com.lhy.wcwt.helpers.WcwtToolkitHand;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -12,11 +11,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Inventory.class)
 public abstract class WcwtInventoryMixin {
-    @Inject(method = "getSelected", at = @At("HEAD"), cancellable = true)
-    private void wcwt$getSelected(CallbackInfoReturnable<ItemStack> cir) {
+    @Inject(method = "getSelectedItem", at = @At("HEAD"), cancellable = true)
+    private void wcwt$getSelectedItem(CallbackInfoReturnable<ItemStack> cir) {
         Inventory inventory = (Inventory) (Object) this;
         if (WcwtToolkitHand.isOverrideActive(inventory.player)) {
             cir.setReturnValue(WcwtToolkitHotbarState.getSelectedToolkit(inventory.player));
+        }
+    }
+
+    @Inject(method = "setSelectedItem", at = @At("HEAD"), cancellable = true)
+    private void wcwt$setSelectedItem(ItemStack stack, CallbackInfoReturnable<ItemStack> cir) {
+        Inventory inventory = (Inventory) (Object) this;
+        if (WcwtToolkitHand.isOverrideActive(inventory.player)) {
+            ItemStack prev = WcwtToolkitHotbarState.getSelectedToolkit(inventory.player);
+            WcwtToolkitHotbarState.setSelectedToolkit(inventory.player, stack);
+            cir.setReturnValue(prev);
         }
     }
 
@@ -35,13 +44,5 @@ public abstract class WcwtInventoryMixin {
         selected.shrink(removed.getCount());
         WcwtToolkitHotbarState.setSelectedToolkit(inventory.player, selected.isEmpty() ? ItemStack.EMPTY : selected);
         cir.setReturnValue(removed);
-    }
-
-    @Inject(method = "getDestroySpeed", at = @At("HEAD"), cancellable = true)
-    private void wcwt$getDestroySpeed(BlockState state, CallbackInfoReturnable<Float> cir) {
-        Inventory inventory = (Inventory) (Object) this;
-        if (WcwtToolkitHand.isOverrideActive(inventory.player)) {
-            cir.setReturnValue(WcwtToolkitHotbarState.getSelectedToolkit(inventory.player).getDestroySpeed(state));
-        }
     }
 }

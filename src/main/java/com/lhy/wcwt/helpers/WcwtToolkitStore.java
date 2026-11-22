@@ -126,16 +126,16 @@ public final class WcwtToolkitStore {
     /** The respawn clone copies persisted data before the event fires, so pending writes are carried over here. */
     public static void copyOnClone(Player original, Player replacement) {
         flushDirty(original);
-        var source = playerData(original).getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        var source = playerData(original).getCompoundOrEmpty(PLAYER_TOOLKIT_DATA_TAG);
         if (!source.isEmpty()) {
             playerData(replacement).put(PLAYER_TOOLKIT_DATA_TAG, source.copy());
         }
     }
 
     public static CompoundTag playerData(Player player) {
-        var persisted = player.getPersistentData().getCompound(PLAYER_PERSISTED_TAG);
+        var persisted = player.getPersistentData().getCompoundOrEmpty(PLAYER_PERSISTED_TAG);
         player.getPersistentData().put(PLAYER_PERSISTED_TAG, persisted);
-        var wcwtData = persisted.getCompound(WCWT_PLAYER_DATA_TAG);
+        var wcwtData = persisted.getCompoundOrEmpty(WCWT_PLAYER_DATA_TAG);
         persisted.put(WCWT_PLAYER_DATA_TAG, wcwtData);
         return wcwtData;
     }
@@ -157,14 +157,14 @@ public final class WcwtToolkitStore {
         var inventory = newServerInventory(player, false);
         var legacy = terminal.isEmpty() ? null : terminal.get(ModComponents.TOOLKIT_INV.get());
         withLoadSuppressed(() -> {
-            var shared = playerData(player).getCompound(PLAYER_TOOLKIT_DATA_TAG);
+            var shared = playerData(player).getCompoundOrEmpty(PLAYER_TOOLKIT_DATA_TAG);
             // Player data without an item list (for example only remembered slots) has not been migrated yet.
-            boolean migrated = shared.contains(ITEMS_TAG, Tag.TAG_LIST);
+            boolean migrated = shared.getList(ITEMS_TAG).isPresent();
             if (migrated) {
                 readSlots(player, shared, inventory, true);
             }
             if (legacy != null) {
-                mergeLegacyToolkit(legacy.stream().toList(), inventory, stack -> returnToPlayer(player, stack));
+                mergeLegacyToolkit(legacy.allItemsCopyStream().toList(), inventory, stack -> returnToPlayer(player, stack));
                 debug("merged item-bound toolkit into player data for player={}", player);
             }
         });
@@ -217,7 +217,7 @@ public final class WcwtToolkitStore {
     private static AppEngInternalInventory loadMemory(Player player, ItemStack terminal) {
         var inventory = newServerInventory(player, true);
         withLoadSuppressed(() -> {
-            var memoryTag = playerData(player).getCompound(PLAYER_TOOLKIT_DATA_TAG).getCompound(MEMORY_TAG);
+            var memoryTag = playerData(player).getCompoundOrEmpty(PLAYER_TOOLKIT_DATA_TAG).getCompoundOrEmpty(MEMORY_TAG);
             if (!memoryTag.isEmpty()) {
                 readSlots(player, memoryTag, inventory, false);
             } else {
@@ -260,17 +260,15 @@ public final class WcwtToolkitStore {
 
     private static void saveItems(Player player, InternalInventory inventory) {
         var data = playerData(player);
-        var existing = data.getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        var existing = data.getCompoundOrEmpty(PLAYER_TOOLKIT_DATA_TAG);
         var serialized = serializeSlots(player, inventory);
-        if (existing.contains(MEMORY_TAG, Tag.TAG_COMPOUND)) {
-            serialized.put(MEMORY_TAG, existing.getCompound(MEMORY_TAG));
-        }
+        existing.getCompound(MEMORY_TAG).ifPresent(mem -> serialized.put(MEMORY_TAG, mem));
         data.put(PLAYER_TOOLKIT_DATA_TAG, serialized);
     }
 
     private static void saveMemory(Player player, InternalInventory memory) {
         var data = playerData(player);
-        var shared = data.getCompound(PLAYER_TOOLKIT_DATA_TAG);
+        var shared = data.getCompoundOrEmpty(PLAYER_TOOLKIT_DATA_TAG);
         shared.put(MEMORY_TAG, serializeSlots(player, memory));
         data.put(PLAYER_TOOLKIT_DATA_TAG, shared);
     }
@@ -279,6 +277,7 @@ public final class WcwtToolkitStore {
         CompoundTag serialized = new CompoundTag();
         serialized.putInt(SIZE_TAG, inventory.size());
         ListTag items = new ListTag();
+        var ops = player.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
         for (int slot = 0; slot < inventory.size(); slot++) {
             ItemStack stack = inventory.getStackInSlot(slot);
             if (stack.isEmpty()) {
@@ -286,7 +285,8 @@ public final class WcwtToolkitStore {
             }
             CompoundTag entry = new CompoundTag();
             entry.putInt(SLOT_TAG, slot);
-            entry.put(STACK_TAG, stack.saveOptional(player.registryAccess()));
+            ItemStack.OPTIONAL_CODEC.encodeStart(ops, stack).result()
+                    .ifPresent(tag -> entry.put(STACK_TAG, tag));
             items.add(entry);
         }
         serialized.put(ITEMS_TAG, items);
@@ -299,14 +299,16 @@ public final class WcwtToolkitStore {
      */
     private static void readSlots(Player player, CompoundTag source, AppEngInternalInventory inventory,
                                   boolean returnOverflow) {
-        ListTag items = source.getList(ITEMS_TAG, Tag.TAG_COMPOUND);
+        ListTag items = source.getListOrEmpty(ITEMS_TAG);
+        var ops = player.registryAccess().createSerializationContext(net.minecraft.nbt.NbtOps.INSTANCE);
         for (int i = 0; i < items.size(); i++) {
-            CompoundTag entry = items.getCompound(i);
-            int slot = entry.getInt(SLOT_TAG);
-            if (slot < 0 || !entry.contains(STACK_TAG, Tag.TAG_COMPOUND)) {
+            CompoundTag entry = items.getCompoundOrEmpty(i);
+            int slot = entry.getIntOr(SLOT_TAG, -1);
+            var stackTag = entry.getCompound(STACK_TAG);
+            if (slot < 0 || stackTag.isEmpty()) {
                 continue;
             }
-            ItemStack stack = ItemStack.parseOptional(player.registryAccess(), entry.getCompound(STACK_TAG));
+            ItemStack stack = ItemStack.OPTIONAL_CODEC.parse(ops, stackTag.get()).result().orElse(ItemStack.EMPTY);
             if (slot < inventory.size()) {
                 inventory.setItemDirect(slot, stack);
             } else if (returnOverflow && !stack.isEmpty() && !player.getInventory().add(stack)) {

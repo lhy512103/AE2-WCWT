@@ -12,7 +12,7 @@ import appeng.api.upgrades.Upgrades;
 import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.menu.slot.AppEngSlot;
 import de.mari_023.ae2wtlib.api.gui.UpgradeBackground;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -144,7 +144,7 @@ public class CellScrollingUpgradesPanel implements ICompositeWidget {
     }
 
     @Override
-    public void drawBackgroundLayer(GuiGraphics guiGraphics, Rect2i bounds, Point mouse) {
+    public void drawBackgroundLayer(GuiGraphicsExtractor guiGraphics, Rect2i bounds, Point mouse) {
         int slotCount = getVisibleSlotCount();
         if (!visible || slotCount <= 0) {
             return;

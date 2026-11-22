@@ -5,7 +5,7 @@ import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.widgets.AETextField;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import org.jetbrains.annotations.Nullable;
 
@@ -30,8 +30,8 @@ public final class WcwtScaledPlaceholderTextField extends AETextField {
     }
 
     @Override
-    public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.renderWidget(graphics, mouseX, mouseY, partialTick);
+    public void extractWidgetRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
+        super.extractWidgetRenderState(graphics, mouseX, mouseY, partialTick);
         if (scaledPlaceholder != null && !isFocused() && getValue().isEmpty()) {
             WcwtTextRendering.drawString(graphics, net.minecraft.client.Minecraft.getInstance().font,
                     scaledPlaceholder, getX(), getY(), placeholderColor, false);

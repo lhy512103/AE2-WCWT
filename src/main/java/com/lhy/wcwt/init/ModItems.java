@@ -5,7 +5,9 @@ import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import appeng.api.upgrades.Upgrades;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
@@ -21,10 +23,12 @@ public class ModItems {
 
     public static synchronized WirelessComprehensiveWorkTerminalItem registerWirelessComprehensiveWorkTerminal() {
         if (wirelessComprehensiveWorkTerminal == null) {
+            Identifier id = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "wireless_comprehensive_work_terminal");
+            Item.Properties properties = new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id));
             wirelessComprehensiveWorkTerminal = Registry.register(
                     BuiltInRegistries.ITEM,
-                    ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "wireless_comprehensive_work_terminal"),
-                    new WirelessComprehensiveWorkTerminalItem());
+                    id,
+                    new WirelessComprehensiveWorkTerminalItem(properties));
         }
         return wirelessComprehensiveWorkTerminal;
     }

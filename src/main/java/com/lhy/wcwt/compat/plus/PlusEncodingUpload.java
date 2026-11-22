@@ -79,7 +79,7 @@ public final class PlusEncodingUpload {
     }
 
     public static void requestReturnLastPattern() {
-        PacketDistributor.sendToServer(ReturnLastPatternC2SPacket.INSTANCE);
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(ReturnLastPatternC2SPacket.INSTANCE);
     }
 
     private static long encodeProviderIndex(List<PatternContainer> providers, PatternContainer provider) {

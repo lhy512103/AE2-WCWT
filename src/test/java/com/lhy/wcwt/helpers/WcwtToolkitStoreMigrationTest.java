@@ -18,11 +18,7 @@ import org.junit.jupiter.api.Test;
 class WcwtToolkitStoreMigrationTest {
     @BeforeAll
     static void bootstrap() {
-        SharedConstants.tryDetectVersion();
-        if (LoadingModList.get() == null) {
-            LoadingModList.of(List.of(), List.of(), List.of(), List.of(), Map.of());
-        }
-        Bootstrap.bootStrap();
+        com.lhy.wcwt.TestBootstrap.ensure();
     }
 
     @Test

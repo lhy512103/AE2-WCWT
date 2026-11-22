@@ -2,7 +2,7 @@
   "required": true,
   "minVersion": "0.8",
   "package": "com.lhy.wcwt.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
     "WcwtNetworkToolItemMixin",
     "WcwtRemoteMenuMixin",
@@ -16,8 +16,7 @@
   ],
   "client": [
     "GuiMixin",
-    "WcwtMinecraftPickBlockMixin",
-    "WcwtEmiRecipeDisplayMixin"
+    "WcwtMinecraftPickBlockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

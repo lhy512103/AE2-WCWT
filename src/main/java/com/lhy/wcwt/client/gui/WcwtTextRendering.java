@@ -6,7 +6,7 @@ import appeng.client.gui.style.ScreenStyle;
 import appeng.client.gui.style.Text;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 
 import java.util.IdentityHashMap;
@@ -57,31 +57,41 @@ public final class WcwtTextRendering {
         return style;
     }
 
-    public static int drawString(GuiGraphics graphics, Font font, Component text,
+    private static int ensureOpaqueArgb(int color) {
+        return (color & 0xFF000000) == 0 ? (0xFF000000 | color) : color;
+    }
+
+    public static int drawString(GuiGraphicsExtractor graphics, Font font, Component text,
                                  float x, float y, int color, boolean shadow) {
+        int argb = ensureOpaqueArgb(color);
+        int width = font.width(text);
         if (!isEnglish()) {
-            return graphics.drawString(font, text, Math.round(x), Math.round(y), color, shadow);
+            graphics.text(font, text, Math.round(x), Math.round(y), argb, shadow);
+            return width;
         }
         var pose = graphics.pose();
-        pose.pushPose();
-        pose.translate(x, y, 0);
-        pose.scale(ENGLISH_SCALE, ENGLISH_SCALE, 1.0F);
-        int width = graphics.drawString(font, text, 0, 0, color, shadow);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(x, y);
+        pose.scale(ENGLISH_SCALE, ENGLISH_SCALE);
+        graphics.text(font, text, 0, 0, argb, shadow);
+        pose.popMatrix();
         return Math.round(width * ENGLISH_SCALE);
     }
 
-    public static int drawString(GuiGraphics graphics, Font font, String text,
+    public static int drawString(GuiGraphicsExtractor graphics, Font font, String text,
                                  float x, float y, int color, boolean shadow) {
+        int argb = ensureOpaqueArgb(color);
+        int width = font.width(text);
         if (!isEnglish()) {
-            return graphics.drawString(font, text, Math.round(x), Math.round(y), color, shadow);
+            graphics.text(font, text, Math.round(x), Math.round(y), argb, shadow);
+            return width;
         }
         var pose = graphics.pose();
-        pose.pushPose();
-        pose.translate(x, y, 0);
-        pose.scale(ENGLISH_SCALE, ENGLISH_SCALE, 1.0F);
-        int width = graphics.drawString(font, text, 0, 0, color, shadow);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(x, y);
+        pose.scale(ENGLISH_SCALE, ENGLISH_SCALE);
+        graphics.text(font, text, 0, 0, argb, shadow);
+        pose.popMatrix();
         return Math.round(width * ENGLISH_SCALE);
     }
 }

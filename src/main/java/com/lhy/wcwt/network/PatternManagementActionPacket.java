@@ -21,7 +21,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.item.ItemStack;
@@ -60,7 +60,7 @@ public record PatternManagementActionPacket(Action action,
     }
 
     public static final Type<PatternManagementActionPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_action"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_action"));
 
     public static final StreamCodec<ByteBuf, PatternManagementActionPacket> STREAM_CODEC = StreamCodec.of(
             (buf, packet) -> {
@@ -211,7 +211,7 @@ public record PatternManagementActionPacket(Action action,
         }
         var providers = listProviders(player);
         if (providers.isEmpty()) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"));
             return;
         }
 
@@ -239,7 +239,7 @@ public record PatternManagementActionPacket(Action action,
         InsertResult result = insertPatternIntoProviderGroup(buildSameNameTryList(providers, provider), sourceStack);
         int inserted = result.inserted();
         if (inserted <= 0) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.upload_failed"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.upload_failed"));
             return;
         }
 
@@ -262,7 +262,7 @@ public record PatternManagementActionPacket(Action action,
         var providers = listProviders(player);
         var provider = getProviderById(providers, providerId);
         if (provider == null) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"));
             return;
         }
         logDebug("upload cache target providerId={}, targetName={}, cacheSize={}",
@@ -294,18 +294,18 @@ public record PatternManagementActionPacket(Action action,
         }
 
         if (!foundPattern) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.no_pattern"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.no_pattern"));
         } else if (insertedTotal > 0) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.uploaded"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.uploaded"));
         } else {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.upload_failed"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.upload_failed"));
         }
     }
 
     private static void openProviderUi(ServerPlayer player, PatternManagementActionPacket packet) {
         ResolvedProvider resolved = resolveProvider(player, packet);
         if (resolved == null) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.provider_missing"));
             return;
         }
 
@@ -315,18 +315,18 @@ public record PatternManagementActionPacket(Action action,
                 player.getScoreboardName(),
                 packet.providerId(),
                 resolved.provider.getClass().getName(),
-                location.level != null ? location.level.dimension().location() : "null",
+                location.level != null ? location.level.dimension().identifier() : "null",
                 location.pos,
                 location.face);
         if (location.pos == null || location.level == null) {
-            player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.provider_location_missing"), true);
+            player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.provider_location_missing"));
             return;
         }
 
         if (tryOpenTarget(player, resolved.provider, location.level, location.pos, location.face)) {
             return;
         }
-        player.displayClientMessage(Component.translatable("gui.wcwt.pattern_management.open_ui_failed"), true);
+        player.sendOverlayMessage(Component.translatable("gui.wcwt.pattern_management.open_ui_failed"));
     }
 
     private static ResolvedProvider resolveProvider(ServerPlayer player, PatternManagementActionPacket packet) {
@@ -361,12 +361,12 @@ public record PatternManagementActionPacket(Action action,
         if (!packet.hasProviderLocation) {
             return null;
         }
-        ResourceLocation dimensionId = ResourceLocation.tryParse(packet.providerDimensionId);
+        Identifier dimensionId = Identifier.tryParse(packet.providerDimensionId);
         if (dimensionId == null) {
             return null;
         }
         ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, dimensionId);
-        ServerLevel level = player.server.getLevel(dimension);
+        ServerLevel level = player.level().getServer().getLevel(dimension);
         if (level == null) {
             return null;
         }
@@ -447,7 +447,7 @@ public record PatternManagementActionPacket(Action action,
         boolean opened = WcwtRemoteMenuAccess.trackOpenedMenu(player, previousMenu, level, targetPos);
         logProviderUi(
                 "WCWT provider ui: used target level={}, pos={}, block={}, result={}, opened={}",
-                level.dimension().location(),
+                level.dimension().identifier(),
                 targetPos,
                 state.getBlock().getDescriptionId(),
                 result,

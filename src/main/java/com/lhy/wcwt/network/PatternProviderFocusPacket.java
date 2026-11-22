@@ -7,14 +7,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record PatternProviderFocusPacket(long providerId, int slot) implements CustomPacketPayload {
     public static final Type<PatternProviderFocusPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_focus"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_focus"));
 
     public static final StreamCodec<ByteBuf, PatternProviderFocusPacket> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_LONG,

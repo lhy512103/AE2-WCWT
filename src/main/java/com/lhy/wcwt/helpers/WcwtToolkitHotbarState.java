@@ -45,7 +45,7 @@ public final class WcwtToolkitHotbarState {
     }
 
     public static int getSlot(Player player) {
-        return Math.floorMod(player.getInventory().selected, WcwtToolkitAccess.HOTBAR_SIZE);
+        return Math.floorMod(player.getInventory().getSelectedSlot(), WcwtToolkitAccess.HOTBAR_SIZE);
     }
 
     public static boolean isToolkitSelected(Player player) {
@@ -72,9 +72,9 @@ public final class WcwtToolkitHotbarState {
     /** A selection the client already made and shows; not echoed back. */
     public static void applyClientSelection(ServerPlayer player, Bar bar, int slot) {
         Bar before = getBar(player);
-        int slotBefore = player.getInventory().selected;
+        int slotBefore = player.getInventory().getSelectedSlot();
         applySelection(player, bar, slot, false);
-        if ((before != getBar(player) || slotBefore != player.getInventory().selected)
+        if ((before != getBar(player) || slotBefore != player.getInventory().getSelectedSlot())
                 && player.isUsingItem() && player.getUsedItemHand() == InteractionHand.MAIN_HAND) {
             player.stopUsingItem();
         }
@@ -82,7 +82,7 @@ public final class WcwtToolkitHotbarState {
 
     private static void applySelection(Player player, Bar bar, int slot, boolean notifyClient) {
         var state = state(player);
-        player.getInventory().selected = Math.floorMod(slot, WcwtToolkitAccess.HOTBAR_SIZE);
+        player.getInventory().setSelectedSlot(Math.floorMod(slot, WcwtToolkitAccess.HOTBAR_SIZE));
         Bar target = bar == Bar.CENTER || !state.hasCard ? Bar.CENTER : bar;
         if (state.page != target) {
             state.page = target;

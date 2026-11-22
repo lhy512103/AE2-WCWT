@@ -1,8 +1,10 @@
 package com.lhy.wcwt.network;
 
 import com.lhy.wcwt.WcwtMod;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
@@ -11,6 +13,10 @@ import net.neoforged.neoforge.network.registration.PayloadRegistrar;
  */
 @EventBusSubscriber(modid = WcwtMod.MOD_ID)
 public class WcwtPackets {
+
+    public static void sendToServer(CustomPacketPayload payload) {
+        ClientPacketDistributor.sendToServer(payload);
+    }
     
     @SubscribeEvent
     public static void register(RegisterPayloadHandlersEvent event) {

@@ -5,7 +5,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -16,7 +16,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record CopyPatternPacket() implements CustomPacketPayload {
 
     public static final Type<CopyPatternPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "copy_pattern"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "copy_pattern"));
 
     public static final StreamCodec<FriendlyByteBuf, CopyPatternPacket> STREAM_CODEC =
             StreamCodec.unit(new CopyPatternPacket());

@@ -9,11 +9,11 @@ import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class Ae2JeiIntegrationCompat {
-    /** Set once the AE2 JEI Integration API fails to link. */
     private static volatile boolean broken;
     private static final String MOD_ID = "ae2jeiintegration";
 
@@ -33,10 +33,7 @@ public final class Ae2JeiIntegrationCompat {
         if (raw instanceof ItemStack || raw instanceof FluidStack) {
             return null;
         }
-        if (!available()) {
-            return null;
-        }
-        if (broken) {
+        if (!available() || broken) {
             return null;
         }
         return Impl.convert(ingredient);
@@ -45,44 +42,57 @@ public final class Ae2JeiIntegrationCompat {
     private static final class Impl {
         private static final Map<IIngredientType<?>, Object> CONVERTERS = new ConcurrentHashMap<>();
         private static final Object MISSING = new Object();
+        private static volatile Method getConverterMethod;
+        private static volatile Method getStackMethod;
+        private static volatile boolean initialized;
 
         private Impl() {
         }
 
+        private static void ensureInit() {
+            if (initialized) {
+                return;
+            }
+            initialized = true;
+            try {
+                Class<?> convertersClass = Class.forName("tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverters");
+                Class<?> converterClass = Class.forName("tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverter");
+                getConverterMethod = convertersClass.getMethod("getConverter", IIngredientType.class);
+                getStackMethod = converterClass.getMethod("getStackFromIngredient", Object.class);
+            } catch (Throwable e) {
+                broken = true;
+                WcwtMod.LOGGER.warn("WCWT: AE2 JEI Integration ingredient conversion disabled, its API changed", e);
+            }
+        }
+
         @Nullable
         static GenericStack convert(ITypedIngredient<?> ingredient) {
+            ensureInit();
+            if (broken || getConverterMethod == null || getStackMethod == null) {
+                return null;
+            }
             try {
-                return convertTyped(ingredient);
+                IIngredientType<?> type = ingredient.getType();
+                Object cached = CONVERTERS.get(type);
+                if (cached == MISSING) {
+                    return null;
+                }
+                if (cached == null) {
+                    cached = getConverterMethod.invoke(null, type);
+                    CONVERTERS.put(type, cached == null ? MISSING : cached);
+                    if (cached == null) {
+                        return null;
+                    }
+                }
+                Object stack = getStackMethod.invoke(cached, ingredient.getIngredient());
+                return stack instanceof GenericStack gs ? gs : null;
             } catch (LinkageError e) {
-                // Asked for every slot of every previewed recipe each tick: stop after the API fails to link.
                 broken = true;
                 WcwtMod.LOGGER.warn("WCWT: AE2 JEI Integration ingredient conversion disabled, its API changed", e);
                 return null;
-            } catch (RuntimeException ignored) {
+            } catch (Throwable ignored) {
                 return null;
             }
-        }
-
-        @Nullable
-        private static <T> GenericStack convertTyped(ITypedIngredient<T> ingredient) {
-            var converter = converterFor(ingredient.getType());
-            return converter == null ? null : converter.getStackFromIngredient(ingredient.getIngredient());
-        }
-
-        @Nullable
-        @SuppressWarnings("unchecked")
-        private static <T> tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverter<T> converterFor(
-                IIngredientType<T> type) {
-            var cached = CONVERTERS.get(type);
-            if (cached == MISSING) {
-                return null;
-            }
-            if (cached instanceof tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverter<?> converter) {
-                return (tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverter<T>) converter;
-            }
-            var converter = tamaized.ae2jeiintegration.api.integrations.jei.IngredientConverters.getConverter(type);
-            CONVERTERS.put(type, converter == null ? MISSING : converter);
-            return converter;
         }
     }
 }

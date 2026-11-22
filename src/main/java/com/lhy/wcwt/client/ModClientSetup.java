@@ -5,7 +5,7 @@ import com.lhy.wcwt.compat.WcwtPolymorphClientCompat;
 import com.lhy.wcwt.compat.jei.WcwtJeiBookmarkKeys;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.init.ModMenus;
-import appeng.init.client.InitScreens;
+import appeng.client.InitScreens;
 import com.lhy.wcwt.network.OpenTerminalHotkeyPacket;
 import com.lhy.wcwt.network.OpenToolkitHotkeyPacket;
 import net.minecraft.client.Minecraft;
@@ -36,6 +36,7 @@ public class ModClientSetup {
 
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
+        event.registerCategory(WcwtKeybindings.CATEGORY);
         event.register(WcwtKeybindings.OPEN_ADVANCED_CODING);
         event.register(WcwtKeybindings.OPEN_COSMETIC_ARMOR);
         event.register(WcwtKeybindings.OPEN_CURIOS);
@@ -64,7 +65,7 @@ public class ModClientSetup {
             event.setCanceled(true);
             return;
         }
-        if (WcwtKeybindings.TOGGLE_FAVORITE_ITEM.matches(event.getKeyCode(), event.getScanCode())
+        if (WcwtKeybindings.TOGGLE_FAVORITE_ITEM.matches(event.getKeyEvent())
                 && screen.toggleFavoriteForHoveredRepoSlot()) {
             event.setCanceled(true);
             return;
@@ -94,14 +95,14 @@ public class ModClientSetup {
             return;
         }
         while (WcwtKeybindings.OPEN_INDEPENDENT_TERMINAL.consumeClick()) {
-            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new OpenTerminalHotkeyPacket());
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new OpenTerminalHotkeyPacket());
         }
         while (WcwtKeybindings.OPEN_TOOLKIT.consumeClick()) {
             if (DEBUG_TOOLKIT) {
                 WcwtMod.LOGGER.info("WCWT toolkit debug: sending OpenToolkitHotkeyPacket, screen={}",
                         minecraft.screen == null ? "<null>" : minecraft.screen.getClass().getName());
             }
-            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new OpenToolkitHotkeyPacket());
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new OpenToolkitHotkeyPacket());
         }
     }
 

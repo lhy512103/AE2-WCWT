@@ -41,7 +41,7 @@ public class WcwtCraftingRecipeTransferHandler
     }
 
     @Override
-    public mezz.jei.api.recipe.RecipeType<RecipeHolder<CraftingRecipe>> getRecipeType() {
+    public mezz.jei.api.recipe.types.IRecipeType<RecipeHolder<CraftingRecipe>> getRecipeType() {
         return RecipeTypes.CRAFTING;
     }
 
@@ -60,18 +60,19 @@ public class WcwtCraftingRecipeTransferHandler
             return transferHelper.createInternalError();
         }
 
-        if (recipe.getIngredients().isEmpty()) {
+        if (recipe.placementInfo().isImpossibleToPlace()) {
             return transferHelper.createUserErrorWithTooltip(ItemModText.INCOMPATIBLE_RECIPE.text());
         }
 
-        if (!recipe.canCraftInDimensions(3, 3)) {
+        if (recipe instanceof net.minecraft.world.item.crafting.ShapedRecipe shaped
+                && (shaped.getWidth() > 3 || shaped.getHeight() > 3)) {
             return transferHelper.createUserErrorWithTooltip(ItemModText.RECIPE_TOO_LARGE.text());
         }
 
         if (doTransfer) {
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.CRAFTING);
             WcwtRecipeTransferHandler.updateEaepProviderSearchKey(recipeHolder, recipe, EncodingMode.CRAFTING);
-            PacketDistributor.sendToServer(new JeiCraftingTransferPacket(
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new JeiCraftingTransferPacket(
                     WcwtRecipeTransferHandler.collectCraftingLikeInputs(
                             menu, recipeHolder, recipe, recipeSlots, EncodingMode.CRAFTING),
                     java.util.List.of(),

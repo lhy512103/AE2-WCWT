@@ -23,16 +23,16 @@ public final class WcwtComponentIngredientEncoding {
     }
 
     public static boolean isPartialComponentIngredient(Ingredient ingredient) {
-        return ingredient.getCustomIngredient() instanceof DataComponentIngredient components && !components.isStrict();
+        return ingredient.getCustomIngredient() instanceof DataComponentIngredient components && !components.componentsExhaustive();
     }
 
     public static Supplier<List<ItemStack>> recipeResults(@Nullable Level level) {
-        return Suppliers.memoize(() -> level == null ? List.of()
-                : level.getRecipeManager().getAllRecipesFor(RecipeType.CRAFTING).stream()
+        return Suppliers.memoize(() -> !(level instanceof net.minecraft.server.level.ServerLevel serverLevel) ? List.of()
+                : serverLevel.recipeAccess().recipeMap().byType(RecipeType.CRAFTING).stream()
                         .filter(holder -> holder.value().getClass() == ShapedRecipe.class
                                 || holder.value().getClass() == ShapelessRecipe.class)
-                        .sorted(Comparator.comparing(holder -> holder.id().toString()))
-                        .map(holder -> holder.value().getResultItem(level.registryAccess()))
+                        .sorted(Comparator.comparing(holder -> holder.id().identifier().toString()))
+                        .map(holder -> appeng.util.CraftingRecipeUtil.getResult(holder.value()))
                         .toList());
     }
 
@@ -71,8 +71,8 @@ public final class WcwtComponentIngredientEncoding {
                 return visible.copyWithCount(1);
             }
         }
-        ItemStack[] examples = ingredient.getItems();
-        return examples.length == 0 ? ItemStack.EMPTY : examples[0].copyWithCount(1);
+        var first = ingredient.items().findFirst();
+        return first.isEmpty() ? ItemStack.EMPTY : new ItemStack(first.get().value(), 1);
     }
 
     private static ItemStack preferred(@Nullable Map<AEKey, Integer> priorities, Ingredient ingredient) {

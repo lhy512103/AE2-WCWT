@@ -2,17 +2,17 @@ package com.lhy.wcwt.client.gui.panels;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * 工具包面板
  * 工具包收纳区，布局/滑块坐标由 JSON 软编码。
  */
 public class ToolkitPanel extends ExtendedUIPanel {
-    private static final ResourceLocation PANEL_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_curios.png");
+    private static final Identifier PANEL_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_curios.png");
 
     public static final int SLOT_SIZE = 18;
     public static final int VISIBLE_ROWS = 9;
@@ -50,12 +50,12 @@ public class ToolkitPanel extends ExtendedUIPanel {
     }
 
     @Override
-    protected void renderBackground(GuiGraphics guiGraphics) {
+    protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
         guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
     }
 
     @Override
-    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         var font = Minecraft.getInstance().font;
         WcwtTextRendering.drawString(guiGraphics, font,
                 Component.translatable("gui.wcwt.extended_ui.toolkit"),

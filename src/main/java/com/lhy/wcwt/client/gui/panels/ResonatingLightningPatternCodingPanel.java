@@ -1,6 +1,6 @@
 package com.lhy.wcwt.client.gui.panels;
 
-import appeng.client.gui.Icon;
+import appeng.util.Icon;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.Scrollbar;
 import com.lhy.wcwt.client.gui.widgets.IconButton;
@@ -14,10 +14,12 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import net.minecraft.util.Mth;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
@@ -35,12 +37,12 @@ import java.util.function.Supplier;
 public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel implements ITooltip {
     private static final boolean HAS_AE2LT = ModList.get().isLoaded("ae2lt");
     private static final boolean HAS_AE2CS = ModList.get().isLoaded("ae2cs");
-    private static final ResourceLocation PANEL_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_resonating_lightning_pattern_coding.png");
-    private static final ResourceLocation AE2LT_ENCODER_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2lt", "textures/gui/ae2lt_pattern_encoder.png");
-    private static final ResourceLocation AE2_CHECKBOX_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
+    private static final Identifier PANEL_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_resonating_lightning_pattern_coding.png");
+    private static final Identifier AE2LT_ENCODER_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2lt", "textures/gui/ae2lt_pattern_encoder.png");
+    private static final Identifier AE2_CHECKBOX_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
 
     private static final int PANEL_WIDTH = 134;
     private static final int PANEL_HEIGHT = 186;
@@ -110,7 +112,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
                     0, 0, 0, 0, 1, 1,
                     STATES_TEXTURE,
                     Component.translatable("gui.wcwt.rlpc.resonating_convert"),
-                    btn -> PacketDistributor.sendToServer(new ResonatingLightningPatternActionPacket(
+                    btn -> com.lhy.wcwt.network.WcwtPackets.sendToServer(new ResonatingLightningPatternActionPacket(
                             ResonatingLightningPatternActionPacket.Action.CONVERT_TO_RESONATING,
                             new int[0], new int[0])))
                     .useAE2ToolbarBackground()
@@ -139,12 +141,12 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     }
 
     @Override
-    protected void renderBackground(GuiGraphics guiGraphics) {
+    protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
         guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
     }
 
     @Override
-    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         var menu = getMenu();
         if (menu == null) {
             return;
@@ -180,7 +182,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         lightningScrollbar.setRange(0, max, 1);
     }
 
-    private void renderLightningEntries(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+    private void renderLightningEntries(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         var entries = cachedEntries;
         int start = Math.min(lightningScrollbar.getCurrentScroll(), Math.max(0, entries.size() - LIGHTNING_VISIBLE_ROWS));
         int end = Math.min(entries.size(), start + LIGHTNING_VISIBLE_ROWS);
@@ -190,13 +192,13 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
             int rowY = y + lightningArea.top() + visibleRow * LIGHTNING_ROW_HEIGHT + LIGHTNING_ENTRY_CONTENT_OFFSET_Y;
             int slotX = x + LIGHTNING_SLOT_X;
             ItemStack stack = entry.stack();
-            guiGraphics.blit(AE2LT_ENCODER_TEXTURE, slotX, rowY,
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, AE2LT_ENCODER_TEXTURE, slotX, rowY,
                     LIGHTNING_SLOT_U, LIGHTNING_SLOT_V,
                     LIGHTNING_SLOT_SIZE, LIGHTNING_SLOT_SIZE,
                     AE2LT_TEXTURE_SIZE, AE2LT_TEXTURE_SIZE);
             if (!stack.isEmpty()) {
-                guiGraphics.renderItem(stack, slotX + 1, rowY + 1);
-                guiGraphics.renderItemDecorations(Minecraft.getInstance().font, stack, slotX + 1, rowY + 1);
+                guiGraphics.item(stack, slotX + 1, rowY + 1);
+                guiGraphics.itemDecorations(Minecraft.getInstance().font, stack, slotX + 1, rowY + 1);
             }
             WcwtTextRendering.drawString(guiGraphics, Minecraft.getInstance().font,
                     entry.label(), x + LIGHTNING_TEXT_X, rowY + 5, WcwtTextRendering.defaultTextColor(), false);
@@ -205,21 +207,21 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         renderLightningScrollbar(guiGraphics);
     }
 
-    private void renderModeSwitch(GuiGraphics guiGraphics, OverloadViewEntry entry, int rowY) {
+    private void renderModeSwitch(GuiGraphicsExtractor guiGraphics, OverloadViewEntry entry, int rowY) {
         int switchX = x + LIGHTNING_SWITCH_X;
-        guiGraphics.blit(AE2_CHECKBOX_TEXTURE,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, AE2_CHECKBOX_TEXTURE,
                 switchX, rowY + 3,
                 AE2_CHECKBOX_U, entry.idOnly() ? AE2_CHECKBOX_V_ON : AE2_CHECKBOX_V_OFF,
                 LIGHTNING_SWITCH_W, LIGHTNING_SWITCH_H,
                 AE2_CHECKBOX_TEXTURE_SIZE, AE2_CHECKBOX_TEXTURE_SIZE);
     }
 
-    private void renderLightningScrollbar(GuiGraphics guiGraphics) {
+    private void renderLightningScrollbar(GuiGraphicsExtractor guiGraphics) {
         int trackX = x + lightningScrollbarRect.left();
         int trackY = y + lightningScrollbarRect.top() - 1;
         int maxScroll = Math.max(0, cachedEntries.size() - LIGHTNING_VISIBLE_ROWS);
         if (maxScroll <= 0) {
-            guiGraphics.blit(AE2LT_ENCODER_TEXTURE, trackX, trackY,
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, AE2LT_ENCODER_TEXTURE, trackX, trackY,
                     LIGHTNING_SLIDER_U, LIGHTNING_SLIDER_V,
                     LIGHTNING_SLIDER_W, LIGHTNING_SLIDER_H,
                     AE2LT_TEXTURE_SIZE, AE2LT_TEXTURE_SIZE);
@@ -228,7 +230,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
         int travel = lightningScrollbarRect.height() - LIGHTNING_SLIDER_H + 1;
         int sliderY = trackY + Math.round((lightningScrollbar.getCurrentScroll() / (float) maxScroll) * travel);
-        guiGraphics.blit(AE2LT_ENCODER_TEXTURE, trackX, sliderY,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, AE2LT_ENCODER_TEXTURE, trackX, sliderY,
                 LIGHTNING_SLIDER_U, LIGHTNING_SLIDER_V,
                 LIGHTNING_SLIDER_W, LIGHTNING_SLIDER_H,
                 AE2LT_TEXTURE_SIZE, AE2LT_TEXTURE_SIZE);
@@ -286,10 +288,13 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
         if (!visible) {
             return false;
         }
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (HAS_AE2LT && button == 0 && isWithinScrollbar(mouseX, mouseY)) {
             draggingScrollbar = true;
             updateScrollbarFromMouse(mouseY);
@@ -306,22 +311,22 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
             }
         }
 
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, isDoubleClick);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
         draggingScrollbar = false;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (HAS_AE2LT && draggingScrollbar) {
-            updateScrollbarFromMouse(mouseY);
+            updateScrollbarFromMouse(event.y());
             return true;
         }
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     private boolean isWithinScrollbar(double mouseX, double mouseY) {
@@ -468,7 +473,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
         if (!HAS_AE2LT) {
             return;
         }
-        PacketDistributor.sendToServer(new ResonatingLightningPatternActionPacket(
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new ResonatingLightningPatternActionPacket(
                 ResonatingLightningPatternActionPacket.Action.CONVERT_TO_OVERLOAD,
                 inputIdOnlySlots.stream().mapToInt(Integer::intValue).sorted().toArray(),
                 outputIdOnlySlots.stream().mapToInt(Integer::intValue).sorted().toArray()));

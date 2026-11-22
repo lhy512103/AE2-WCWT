@@ -20,7 +20,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -42,7 +42,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
             new java.util.concurrent.atomic.AtomicBoolean();
 
     public static final Type<PatternProviderListPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list"));
 
     // 解码侧防御上限：必须 ≥ 配置允许的最大值（编码条目数由配置在服务端截断）。
     private static final StreamCodec<RegistryFriendlyByteBuf, Int2ObjectMap<ItemStack>> SLOTS_CODEC =
@@ -119,7 +119,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
 
     public record Request(boolean subscribe, String searchText) implements CustomPacketPayload {
         public static final Type<Request> TYPE =
-                new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list_request"));
+                new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_provider_list_request"));
         public static final StreamCodec<ByteBuf, Request> STREAM_CODEC = StreamCodec.composite(
                 ByteBufCodecs.BOOL,
                 Request::subscribe,

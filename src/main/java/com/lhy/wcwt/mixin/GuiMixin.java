@@ -7,8 +7,8 @@ import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import org.spongepowered.asm.mixin.Final;
@@ -26,11 +26,11 @@ public class GuiMixin {
     @Shadow
     private Minecraft minecraft;
 
-    @Inject(method = "renderSlot(Lnet/minecraft/client/gui/GuiGraphics;IILnet/minecraft/client/DeltaTracker;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/item/ItemStack;I)V",
+    @Inject(method = "extractSlot(Lnet/minecraft/client/gui/GuiGraphicsExtractor;IILnet/minecraft/client/DeltaTracker;Lnet/minecraft/world/entity/player/Player;Lnet/minecraft/world/item/ItemStack;I)V",
             at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/client/gui/GuiGraphics;renderItemDecorations(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;II)V"),
+                    target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;itemDecorations(Lnet/minecraft/client/gui/Font;Lnet/minecraft/world/item/ItemStack;II)V"),
             cancellable = true)
-    public void wcwt$restockOverlay(GuiGraphics guiGraphics, int x, int y, DeltaTracker deltaTracker, Player player,
+    public void wcwt$restockOverlay(GuiGraphicsExtractor guiGraphics, int x, int y, DeltaTracker deltaTracker, Player player,
                                     ItemStack stack, int seed, CallbackInfo ci) {
         if (Minecraft.getInstance().player == null || Minecraft.getInstance().player.isCreative()
                 || !WcwtRestockState.shouldRender(stack)) {
@@ -40,14 +40,16 @@ public class GuiMixin {
         if (number.startsWith(",")) {
             number = 0 + number;
         }
-        guiGraphics.renderItemDecorations(minecraft.font, stack, x, y, number);
+        guiGraphics.itemDecorations(minecraft.font, stack, x, y, number);
         ci.cancel();
     }
 
-    @WrapWithCondition(method = "renderItemHotbar", at = @At(
+    @WrapWithCondition(method = "extractItemHotbar", at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/gui/GuiGraphics;blitSprite(Lnet/minecraft/resources/ResourceLocation;IIII)V"))
-    private boolean wcwt$skipVanillaHotbarSelection(GuiGraphics graphics, ResourceLocation sprite, int x, int y,
+            target = "Lnet/minecraft/client/gui/GuiGraphicsExtractor;blitSprite(Lcom/mojang/blaze3d/pipeline/RenderPipeline;Lnet/minecraft/resources/Identifier;IIII)V"))
+    private boolean wcwt$skipVanillaHotbarSelection(GuiGraphicsExtractor graphics,
+                                                    com.mojang.blaze3d.pipeline.RenderPipeline pipeline,
+                                                    Identifier sprite, int x, int y,
                                                     int width, int height) {
         if (!WcwtToolkitHud.HOTBAR_SELECTION_SPRITE.equals(sprite)) {
             return true;

@@ -8,7 +8,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
+import net.minecraft.util.TriState;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import net.neoforged.neoforge.event.entity.player.ArrowLooseEvent;
 import net.neoforged.neoforge.event.entity.player.ArrowNockEvent;
@@ -107,7 +107,7 @@ public class WcwtWirelessFeatureEvents {
             return;
         }
 
-        for (ItemStack leftover : leftovers.nonEmptyItems()) {
+        for (ItemStack leftover : leftovers.nonEmptyItemCopyStream().toList()) {
             ItemStack returned = leftover.copy();
             if (!player.addItem(returned)) {
                 player.drop(returned, false);

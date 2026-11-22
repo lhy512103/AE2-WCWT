@@ -5,7 +5,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record ResonatingLightningPatternActionPacket(Action action, int[] inputIdOnlySlots, int[] outputIdOnlySlots)
@@ -17,7 +17,7 @@ public record ResonatingLightningPatternActionPacket(Action action, int[] inputI
     }
 
     public static final Type<ResonatingLightningPatternActionPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "resonating_lightning_pattern_action"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "resonating_lightning_pattern_action"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ResonatingLightningPatternActionPacket> STREAM_CODEC =
             StreamCodec.ofMember(ResonatingLightningPatternActionPacket::write, ResonatingLightningPatternActionPacket::read);

@@ -5,7 +5,7 @@ import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.List;
 
@@ -23,21 +23,21 @@ public record WcwtEncodingRecipeTransferError(List<IRecipeSlotView> craftableSlo
     }
 
     @Override
-    public void showError(GuiGraphics guiGraphics,
+    public void showError(GuiGraphicsExtractor guiGraphics,
                           int mouseX,
                           int mouseY,
                           IRecipeSlotsView recipeSlotsView,
                           int recipeX,
                           int recipeY) {
         var poseStack = guiGraphics.pose();
-        poseStack.pushPose();
-        poseStack.translate(recipeX, recipeY, 400);
+        poseStack.pushMatrix();
+        poseStack.translate(recipeX, recipeY);
         try {
             for (IRecipeSlotView slotView : craftableSlots) {
                 slotView.drawHighlight(guiGraphics, TransferHelper.BLUE_SLOT_HIGHLIGHT_COLOR);
             }
         } finally {
-            poseStack.popPose();
+            poseStack.popMatrix();
         }
     }
 

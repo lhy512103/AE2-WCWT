@@ -7,7 +7,7 @@ import java.util.WeakHashMap;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
@@ -54,8 +54,8 @@ public final class WcwtPullRecipeTransfer {
         if (WcwtRecipeTransferHandler.shouldSkipTransferAnalysis(recipeIgnored)) {
             return null;
         }
-        boolean effectiveMaxTransfer = allowShiftMaxTransfer && (maxTransfer || Screen.hasShiftDown());
-        boolean craftMissing = Screen.hasControlDown();
+        boolean effectiveMaxTransfer = allowShiftMaxTransfer && (maxTransfer || Minecraft.getInstance().hasShiftDown());
+        boolean craftMissing = Minecraft.getInstance().hasControlDown();
 
         if (!doTransfer) {
             if (hasAnyInput(recipeSlots)) {
@@ -77,7 +77,7 @@ public final class WcwtPullRecipeTransfer {
                     Component.translatable("message.wcwt.pull_no_inputs"));
         }
 
-        PacketDistributor.sendToServer(new WcwtPullRecipeInputsPacket(effectiveMaxTransfer, craftMissing, requestedIngredients,
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new WcwtPullRecipeInputsPacket(effectiveMaxTransfer, craftMissing, requestedIngredients,
                 menu.getManualWorkspaceMode().ordinal()));
         if (craftMissing && WcwtRecipeTransferHandler.getTransferMode(recipeIgnored, recipeSlots) == EncodingMode.CRAFTING) {
             Recipe<?> recipe = recipeIgnored instanceof RecipeHolder<?> holder ? holder.value()
@@ -181,8 +181,9 @@ public final class WcwtPullRecipeTransfer {
     private static boolean computeFlags(MEStorageMenu container, List<IRecipeSlotView> inputs, byte[] flags,
             boolean processing) {
         var reservedTerminalAmounts = new Object2IntOpenHashMap<AEItemKey>();
-        var playerItems = container.getPlayerInventory().items;
-        var reservedPlayerItems = new int[playerItems.size()];
+        var playerInv = container.getPlayerInventory();
+        int invSize = net.minecraft.world.entity.player.Inventory.INVENTORY_SIZE;
+        var reservedPlayerItems = new int[invSize];
         var repoIndex = WcwtStackMatching.ClientRepoIndex.of(container);
         boolean anyResolved = false;
 
@@ -192,7 +193,10 @@ public final class WcwtPullRecipeTransfer {
             if (alternatives.isEmpty()) {
                 continue;
             }
-            Ingredient ingredient = Ingredient.of(alternatives.stream().map(ItemStack::copy));
+            Ingredient ingredient = com.lhy.wcwt.pull.WcwtMeIngredientExtraction.ingredientFromItemStacks(alternatives);
+            if (ingredient == null) {
+                continue;
+            }
 
             int maxStackSize = alternatives.stream().mapToInt(ItemStack::getMaxStackSize).max().orElse(64);
             int requiredCount = processing
@@ -201,12 +205,12 @@ public final class WcwtPullRecipeTransfer {
             int remaining = requiredCount;
             boolean craftable = false;
 
-            for (int slot = 0; slot < playerItems.size() && remaining > 0; slot++) {
+            for (int slot = 0; slot < invSize && remaining > 0; slot++) {
                 if (container.isPlayerInventorySlotLocked(slot)) {
                     continue;
                 }
 
-                var stack = playerItems.get(slot);
+                var stack = playerInv.getItem(slot);
                 int available = stack.getCount() - reservedPlayerItems[slot];
                 if (available <= 0 || !WcwtStackMatching.matchesAnyAlternative(stack, alternatives, ingredient)) {
                     continue;
@@ -258,10 +262,11 @@ public final class WcwtPullRecipeTransfer {
     }
 
     private static int playerInventoryHash(MEStorageMenu container) {
-        var items = container.getPlayerInventory().items;
+        var playerInv = container.getPlayerInventory();
+        int invSize = net.minecraft.world.entity.player.Inventory.INVENTORY_SIZE;
         int h = 1;
-        for (int slot = 0; slot < items.size(); slot++) {
-            var stack = items.get(slot);
+        for (int slot = 0; slot < invSize; slot++) {
+            var stack = playerInv.getItem(slot);
             long stackHash = stack.isEmpty() ? 0L : ItemStack.hashItemAndComponents(stack);
             h = 31 * h + Long.hashCode(stackHash);
             h = 31 * h + stack.getCount();
@@ -305,7 +310,10 @@ public final class WcwtPullRecipeTransfer {
         if (visibleAlternatives.isEmpty()) {
             return List.of();
         }
-        Ingredient ingredient = Ingredient.of(visibleAlternatives.stream().map(ItemStack::copy));
+        Ingredient ingredient = com.lhy.wcwt.pull.WcwtMeIngredientExtraction.ingredientFromItemStacks(visibleAlternatives);
+        if (ingredient == null) {
+            return List.of();
+        }
         var priorityContext = WcwtIngredientPriorities.createContext(menu, Map.of(), getWcwtFavoritePriorities());
         ItemStack best = WcwtRecipeTransferCommon.chooseFavoritedItem(
                 ingredient, visibleAlternatives, priorityContext.favoritePriorities());
@@ -439,11 +447,11 @@ public final class WcwtPullRecipeTransfer {
         }
 
         @Override
-        public void showError(GuiGraphics guiGraphics, int mouseX, int mouseY, IRecipeSlotsView recipeSlotsView, int recipeX, int recipeY) {
+        public void showError(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, IRecipeSlotsView recipeSlotsView, int recipeX, int recipeY) {
             var poseStack = guiGraphics.pose();
-            poseStack.pushPose();
+            poseStack.pushMatrix();
             try {
-                poseStack.translate(recipeX, recipeY, 0);
+                poseStack.translate(recipeX, recipeY);
                 for (IRecipeSlotView slotView : preview.missingSlots()) {
                     slotView.drawHighlight(guiGraphics, RED_SLOT_HIGHLIGHT_COLOR);
                 }
@@ -453,7 +461,7 @@ public final class WcwtPullRecipeTransfer {
                     }
                 }
             } finally {
-                poseStack.popPose();
+                poseStack.popMatrix();
             }
         }
 

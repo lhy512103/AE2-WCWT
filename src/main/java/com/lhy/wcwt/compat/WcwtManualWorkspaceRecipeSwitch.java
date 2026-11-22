@@ -20,7 +20,7 @@ public final class WcwtManualWorkspaceRecipeSwitch {
             return;
         }
         menu.setManualWorkspaceMode(target);
-        PacketDistributor.sendToServer(new ManualWorkspaceModePacket(target.ordinal()));
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new ManualWorkspaceModePacket(target.ordinal()));
     }
 
     @Nullable

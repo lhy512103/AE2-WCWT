@@ -29,7 +29,7 @@ public abstract class WcwtBetterCombatMixin {
     private static Object wcwt$setSwappedHand(NonNullList<ItemStack> list, int index, Object stack,
                                              Player player, boolean useOffHand, Runnable action) {
         var inventory = player.getInventory();
-        if (list == inventory.items && index == inventory.selected
+        if (list == inventory.getNonEquipmentItems() && index == inventory.getSelectedSlot()
                 && WcwtToolkitHand.isOverrideActive(player)) {
             return WcwtToolkitHotbarState.swapSelectedToolkitForAttributes(player, (ItemStack) stack);
         }

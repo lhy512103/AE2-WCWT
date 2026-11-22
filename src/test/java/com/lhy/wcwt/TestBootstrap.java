@@ -26,12 +26,13 @@ public final class TestBootstrap {
             return;
         }
         SharedConstants.tryDetectVersion();
-        // NeoForge's FeatureFlags bootstrap reads loading metadata even in a vanilla-only fixture.
-        if (LoadingModList.get() == null) {
-            LoadingModList.of(List.of(), List.of(), List.of(), List.of(), Map.of());
-        }
         // src/test/resources supplies an empty en_us map: unit tests have no Minecraft client assets.
         Bootstrap.bootStrap();
+        net.minecraft.core.registries.BuiltInRegistries.ITEM.listElements().forEach(holder -> {
+            if (!holder.areComponentsBound()) {
+                holder.bindComponents(net.minecraft.core.component.DataComponents.COMMON_ITEM_COMPONENTS);
+            }
+        });
         boolean keyTypesReady;
         try {
             keyTypesReady = AEKeyTypesInternal.getRegistry() != null;

@@ -3,8 +3,12 @@ package com.lhy.wcwt.compat;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 
+import java.lang.reflect.Method;
+
 public final class CrystalScienceCompat {
     private static final String MOD_ID = "ae2cs";
+    private static volatile boolean initialized;
+    private static volatile Method encodeMethod;
 
     private CrystalScienceCompat() {
     }
@@ -17,21 +21,23 @@ public final class CrystalScienceCompat {
         if (!available() || sourcePattern == null || sourcePattern.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        return Impl.encode(sourcePattern);
-    }
-
-    private static final class Impl {
-        private Impl() {
-        }
-
-        static ItemStack encode(ItemStack sourcePattern) {
+        if (!initialized) {
+            initialized = true;
             try {
-                ItemStack encoded = io.github.lounode.ae2cs.common.me.crafting.ResonatingPatternDetails
-                        .encode(sourcePattern);
-                return encoded == null ? ItemStack.EMPTY : encoded;
+                Class<?> cls = Class.forName("io.github.lounode.ae2cs.common.me.crafting.ResonatingPatternDetails");
+                encodeMethod = cls.getMethod("encode", ItemStack.class);
             } catch (Throwable ignored) {
-                return ItemStack.EMPTY;
+                encodeMethod = null;
             }
+        }
+        if (encodeMethod == null) {
+            return ItemStack.EMPTY;
+        }
+        try {
+            Object encoded = encodeMethod.invoke(null, sourcePattern);
+            return encoded instanceof ItemStack stack ? stack : ItemStack.EMPTY;
+        } catch (Throwable ignored) {
+            return ItemStack.EMPTY;
         }
     }
 }

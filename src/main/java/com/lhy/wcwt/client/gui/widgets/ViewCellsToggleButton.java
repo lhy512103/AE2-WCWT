@@ -1,10 +1,12 @@
 package com.lhy.wcwt.client.gui.widgets;
 
-import appeng.client.gui.Icon;
+import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.IconButton;
-import net.minecraft.client.gui.GuiGraphics;
+import appeng.util.Icon;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 import java.util.function.BooleanSupplier;
@@ -13,8 +15,8 @@ import java.util.function.BooleanSupplier;
  * 使用 AE 原版左侧工具栏按钮底图，只覆盖 WCWT 自定义显示元件图标。
  */
 public class ViewCellsToggleButton extends IconButton {
-    private static final ResourceLocation TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
+    private static final Identifier TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
 
     private static final int ICON_U_VISIBLE = 144;
     private static final int ICON_U_HIDDEN = 160;
@@ -31,7 +33,7 @@ public class ViewCellsToggleButton extends IconButton {
     }
 
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+    public void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) {
             return;
         }
@@ -40,17 +42,13 @@ public class ViewCellsToggleButton extends IconButton {
         int yOffset = pressed ? 1 : 0;
         Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER
                 : isFocused() ? Icon.TOOLBAR_BUTTON_BACKGROUND_FOCUS : Icon.TOOLBAR_BUTTON_BACKGROUND;
-        bgIcon.getBlitter()
+        Blitter.icon(bgIcon)
                 .dest(getX() - 1, getY() + yOffset, 18, 20)
-                .zOffset(2)
                 .blit(guiGraphics);
 
         int iconU = viewCellsVisible.getAsBoolean() ? ICON_U_VISIBLE : ICON_U_HIDDEN;
-        var pose = guiGraphics.pose();
-        pose.pushPose();
-        pose.translate(0, 0, 3);
-        guiGraphics.blit(TEXTURE, getX(), getY() + 1 + yOffset, iconU, ICON_V, ICON_W, ICON_H, 256, 256);
-        pose.popPose();
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, getX(), getY() + 1 + yOffset,
+                iconU, ICON_V, ICON_W, ICON_H, 256, 256);
     }
 
     @Override

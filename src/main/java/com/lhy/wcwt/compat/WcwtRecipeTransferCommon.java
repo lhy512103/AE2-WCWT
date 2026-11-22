@@ -10,7 +10,7 @@ import com.lhy.wcwt.compat.plus.PlusRecipeMappingClient;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
@@ -36,7 +36,7 @@ public final class WcwtRecipeTransferCommon {
     }
 
     public static void updateEaepProviderSearchKey(Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode,
-                                                    ResourceLocation categoryId,
+                                                    Identifier categoryId,
                                                     String categoryTitle) {
         if (PlusPresence.available()) {
             PlusRecipeMappingClient.captureCategory(
@@ -70,7 +70,7 @@ public final class WcwtRecipeTransferCommon {
         List<ItemStack> allCandidates = new ArrayList<>();
         LinkedHashSet<AEKey> seen = new LinkedHashSet<>();
         addCandidates(allCandidates, seen, visibleAlternatives);
-        addCandidates(allCandidates, seen, Arrays.asList(ingredient.getItems()));
+        addCandidates(allCandidates, seen, ingredient.items().map(h -> new ItemStack(h.value())).toList());
 
         ItemStack best = ItemStack.EMPTY;
         int bestPriority = Integer.MAX_VALUE;
@@ -169,11 +169,10 @@ public final class WcwtRecipeTransferCommon {
 
     @Nullable
     public static GenericStack toGenericStack(SizedFluidIngredient ingredient) {
-        for (FluidStack fluidStack : ingredient.getFluids()) {
+        for (var holder : ingredient.ingredient().fluids()) {
+            FluidStack fluidStack = new FluidStack(holder.value(), Math.max(1, ingredient.amount()));
             if (!fluidStack.isEmpty()) {
-                FluidStack copy = fluidStack.copy();
-                copy.setAmount(Math.max(1, ingredient.amount()));
-                return GenericStack.fromFluidStack(copy);
+                return GenericStack.fromFluidStack(fluidStack);
             }
         }
         return null;

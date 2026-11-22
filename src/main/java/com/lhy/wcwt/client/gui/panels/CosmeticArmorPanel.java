@@ -1,10 +1,12 @@
 package com.lhy.wcwt.client.gui.panels;
 import com.lhy.wcwt.compat.CosmeticArmorReworkedBridge;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 
 /**
@@ -12,10 +14,10 @@ import net.minecraft.world.entity.player.Player;
  * 包含4个装饰装备槽和显示开关
  */
 public class CosmeticArmorPanel extends ExtendedUIPanel {
-    private static final ResourceLocation PANEL_TEXTURE = 
-        ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_cosmetic_armor.png");
-    private static final ResourceLocation STATES_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
+    private static final Identifier PANEL_TEXTURE = 
+        Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_cosmetic_armor.png");
+    private static final Identifier STATES_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
     private static final int[] COSMETIC_SLOTS = {3, 2, 1, 0};
     private static final int TOGGLE_X = 3;
     private static final int TOGGLE_Y = 15;
@@ -51,42 +53,34 @@ public class CosmeticArmorPanel extends ExtendedUIPanel {
     }
     
     @Override
-    protected void renderBackground(GuiGraphics guiGraphics) {
-        // 渲染面板背景纹理
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
+    protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
     }
-    
+
     @Override
-    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // 渲染显示开关图标
-        // 暗图标位置: (192, 0) 大小5x5
-        // 亮图标位置: (208, 0) 大小5x5
-        var poseStack = guiGraphics.pose();
-        poseStack.pushPose();
-        poseStack.translate(0, 0, 300);
+    protected void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         refreshSkinArmorStateOncePerTick();
         for (int i = 0; i < 4; i++) {
             int iconX = x + TOGGLE_X + i * SLOT_SPACING;
             int iconY = y + TOGGLE_Y;
             int texX = skinArmorState[i] ? 208 : 192;
 
-            guiGraphics.blit(STATES_TEXTURE, iconX, iconY, texX, 0, 5, 5, 256, 256);
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, STATES_TEXTURE, iconX, iconY, texX, 0, 5, 5, 256, 256);
         }
-        poseStack.popPose();
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
         if (!visible) {
             return false;
         }
-        if (super.mouseClicked(mouseX, mouseY, button)) {
+        if (super.mouseClicked(event, isDoubleClick)) {
             return true;
         }
-        if (button != 0 || !CosmeticArmorReworkedBridge.isLoaded()) {
+        if (event.button() != 0 || !CosmeticArmorReworkedBridge.isLoaded()) {
             return false;
         }
-        int index = getToggleIndex(mouseX, mouseY);
+        int index = getToggleIndex(event.x(), event.y());
         if (index < 0) {
             return false;
         }

@@ -2,10 +2,9 @@ plugins {
     id 'java-library'
     id 'eclipse'
     id 'idea'
-    id 'net.neoforged.moddev' version '2.0.74'
+    id 'net.neoforged.moddev' version '2.0.148'
 }
 
-import groovy.lang.Closure
 import org.gradle.api.Action
 import org.gradle.api.file.FileCopyDetails
 
@@ -38,33 +37,17 @@ java {
 
 configurations {
     localRuntime {
-        // Recipe viewers are selected by the client run, never by a shared transitive dependency.
         exclude group: "mezz.jei"
-        exclude group: "dev.emi"
-        exclude group: "curse.maven", module: "ae2-jei-integration-1074338"
-        exclude group: "curse.maven", module: "imblocker-483760"
-        exclude group: "curse.maven", module: "just-enough-characters-250702"
     }
     clientLocalRuntime
     jeiRuntime
-    emiRuntime
     runtimeClasspath.extendsFrom localRuntime
 }
 
 sourceSets {
     clientRuntime {
         compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        // Compile-only compatibility APIs must not become runtime mods.
         runtimeClasspath = (runtimeClasspath + sourceSets.main.runtimeClasspath + configurations.clientLocalRuntime + configurations.jeiRuntime)
-                .filter { file -> !file.name.toLowerCase().startsWith("emi-") }
-    }
-    clientRuntimeEmi {
-        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
-        runtimeClasspath = (runtimeClasspath + sourceSets.main.runtimeClasspath + configurations.clientLocalRuntime + configurations.emiRuntime)
-                .filter { file ->
-                    def n = file.name.toLowerCase()
-                    !n.contains("jei") && !n.startsWith("just-enough-characters-") && !n.startsWith("ae2-utility-")
-                }
     }
 }
 
@@ -79,17 +62,16 @@ neoForge {
         }
     }
 
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
+    }
+
     runs {
         client {
             client()
             gameDirectory = file('run/client')
             sourceSet = sourceSets.clientRuntime
-            jvmArguments.add("-Dwcwt.debug.patternUpload=false")
-        }
-        clientEMI {
-            client()
-            gameDirectory = file('run/clientEMI')
-            sourceSet = sourceSets.clientRuntimeEmi
             jvmArguments.add("-Dwcwt.debug.patternUpload=false")
         }
         server {
@@ -103,61 +85,18 @@ neoForge {
 repositories {
     mavenCentral()
     maven {
-        name = "CreateMod Maven"
-        url = "https://maven.createmod.net"
-    }
-    maven {
         name = "Jared's Maven"
         url = "https://maven.blamejared.com/"
-    }
-    maven {
-        name = "TerraformersMC"
-        url = "https://maven.terraformersmc.com/"
     }
     maven {
         name = "ModMaven"
         url = "https://modmaven.dev"
     }
     maven {
-        name = "FTB Mods"
-        url = "https://maven.ftb.dev/releases"
-        content {
-            includeGroup "dev.ftb.mods"
-        }
-    }
-    maven {
-        name = "Shedaniel Maven"
-        url = "https://maven.shedaniel.me/"
-        content {
-            includeGroup "dev.architectury"
-        }
-    }
-    maven {
         name = "Curios Maven"
         url = "https://maven.theillusivec4.top/"
         content {
             includeGroup "top.theillusivec4.curios"
-        }
-    }
-    maven {
-        name = "Kotlin for Forge"
-        url = "https://thedarkcolour.github.io/KotlinForForge/"
-        content {
-            includeGroup "thedarkcolour"
-        }
-    }
-    maven {
-        name = "DevOS Snapshots"
-        url = "https://mvn.devos.one/snapshots/"
-        content {
-            includeGroup "com.tterrag.registrate"
-        }
-    }
-    maven {
-        name = "SquidDev Maven"
-        url = "https://maven.squiddev.cc"
-        content {
-            includeGroup "cc.tweaked"
         }
     }
     exclusiveContent {
@@ -168,14 +107,6 @@ repositories {
         }
         filter {
             includeGroup "curse.maven"
-        }
-    }
-    maven {
-        url = uri("https://modmaven.dev/")
-        content {
-            includeGroup "appeng"
-            includeGroup "org.appliedenergistics"
-            includeGroup "de.mari_023"
         }
     }
     exclusiveContent {
@@ -189,78 +120,23 @@ repositories {
             includeGroup "maven.modrinth"
         }
     }
-    exclusiveContent {
-        forRepository {
-            maven {
-                name = "LDLib Maven"
-                url = "https://maven.firstdarkdev.xyz/snapshots"
-            }
-        }
-        filter {
-            includeGroup "com.lowdragmc.ldlib2"
-        }
-    }
 }
 
 apply from: "$rootDir/dependencies.gradle"
-
-configurations {
-    neoEcoApi
-}
-
-dependencies {
-    neoEcoApi "maven.modrinth:neoecoae:${neoecoae_version}"
-}
-
-def neoEcoSanitizedJar = layout.buildDirectory.file("neoeco/neoecoae-${neoecoae_version}-dev.jar")
-
-tasks.register("sanitizeNeoEcoJar", Jar) {
-    archiveFileName = "neoecoae-${neoecoae_version}-dev.jar"
-    destinationDirectory = layout.buildDirectory.dir("neoeco")
-    dependsOn configurations.neoEcoApi
-    from {
-        zipTree(configurations.neoEcoApi.singleFile).matching {
-            exclude "META-INF/jarjar/Registrate-*.jar"
-            exclude "META-INF/jarjar/metadata.json"
-        }
-    }
-}
-
-configurations.named("compileClasspath") {
-    extendsFrom(configurations.neoEcoApi)
-}
-
-dependencies {
-    compileOnly files(neoEcoSanitizedJar)
-    localRuntime files(neoEcoSanitizedJar)
-    localRuntime "com.lowdragmc.ldlib2:ldlib2-neoforge-1.21.1:${ldlib2_version}:all"
-}
-
-tasks.named("compileJava").configure {
-    dependsOn("sanitizeNeoEcoJar")
-}
-
-tasks.named("prepareClientRun").configure {
-    dependsOn("sanitizeNeoEcoJar")
-}
-
-tasks.named("prepareClientEMIRun").configure {
-    dependsOn("sanitizeNeoEcoJar")
-}
 
 tasks.named("processResources", ProcessResources).configure {
     var replaceProperties = [
             minecraft_version      : minecraft_version,
             minecraft_version_range: minecraft_version_range,
-            neo_version           : neo_version,
-            neo_version_range     : neo_version_range,
-            loader_version_range  : loader_version_range,
-            mod_id                : mod_id,
-            mod_name              : mod_name,
-            mod_license           : mod_license,
-            mod_version           : mod_version,
-            mod_authors           : mod_authors,
-            mod_description       : mod_description
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
     ]
     inputs.properties replaceProperties
 
@@ -287,12 +163,13 @@ tasks.withType(JavaCompile).configureEach {
 dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+    testRuntimeOnly "mezz.jei:jei-${minecraft_version}-neoforge-api:${jei_version}"
 }
 
-// Tests use the same Minecraft/NeoForge/AE2 and optional-mod API classes that compile the main source set.
+// Tests compile against optional-mod APIs, while runtime loads only core NeoForge/AE2/AE2WTLib mods.
 sourceSets.test {
     compileClasspath += sourceSets.main.compileClasspath
-    runtimeClasspath += sourceSets.main.compileClasspath
+    runtimeClasspath += sourceSets.main.runtimeClasspath
 }
 
 tasks.named('test', Test).configure {

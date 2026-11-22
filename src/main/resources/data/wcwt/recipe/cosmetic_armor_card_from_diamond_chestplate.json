@@ -8,12 +8,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "item": "minecraft:diamond_chestplate"
-    }
+    "ae2:advanced_card",
+    "minecraft:diamond_chestplate"
   ],
   "result": {
     "count": 1,

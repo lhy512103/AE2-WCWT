@@ -107,7 +107,10 @@ public final class WcwtFavorites {
             if (minecraft.level == null) {
                 return null;
             }
-            CompoundTag tag = key.toTagGeneric(minecraft.level.registryAccess());
+            var out = net.minecraft.world.level.storage.TagValueOutput.createWithContext(
+                    net.minecraft.util.ProblemReporter.DISCARDING, minecraft.level.registryAccess());
+            key.toTagGeneric(out);
+            CompoundTag tag = out.buildResult();
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             NbtIo.writeCompressed(tag, output);
             return Base64.getEncoder().encodeToString(output.toByteArray());
@@ -124,7 +127,9 @@ public final class WcwtFavorites {
             }
             byte[] bytes = Base64.getDecoder().decode(serialized);
             CompoundTag tag = NbtIo.readCompressed(new ByteArrayInputStream(bytes), net.minecraft.nbt.NbtAccounter.unlimitedHeap());
-            return AEKey.fromTagGeneric(minecraft.level.registryAccess(), tag);
+            var input = net.minecraft.world.level.storage.TagValueInput.create(
+                    net.minecraft.util.ProblemReporter.DISCARDING, minecraft.level.registryAccess(), tag);
+            return AEKey.fromTagGeneric(input);
         } catch (Exception ignored) {
             return null;
         }

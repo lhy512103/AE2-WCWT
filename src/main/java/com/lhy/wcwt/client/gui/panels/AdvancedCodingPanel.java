@@ -15,15 +15,17 @@ import com.lhy.wcwt.network.DirectionChangePacket;
 import com.lhy.wcwt.network.ReplacePatternPacket;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Renderable;
 import net.minecraft.client.gui.components.Tooltip;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
@@ -32,7 +34,8 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import appeng.api.storage.cells.ICellWorkbenchItem;
-import appeng.client.gui.Icon;
+import appeng.client.gui.style.Blitter;
+import appeng.util.Icon;
 import appeng.client.gui.widgets.ITooltip;
 import appeng.client.gui.widgets.Scrollbar;
 import java.util.ArrayList;
@@ -50,11 +53,11 @@ import java.util.function.Supplier;
  * - 元件工作台
  */
 public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
-    private static final ResourceLocation PANEL_TEXTURE =
-        ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_advanced_coding.png");
+    private static final Identifier PANEL_TEXTURE =
+        Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_advanced_coding.png");
     /** 覆盖父类 STATES_TEXTURE，指向实际路径（ae2 命名空间下的 wcwt 子目录）。 */
-    private static final ResourceLocation WCWT_STATES =
-        ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
+    private static final Identifier WCWT_STATES =
+        Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
     // ─── 样板输入方向编辑区（上半部分） ──────────────────────────
     // 数据来自 assets/ae2/screens/terminals/encoding/wcwt_advanced_coding.json
     // manage_scrollbar: left=6, top=20, height=56  → 滚动条在列表左侧
@@ -301,7 +304,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
             return;
         }
         rememberLocalCellConfig(slotIdx, key);
-        PacketDistributor.sendToServer(new CellConfigSetPacket(slotIdx, key));
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new CellConfigSetPacket(slotIdx, key));
     }
 
     public void setReplaceInputFromKey(@Nullable AEKey key) {
@@ -313,7 +316,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!visible) {
             currentTooltip = List.of();
             return;
@@ -323,12 +326,12 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         renderContent(guiGraphics, mouseX, mouseY, partialTick);
 
         if (returnButton != null) {
-            returnButton.render(guiGraphics, mouseX, mouseY, partialTick);
+            returnButton.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
         }
 
         for (var child : children) {
             if (child instanceof Renderable renderable) {
-                renderable.render(guiGraphics, mouseX, mouseY, partialTick);
+                renderable.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
             }
         }
 
@@ -363,7 +366,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 192, 160, 224, 160, 17, 16,
                 WCWT_STATES,
                 Component.translatable("gui.wcwt.advanced_coding.copy_pattern"),
-                btn -> PacketDistributor.sendToServer(new CopyPatternPacket()));
+                btn -> com.lhy.wcwt.network.WcwtPackets.sendToServer(new CopyPatternPacket()));
         children.add(copyPatternBtn);
 
         // ─── 替换物品按钮（23×16）────────────────────────────────────
@@ -373,7 +376,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 0, 192, 32, 192, 23, 16,
                 WCWT_STATES,
                 Component.translatable("gui.wcwt.advanced_coding.replace"),
-                btn -> PacketDistributor.sendToServer(new ReplacePatternPacket(replaceWhatKey, replaceWithKey)));
+                btn -> com.lhy.wcwt.network.WcwtPackets.sendToServer(new ReplacePatternPacket(replaceWhatKey, replaceWithKey)));
         children.add(replaceBtn);
 
         // ─── 元件编辑区三按钮：12×12，底图用 AE2 Toolbar 按钮底图 ───
@@ -385,7 +388,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 Component.translatable("gui.wcwt.advanced_coding.partitioned_storage"),
                 btn -> {
                     localCellConfigOverrides.clear();
-                    PacketDistributor.sendToServer(new CellWorkbenchActionPacket(CellWorkbenchActionPacket.Action.PARTITION));
+                    com.lhy.wcwt.network.WcwtPackets.sendToServer(new CellWorkbenchActionPacket(CellWorkbenchActionPacket.Action.PARTITION));
                 })
                 .useAE2ToolbarBackground()
                 .setOverlayOffsetY(-1)
@@ -406,7 +409,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                     for (int i = 0; i < getCellConfigSize(); i++) {
                         rememberLocalCellConfig(i, null);
                     }
-                    PacketDistributor.sendToServer(new CellWorkbenchActionPacket(CellWorkbenchActionPacket.Action.CLEAR));
+                    com.lhy.wcwt.network.WcwtPackets.sendToServer(new CellWorkbenchActionPacket(CellWorkbenchActionPacket.Action.CLEAR));
                 })
                 .useAE2ToolbarBackground()
                 .setOverlayOffsetY(-1)
@@ -423,7 +426,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 0, 0, 0, 0, 1, 1,
                 WCWT_STATES,
                 Component.translatable("gui.wcwt.advanced_coding.cell_copy_mode"),
-                btn -> PacketDistributor.sendToServer(new CellWorkbenchActionPacket(CellWorkbenchActionPacket.Action.COPY_MODE)))
+                btn -> com.lhy.wcwt.network.WcwtPackets.sendToServer(new CellWorkbenchActionPacket(CellWorkbenchActionPacket.Action.COPY_MODE)))
                 .useAE2ToolbarBackground()
                 .setOverlayOffsetY(-1)
                 .setOverlayIcon(() -> isCopyModeOn() ? Icon.COPY_MODE_ON : Icon.COPY_MODE_OFF)
@@ -434,7 +437,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         children.add(cellCopyModeBtn);
 
         bulkCompressionCutoffBtn = new BulkCompressionCutoffButton(towardMoreCompressed ->
-                PacketDistributor.sendToServer(new CellWorkbenchActionPacket(towardMoreCompressed
+                com.lhy.wcwt.network.WcwtPackets.sendToServer(new CellWorkbenchActionPacket(towardMoreCompressed
                         ? CellWorkbenchActionPacket.Action.COMPRESSION_CUTOFF_NEXT
                         : CellWorkbenchActionPacket.Action.COMPRESSION_CUTOFF_PREVIOUS)));
         children.add(bulkCompressionCutoffBtn);
@@ -582,14 +585,14 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
             inputList.forEach((k, v) -> rows.add(new InputRow(k, v)));
         }
 
-        PacketDistributor.sendToServer(new DirectionChangePacket(key, dir));
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new DirectionChangePacket(key, dir));
     }
     
     @Override
-    protected void renderBackground(GuiGraphics guiGraphics) {
+    protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
         // 面板背景纹理（wcwt_advanced_coding.png）只覆盖左侧 134×186，
         // 右侧 22×186 用作"元件升级卡列"，背景由 renderCellUpgradeColumn() 处理。
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, BACKGROUND_BLIT_WIDTH, height, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEXTURE, x, y, 0, 0, BACKGROUND_BLIT_WIDTH, height, 256, 256);
     }
     
     /**
@@ -653,7 +656,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
 
 
     @Override
-    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // 同步输入列表（基于当前选中的缓存样板）
         syncInputListFromSelectedPattern();
         syncLocalCellConfigOverridesWithCellStack();
@@ -701,7 +704,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
 
             // 先画 AE2 标准 18×18 槽底，再渲染物品。
             drawStandardAeSlotBackground(guiGraphics, rowAbsX, rowAbsY);
-            guiGraphics.renderItem(
+            guiGraphics.item(
                 row.key().wrapForDisplayOrFilter(),
                 rowAbsX + 1,
                 rowAbsY + 1
@@ -772,7 +775,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         bulkCompressionCutoffBtn.setItem(WcwtMegaCellsCompat.getCompressionCutoffItem(getCellStack()));
     }
 
-    private void renderCopyReplaceLabels(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderCopyReplaceLabels(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         var font = Minecraft.getInstance().font;
         var copyLabel    = Component.translatable("gui.wcwt.advanced_coding.copy_label");
         var replaceLabel = Component.translatable("gui.wcwt.advanced_coding.replace_label");
@@ -793,14 +796,14 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
         int replaceLabelY = labelBaseY + (replaceHovered ? 1 : 0);
 
         var pose = g.pose();
-        pose.pushPose();
+        pose.pushMatrix();
         float copyScale = WcwtTextRendering.scale(0.80f);
         float copyCenterX = x + COPY_PATTERN_BTN_X + COPY_PATTERN_BTN_W / 2f;
         float copyCenterY = copyLabelY + 3.5f;
-        pose.translate(copyCenterX, copyCenterY, 0);
-        pose.scale(copyScale, copyScale, 1.0f);
-        g.drawString(font, copyLabel, Math.round(-copyTextW / 2f), Math.round(-3.5f), 0xFFFFFF, false);
-        pose.popPose();
+        pose.translate(copyCenterX, copyCenterY);
+        pose.scale(copyScale, copyScale);
+        g.text(font, copyLabel, Math.round(-copyTextW / 2f), Math.round(-3.5f), 0xFFFFFFFF, false);
+        pose.popMatrix();
         WcwtTextRendering.drawString(g, font, replaceLabel, replaceLabelX, replaceLabelY, 0xFFFFFF, false);
 
     }
@@ -864,7 +867,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
      *  - 物品来源：当前 Cell 的 config inventory（{@link ICellWorkbenchItem#getConfigInventory}）
      *  - 滚动条 cellScrollbar 控制起始行；超出 cell 实际容量的格不绘制
      */
-    private void renderCellConfigGrid(GuiGraphics g, int mouseX, int mouseY) {
+    private void renderCellConfigGrid(GuiGraphicsExtractor g, int mouseX, int mouseY) {
         final int scroll = cellScrollbar != null ? cellScrollbar.getCurrentScroll() : 0;
         final int cellSize = getCellConfigSize();
 
@@ -893,14 +896,14 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 var stack = getCellConfigStack(slotIdx);
                 if (stack == null) continue;
 
-                g.renderItem(stack.what().wrapForDisplayOrFilter(), sx + 1, sy + 1);
+                g.item(stack.what().wrapForDisplayOrFilter(), sx + 1, sy + 1);
             }
         }
     }
 
     /** 使用 AE2 自带 {@code ae2:textures/guis/states.png} 中的标准槽底，避免引用本包未自带的 adv_pattern_encoder 贴图。 */
-    private void drawStandardAeSlotBackground(GuiGraphics g, int absX, int absY) {
-        Icon.SLOT_BACKGROUND.getBlitter().dest(absX, absY).blit(g);
+    private void drawStandardAeSlotBackground(GuiGraphicsExtractor g, int absX, int absY) {
+        Blitter.icon(Icon.SLOT_BACKGROUND).dest(absX, absY).blit(g);
     }
 
     /**
@@ -922,29 +925,29 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     /**
      * 获取方向按钮纹理
      */
-    private Pair<ResourceLocation, ResourceLocation> getDirButtonTextures(int index) {
+    private Pair<Identifier, Identifier> getDirButtonTextures(int index) {
         return switch (index) {
             case 1 -> new Pair<>(
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/north_button.png"),
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/north_button_selected.png"));
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/north_button.png"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/north_button_selected.png"));
             case 2 -> new Pair<>(
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/east_button.png"),
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/east_button_selected.png"));
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/east_button.png"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/east_button_selected.png"));
             case 3 -> new Pair<>(
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/south_button.png"),
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/south_button_selected.png"));
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/south_button.png"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/south_button_selected.png"));
             case 4 -> new Pair<>(
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/west_button.png"),
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/west_button_selected.png"));
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/west_button.png"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/west_button_selected.png"));
             case 5 -> new Pair<>(
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/up_button.png"),
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/up_button_selected.png"));
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/up_button.png"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/up_button_selected.png"));
             case 6 -> new Pair<>(
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/down_button.png"),
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/down_button_selected.png"));
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/down_button.png"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/down_button_selected.png"));
             default -> new Pair<>(
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/any_button.png"),
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/any_button_selected.png"));
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/any_button.png"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "textures/guis/any_button_selected.png"));
         };
     }
     
@@ -967,29 +970,32 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
      * 渲染某个槽位语义对应的第一个槽的物品（含数量/耐久装饰）。
      * 坐标相对面板左上角，与 JSON 中 left/top 一致（无需 +1 偏移）。
      */
-    private void renderSlotItem(GuiGraphics g, WirelessComprehensiveWorkTerminalMenu menu,
+    private void renderSlotItem(GuiGraphicsExtractor g, WirelessComprehensiveWorkTerminalMenu menu,
                                 appeng.menu.SlotSemantic semantic, int relX, int relY) {
         var slots = menu.getSlots(semantic);
         if (slots.isEmpty()) return;
         var item = slots.get(0).getItem();
         if (!item.isEmpty()) {
             int ax = x + relX, ay = y + relY;
-            g.renderItem(item, ax, ay);
-            g.renderItemDecorations(Minecraft.getInstance().font, item, ax, ay);
+            g.item(item, ax, ay);
+            g.itemDecorations(Minecraft.getInstance().font, item, ax, ay);
         }
     }
 
-    private void renderGhostKey(GuiGraphics g, @Nullable AEKey key, int relX, int relY) {
+    private void renderGhostKey(GuiGraphicsExtractor g, @Nullable AEKey key, int relX, int relY) {
         if (key == null) {
             return;
         }
-        g.renderItem(key.wrapForDisplayOrFilter(), x + relX, y + relY);
+        g.item(key.wrapForDisplayOrFilter(), x + relX, y + relY);
     }
 
     // ─── 滑块鼠标事件转发（先于 super，避免被子控件吞掉） ──────────
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
         if (!visible) return false;
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (manageScrollbar != null && hits(manageScrollbar, mouseX, mouseY)
                 && manageScrollbar.onMouseDown(new appeng.client.Point((int) mouseX, (int) mouseY), button)) {
             return true;
@@ -1010,7 +1016,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, isDoubleClick);
     }
 
     private boolean handleReplaceGhostClick(double mouseX, double mouseY, int button) {
@@ -1073,35 +1079,36 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
             }
         }
         rememberLocalCellConfig(slotIdx, key);
-        PacketDistributor.sendToServer(new CellConfigSetPacket(slotIdx, key));
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new CellConfigSetPacket(slotIdx, key));
         return true;
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
         if (!visible) return false;
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         var p = new appeng.client.Point((int) mouseX, (int) mouseY);
         if (manageScrollbar != null) manageScrollbar.onMouseUp(p, button);
         if (cellScrollbar != null) cellScrollbar.onMouseUp(p, button);
-        // 关键：玩家可以从背包拿着物品拖到元件伪槽再松开。
-        // 如果这里不吃掉 release，vanilla 会把面板外释放当作"丢弃物品"处理；
-        // 同时 release 也需要写入 ghost 标记，覆盖"按下发生在背包槽，松开发生在元件格"的拖拽路径。
         if ((button == 0 || button == 1) && handleReplaceGhostClick(mouseX, mouseY, button)) {
             return true;
         }
         if ((button == 0 || button == 1) && handleCellGridClick(mouseX, mouseY, button)) {
             return true;
         }
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
         if (!visible) return false;
-        var p = new appeng.client.Point((int) mouseX, (int) mouseY);
+        var p = new appeng.client.Point((int) event.x(), (int) event.y());
+        int button = event.button();
         if (manageScrollbar != null && manageScrollbar.onMouseDrag(p, button)) return true;
         if (cellScrollbar != null && cellScrollbar.onMouseDrag(p, button)) return true;
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     /** 鼠标滚轮：只有当指针落在面板矩形内才转发（避免抢全屏滚轮）。 */
@@ -1144,7 +1151,7 @@ public class AdvancedCodingPanel extends ExtendedUIPanel implements ITooltip {
     }
 
 
-    private void drawSlotHoverHighlight(GuiGraphics g, int mouseX, int mouseY, Rect2i area) {
+    private void drawSlotHoverHighlight(GuiGraphicsExtractor g, int mouseX, int mouseY, Rect2i area) {
         if (mouseX >= area.getX() && mouseX < area.getX() + area.getWidth()
                 && mouseY >= area.getY() && mouseY < area.getY() + area.getHeight()) {
             g.fill(area.getX(), area.getY(), area.getX() + area.getWidth(), area.getY() + area.getHeight(),

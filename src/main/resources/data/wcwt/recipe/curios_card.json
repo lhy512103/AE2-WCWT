@@ -15,12 +15,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "tag": "wcwt:curios_card_ingredients"
-    }
+    "ae2:advanced_card",
+    "#wcwt:curios_card_ingredients"
   ],
   "result": {
     "count": 1,

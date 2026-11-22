@@ -59,7 +59,7 @@ public final class WcwtRemoteMenuAccess {
             return false;
         }
 
-        ServerLevel level = player.server.getLevel(session.dimension);
+        ServerLevel level = player.level().getServer().getLevel(session.dimension);
         if (level == null || !level.isLoaded(session.pos)) {
             SESSIONS.remove(player.getUUID());
             return false;

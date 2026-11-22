@@ -8,12 +8,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "item": "minecraft:diamond_leggings"
-    }
+    "ae2:advanced_card",
+    "minecraft:diamond_leggings"
   ],
   "result": {
     "count": 1,

@@ -8,7 +8,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
@@ -20,7 +20,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
  */
 public record ToolkitNetworkToolDepositPacket(int containerId, int slotIndex) implements CustomPacketPayload {
     public static final Type<ToolkitNetworkToolDepositPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_network_tool_deposit"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_network_tool_deposit"));
 
     public static final StreamCodec<ByteBuf, ToolkitNetworkToolDepositPacket> STREAM_CODEC =
             StreamCodec.composite(ByteBufCodecs.VAR_INT, ToolkitNetworkToolDepositPacket::containerId,
@@ -55,8 +55,7 @@ public record ToolkitNetworkToolDepositPacket(int containerId, int slotIndex) im
 
             ItemStack current = toolkitInv.getStackInSlot(slot);
             if (!current.isEmpty()) {
-                player.displayClientMessage(Component.translatable("message.wcwt.toolkit_network_slot_occupied"),
-                        false);
+                player.sendSystemMessage(Component.translatable("message.wcwt.toolkit_network_slot_occupied"));
                 return;
             }
 

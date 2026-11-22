@@ -41,6 +41,7 @@
 35. Changed: The mod version is 1.3.12 and the README states the same version.
 36. Added: Unit tests for the pull candidate index and reservation order, provider sorting, the enum packet codec, string clamping and the request-wide alternative limit, with one shared test bootstrap.
 37. Fixed: The toolkit layout sync and packet container checks compile with direct toolkit lookup and bounded enum decoding.
+38. Changed: Migrated the mod to Minecraft 26.1.2 and NeoForge 26.1.2.129 on Java 25 and Gradle 9.2.1, updating GUI rendering, mixins, recipes, item model definitions, tests, and 26.1.2 dependencies (AE2, AE2WTLib, JEI, Curios, and optional integrations), while removing EMI support and safely stubbing optional mods without 26.1.2 releases.
 
 ### 中文
 
@@ -81,6 +82,7 @@
 35. 优化：版本号升至 1.3.12，README 同步更新。
 36. 新增：拉取候选索引与预留顺序、供应器排序、枚举包编解码、字符串限长和请求级备选上限的单元测试，并统一测试启动引导。
 37. 修复：工具包布局同步与容器校验兼容直接读取工具包和枚举范围校验。
+38. 新增：将模组迁移至 Minecraft 26.1.2 与 NeoForge 26.1.2.129（Java 25 与 Gradle 9.2.1），完成界面渲染、混入、配方、物品模型定义、单元测试及核心依赖升级，移除暂未支持该版本的 EMI 集成并对尚未发布的其他可选模组做了安全兼容回退。
 
 
 ## v1.3.11

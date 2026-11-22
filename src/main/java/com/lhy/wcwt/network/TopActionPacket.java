@@ -6,12 +6,12 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record TopActionPacket(int containerId, Action action) implements CustomPacketPayload {
     public static final Type<TopActionPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "top_action"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "top_action"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, TopActionPacket> STREAM_CODEC =
             StreamCodec.composite(ByteBufCodecs.VAR_INT, TopActionPacket::containerId,

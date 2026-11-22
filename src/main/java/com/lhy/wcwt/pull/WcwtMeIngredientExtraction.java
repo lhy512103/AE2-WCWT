@@ -38,15 +38,16 @@ public final class WcwtMeIngredientExtraction {
      */
     @Nullable
     public static Ingredient ingredientFromItemStacks(List<ItemStack> alternativeStacks) {
-        ItemStack[] stacks = alternativeStacks.stream()
+        Item[] items = alternativeStacks.stream()
                 .filter(Objects::nonNull)
                 .filter(s -> !s.isEmpty())
-                .map(ItemStack::copy)
-                .toArray(ItemStack[]::new);
-        if (stacks.length == 0) {
+                .map(ItemStack::getItem)
+                .distinct()
+                .toArray(Item[]::new);
+        if (items.length == 0) {
             return null;
         }
-        return Ingredient.of(stacks);
+        return Ingredient.of(items);
     }
 
     /**

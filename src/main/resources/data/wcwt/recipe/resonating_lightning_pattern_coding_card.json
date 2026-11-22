@@ -24,12 +24,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "tag": "wcwt:resonating_lightning_pattern_coding_card_ingredients"
-    }
+    "ae2:advanced_card",
+    "#wcwt:resonating_lightning_pattern_coding_card_ingredients"
   ],
   "result": {
     "count": 1,

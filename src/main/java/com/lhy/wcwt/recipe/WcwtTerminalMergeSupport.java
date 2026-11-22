@@ -110,7 +110,7 @@ final class WcwtTerminalMergeSupport {
 
     private static void collectItems(Object value, List<ItemStack> leftovers) {
         if (value instanceof ItemContainerContents contents) {
-            contents.nonEmptyItemsCopy().forEach(leftovers::add);
+            contents.nonEmptyItemCopyStream().forEach(leftovers::add);
         } else if (value instanceof ItemStack stack && !stack.isEmpty()) {
             leftovers.add(stack.copy());
         }

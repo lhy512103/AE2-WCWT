@@ -51,11 +51,11 @@ public final class PatternProviderSorts {
     private static String dimensionKey(PatternContainer provider) {
         if (provider instanceof BlockEntity be && be.getLevel() != null) {
             ResourceKey<Level> key = be.getLevel().dimension();
-            return key.location().toString();
+            return key.identifier().toString();
         }
         if (provider instanceof appeng.parts.AEBasePart part && part.getLevel() != null) {
             ResourceKey<Level> key = part.getLevel().dimension();
-            return key.location().toString();
+            return key.identifier().toString();
         }
         return "";
     }

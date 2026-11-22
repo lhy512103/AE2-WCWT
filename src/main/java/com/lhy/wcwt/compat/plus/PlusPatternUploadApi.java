@@ -70,11 +70,11 @@ public final class PlusPatternUploadApi {
     }
 
     @Nullable
-    public static String resolveRecipeTypeSearchKey(@Nullable net.minecraft.resources.ResourceLocation id,
+    public static String resolveRecipeTypeSearchKey(@Nullable net.minecraft.resources.Identifier id,
                                                     @Nullable String title) {
         if (id == null) return null;
         return call(new String[]{LEGACY, MAPPING}, "resolveRecipeTypeSearchKey",
-                new Class<?>[]{net.minecraft.resources.ResourceLocation.class, String.class}, id, title)
+                new Class<?>[]{net.minecraft.resources.Identifier.class, String.class}, id, title)
                 .filter(String.class::isInstance).map(String.class::cast).orElse(null);
     }
 

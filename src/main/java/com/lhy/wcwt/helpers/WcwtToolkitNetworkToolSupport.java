@@ -60,8 +60,8 @@ public final class WcwtToolkitNetworkToolSupport {
         if (cap == null) {
             return null;
         }
-        for (int slot = 0; slot < cap.getSlots(); slot++) {
-            var host = createCardBackedHost(player, cap.getStackInSlot(slot),
+        for (int slot = 0; slot < cap.size(); slot++) {
+            var host = createCardBackedHost(player, cap.getResource(slot).toStack(cap.getAmountAsInt(slot)),
                     new WcwtToolkitNetworkToolLocator(
                             WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, slot, -1));
             if (host != null) {
@@ -102,8 +102,8 @@ public final class WcwtToolkitNetworkToolSupport {
         if (cap == null) {
             return null;
         }
-        for (int slot = 0; slot < cap.getSlots(); slot++) {
-            ItemStack terminalStack = cap.getStackInSlot(slot);
+        for (int slot = 0; slot < cap.size(); slot++) {
+            ItemStack terminalStack = cap.getResource(slot).toStack(cap.getAmountAsInt(slot));
             var host = createHostFromTerminal(player, terminalStack,
                     new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, slot, 0));
             if (host != null) {

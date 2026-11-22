@@ -93,7 +93,7 @@ public final class WcwtTerminalPullService {
         }
         InternalInventory craftingGrid = getPullTargetInventory(menu, targetMode);
 
-        var playerInventorySnapshot = snapshotInventory(playerInventory.items);
+        var playerInventorySnapshot = snapshotInventory(playerInventory.getNonEquipmentItems());
         var craftingGridSnapshot = craftingGrid != null ? snapshotInventory(craftingGrid) : List.<ItemStack>of();
         var reservedCraftingGridItems = craftingGrid != null ? new int[craftingGridSnapshot.size()] : null;
         // One network snapshot serves the whole request instead of one aggregation per ingredient.
@@ -394,12 +394,12 @@ public final class WcwtTerminalPullService {
             List<ItemStack> alternatives, @Nullable Ingredient wideIngredient, int amount) {
         List<ItemStack> extracted = new ArrayList<>();
         int remaining = Math.max(0, amount);
-        for (int i = 0; i < inventory.items.size() && remaining > 0; i++) {
+        for (int i = 0; i < inventory.getNonEquipmentItems().size() && remaining > 0; i++) {
             if (menu.isPlayerInventorySlotLocked(i)) {
                 continue;
             }
 
-            ItemStack stack = inventory.items.get(i);
+            ItemStack stack = inventory.getNonEquipmentItems().get(i);
             if (stack.isEmpty() || !matchesAnyAlternative(stack, alternatives, wideIngredient)) {
                 continue;
             }
@@ -548,12 +548,12 @@ public final class WcwtTerminalPullService {
 
         ItemStack remaining = stack.copy();
 
-        for (int i = 0; i < inventory.items.size(); i++) {
+        for (int i = 0; i < inventory.getNonEquipmentItems().size(); i++) {
             if (menu.isPlayerInventorySlotLocked(i)) {
                 continue;
             }
 
-            ItemStack slotStack = inventory.items.get(i);
+            ItemStack slotStack = inventory.getNonEquipmentItems().get(i);
             if (!canStacksMerge(slotStack, remaining)) {
                 continue;
             }
@@ -572,17 +572,17 @@ public final class WcwtTerminalPullService {
             }
         }
 
-        for (int i = 0; i < inventory.items.size(); i++) {
+        for (int i = 0; i < inventory.getNonEquipmentItems().size(); i++) {
             if (menu.isPlayerInventorySlotLocked(i)) {
                 continue;
             }
 
-            if (!inventory.items.get(i).isEmpty()) {
+            if (!inventory.getNonEquipmentItems().get(i).isEmpty()) {
                 continue;
             }
 
             int moved = Math.min(remaining.getCount(), Math.min(remaining.getMaxStackSize(), inventory.getMaxStackSize()));
-            inventory.items.set(i, remaining.copyWithCount(moved));
+            inventory.getNonEquipmentItems().set(i, remaining.copyWithCount(moved));
             remaining.shrink(moved);
             if (remaining.isEmpty()) {
                 inventory.setChanged();

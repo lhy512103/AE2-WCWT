@@ -90,10 +90,10 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
 
     private static ItemStack locateCurioStack(Player player, int curioSlot) {
         var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
-        if (cap == null || curioSlot < 0 || curioSlot >= cap.getSlots()) {
+        if (cap == null || curioSlot < 0 || curioSlot >= cap.size()) {
             return ItemStack.EMPTY;
         }
-        return cap.getStackInSlot(curioSlot);
+        return cap.getResource(curioSlot).toStack(cap.getAmountAsInt(curioSlot));
     }
 
     @Override

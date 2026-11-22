@@ -2,24 +2,12 @@
   "type": "minecraft:crafting_shapeless",
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "item": "minecraft:diamond_axe"
-    },
-    {
-      "item": "minecraft:diamond_hoe"
-    },
-    {
-      "item": "minecraft:diamond_pickaxe"
-    },
-    {
-      "item": "minecraft:diamond_shovel"
-    },
-    {
-      "item": "minecraft:diamond_sword"
-    }
+    "ae2:advanced_card",
+    "minecraft:diamond_axe",
+    "minecraft:diamond_hoe",
+    "minecraft:diamond_pickaxe",
+    "minecraft:diamond_shovel",
+    "minecraft:diamond_sword"
   ],
   "result": {
     "count": 1,

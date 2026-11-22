@@ -44,7 +44,7 @@ class WcwtComponentIngredientEncodingTest {
         ItemStack selected = resolve(context, ingredient, failIfScanned());
 
         assertTrue(ingredient.test(produced));
-        assertFalse(ItemStack.isSameItemSameComponents(ingredient.getItems()[0], produced));
+        assertFalse(ItemStack.isSameItemSameComponents(firstExample(ingredient), produced));
         assertTrue(ItemStack.isSameItemSameComponents(produced, selected));
         assertEquals(Rarity.UNCOMMON, selected.get(DataComponents.RARITY));
     }
@@ -87,7 +87,7 @@ class WcwtComponentIngredientEncodingTest {
         Ingredient ingredient = partial(12);
         ItemStack selected = resolve(WcwtIngredientPriorities.PriorityContext.EMPTY, ingredient,
                 () -> List.of(core(11, Rarity.EPIC)));
-        assertEquals(key(ingredient.getItems()[0]), key(selected));
+        assertEquals(key(firstExample(ingredient)), key(selected));
     }
 
     @Test
@@ -96,10 +96,12 @@ class WcwtComponentIngredientEncodingTest {
         var context = context(Map.of(key(core(12, Rarity.UNCOMMON)), 100), Map.of(), Map.of());
         Ingredient strict = DataComponentIngredient.of(true, displayed);
         assertFalse(WcwtComponentIngredientEncoding.isPartialComponentIngredient(strict));
-        assertEquals(key(displayed), key(resolve(context, strict, failIfScanned())));
-        Ingredient displayOnly = Ingredient.of(displayed);
+        assertEquals(key(displayed), key(WcwtComponentIngredientEncoding.resolve(
+                context, strict, List.of(displayed), failIfScanned())));
+        Ingredient displayOnly = Ingredient.of(displayed.getItem());
         assertFalse(WcwtComponentIngredientEncoding.isPartialComponentIngredient(displayOnly));
-        assertEquals(key(displayed), key(resolve(context, displayOnly, failIfScanned())));
+        assertEquals(key(displayed), key(WcwtComponentIngredientEncoding.resolve(
+                context, displayOnly, List.of(displayed), failIfScanned())));
     }
 
     @Test
@@ -130,25 +132,36 @@ class WcwtComponentIngredientEncodingTest {
     private static <T> Registry<T> syncedRegistry(Registry<T> source, List<T> values) {
         Registry<T> registry = new RegistryBuilder<>(source.key()).sync(true).disableRegistrationCheck().create();
         for (T value : values) {
-            Registry.register(registry, source.getKey(value), value);
+            var holder = Registry.registerForHolder(registry, source.getKey(value), value);
+            if (value instanceof net.minecraft.world.item.Item) {
+                holder.bindComponents(DataComponents.COMMON_ITEM_COMPONENTS);
+            }
         }
         return registry.freeze();
+    }
+
+    private static ItemStack firstExample(Ingredient ingredient) {
+        return new ItemStack(ingredient.items().findFirst().orElseThrow().value());
     }
 
     private static ItemStack resolve(WcwtIngredientPriorities.PriorityContext context, Ingredient ingredient,
                                      Supplier<List<ItemStack>> results) {
         return WcwtComponentIngredientEncoding.resolve(context, ingredient,
-                List.of(ingredient.getItems()[0]), results);
+                List.of(firstExample(ingredient)), results);
+    }
+
+    private static CustomModelData modelData(int stageAndType) {
+        return new CustomModelData(List.of((float) stageAndType), List.of(), List.of(), List.of());
     }
 
     private static Ingredient partial(int stageAndType) {
-        return DataComponentIngredient.of(false, DataComponents.CUSTOM_MODEL_DATA,
-                new CustomModelData(stageAndType), Items.DIAMOND);
+        return DataComponentIngredient.of(DataComponents.CUSTOM_MODEL_DATA,
+                modelData(stageAndType), Items.DIAMOND);
     }
 
     private static ItemStack core(int stageAndType, Rarity rarity) {
         ItemStack stack = new ItemStack(Items.DIAMOND);
-        stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(stageAndType));
+        stack.set(DataComponents.CUSTOM_MODEL_DATA, modelData(stageAndType));
         stack.set(DataComponents.RARITY, rarity);
         return stack;
     }

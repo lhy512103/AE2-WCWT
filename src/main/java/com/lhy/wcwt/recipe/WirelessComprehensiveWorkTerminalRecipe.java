@@ -2,23 +2,20 @@ package com.lhy.wcwt.recipe;
 
 import appeng.api.config.Actionable;
 import appeng.api.upgrades.IUpgradeableItem;
+import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.init.ModRecipes;
-import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.mojang.serialization.MapCodec;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.NonNullList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
-import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 
@@ -27,12 +24,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public final class WirelessComprehensiveWorkTerminalRecipe implements CraftingRecipe {
-    private static final List<ResourceLocation> REQUIRED_TERMINALS = List.of(
-            ResourceLocation.fromNamespaceAndPath("ae2wtlib", "wireless_pattern_encoding_terminal"),
-            ResourceLocation.fromNamespaceAndPath("ae2", "wireless_crafting_terminal"),
-            ResourceLocation.fromNamespaceAndPath("ae2wtlib", "wireless_pattern_access_terminal"),
-            ResourceLocation.fromNamespaceAndPath("ae2", "wireless_terminal"));
+public final class WirelessComprehensiveWorkTerminalRecipe extends CustomRecipe {
+    public static final WirelessComprehensiveWorkTerminalRecipe INSTANCE =
+            new WirelessComprehensiveWorkTerminalRecipe();
+    public static final RecipeSerializer<WirelessComprehensiveWorkTerminalRecipe> SERIALIZER = new RecipeSerializer<>(
+            MapCodec.unit(INSTANCE),
+            StreamCodec.unit(INSTANCE));
+
+    private static final List<Identifier> REQUIRED_TERMINALS = List.of(
+            Identifier.fromNamespaceAndPath("ae2wtlib", "wireless_pattern_encoding_terminal"),
+            Identifier.fromNamespaceAndPath("ae2", "wireless_crafting_terminal"),
+            Identifier.fromNamespaceAndPath("ae2wtlib", "wireless_pattern_access_terminal"),
+            Identifier.fromNamespaceAndPath("ae2", "wireless_terminal"));
 
     @Override
     public boolean matches(CraftingInput input, Level level) {
@@ -40,13 +43,13 @@ public final class WirelessComprehensiveWorkTerminalRecipe implements CraftingRe
             return false;
         }
 
-        Set<ResourceLocation> found = new HashSet<>();
+        Set<Identifier> found = new HashSet<>();
         for (int i = 0; i < input.size(); i++) {
             ItemStack stack = input.getItem(i);
             if (stack.isEmpty()) {
                 continue;
             }
-            ResourceLocation itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier itemId = net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem());
             if (!REQUIRED_TERMINALS.contains(itemId) || !found.add(itemId)) {
                 return false;
             }
@@ -55,7 +58,7 @@ public final class WirelessComprehensiveWorkTerminalRecipe implements CraftingRe
     }
 
     @Override
-    public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(CraftingInput input) {
         ItemStack result = new ItemStack(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get());
         WirelessComprehensiveWorkTerminalItem resultItem =
                 (WirelessComprehensiveWorkTerminalItem) result.getItem();
@@ -111,49 +114,12 @@ public final class WirelessComprehensiveWorkTerminalRecipe implements CraftingRe
     }
 
     @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return width * height >= REQUIRED_TERMINALS.size();
-    }
-
-    @Override
-    public ItemStack getResultItem(HolderLookup.Provider registries) {
-        return new ItemStack(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get());
-    }
-
-    @Override
-    public NonNullList<Ingredient> getIngredients() {
-        NonNullList<Ingredient> ingredients = NonNullList.create();
-        for (ResourceLocation terminalId : REQUIRED_TERMINALS) {
-            ingredients.add(Ingredient.of(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(terminalId)));
-        }
-        return ingredients;
-    }
-
-    @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<? extends CustomRecipe> getSerializer() {
         return ModRecipes.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
     }
 
     @Override
     public CraftingBookCategory category() {
         return CraftingBookCategory.MISC;
-    }
-
-    public static final class Serializer implements RecipeSerializer<WirelessComprehensiveWorkTerminalRecipe> {
-        private static final WirelessComprehensiveWorkTerminalRecipe INSTANCE =
-                new WirelessComprehensiveWorkTerminalRecipe();
-        private static final MapCodec<WirelessComprehensiveWorkTerminalRecipe> CODEC = MapCodec.unit(INSTANCE);
-        private static final StreamCodec<RegistryFriendlyByteBuf, WirelessComprehensiveWorkTerminalRecipe> STREAM_CODEC =
-                StreamCodec.unit(INSTANCE);
-
-        @Override
-        public MapCodec<WirelessComprehensiveWorkTerminalRecipe> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public StreamCodec<RegistryFriendlyByteBuf, WirelessComprehensiveWorkTerminalRecipe> streamCodec() {
-            return STREAM_CODEC;
-        }
     }
 }

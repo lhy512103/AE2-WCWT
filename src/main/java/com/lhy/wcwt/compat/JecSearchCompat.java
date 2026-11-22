@@ -4,10 +4,13 @@ import com.lhy.wcwt.WcwtMod;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
+import java.lang.reflect.Method;
+
 public final class JecSearchCompat {
     private static final String MOD_ID = "jecharacters";
-    /** Set once the Just Enough Characters API fails to link, so every searched entry does not retry it. */
+    private static volatile boolean initialized;
     private static volatile boolean broken;
+    private static volatile Method matchContains;
 
     private JecSearchCompat() {
     }
@@ -19,30 +22,35 @@ public final class JecSearchCompat {
         if (query == null || query.isEmpty()) {
             return true;
         }
-        if (!broken && ModList.get().isLoaded(MOD_ID) && Impl.contains(text, query)) {
+        if (!broken && ModList.get().isLoaded(MOD_ID) && invokeContains(text, query)) {
             return true;
         }
         return text.toLowerCase(java.util.Locale.ROOT)
                 .contains(query.toLowerCase(java.util.Locale.ROOT));
     }
 
-    private static final class Impl {
-        private Impl() {
-        }
-
-        static boolean contains(String text, String query) {
+    private static boolean invokeContains(String text, String query) {
+        if (!initialized) {
+            initialized = true;
             try {
-                return me.towdium.jecharacters.utils.Match.contains(text, (CharSequence) query)
-                        || me.towdium.jecharacters.utils.Match.contains(
-                                text.toLowerCase(java.util.Locale.ROOT),
-                                (CharSequence) query.toLowerCase(java.util.Locale.ROOT));
-            } catch (LinkageError e) {
+                Class<?> matchClass = Class.forName("me.towdium.jecharacters.utils.Match");
+                matchContains = matchClass.getMethod("contains", String.class, CharSequence.class);
+            } catch (Throwable e) {
                 broken = true;
                 WcwtMod.LOGGER.warn("WCWT: Just Enough Characters search integration disabled, its API changed", e);
                 return false;
-            } catch (RuntimeException ignored) {
-                return false;
             }
+        }
+        if (matchContains == null) {
+            return false;
+        }
+        try {
+            return Boolean.TRUE.equals(matchContains.invoke(null, text, query))
+                    || Boolean.TRUE.equals(matchContains.invoke(null,
+                            text.toLowerCase(java.util.Locale.ROOT),
+                            query.toLowerCase(java.util.Locale.ROOT)));
+        } catch (Throwable ignored) {
+            return false;
         }
     }
 }

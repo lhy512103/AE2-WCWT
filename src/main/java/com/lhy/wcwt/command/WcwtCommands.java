@@ -19,7 +19,7 @@ public final class WcwtCommands {
 
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("wcwt")
-                .requires(source -> source.hasPermission(2))
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .then(Commands.literal("config")
                         .then(Commands.literal("toolkitSlotCount")
                                 .executes(context -> showToolkitSlotCount(context.getSource()))

@@ -11,7 +11,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.neoforged.fml.ModList;
@@ -85,7 +85,7 @@ final class WcwtMultiblockTransferCompat {
 
     private static boolean isFilteredHatchSlot(List<ItemStack> alternatives, String[] filters) {
         return filters.length > 0 && alternatives.stream().allMatch(stack -> {
-            ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+            Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
             String itemId = id == null ? "" : id.toString();
             return Arrays.stream(filters).filter(filter -> filter != null && !filter.isBlank())
                     .anyMatch(itemId::contains);
@@ -120,7 +120,7 @@ final class WcwtMultiblockTransferCompat {
     }
 
     private static Component resolveStructureName(Object recipe) {
-        ResourceLocation id = tryReadId(readMember(recipe, "definition"));
+        Identifier id = tryReadId(readMember(recipe, "definition"));
         if (id == null) {
             id = tryReadId(recipe);
         }
@@ -137,7 +137,7 @@ final class WcwtMultiblockTransferCompat {
     }
 
     @Nullable
-    private static ResourceLocation tryReadId(@Nullable Object target) {
+    private static Identifier tryReadId(@Nullable Object target) {
         if (target == null) {
             return null;
         }
@@ -145,12 +145,12 @@ final class WcwtMultiblockTransferCompat {
             Object value = WcwtReflect.findMethod(target.getClass(), name)
                     .flatMap(method -> WcwtReflect.invoke(target, method))
                     .orElse(null);
-            if (value instanceof ResourceLocation id) {
+            if (value instanceof Identifier id) {
                 return id;
             }
         }
         Object value = readMember(target, "id");
-        return value instanceof ResourceLocation id ? id : null;
+        return value instanceof Identifier id ? id : null;
     }
 
     @Nullable

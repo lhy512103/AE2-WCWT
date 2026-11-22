@@ -1,11 +1,12 @@
 package com.lhy.wcwt.client.gui.widgets;
 
-import appeng.client.gui.Icon;
+import appeng.client.gui.style.Blitter;
 import appeng.client.gui.widgets.ITooltip;
-import com.mojang.blaze3d.vertex.PoseStack;
+import appeng.util.Icon;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
@@ -44,8 +45,9 @@ public class BulkCompressionCutoffButton extends Button implements ITooltip {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!visible || !active || button != 0 && button != 1 || !clicked(mouseX, mouseY)) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
+        int button = event.button();
+        if (!visible || !active || (button != 0 && button != 1) || !isMouseOver(event.x(), event.y())) {
             return false;
         }
         playDownSound(Minecraft.getInstance().getSoundManager());
@@ -54,25 +56,25 @@ public class BulkCompressionCutoffButton extends Button implements ITooltip {
     }
 
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!visible) {
             return;
         }
         int pressOffsetY = isHoveredOrFocused() ? 1 : 0;
-        PoseStack pose = guiGraphics.pose();
+        var pose = guiGraphics.pose();
 
         Icon bgIcon = isHovered() ? Icon.TOOLBAR_BUTTON_BACKGROUND_HOVER : Icon.TOOLBAR_BUTTON_BACKGROUND;
-        pose.pushPose();
-        pose.translate(getX(), getY(), 0);
-        pose.scale((float) width / 18.0F, (float) height / 20.0F, 1.0F);
-        bgIcon.getBlitter().dest(0, 0).blit(guiGraphics);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(getX(), getY());
+        pose.scale((float) width / 18.0F, (float) height / 20.0F);
+        Blitter.icon(bgIcon).dest(0, 0).blit(guiGraphics);
+        pose.popMatrix();
 
-        pose.pushPose();
-        pose.translate(getX(), getY() + pressOffsetY, 0);
-        pose.scale(ICON_SCALE, ICON_SCALE, 1.0F);
-        guiGraphics.renderItem(item, 0, 0);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(getX(), getY() + pressOffsetY);
+        pose.scale(ICON_SCALE, ICON_SCALE);
+        guiGraphics.item(item, 0, 0);
+        pose.popMatrix();
     }
 
     @Override

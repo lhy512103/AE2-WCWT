@@ -7,7 +7,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +20,7 @@ public record ReplacePatternPacket(@Nullable AEKey replaceWhat, @Nullable AEKey 
         implements CustomPacketPayload {
 
     public static final Type<ReplacePatternPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "replace_pattern"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "replace_pattern"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ReplacePatternPacket> STREAM_CODEC =
             StreamCodec.of(ReplacePatternPacket::write, ReplacePatternPacket::read);
@@ -39,7 +39,10 @@ public record ReplacePatternPacket(@Nullable AEKey replaceWhat, @Nullable AEKey 
             buf.writeBoolean(false);
         } else {
             buf.writeBoolean(true);
-            ByteBufCodecs.COMPOUND_TAG.encode(buf, key.toTagGeneric(buf.registryAccess()));
+            var out = net.minecraft.world.level.storage.TagValueOutput.createWithContext(
+                    net.minecraft.util.ProblemReporter.DISCARDING, buf.registryAccess());
+            key.toTagGeneric(out);
+            ByteBufCodecs.COMPOUND_TAG.encode(buf, out.buildResult());
         }
     }
 
@@ -48,7 +51,10 @@ public record ReplacePatternPacket(@Nullable AEKey replaceWhat, @Nullable AEKey 
         if (!buf.readBoolean()) {
             return null;
         }
-        return AEKey.fromTagGeneric(buf.registryAccess(), ByteBufCodecs.COMPOUND_TAG.decode(buf));
+        var tag = ByteBufCodecs.COMPOUND_TAG.decode(buf);
+        var in = net.minecraft.world.level.storage.TagValueInput.create(
+                net.minecraft.util.ProblemReporter.DISCARDING, buf.registryAccess(), tag);
+        return AEKey.fromTagGeneric(in);
     }
 
     @Override

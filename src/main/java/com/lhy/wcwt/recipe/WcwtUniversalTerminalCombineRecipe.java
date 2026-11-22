@@ -6,28 +6,30 @@ import com.lhy.wcwt.init.ModRecipes;
 import com.mojang.serialization.MapCodec;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.registration.WTDefinition;
-import net.minecraft.core.HolderLookup;
-import net.minecraft.core.NonNullList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.CraftingInput;
-import net.minecraft.world.item.crafting.CraftingRecipe;
-import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
-public final class WcwtUniversalTerminalCombineRecipe implements CraftingRecipe {
+public final class WcwtUniversalTerminalCombineRecipe extends CustomRecipe {
+    public static final WcwtUniversalTerminalCombineRecipe INSTANCE = new WcwtUniversalTerminalCombineRecipe();
+    public static final RecipeSerializer<WcwtUniversalTerminalCombineRecipe> SERIALIZER = new RecipeSerializer<>(
+            MapCodec.unit(INSTANCE),
+            StreamCodec.unit(INSTANCE));
+
     @Override
     public boolean matches(CraftingInput input, Level level) {
         return findInputs(input) != null;
     }
 
     @Override
-    public ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
+    public ItemStack assemble(CraftingInput input) {
         Inputs inputs = findInputs(input);
         if (inputs == null) {
             return ItemStack.EMPTY;
@@ -84,27 +86,7 @@ public final class WcwtUniversalTerminalCombineRecipe implements CraftingRecipe 
     }
 
     @Override
-    public boolean canCraftInDimensions(int width, int height) {
-        return width * height >= 2;
-    }
-
-    @Override
-    public ItemStack getResultItem(HolderLookup.Provider registries) {
-        return new ItemStack(AE2wtlibAPI.getWUT());
-    }
-
-    @Override
-    public NonNullList<Ingredient> getIngredients() {
-        NonNullList<Ingredient> ingredients = NonNullList.create();
-        ingredients.add(Ingredient.of(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()));
-        ingredients.add(Ingredient.of(WTDefinition.wirelessTerminals().stream()
-                .filter(definition -> definition.item() != ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get())
-                .map(definition -> new ItemStack(definition.item()))));
-        return ingredients;
-    }
-
-    @Override
-    public RecipeSerializer<?> getSerializer() {
+    public RecipeSerializer<? extends CustomRecipe> getSerializer() {
         return ModRecipes.WCWT_UNIVERSAL_TERMINAL_COMBINE.get();
     }
 
@@ -114,23 +96,5 @@ public final class WcwtUniversalTerminalCombineRecipe implements CraftingRecipe 
     }
 
     private record Inputs(ItemStack wcwt, ItemStack otherTerminal, WTDefinition otherDefinition) {
-    }
-
-    public static final class Serializer implements RecipeSerializer<WcwtUniversalTerminalCombineRecipe> {
-        private static final WcwtUniversalTerminalCombineRecipe INSTANCE =
-                new WcwtUniversalTerminalCombineRecipe();
-        private static final MapCodec<WcwtUniversalTerminalCombineRecipe> CODEC = MapCodec.unit(INSTANCE);
-        private static final StreamCodec<RegistryFriendlyByteBuf, WcwtUniversalTerminalCombineRecipe> STREAM_CODEC =
-                StreamCodec.unit(INSTANCE);
-
-        @Override
-        public MapCodec<WcwtUniversalTerminalCombineRecipe> codec() {
-            return CODEC;
-        }
-
-        @Override
-        public StreamCodec<RegistryFriendlyByteBuf, WcwtUniversalTerminalCombineRecipe> streamCodec() {
-            return STREAM_CODEC;
-        }
     }
 }

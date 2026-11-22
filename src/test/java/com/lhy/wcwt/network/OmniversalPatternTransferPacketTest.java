@@ -6,7 +6,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.DecoderException;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -47,7 +47,7 @@ class OmniversalPatternTransferPacketTest {
         var buf = buffer();
         try {
             buf.writeVarInt(7);
-            buf.writeResourceLocation(ResourceLocation.parse("test:recipe"));
+            buf.writeIdentifier(Identifier.parse("test:recipe"));
             buf.writeUtf("x".repeat(257));
             assertThrows(DecoderException.class, () -> OmniversalPatternTransferPacket.STREAM_CODEC.decode(buf));
         } finally {
@@ -60,7 +60,7 @@ class OmniversalPatternTransferPacketTest {
         var buf = buffer();
         try {
             buf.writeVarInt(7);
-            buf.writeResourceLocation(ResourceLocation.parse("test:recipe"));
+            buf.writeIdentifier(Identifier.parse("test:recipe"));
             buf.writeUtf("mold");
             buf.writeUtf("mekanism");
             buf.writeBoolean(false);
@@ -74,7 +74,7 @@ class OmniversalPatternTransferPacketTest {
 
     private static OmniversalPatternTransferPacket packet(int id, String fingerprint, EncodingMode mode, boolean manual) {
         return new OmniversalPatternTransferPacket(id,
-                new UselessModCompat.Selection(ResourceLocation.parse("test:recipe"), fingerprint, "mekanism"),
+                new UselessModCompat.Selection(Identifier.parse("test:recipe"), fingerprint, "mekanism"),
                 new JeiCraftingTransferPacket(List.of(), List.of(), manual, mode));
     }
 

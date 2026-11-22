@@ -1,7 +1,7 @@
 package com.lhy.wcwt.compat.plus;
 
 import appeng.parts.encoding.EncodingMode;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.crafting.Recipe;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,14 +22,14 @@ public final class PlusRecipeMappingClient {
     }
 
     public static void captureCategory(@Nullable Object recipeBase, @Nullable Recipe<?> recipe, EncodingMode mode,
-                                        @Nullable ResourceLocation categoryId, @Nullable String categoryTitle) {
+                                        @Nullable Identifier categoryId, @Nullable String categoryTitle) {
         if (mode == EncodingMode.PROCESSING && captureLocalizedCategory(categoryId, categoryTitle)) {
             return;
         }
         PlusMapping.captureRecipeSearchKey(recipeBase, recipe, mode);
     }
 
-    static boolean captureLocalizedCategory(@Nullable ResourceLocation categoryId, @Nullable String categoryTitle) {
+    static boolean captureLocalizedCategory(@Nullable Identifier categoryId, @Nullable String categoryTitle) {
         if (categoryId == null) {
             return false;
         }

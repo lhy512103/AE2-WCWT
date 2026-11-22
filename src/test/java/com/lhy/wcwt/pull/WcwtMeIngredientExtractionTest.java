@@ -132,7 +132,8 @@ class WcwtMeIngredientExtractionTest {
 
     private static AEItemKey variantIron(int model) {
         var stack = new ItemStack(Items.IRON_INGOT);
-        stack.set(DataComponents.CUSTOM_MODEL_DATA, new CustomModelData(model));
+        stack.set(DataComponents.CUSTOM_MODEL_DATA,
+                new CustomModelData(List.of((float) model), List.of(), List.of(), List.of()));
         return AEItemKey.of(stack);
     }
 

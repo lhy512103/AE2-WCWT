@@ -27,12 +27,13 @@ import com.lhy.wcwt.network.WcwtRestockAmountsPacket;
 import de.mari_023.ae2wtlib.api.AE2wtlibAPI;
 import de.mari_023.ae2wtlib.api.TextConstants;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
-import de.mari_023.ae2wtlib.api.AE2wtlibTags;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.tags.TagKey;
 import net.minecraft.core.Holder;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
+import net.minecraft.resources.Identifier;
+import net.minecraft.network.protocol.game.ClientboundSetHeldSlotPacket;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.entity.EntitySelector;
@@ -52,8 +53,10 @@ import java.util.WeakHashMap;
 import java.util.function.Consumer;
 
 public final class WcwtWirelessFeatures {
-    private static final ResourceLocation MAGNET_CARD_ID =
-            ResourceLocation.fromNamespaceAndPath("ae2wtlib", "magnet_card");
+    private static final Identifier MAGNET_CARD_ID =
+            Identifier.fromNamespaceAndPath("ae2wtlib", "magnet_card");
+    private static final TagKey<Item> NO_RESTOCK = TagKey.create(
+            Registries.ITEM, Identifier.fromNamespaceAndPath("ae2wtlib", "no_restock"));
     private static final double DEFAULT_MAGNET_RANGE = 16.0;
     private static final boolean DEBUG_MAGNET = Boolean.getBoolean("wcwt.debug.magnet");
     private static final WeakHashMap<ServerPlayer, Integer> RESTOCK_SYNC_TICKS = new WeakHashMap<>();
@@ -120,7 +123,7 @@ public final class WcwtWirelessFeatures {
 
     private static void syncRestockAmounts(ServerPlayer player, TerminalTarget terminalTarget) {
         boolean enabled = terminalTarget.stack().getOrDefault(AE2wtlibComponents.RESTOCK, false);
-        int tick = player.getServer() == null ? 0 : player.getServer().getTickCount();
+        int tick = player.level().getServer() == null ? 0 : player.level().getServer().getTickCount();
         Integer lastTick = RESTOCK_SYNC_TICKS.get(player);
         if (lastTick != null && tick - lastTick < 20) {
             return;
@@ -141,20 +144,21 @@ public final class WcwtWirelessFeatures {
         HashMap<Holder<Item>, Long> items = Maps.newHashMap();
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
-            if (stack.isEmpty() || stack.is(AE2wtlibTags.NO_RESTOCK) || stack.getMaxStackSize() == 1
-                    || items.containsKey(stack.getItemHolder())) {
+            Holder<Item> itemHolder = BuiltInRegistries.ITEM.wrapAsHolder(stack.getItem());
+            if (stack.isEmpty() || stack.is(NO_RESTOCK) || stack.getMaxStackSize() == 1
+                    || items.containsKey(itemHolder)) {
                 continue;
             }
             AEItemKey key = AEItemKey.of(stack);
             long amount = key == null ? 0 : grid.getStorageService().getCachedInventory().get(key);
-            items.put(stack.getItemHolder(), amount);
+            items.put(itemHolder, amount);
         }
         PacketDistributor.sendToPlayer(player, new WcwtRestockAmountsPacket(true, items));
     }
 
     public static void restock(ServerPlayer player, ItemStack item, ItemStack now, Consumer<ItemStack> setStack) {
         var terminal = findTerminalTarget(player, stack -> stack.getOrDefault(AE2wtlibComponents.RESTOCK, false));
-        if (terminal == null || item.isEmpty() || item.is(AE2wtlibTags.NO_RESTOCK) || item.getMaxStackSize() == 1
+        if (terminal == null || item.isEmpty() || item.is(NO_RESTOCK) || item.getMaxStackSize() == 1
                 || player.isCreative()) {
             return;
         }
@@ -229,7 +233,7 @@ public final class WcwtWirelessFeatures {
     }
 
     public static void pickBlock(ItemStack stack) {
-        PacketDistributor.sendToServer(new WcwtPickBlockPacket(stack));
+        com.lhy.wcwt.network.WcwtPackets.sendToServer(new WcwtPickBlockPacket(stack));
     }
 
     public static boolean toggleMagnetHotkey(Player player) {
@@ -241,19 +245,19 @@ public final class WcwtWirelessFeatures {
 
         String nextMode = switch (getMagnetModeName(terminal)) {
             case "OFF" -> {
-                player.displayClientMessage(TextConstants.HOTKEY_MAGNETCARD_INVENTORY, true);
+                player.sendOverlayMessage(TextConstants.HOTKEY_MAGNETCARD_INVENTORY);
                 yield "PICKUP_INVENTORY";
             }
             case "PICKUP_INVENTORY" -> {
-                player.displayClientMessage(TextConstants.HOTKEY_MAGNETCARD_ME, true);
+                player.sendOverlayMessage(TextConstants.HOTKEY_MAGNETCARD_ME);
                 yield "PICKUP_ME";
             }
             case "PICKUP_ME" -> {
-                player.displayClientMessage(TextConstants.PICKUP_ME_NO_MAGNET, true);
+                player.sendOverlayMessage(TextConstants.PICKUP_ME_NO_MAGNET);
                 yield "PICKUP_ME_NO_MAGNET";
             }
             case "PICKUP_ME_NO_MAGNET" -> {
-                player.displayClientMessage(TextConstants.HOTKEY_MAGNETCARD_OFF, true);
+                player.sendOverlayMessage(TextConstants.HOTKEY_MAGNETCARD_OFF);
                 yield "OFF";
             }
             default -> null;
@@ -275,7 +279,7 @@ public final class WcwtWirelessFeatures {
         if (held.isEmpty()) {
             return false;
         }
-        if (held.isNotReplaceableByPickAction(serverPlayer, serverPlayer.getInventory().selected)) {
+        if (held.isNotReplaceableByPickAction(serverPlayer, serverPlayer.getInventory().getSelectedSlot())) {
             return false;
         }
 
@@ -367,8 +371,8 @@ public final class WcwtWirelessFeatures {
 
         requestedStack.setCount((int) extracted);
         inventory.setItem(targetSlot, requestedStack);
-        inventory.selected = targetSlot;
-        player.connection.send(new ClientboundSetCarriedItemPacket(targetSlot));
+        inventory.setSelectedSlot(targetSlot);
+        player.connection.send(new ClientboundSetHeldSlotPacket(targetSlot));
         player.inventoryMenu.broadcastChanges();
     }
 
@@ -403,7 +407,7 @@ public final class WcwtWirelessFeatures {
     }
 
     private static boolean isRestocking(ItemStack stack, Player player) {
-        if (stack.is(AE2wtlibTags.NO_RESTOCK)) {
+        if (stack.is(NO_RESTOCK)) {
             return false;
         }
         if (stack.getMaxStackSize() == 1) {
@@ -433,8 +437,8 @@ public final class WcwtWirelessFeatures {
 
         var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
         if (cap != null) {
-            for (int i = 0; i < cap.getSlots(); i++) {
-                ItemStack stack = cap.getStackInSlot(i);
+            for (int i = 0; i < cap.size(); i++) {
+                ItemStack stack = cap.getResource(i).toStack(cap.getAmountAsInt(i));
                 if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && hasMagnetCard(stack)) {
                     var locator = MenuLocators.forCurioSlot(i);
                     return new TerminalTarget(locator.locateItem(player), locator);
@@ -470,8 +474,8 @@ public final class WcwtWirelessFeatures {
                                                      java.util.function.Predicate<ItemStack> predicate) {
         var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
         if (cap != null) {
-            for (int i = 0; i < cap.getSlots(); i++) {
-                ItemStack stack = cap.getStackInSlot(i);
+            for (int i = 0; i < cap.size(); i++) {
+                ItemStack stack = cap.getResource(i).toStack(cap.getAmountAsInt(i));
                 if (stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack)) {
                     debugMagnet(player, "terminal target found in curios: slot={}, stack={}", i, describeStack(stack));
                     return new TerminalTarget(stack, MenuLocators.forCurioSlot(i));
@@ -536,7 +540,8 @@ public final class WcwtWirelessFeatures {
             return null;
         }
 
-        ItemStack singularity = terminal.getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY);
+        ItemStack singularity = terminal.getOrDefault(AE2wtlibComponents.SINGULARITY,
+                de.mari_023.ae2wtlib.api.StackWrapper.EMPTY).toStack();
         if (singularity.isEmpty()) {
             return null;
         }
@@ -583,7 +588,8 @@ public final class WcwtWirelessFeatures {
         ConfigInventory inventory = ConfigInventory.configTypes(27)
                 .supportedType(appeng.api.stacks.AEKeyType.items())
                 .build();
-        inventory.readFromChildTag(config, "", player.registryAccess());
+        inventory.readFromChildTag(net.minecraft.world.level.storage.TagValueInput.create(
+                net.minecraft.util.ProblemReporter.DISCARDING, player.registryAccess(), config), "");
         IPartitionList.Builder builder = IPartitionList.builder();
         builder.fuzzyMode(FuzzyMode.IGNORE_ALL);
         for (int i = 0; i < inventory.size(); i++) {
@@ -603,7 +609,7 @@ public final class WcwtWirelessFeatures {
     private static boolean hasMagnetCard(ItemStack terminal) {
         Item card = magnetCardItem;
         if (card == null) {
-            card = BuiltInRegistries.ITEM.get(MAGNET_CARD_ID);
+            card = BuiltInRegistries.ITEM.getOptional(MAGNET_CARD_ID).orElse(null);
             magnetCardItem = card;
         }
         return card != null
@@ -641,7 +647,7 @@ public final class WcwtWirelessFeatures {
         if (!DEBUG_MAGNET) {
             return;
         }
-        int tick = player.getServer() == null ? 0 : player.getServer().getTickCount();
+        int tick = player.level().getServer() == null ? 0 : player.level().getServer().getTickCount();
         Integer lastTick = MAGNET_DEBUG_TICKS.get(player);
         if (lastTick != null && tick - lastTick < 20) {
             return;

@@ -8,12 +8,12 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record PatternEncodingModePacket(int containerId, EncodingMode mode) implements CustomPacketPayload {
     public static final Type<PatternEncodingModePacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_encoding_mode"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_encoding_mode"));
 
     private static final StreamCodec<ByteBuf, EncodingMode> MODE_STREAM_CODEC =
             WcwtPacketLimits.enumCodec(EncodingMode.values(), "encoding mode");

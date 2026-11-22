@@ -6,7 +6,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.Nullable;
@@ -20,7 +20,7 @@ import appeng.api.stacks.AEKey;
 public record CellConfigSetPacket(int slotIndex, @Nullable AEKey key) implements CustomPacketPayload {
 
     public static final Type<CellConfigSetPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "cell_config_set"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "cell_config_set"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, CellConfigSetPacket> STREAM_CODEC =
             StreamCodec.of(CellConfigSetPacket::write, CellConfigSetPacket::read);
@@ -31,9 +31,10 @@ public record CellConfigSetPacket(int slotIndex, @Nullable AEKey key) implements
             buf.writeBoolean(false);
         } else {
             buf.writeBoolean(true);
-            // 用 AEKey 自带 toTagGeneric 进行序列化
-            var tag = pkt.key.toTagGeneric(buf.registryAccess());
-            ByteBufCodecs.COMPOUND_TAG.encode(buf, tag);
+            var out = net.minecraft.world.level.storage.TagValueOutput.createWithContext(
+                    net.minecraft.util.ProblemReporter.DISCARDING, buf.registryAccess());
+            pkt.key.toTagGeneric(out);
+            ByteBufCodecs.COMPOUND_TAG.encode(buf, out.buildResult());
         }
     }
 
@@ -43,7 +44,9 @@ public record CellConfigSetPacket(int slotIndex, @Nullable AEKey key) implements
             return new CellConfigSetPacket(slotIndex, null);
         }
         var tag = ByteBufCodecs.COMPOUND_TAG.decode(buf);
-        var key = AEKey.fromTagGeneric(buf.registryAccess(), tag);
+        var in = net.minecraft.world.level.storage.TagValueInput.create(
+                net.minecraft.util.ProblemReporter.DISCARDING, buf.registryAccess(), tag);
+        var key = AEKey.fromTagGeneric(in);
         return new CellConfigSetPacket(slotIndex, key);
     }
 

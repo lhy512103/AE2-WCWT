@@ -4,7 +4,7 @@ import org.jetbrains.annotations.Nullable;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -31,11 +31,11 @@ public final class ExtendedPanelLayout {
     }
 
     public static ExtendedPanelLayout load(String fileName) {
-        ResourceLocation id = ResourceLocation.fromNamespaceAndPath("ae2", BASE_PATH + fileName);
+        Identifier id = Identifier.fromNamespaceAndPath("ae2", BASE_PATH + fileName);
         return load(id);
     }
 
-    public static ExtendedPanelLayout load(ResourceLocation id) {
+    public static ExtendedPanelLayout load(Identifier id) {
         try {
             Optional<net.minecraft.server.packs.resources.Resource> resource =
                     Minecraft.getInstance().getResourceManager().getResource(id);
