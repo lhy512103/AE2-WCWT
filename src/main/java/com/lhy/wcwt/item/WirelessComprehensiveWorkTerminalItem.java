@@ -11,7 +11,6 @@ import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
@@ -39,8 +38,8 @@ public class WirelessComprehensiveWorkTerminalItem extends ItemWT {
      */
     public static final int UPGRADE_INVENTORY_SIZE = 20;
 
-    public WirelessComprehensiveWorkTerminalItem() {
-        super();
+    public WirelessComprehensiveWorkTerminalItem(Item.Properties properties) {
+        super(properties);
     }
 
     @Override
@@ -74,11 +73,6 @@ public class WirelessComprehensiveWorkTerminalItem extends ItemWT {
         return 800.0 * getUniversalPowerMultiplier(stack, getUpgrades(stack));
     }
 
-    @Override
-    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
-        super.inventoryTick(stack, level, entity, slotId, isSelected);
-    }
-
     @Nullable
     @Override
     public WirelessComprehensiveWorkTerminalMenuHost getMenuHost(Player player, ItemMenuHostLocator locator,
@@ -101,17 +95,10 @@ public class WirelessComprehensiveWorkTerminalItem extends ItemWT {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-        ItemStack stack = player.getItemInHand(hand);
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         if (!level.isClientSide() && openFromInventory(player, MenuLocators.forHand(player, hand))) {
-            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+            return InteractionResult.SUCCESS;
         }
-        return new InteractionResultHolder<>(InteractionResult.FAIL, stack);
-    }
-
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> lines,
-            TooltipFlag advancedTooltips) {
-        super.appendHoverText(stack, context, lines, advancedTooltips);
+        return level.isClientSide() ? InteractionResult.SUCCESS : InteractionResult.FAIL;
     }
 }

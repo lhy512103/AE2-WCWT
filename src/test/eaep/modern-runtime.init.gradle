@@ -1,0 +1,22 @@
+// Run with -I src/test/eaep/modern-runtime.init.gradle -Dwcwt.eaepJar=/path/to/extendedae_plus-1.6.4.jar test.
+// Compile against the normal dependency, then test against the supplied real jar without the legacy jar.
+gradle.projectsEvaluated {
+    def p = gradle.rootProject
+    p.tasks.named('test', Test).configure { task ->
+        def original = p.sourceSets.test.runtimeClasspath
+        def modernJar = p.file(System.getProperty('wcwt.eaepJar'))
+        task.classpath = p.files(original.filter { !it.name.startsWith('extendedae-plus-1337639-') }, modernJar)
+        task.outputs.upToDateWhen { false }
+        task.doFirst {
+            def names = task.classpath.files.collect { it.name }
+            if (names.any { it.startsWith('extendedae-plus-1337639-') }) {
+                throw new GradleException('Legacy EAEP jar remains in the modern test runtime')
+            }
+            if (!modernJar.isFile() || !names.contains(modernJar.name)
+                    || !names.any { it.startsWith('junit-jupiter-engine-') }) {
+                throw new GradleException('Modern EAEP jar or JUnit engine is missing')
+            }
+            println('EAEP runtime under test: ' + modernJar.name)
+        }
+    }
+}

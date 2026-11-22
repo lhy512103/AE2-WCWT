@@ -2,6 +2,7 @@ package com.lhy.wcwt.util;
 
 import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.compat.ExtendedAePlusPatternMetadata;
+import com.lhy.wcwt.network.WcwtPacketLimits;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -52,6 +53,10 @@ public final class PatternUploadMetadata {
             return null;
         }
         String trimmed = text.trim();
+        // Stored in the pattern's components, so it must stay short regardless of where it came from.
+        if (trimmed.length() > WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH) {
+            trimmed = trimmed.substring(0, WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
+        }
         return trimmed.isEmpty() ? null : trimmed;
     }
 }

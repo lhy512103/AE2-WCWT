@@ -1,6 +1,7 @@
 package com.lhy.wcwt.compat.jei;
 
-import appeng.client.gui.Icon;
+import appeng.client.gui.style.Blitter;
+import appeng.util.Icon;
 import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtPullItemsSupport;
@@ -15,7 +16,7 @@ import mezz.jei.api.recipe.advanced.IRecipeButtonControllerFactory;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.world.entity.player.Player;
@@ -44,12 +45,12 @@ public final class WcwtJeiPullItemsButton implements IRecipeButtonControllerFact
             }
 
             @Override
-            public void draw(GuiGraphics graphics, int xOffset, int yOffset) {
+            public void draw(GuiGraphicsExtractor graphics, int xOffset, int yOffset) {
                 int highlight = preview == null ? 0 : preview.getButtonHighlightColor();
                 if (highlight != 0 && WcwtPullRecipeTransfer.canActivate(preview)) {
                     graphics.fill(xOffset - 1, yOffset - 1, xOffset + 11, yOffset + 11, highlight);
                 }
-                Icon.CRAFT_HAMMER.getBlitter().dest(xOffset, yOffset, 10, 10).blit(graphics);
+                Blitter.icon(Icon.CRAFT_HAMMER).dest(xOffset, yOffset, 10, 10).blit(graphics);
             }
         };
 
@@ -75,7 +76,7 @@ public final class WcwtJeiPullItemsButton implements IRecipeButtonControllerFact
         }
 
         @Override
-        public void drawExtras(GuiGraphics graphics, Rect2i buttonArea, int mouseX, int mouseY, float partialTicks) {
+        public void drawExtras(GuiGraphicsExtractor graphics, Rect2i buttonArea, int mouseX, int mouseY, float partialTicks) {
             if (preview == null || !WcwtPullItemsSupport.shouldShowExtraButton()) {
                 return;
             }

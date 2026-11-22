@@ -34,13 +34,17 @@ import appeng.util.inv.SupplierInternalInventory;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.api.IPatternCachingHost;
 import de.mari_023.ae2wtlib.api.AE2wtlibComponents;
+import de.mari_023.ae2wtlib.api.StackWrapper;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import de.mari_023.ae2wtlib.api.terminal.WTMenuHost;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.BiConsumer;
@@ -73,21 +77,21 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
     private static final String PLAYER_PENDING_EXTENDED_UI_TAG = "pending_extended_ui";
     
     // 定义各种存储库存的ResourceLocation标识符
-    public static final ResourceLocation INV_AE2WTLIB_ARMOR = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "ae2wtlib_armor");
-    public static final ResourceLocation INV_DECORATIVE_ARMOR = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "decorative_armor");
-    public static final ResourceLocation INV_CURIOS = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "curios");
-    public static final ResourceLocation INV_ADVANCED_PATTERN = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "advanced_pattern");
-    public static final ResourceLocation INV_PATTERN_CACHE = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_cache");
-    public static final ResourceLocation INV_TOOLKIT = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit");
-    public static final ResourceLocation INV_TOOLKIT_MEMORY = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_memory");
-    public static final ResourceLocation INV_VIEW_CELL = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "view_cell");
-    public static final ResourceLocation INV_STORAGE_CELL = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "storage_cell");
-    public static final ResourceLocation INV_RESONATING_PATTERN_CACHE = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "resonating_pattern_cache");
-    public static final ResourceLocation INV_MANUAL_SMITHING = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "manual_smithing");
-    public static final ResourceLocation INV_MANUAL_ANVIL = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "manual_anvil");
-    public static final ResourceLocation INV_TRASH = ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "trash");
-    /** 缠绕态奇点槽位库存标识（与 ae2wtlib 保持一致，复用其 ResourceLocation） */
-    public static final ResourceLocation INV_SINGULARITY = ResourceLocation.fromNamespaceAndPath("ae2wtlib", "singularity");
+    public static final Identifier INV_AE2WTLIB_ARMOR = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "ae2wtlib_armor");
+    public static final Identifier INV_DECORATIVE_ARMOR = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "decorative_armor");
+    public static final Identifier INV_CURIOS = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "curios");
+    public static final Identifier INV_ADVANCED_PATTERN = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "advanced_pattern");
+    public static final Identifier INV_PATTERN_CACHE = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_cache");
+    public static final Identifier INV_TOOLKIT = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit");
+    public static final Identifier INV_TOOLKIT_MEMORY = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_memory");
+    public static final Identifier INV_VIEW_CELL = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "view_cell");
+    public static final Identifier INV_STORAGE_CELL = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "storage_cell");
+    public static final Identifier INV_RESONATING_PATTERN_CACHE = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "resonating_pattern_cache");
+    public static final Identifier INV_MANUAL_SMITHING = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "manual_smithing");
+    public static final Identifier INV_MANUAL_ANVIL = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "manual_anvil");
+    public static final Identifier INV_TRASH = Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "trash");
+    /** 缠绕态奇点槽位库存标识（与 ae2wtlib 保持一致，复用其 Identifier） */
+    public static final Identifier INV_SINGULARITY = Identifier.fromNamespaceAndPath("ae2wtlib", "singularity");
 
     // 缠绕态奇点槽（1个槽位，用于量子桥接卡联网）
     private final SupplierInternalInventory<InternalInventory> singularityInv;
@@ -154,8 +158,10 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
      *  元件被换出/换入时由 {@link #invalidateCellCaches()} 清空。 */
     private IUpgradeInventory cachedCellUpgrades = null;
     
-    // 扩展UI状态
+    // 扩展UI状态。快捷键预设的扩展面板只在首次读取时才从玩家数据取走，
+    // 这样只为定位物品而临时构造的宿主不会把它消费掉。
     private ExtendedUIType currentExtendedUI = ExtendedUIType.NONE;
+    private boolean pendingExtendedUiConsumed;
     // 样板选中索引（用于高级编码）
     private int selectedPatternIndex = -1;
     /** 样板管理区“启用上传样板功能”开关，持久化到终端物品自身。 */
@@ -251,12 +257,12 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 new StackDependentSupplier<>(
                         this::getItemStack,
                         stack -> createInventory(player, stack, "manual_anvil", 2)));
-        patternEncodingLogic.readFromNBT(getItemStack().getOrDefault(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new net.minecraft.nbt.CompoundTag()),
-                player.registryAccess());
-        magnetPickupConfig.readFromChildTag(getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag()),
-                "", player.registryAccess());
-        magnetInsertConfig.readFromChildTag(getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag()),
-                "", player.registryAccess());
+        patternEncodingLogic.readFromNBT(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(),
+                getItemStack().getOrDefault(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new net.minecraft.nbt.CompoundTag())));
+        magnetPickupConfig.readFromChildTag(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(),
+                getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag())), "");
+        magnetInsertConfig.readFromChildTag(TagValueInput.create(ProblemReporter.DISCARDING, player.registryAccess(),
+                getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag())), "");
         this.patternManagementUploadEnabled = getItemStack().getOrDefault(
                 ModComponents.PATTERN_MANAGEMENT_UPLOAD_ENABLED.get(), true);
         this.patternManagementDisplayMode = getItemStack().getOrDefault(
@@ -273,10 +279,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         this.processingMaterialsMerge = getItemStack().getOrDefault(
                 ModComponents.PROCESSING_MATERIALS_MERGE.get(), false);
         this.manualAnvilName = getItemStack().getOrDefault(ModComponents.MANUAL_ANVIL_NAME.get(), "");
-        this.currentExtendedUI = consumePendingExtendedUi(player);
         if (DEBUG_TOOLKIT) {
-            WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, consumedPendingUi={}, locator={}",
-                    player.getScoreboardName(), this.currentExtendedUI, locator);
+            WcwtMod.LOGGER.info("WCWT toolkit debug: host init player={}, locator={}",
+                    player.getScoreboardName(), locator);
         }
 
         // 父类构造期间会通过动态分派调用到本类的 updateConnectedAccessPoint/updateLinkStatus，
@@ -331,7 +336,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
             long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
             long inserted = delegate.insert(what, amount, mode, source);
             if (mode == Actionable.MODULATE && inserted != 0) {
-                updateCachedStack(what, inserted);
+                cachedAvailableStacks = null;
             }
             logStorageMutation("insert", what, amount, inserted, mode, startNs);
             return inserted;
@@ -343,7 +348,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
             long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
             long extracted = delegate.extract(what, amount, mode, source);
             if (mode == Actionable.MODULATE && extracted != 0) {
-                updateCachedStack(what, -extracted);
+                cachedAvailableStacks = null;
             }
             logStorageMutation("extract", what, amount, extracted, mode, startNs);
             return extracted;
@@ -399,7 +404,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 return cachedAvailableStacks;
             }
             long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
-            KeyCounter fresh = delegate.getAvailableStacks();
+            KeyCounter fresh = copyCounter(delegate.getAvailableStacks());
             cachedAvailableStacks = fresh;
             cachedAvailableStacksTick = tick;
             if (DEBUG_PERF) {
@@ -414,20 +419,6 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
                 }
             }
             return fresh;
-        }
-
-        private void updateCachedStack(AEKey what, long delta) {
-            if (cachedAvailableStacks == null || STORAGE_CACHE_TICKS <= 0) {
-                return;
-            }
-
-            long current = cachedAvailableStacks.get(what);
-            long next = current + delta;
-            if (next <= 0) {
-                cachedAvailableStacks.remove(what);
-            } else {
-                cachedAvailableStacks.set(what, next);
-            }
         }
 
         private void logStorageMutation(String action, AEKey what, long requested, long changed, Actionable mode,
@@ -467,7 +458,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         // 会得到不稳定结果，表现为：库存快照正确、却完全识别不到样板，只显示“成品自身缺失”。
         // 因此只在服务端主线程刷新缓存；后台线程只读取主线程已经算好的 currentAccessPoint/quantumBridge。
         if (!getPlayer().level().isClientSide()) {
-            var server = getPlayer().getServer();
+            var server = getPlayer().level().getServer();
             if (server == null || server.isSameThread()) {
                 updateConnectedAccessPoint();
             }
@@ -696,7 +687,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
     }
 
     public LongResult getQEFrequency() {
-        ItemStack singularity = getItemStack().getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY);
+        ItemStack singularity = getItemStack().getOrDefault(AE2wtlibComponents.SINGULARITY, StackWrapper.EMPTY).toStack();
         if (singularity.isEmpty()) {
             return LongResult.invalid(Status.NoSingularity);
         }
@@ -805,11 +796,16 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
     // 实现IExtendedUIHost接口
     @Override
     public ExtendedUIType getCurrentExtendedUI() {
+        if (!pendingExtendedUiConsumed) {
+            pendingExtendedUiConsumed = true;
+            currentExtendedUI = consumePendingExtendedUi(getPlayer());
+        }
         return currentExtendedUI;
     }
-    
+
     @Override
     public void setCurrentExtendedUI(ExtendedUIType type) {
+        pendingExtendedUiConsumed = true;
         this.currentExtendedUI = type;
         // 当关闭扩展UI时，清除样板选中状态
         if (type == ExtendedUIType.NONE) {
@@ -933,7 +929,7 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
 
     @Nullable
     @Override
-    public InternalInventory getSubInventory(ResourceLocation id) {
+    public InternalInventory getSubInventory(Identifier id) {
         if (id.equals(CraftingTerminalPart.INV_CRAFTING)) {
             return craftingGrid;
         } else if (id.equals(INV_SINGULARITY)) {
@@ -1008,21 +1004,21 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
 
     public void copyMagnetPickupToInsert() {
         CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag());
-        magnetInsertConfig.readFromChildTag(tag, "", getPlayer().registryAccess());
+        magnetInsertConfig.readFromChildTag(TagValueInput.create(ProblemReporter.DISCARDING, getPlayer().registryAccess(), tag), "");
         updateMagnetInsertConfig();
     }
 
     public void copyMagnetInsertToPickup() {
         CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag());
-        magnetPickupConfig.readFromChildTag(tag, "", getPlayer().registryAccess());
+        magnetPickupConfig.readFromChildTag(TagValueInput.create(ProblemReporter.DISCARDING, getPlayer().registryAccess(), tag), "");
         updateMagnetPickupConfig();
     }
 
     public void switchMagnetFilters() {
         CompoundTag pickupTag = getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag());
         CompoundTag insertTag = getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag());
-        magnetPickupConfig.readFromChildTag(insertTag, "", getPlayer().registryAccess());
-        magnetInsertConfig.readFromChildTag(pickupTag, "", getPlayer().registryAccess());
+        magnetPickupConfig.readFromChildTag(TagValueInput.create(ProblemReporter.DISCARDING, getPlayer().registryAccess(), insertTag), "");
+        magnetInsertConfig.readFromChildTag(TagValueInput.create(ProblemReporter.DISCARDING, getPlayer().registryAccess(), pickupTag), "");
         updateMagnetPickupConfig();
         updateMagnetInsertConfig();
     }
@@ -1032,15 +1028,15 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
     }
 
     private void updateMagnetPickupConfig() {
-        CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.PICKUP_CONFIG, new CompoundTag());
-        magnetPickupConfig.writeToChildTag(tag, "", getPlayer().registryAccess());
-        getItemStack().set(AE2wtlibComponents.PICKUP_CONFIG, tag);
+        TagValueOutput out = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, getPlayer().registryAccess());
+        magnetPickupConfig.writeToChildTag(out, "");
+        getItemStack().set(AE2wtlibComponents.PICKUP_CONFIG, out.buildResult());
     }
 
     private void updateMagnetInsertConfig() {
-        CompoundTag tag = getItemStack().getOrDefault(AE2wtlibComponents.INSERT_CONFIG, new CompoundTag());
-        magnetInsertConfig.writeToChildTag(tag, "", getPlayer().registryAccess());
-        getItemStack().set(AE2wtlibComponents.INSERT_CONFIG, tag);
+        TagValueOutput out = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, getPlayer().registryAccess());
+        magnetInsertConfig.writeToChildTag(out, "");
+        getItemStack().set(AE2wtlibComponents.INSERT_CONFIG, out.buildResult());
     }
 
     public void setCellCopyMode(CopyMode mode) {
@@ -1079,9 +1075,9 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
 
     @Override
     public void markForSave() {
-        var tag = getItemStack().getOrDefault(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, new net.minecraft.nbt.CompoundTag());
-        patternEncodingLogic.writeToNBT(tag, getPlayer().registryAccess());
-        getItemStack().set(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, tag);
+        TagValueOutput out = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, getPlayer().registryAccess());
+        patternEncodingLogic.writeToNBT(out);
+        getItemStack().set(AE2wtlibComponents.PATTERN_ENCODING_LOGIC, out.buildResult());
     }
 
     public void syncCellConfigMirrorFromActual() {
@@ -1189,12 +1185,12 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         var inv = new AppEngInternalInventory(new InternalInventoryHost() {
             @Override
             public void saveChangedInventory(AppEngInternalInventory inv) {
-                stack.set(AE2wtlibComponents.SINGULARITY, inv.getStackInSlot(0));
+                stack.set(AE2wtlibComponents.SINGULARITY, new StackWrapper(inv.getStackInSlot(0)));
             }
             @Override
             public boolean isClientSide() { return player.level().isClientSide(); }
         }, 1, 1);
-        inv.setItemDirect(0, stack.getOrDefault(AE2wtlibComponents.SINGULARITY, ItemStack.EMPTY));
+        inv.setItemDirect(0, stack.getOrDefault(AE2wtlibComponents.SINGULARITY, StackWrapper.EMPTY).toStack());
         return inv;
     }
 
@@ -1229,12 +1225,12 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         }
         if (memory) {
             if (clientToolkitMemoryInv == null) {
-                clientToolkitMemoryInv = WcwtToolkitStore.clientInventory(true);
+                clientToolkitMemoryInv = WcwtToolkitStore.clientInventory(player, true);
             }
             return clientToolkitMemoryInv;
         }
         if (clientToolkitInv == null) {
-            clientToolkitInv = WcwtToolkitStore.clientInventory(false);
+            clientToolkitInv = WcwtToolkitStore.clientInventory(player, false);
         }
         return clientToolkitInv;
     }
@@ -1283,9 +1279,14 @@ public class WirelessComprehensiveWorkTerminalMenuHost extends WTMenuHost
         }
     }
 
+    /** Drops a pending panel that no host consumed, so a later ordinary open does not land in it. */
+    public static void clearPendingExtendedUi(Player player) {
+        getOrCreateWcwtPlayerData(player).remove(PLAYER_PENDING_EXTENDED_UI_TAG);
+    }
+
     private static ExtendedUIType consumePendingExtendedUi(Player player) {
         var wcwtData = getOrCreateWcwtPlayerData(player);
-        int ordinal = wcwtData.getInt(PLAYER_PENDING_EXTENDED_UI_TAG);
+        int ordinal = wcwtData.getIntOr(PLAYER_PENDING_EXTENDED_UI_TAG, -1);
         wcwtData.remove(PLAYER_PENDING_EXTENDED_UI_TAG);
         if (ordinal >= 0 && ordinal < ExtendedUIType.values().length) {
             if (DEBUG_TOOLKIT) {

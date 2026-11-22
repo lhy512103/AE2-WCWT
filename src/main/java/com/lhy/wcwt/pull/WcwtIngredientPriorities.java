@@ -55,8 +55,9 @@ public final class WcwtIngredientPriorities {
             }
         }
 
-        for (var item : menu.getPlayerInventory().items) {
-            var key = AEItemKey.of(item);
+        var playerInv = menu.getPlayerInventory();
+        for (int i = 0; i < net.minecraft.world.entity.player.Inventory.INVENTORY_SIZE; i++) {
+            var key = AEItemKey.of(playerInv.getItem(i));
             if (key != null) {
                 result.putIfAbsent(key, -1);
             }
@@ -166,8 +167,8 @@ public final class WcwtIngredientPriorities {
             }
         }
 
-        ItemStack[] items = ingredient.getItems();
-        return items.length > 0 ? items[0].copy() : ItemStack.EMPTY;
+        var items = ingredient.items().map(h -> new ItemStack(h.value())).toList();
+        return !items.isEmpty() ? items.getFirst().copy() : ItemStack.EMPTY;
     }
 
     public static ItemStack chooseBestItemForEncoding(PriorityContext context,
@@ -186,8 +187,8 @@ public final class WcwtIngredientPriorities {
             return bestNetworkIngredient;
         }
 
-        ItemStack[] items = ingredient.getItems();
-        if (items.length == 0) {
+        var items = ingredient.items().map(h -> new ItemStack(h.value())).toList();
+        if (items.isEmpty()) {
             return ItemStack.EMPTY;
         }
 
@@ -201,7 +202,7 @@ public final class WcwtIngredientPriorities {
             }
         }
 
-        return items[0].copy();
+        return items.getFirst().copy();
     }
 
     public static ItemStack chooseBestItemForEncoding(PriorityContext context,

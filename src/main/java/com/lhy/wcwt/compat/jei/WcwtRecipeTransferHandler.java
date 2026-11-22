@@ -8,8 +8,9 @@ import appeng.menu.me.common.GridInventoryEntry;
 import appeng.integration.modules.itemlists.EncodingHelper;
 import appeng.parts.encoding.EncodingMode;
 import appeng.util.CraftingRecipeUtil;
-import com.simibubi.create.content.processing.basin.BasinRecipe;
+import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.compat.AppliedMekanisticsCompat;
+import com.lhy.wcwt.compat.CreateBasinCompat;
 import com.lhy.wcwt.compat.WcwtManualWorkspaceRecipeSwitch;
 import com.lhy.wcwt.compat.WcwtRecipeTransferCommon;
 import com.lhy.wcwt.client.WcwtFavorites;
@@ -18,6 +19,7 @@ import com.lhy.wcwt.init.ModMenus;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import com.lhy.wcwt.pull.WcwtComponentIngredientEncoding;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -25,8 +27,6 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
 import mezz.jei.api.recipe.transfer.IRecipeTransferHandlerHelper;
 import mezz.jei.api.recipe.transfer.IUniversalRecipeTransferHandler;
-import mezz.jei.library.plugins.jei.info.IngredientInfoRecipe;
-import mezz.jei.library.plugins.jei.tags.ITagInfoRecipe;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
@@ -40,6 +40,7 @@ import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.WeakHashMap;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -77,15 +78,44 @@ public class WcwtRecipeTransferHandler
         if (!WcwtClientConfig.enableRecipePullTransfer()) {
             return null;
         }
-        if (WcwtMultiblockTransferCompat.isSupportedRecipe(recipe, recipeSlots)) {
-            var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
-            if (transfer == null) return transferHelper.createInternalError();
+        if (com.lhy.wcwt.compat.UselessModCompat.isRecipe(recipe)) {
+            var logic = menu.getMenuHost().getLogic();
             if (!doTransfer) {
+                // JEI previews every visible recipe each tick. The preview only needs the slot counts, which
+                // never change, so the full transfer (it sorts the whole client repo) is built once per recipe.
+                int[] slotCounts = uselessRecipeSlotCounts(recipe, menu);
+                if (slotCounts == null) return transferHelper.createInternalError();
+                if (slotCounts[0] > logic.getEncodedInputInv().size()
+                        || slotCounts[1] > logic.getEncodedOutputInv().size()) {
+                    return transferHelper.createUserErrorWithTooltip(net.minecraft.network.chat.Component
+                            .translatable("gui.useless_mod.omniversal_pattern.too_many_slots"));
+                }
                 return new WcwtEncodingRecipeTransferError(
                         findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE));
             }
+            var transfer = com.lhy.wcwt.compat.UselessModCompat.transfer(recipe, menu);
+            if (transfer == null) return transferHelper.createInternalError();
+            if (transfer.inputs().size() > logic.getEncodedInputInv().size()
+                    || transfer.outputs().size() > logic.getEncodedOutputInv().size()) {
+                return transferHelper.createUserErrorWithTooltip(net.minecraft.network.chat.Component
+                        .translatable("gui.useless_mod.omniversal_pattern.too_many_slots"));
+            }
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
-            PacketDistributor.sendToServer(new JeiCraftingTransferPacket(
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new com.lhy.wcwt.network.OmniversalPatternTransferPacket(
+                    menu.containerId, transfer.selection(), new JeiCraftingTransferPacket(
+                            transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING)));
+            return null;
+        }
+        if (WcwtMultiblockTransferCompat.isSupportedRecipe(recipe, recipeSlots)) {
+            if (!doTransfer) {
+                // Building the transfer data sorts the whole client repo; the preview does not need it.
+                return new WcwtEncodingRecipeTransferError(
+                        findCraftableEncodingSlots(menu, recipeSlots, Integer.MAX_VALUE));
+            }
+            var transfer = WcwtMultiblockTransferCompat.buildTransferData(menu, recipe, recipeSlots);
+            if (transfer == null) return transferHelper.createInternalError();
+            WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, EncodingMode.PROCESSING);
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new JeiCraftingTransferPacket(
                     transfer.inputs(), transfer.outputs(), false, EncodingMode.PROCESSING));
             return null;
         }
@@ -122,7 +152,7 @@ public class WcwtRecipeTransferHandler
         if (doTransfer) {
             WcwtManualWorkspaceRecipeSwitch.switchForTransfer(menu, mode);
             updateEaepProviderSearchKey(recipe, minecraftRecipe, mode);
-            PacketDistributor.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new JeiCraftingTransferPacket(inputs, outputs, false, mode));
         }
         return null;
     }
@@ -148,6 +178,22 @@ public class WcwtRecipeTransferHandler
                     return key != null && craftableKeys.contains(key);
                 }))
                 .toList();
+    }
+
+    private static final Map<Object, int[]> USELESS_RECIPE_SLOT_COUNTS = new WeakHashMap<>();
+    private static final int[] USELESS_RECIPE_INVALID = new int[0];
+
+    /** Input and output slot counts of a Useless Mod alloy furnace recipe; {@code null} when it cannot transfer. */
+    @Nullable
+    private static int[] uselessRecipeSlotCounts(Object recipe, WirelessComprehensiveWorkTerminalMenu menu) {
+        int[] counts = USELESS_RECIPE_SLOT_COUNTS.get(recipe);
+        if (counts == null) {
+            var transfer = com.lhy.wcwt.compat.UselessModCompat.transfer(recipe, menu);
+            counts = transfer == null ? USELESS_RECIPE_INVALID
+                    : new int[] {transfer.inputs().size(), transfer.outputs().size()};
+            USELESS_RECIPE_SLOT_COUNTS.put(recipe, counts);
+        }
+        return counts.length == 0 ? null : counts;
     }
 
     private static Set<AEKey> craftableKeysForTick(WirelessComprehensiveWorkTerminalMenu menu) {
@@ -224,6 +270,7 @@ public class WcwtRecipeTransferHandler
                                                                   IRecipeSlotsView recipeSlots,
                                                                   EncodingMode mode) {
         var priorityContext = createPriorityContext(menu);
+        var recipeResults = WcwtComponentIngredientEncoding.recipeResults(menu.getPlayer().level());
         if (recipe != null && recipeHolder != null) {
             List<IRecipeSlotView> inputSlots = recipeSlots.getSlotViews(RecipeIngredientRole.INPUT).stream()
                     .limit(mode == EncodingMode.CRAFTING ? 9 : Integer.MAX_VALUE)
@@ -233,7 +280,9 @@ public class WcwtRecipeTransferHandler
                 List<@Nullable GenericStack> resolved = new ArrayList<>(ingredients.size());
                 for (int slot = 0; slot < ingredients.size(); slot++) {
                     List<ItemStack> slotAlternatives = collectPerSlotAlternatives(inputSlots, slot);
-                    resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), slotAlternatives));
+                    var opt = ingredients.get(slot);
+                    resolved.add(opt.isEmpty() ? null
+                            : toBestGenericStack(priorityContext, opt.get(), slotAlternatives, recipeResults));
                 }
                 return resolved;
             }
@@ -242,7 +291,8 @@ public class WcwtRecipeTransferHandler
             for (int slot = 0; slot < ingredients.size(); slot++) {
                 // For non-crafting modes (smithing/stonecutting), JEI slots may not map 1:1
                 // to recipe ingredients. Pass empty alternatives to avoid cross-slot contamination.
-                resolved.add(toBestGenericStack(priorityContext, ingredients.get(slot), List.of()));
+                var opt = ingredients.get(slot);
+                resolved.add(opt.isEmpty() ? null : toBestGenericStack(priorityContext, opt.get(), List.of()));
             }
             return resolved;
         }
@@ -293,15 +343,12 @@ public class WcwtRecipeTransferHandler
             return fromDisplayedSlots;
         }
 
-        if (recipe instanceof BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> fallback = new ArrayList<>();
-            for (Ingredient ingredient : basinRecipe.getIngredients()) {
-                fallback.add(toBestGenericStack(priorityContext, ingredient, List.of()));
-            }
-            for (SizedFluidIngredient fluidIngredient : basinRecipe.getFluidIngredients()) {
-                fallback.add(toGenericStack(fluidIngredient));
-            }
-            return fallback;
+        // Create's BasinRecipe may only be referenced once Create is loaded; see CreateBasinCompat.
+        List<@Nullable GenericStack> basinInputs = CreateBasinCompat.collectInputs(recipe,
+                ingredient -> toBestGenericStack(priorityContext, ingredient, List.of()),
+                fluidIngredient -> toGenericStack(fluidIngredient));
+        if (basinInputs != null) {
+            return basinInputs;
         }
         return fromDisplayedSlots;
     }
@@ -315,17 +362,9 @@ public class WcwtRecipeTransferHandler
             return fromDisplayedSlots;
         }
 
-        if (recipe instanceof BasinRecipe basinRecipe) {
-            List<@Nullable GenericStack> fallback = new ArrayList<>();
-            for (var result : basinRecipe.getRollableResults()) {
-                fallback.add(GenericStack.fromItemStack(result.getStack().copy()));
-            }
-            for (FluidStack fluidStack : basinRecipe.getFluidResults()) {
-                if (!fluidStack.isEmpty()) {
-                    fallback.add(GenericStack.fromFluidStack(fluidStack.copy()));
-                }
-            }
-            return fallback;
+        List<@Nullable GenericStack> basinOutputs = CreateBasinCompat.collectOutputs(recipe);
+        if (basinOutputs != null) {
+            return basinOutputs;
         }
         return fromDisplayedSlots;
     }
@@ -338,8 +377,23 @@ public class WcwtRecipeTransferHandler
     public static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
                                                   Ingredient ingredient,
                                                   List<ItemStack> visibleAlternatives) {
+        return toBestGenericStack(priorityContext, ingredient, visibleAlternatives,
+                WcwtComponentIngredientEncoding.recipeResults(Minecraft.getInstance().level));
+    }
+
+    @Nullable
+    private static GenericStack toBestGenericStack(WcwtIngredientPriorities.PriorityContext priorityContext,
+                                                   Ingredient ingredient,
+                                                   List<ItemStack> visibleAlternatives,
+                                                   java.util.function.Supplier<List<ItemStack>> recipeResults) {
         if (ingredient.isEmpty()) {
             return null;
+        }
+
+        if (WcwtComponentIngredientEncoding.isPartialComponentIngredient(ingredient)) {
+            ItemStack selected = WcwtComponentIngredientEncoding.resolve(priorityContext, ingredient,
+                    visibleAlternatives, recipeResults);
+            return selected.isEmpty() ? null : GenericStack.fromItemStack(selected.copyWithCount(1));
         }
 
         if (priorityContext.hasFavoritePriorities()) {
@@ -469,8 +523,18 @@ public class WcwtRecipeTransferHandler
         return priorities;
     }
 
+    /** JEI's own info pages are library internals, not API; matched by name so a JEI that moves them cannot break every preview. */
+    private static final String[] JEI_INFO_RECIPE_CLASSES = {
+            "mezz.jei.library.plugins.jei.tags.ITagInfoRecipe",
+            "mezz.jei.library.plugins.jei.info.IngredientInfoRecipe"};
+
     public static boolean shouldSkipTransferAnalysis(Object recipe) {
-        return recipe instanceof ITagInfoRecipe || recipe instanceof IngredientInfoRecipe;
+        for (String className : JEI_INFO_RECIPE_CLASSES) {
+            if (WcwtReflect.findClass("jei", className).map(type -> type.isInstance(recipe)).orElse(false)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Nullable
@@ -478,20 +542,19 @@ public class WcwtRecipeTransferHandler
         if (ingredient.isEmpty()) {
             return null;
         }
-        ItemStack[] items = ingredient.getItems();
-        if (items.length == 0 || items[0].isEmpty()) {
+        var first = ingredient.items().findFirst();
+        if (first.isEmpty()) {
             return null;
         }
-        return GenericStack.fromItemStack(items[0].copyWithCount(1));
+        return GenericStack.fromItemStack(new ItemStack(first.get().value(), 1));
     }
 
     @Nullable
     public static GenericStack toGenericStack(SizedFluidIngredient ingredient) {
-        for (FluidStack fluidStack : ingredient.getFluids()) {
+        for (var holder : ingredient.ingredient().fluids()) {
+            FluidStack fluidStack = new FluidStack(holder.value(), Math.max(1, ingredient.amount()));
             if (!fluidStack.isEmpty()) {
-                FluidStack copy = fluidStack.copy();
-                copy.setAmount(Math.max(1, ingredient.amount()));
-                return GenericStack.fromFluidStack(copy);
+                return GenericStack.fromFluidStack(fluidStack);
             }
         }
         return null;

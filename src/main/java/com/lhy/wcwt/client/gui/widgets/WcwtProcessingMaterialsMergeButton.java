@@ -4,18 +4,19 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import appeng.client.gui.widgets.ITooltip;
 
 public final class WcwtProcessingMaterialsMergeButton extends Button implements ITooltip {
 
-    private static final ResourceLocation TEX =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
+    private static final Identifier TEX =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
     private static final int TEX_SIZE = 256;
     /** 合并开启：u=0,v=16 */
     private static final int ON_U = 0;
@@ -55,13 +56,13 @@ public final class WcwtProcessingMaterialsMergeButton extends Button implements 
     }
 
     @Override
-    protected void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         if (!visible) {
             return;
         }
         int u = mergeEnabled ? ON_U : OFF_U;
         int v = mergeEnabled ? ON_V : OFF_V;
-        guiGraphics.blit(TEX, getX(), getY(), u, v, SPRITE, SPRITE, TEX_SIZE, TEX_SIZE);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEX, getX(), getY(), u, v, SPRITE, SPRITE, TEX_SIZE, TEX_SIZE);
     }
 
     @Override

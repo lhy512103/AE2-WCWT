@@ -42,14 +42,14 @@ class WcwtPacketLimitsTest {
 
     @Test
     void slotSyncRoundTripsAndRejectsMoreMappingsThanVisibleSlots() {
-        var packet = new PatternProviderSlotSyncPacket(List.of(
+        var packet = new PatternProviderSlotSyncPacket(12, List.of(
                 new PatternProviderSlotSyncPacket.Mapping(0, 7L, 3),
                 new PatternProviderSlotSyncPacket.Mapping(35, 9L, 0)));
         ByteBuf buf = Unpooled.buffer();
         PatternProviderSlotSyncPacket.STREAM_CODEC.encode(buf, packet);
         assertEquals(packet, PatternProviderSlotSyncPacket.STREAM_CODEC.decode(buf));
 
-        ByteBuf oversized = varInts(WirelessComprehensiveWorkTerminalMenu.PATTERN_PROVIDER_VISIBLE_SLOTS + 1);
+        ByteBuf oversized = varInts(12, WirelessComprehensiveWorkTerminalMenu.PATTERN_PROVIDER_VISIBLE_SLOTS + 1);
         assertThrows(DecoderException.class, () -> PatternProviderSlotSyncPacket.STREAM_CODEC.decode(oversized));
     }
 
@@ -91,6 +91,24 @@ class WcwtPacketLimitsTest {
         huge.writeVarInt(0);
         huge.writeVarInt(Integer.MAX_VALUE);
         assertThrows(DecoderException.class, () -> ResonatingLightningPatternActionPacket.STREAM_CODEC.decode(huge));
+    }
+
+    @Test
+    void enumCodecRoundTripsAndRejectsUnknownOrdinals() {
+        var codec = WcwtPacketLimits.enumCodec(Mode.values(), "mode");
+        ByteBuf buf = Unpooled.buffer();
+        codec.encode(buf, Mode.A);
+        assertEquals(Mode.A, codec.decode(buf));
+        assertEquals(Mode.B, codec.decode(varInts(1)));
+        assertThrows(DecoderException.class, () -> codec.decode(varInts(2)));
+        assertThrows(DecoderException.class, () -> codec.decode(varInts(-1)));
+    }
+
+    @Test
+    void truncateClampsToTheLimitAndMapsNullToEmpty() {
+        assertEquals("", WcwtPacketLimits.truncate(null, 4));
+        assertEquals("abcd", WcwtPacketLimits.truncate("abcdef", 4));
+        assertEquals("ab", WcwtPacketLimits.truncate("ab", 4));
     }
 
     private static ByteBuf varInts(int... values) {

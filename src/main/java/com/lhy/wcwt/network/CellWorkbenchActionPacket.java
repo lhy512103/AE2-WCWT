@@ -3,10 +3,9 @@ package com.lhy.wcwt.network;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -25,12 +24,11 @@ public record CellWorkbenchActionPacket(Action action) implements CustomPacketPa
     }
 
     public static final Type<CellWorkbenchActionPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "cell_workbench_action"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "cell_workbench_action"));
 
     public static final StreamCodec<FriendlyByteBuf, CellWorkbenchActionPacket> STREAM_CODEC =
-            ByteBufCodecs.VAR_INT
-                    .map(i -> new CellWorkbenchActionPacket(Action.values()[i]),
-                            p -> p.action().ordinal())
+            WcwtPacketLimits.enumCodec(Action.values(), "cell workbench action")
+                    .map(CellWorkbenchActionPacket::new, CellWorkbenchActionPacket::action)
                     .cast();
 
     @Override

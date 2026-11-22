@@ -7,22 +7,21 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * 扩展UI状态同步数据包
  */
-public record ExtendedUIPacket(IExtendedUIHost.ExtendedUIType uiType) implements CustomPacketPayload {
+public record ExtendedUIPacket(int containerId, IExtendedUIHost.ExtendedUIType uiType) implements CustomPacketPayload {
     
     public static final CustomPacketPayload.Type<ExtendedUIPacket> TYPE = 
-        new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "extended_ui"));
+        new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "extended_ui"));
     
     public static final StreamCodec<ByteBuf, ExtendedUIPacket> STREAM_CODEC = StreamCodec.composite(
-        ByteBufCodecs.VAR_INT.map(
-            ordinal -> IExtendedUIHost.ExtendedUIType.values()[ordinal],
-            IExtendedUIHost.ExtendedUIType::ordinal
-        ),
+        ByteBufCodecs.VAR_INT,
+        ExtendedUIPacket::containerId,
+        WcwtPacketLimits.enumCodec(IExtendedUIHost.ExtendedUIType.values(), "extended ui type"),
         ExtendedUIPacket::uiType,
         ExtendedUIPacket::new
     );
@@ -35,7 +34,7 @@ public record ExtendedUIPacket(IExtendedUIHost.ExtendedUIType uiType) implements
     public static void handle(ExtendedUIPacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
             var player = context.player();
-            if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+            if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu && menu.containerId == packet.containerId()) {
                 var host = menu.getMenuHost();
                 if (host != null) {
                     host.setCurrentExtendedUI(packet.uiType());

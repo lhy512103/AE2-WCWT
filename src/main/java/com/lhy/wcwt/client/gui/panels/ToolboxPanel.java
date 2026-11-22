@@ -1,15 +1,15 @@
 package com.lhy.wcwt.client.gui.panels;
 
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.resources.Identifier;
 
 /**
  * 卡槽箱面板
  * 显示 AE 网络工具提供的升级卡 3x3 卡槽
  */
 public class ToolboxPanel extends ExtendedUIPanel {
-    private static final ResourceLocation PANEL_TEXTURE = 
-        ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/extra_panels.png");
+    private static final Identifier PANEL_TEXTURE = 
+        Identifier.fromNamespaceAndPath("ae2", "textures/guis/extra_panels.png");
     private final ExtendedPanelLayout layout = ExtendedPanelLayout.load("wcwt_toolbox.json");
     private ExtendedPanelLayout.Rect toolboxSlot =
             new ExtendedPanelLayout.Rect(8, 20, 0, 0);
@@ -29,14 +29,14 @@ public class ToolboxPanel extends ExtendedUIPanel {
     }
     
     @Override
-    protected void renderBackground(GuiGraphics guiGraphics) {
+    protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
         // 渲染卡槽箱背景
         // 纹理位置: (69, 62, 59, 66) in extra_panels.png
         guiGraphics.blit(PANEL_TEXTURE, x, y, 69, 62, width, height, 128, 128);
     }
     
     @Override
-    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // 卡槽箱的内容由 AE2 的 ToolboxMenu 管理
         // 槽位会自动渲染
     }

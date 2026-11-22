@@ -8,18 +8,20 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record PatternEncodingModePacket(EncodingMode mode) implements CustomPacketPayload {
+public record PatternEncodingModePacket(int containerId, EncodingMode mode) implements CustomPacketPayload {
     public static final Type<PatternEncodingModePacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_encoding_mode"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_encoding_mode"));
 
     private static final StreamCodec<ByteBuf, EncodingMode> MODE_STREAM_CODEC =
-            ByteBufCodecs.idMapper(id -> EncodingMode.values()[id], EncodingMode::ordinal);
+            WcwtPacketLimits.enumCodec(EncodingMode.values(), "encoding mode");
 
     public static final StreamCodec<RegistryFriendlyByteBuf, PatternEncodingModePacket> STREAM_CODEC =
             StreamCodec.composite(
+                    ByteBufCodecs.VAR_INT,
+                    PatternEncodingModePacket::containerId,
                     MODE_STREAM_CODEC,
                     PatternEncodingModePacket::mode,
                     PatternEncodingModePacket::new);
@@ -31,7 +33,7 @@ public record PatternEncodingModePacket(EncodingMode mode) implements CustomPack
 
     public static void handle(PatternEncodingModePacket packet, IPayloadContext context) {
         context.enqueueWork(() -> {
-            if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+            if (context.player().containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu && menu.containerId == packet.containerId()) {
                 menu.setPatternEncodingMode(packet.mode());
             }
         });

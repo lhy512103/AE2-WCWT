@@ -8,7 +8,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record EncodePatternPacket(EncodingMode mode,
@@ -19,20 +19,27 @@ public record EncodePatternPacket(EncodingMode mode,
     private static final boolean DEBUG_ENCODE = Boolean.getBoolean("wcwt.debug.encode");
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
     public static final CustomPacketPayload.Type<EncodePatternPacket> TYPE =
-            new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "encode_pattern"));
+            new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "encode_pattern"));
     private static final StreamCodec<ByteBuf, EncodingMode> MODE_STREAM_CODEC =
-            ByteBufCodecs.idMapper(id -> EncodingMode.values()[id], EncodingMode::ordinal);
+            WcwtPacketLimits.enumCodec(EncodingMode.values(), "encoding mode");
+    private static final StreamCodec<ByteBuf, String> SEARCH_TEXT_CODEC =
+            ByteBufCodecs.stringUtf8(WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
     public static final StreamCodec<RegistryFriendlyByteBuf, EncodePatternPacket> STREAM_CODEC =
             StreamCodec.of((buf, packet) -> {
                 MODE_STREAM_CODEC.encode(buf, packet.mode());
                 ByteBufCodecs.BOOL.encode(buf, packet.uploadEnabled());
-                ByteBufCodecs.STRING_UTF8.encode(buf, packet.providerSearchText());
+                SEARCH_TEXT_CODEC.encode(buf, packet.providerSearchText());
                 ByteBufCodecs.BOOL.encode(buf, packet.fallbackToEditSlot());
             }, buf -> new EncodePatternPacket(
                     MODE_STREAM_CODEC.decode(buf),
                     ByteBufCodecs.BOOL.decode(buf),
-                    ByteBufCodecs.STRING_UTF8.decode(buf),
+                    SEARCH_TEXT_CODEC.decode(buf),
                     ByteBufCodecs.BOOL.decode(buf)));
+
+    public EncodePatternPacket {
+        // The search text ends up in the encoded pattern's components, so it is clamped on both sides.
+        providerSearchText = WcwtPacketLimits.truncate(providerSearchText, WcwtPacketLimits.MAX_SEARCH_TEXT_LENGTH);
+    }
 
     public EncodePatternPacket(EncodingMode mode) {
         this(mode, false, "", false);

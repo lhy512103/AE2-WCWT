@@ -1,16 +1,17 @@
 package com.lhy.wcwt.menu;
 
+import appeng.helpers.patternprovider.PatternContainer;
 import appeng.api.config.CopyMode;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.behaviors.ContainerItemStrategies;
 import appeng.api.inventories.InternalInventory;
+import appeng.menu.guisync.ClientActionKey;
 import appeng.api.stacks.AEFluidKey;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.AEKeyType;
 import appeng.api.stacks.GenericStack;
-import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.ITerminalHost;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.StorageHelper;
@@ -66,18 +67,24 @@ import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtMeIngredientExtraction;
 import com.lhy.wcwt.pull.WcwtStackMatching;
 import com.lhy.wcwt.util.PatternUploadMetadata;
-import com.lhy.wcwt.util.PatternProviderIds;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeAccess;
+import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -103,8 +110,11 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.neoforged.neoforge.common.CommonHooks;
 import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import net.neoforged.neoforge.items.SlotItemHandler;
 import net.neoforged.neoforge.network.PacketDistributor;
+import net.neoforged.neoforge.transfer.ResourceHandler;
+import net.neoforged.neoforge.transfer.item.ItemResource;
 import org.anti_ad.mc.ipn.api.IPNIgnore;
 import org.anti_ad.mc.ipn.api.IPNPlayerSideOnly;
 import org.anti_ad.mc.ipn.api.IPNSlotsIgnoreForInventoryTypes;
@@ -112,7 +122,6 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.common.math.LongMath;
-import it.unimi.dsi.fastutil.objects.Object2LongMap;
 
 
 import java.util.ArrayList;
@@ -151,8 +160,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     public static final int PATTERN_PROVIDER_VISIBLE_SLOTS = 36;
 
     public static final String TYPE_ID = "wireless_comprehensive_work_terminal";
-    public static final String TOP_ACTION = "topAction";
-    private static final String ACTION_CLEAR_MANUAL_TO_PLAYER = "clearManualToPlayer";
+    public static final ClientActionKey<TopActionPacket.Action> TOP_ACTION = new ClientActionKey<>("topAction");
+    private static final ClientActionKey<Void> ACTION_CLEAR_MANUAL_TO_PLAYER = new ClientActionKey<>("clearManualToPlayer");
     private static final boolean DEBUG_ENCODE = Boolean.getBoolean("wcwt.debug.encode");
     private static final boolean DEBUG_ADVANCED = Boolean.getBoolean("wcwt.debug.advanced");
     private static final boolean DEBUG_PATTERN_UPLOAD = Boolean.getBoolean("wcwt.debug.patternUpload");
@@ -165,7 +174,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private static final EquipmentSlot[] ARMOR_EQUIPMENT_SLOTS = {
             EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
     };
-    private static final ResourceLocation[] ARMOR_SLOT_TEXTURES = {
+    private static final Identifier[] ARMOR_SLOT_TEXTURES = {
             InventoryMenu.EMPTY_ARMOR_SLOT_BOOTS,
             InventoryMenu.EMPTY_ARMOR_SLOT_LEGGINGS,
             InventoryMenu.EMPTY_ARMOR_SLOT_CHESTPLATE,
@@ -202,6 +211,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private final WirelessComprehensiveWorkTerminalMenuHost menuHost;
     private final PatternEncodingLogic patternEncodingLogic;
+    @Nullable
+    private com.lhy.wcwt.compat.UselessModCompat.Selection pendingOmniversalRecipe;
     private final FakeSlot[] patternCraftingSlots = new FakeSlot[9];
     private final FakeSlot[] processingInputSlots = new FakeSlot[appeng.crafting.pattern.AEProcessingPattern.MAX_INPUT_SLOTS];
     private final FakeSlot[] processingOutputSlots = new FakeSlot[appeng.crafting.pattern.AEProcessingPattern.MAX_OUTPUT_SLOTS];
@@ -222,9 +233,35 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private final PatternProviderSlot[] patternProviderSlots =
             new PatternProviderSlot[PATTERN_PROVIDER_VISIBLE_SLOTS];
     private int syncedPatternEncodingMode = EncodingMode.PROCESSING.ordinal();
+    private boolean syncedPatternSubstitution;
+    private boolean syncedPatternFluidSubstitution;
     private final List<RecipeHolder<StonecutterRecipe>> stonecuttingRecipes = new ArrayList<>();
     @Nullable
     private RecipeHolder<CraftingRecipe> currentPatternCraftingRecipe;
+    /** Input the stonecutting list was last computed for; the client asks for that list every frame. */
+    @Nullable
+    private AEItemKey stonecuttingRecipesInputKey;
+    @Nullable
+    private RecipeAccess stonecuttingRecipesManager;
+    /** What the pattern preview was last computed for; the client asks for the preview every frame. */
+    @Nullable
+    private List<GenericStack> lastPatternPreviewInputs;
+    @Nullable
+    private EncodingMode lastPatternPreviewMode;
+    @Nullable
+    private ResourceKey<Recipe<?>> lastPatternPreviewStonecuttingRecipe;
+    /** Config inventory parsed from the current cell item; the advanced coding panel reads it ~20 times per frame. */
+    private ItemStack cachedCellConfigStack = ItemStack.EMPTY;
+    @Nullable
+    private ConfigInventory cachedCellConfigInventory;
+    private boolean cachedCellConfigIsCell;
+    private boolean cachedCellConfigResolved;
+    /** Network snapshot shared by every craft of one manual crafting action; {@code null} outside an action. */
+    @Nullable
+    private WcwtMeIngredientExtraction.AvailableItems manualCraftingActionSnapshot;
+    /** Encoding inputs the processing merge last saw; it runs every server tick while merging is on. */
+    @Nullable
+    private List<GenericStack> lastMergedProcessingInputs;
 
     /** 处理样板：合并相同输入材料（JEI 编码与手动编辑时行为对齐 AE2 EncodingHelper）。 */
     private boolean processingMaterialsMerge;
@@ -255,6 +292,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      * {@link Long#MIN_VALUE} 表示「本会话尚未推送过」，用于保证订阅后至少推一次。
      */
     private long lastSyncedProviderSignature = Long.MIN_VALUE;
+    /** Set by management actions; the next {@code broadcastChanges} pushes one list for all of them. */
+    private boolean pendingProviderListRefresh;
+    @Nullable
+    private String pendingProviderListSearchText;
     private boolean initializingMenu = true;
     private final ManualSmithingMenuBridge manualSmithingBridge;
     private final ManualAnvilMenuBridge manualAnvilBridge;
@@ -267,6 +308,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         super(com.lhy.wcwt.init.ModMenus.WCWT_MENU_TYPE, id, ip, host, false);
         this.menuHost = host;
         this.patternEncodingLogic = host.getLogic();
+        this.syncedPatternSubstitution = patternEncodingLogic != null && patternEncodingLogic.isSubstitution();
+        this.syncedPatternFluidSubstitution = patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution();
         this.manualSmithingBridge = new ManualSmithingMenuBridge();
         this.manualAnvilBridge = new ManualAnvilMenuBridge();
         this.manualCraftingItemSubstitution = host.isManualCraftingItemSubstitution();
@@ -334,6 +377,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         var toolkitInv = host.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
         if (toolkitInv != null) {
+            if (ip.player instanceof ServerPlayer serverPlayer) {
+                // The client sizes its toolkit from this sync, which must arrive before the open-screen packet.
+                toolkitInv.size();
+                com.lhy.wcwt.helpers.WcwtToolkitSync.ensureLayoutSynced(serverPlayer);
+            }
             for (int i = 0; i < toolkitInv.size(); i++) {
                 addSlot(new ToolkitSlot(toolkitInv, i), WcwtSlotSemantics.WCWT_TOOLKIT);
             }
@@ -382,6 +430,29 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 syncedPatternEncodingMode = isValidEncodingModeOrdinal(v) ? v : EncodingMode.PROCESSING.ordinal();
             }
         });
+        // These flags are server-owned; button clicks only send C2S requests and need an S2C reply.
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return patternEncodingLogic != null && patternEncodingLogic.isSubstitution() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedPatternSubstitution = value != 0;
+            }
+        });
+        addDataSlot(new net.minecraft.world.inventory.DataSlot() {
+            @Override
+            public int get() {
+                return patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution() ? 1 : 0;
+            }
+
+            @Override
+            public void set(int value) {
+                syncedPatternFluidSubstitution = value != 0;
+            }
+        });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
             @Override
             public int get() {
@@ -418,6 +489,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             @Override
             public void set(int value) {
                 syncedPatternManagementUploadEnabled = value != 0;
+                // The getters prefer the host, so the client host must follow or the synced value is never read.
+                if (isClientSide() && menuHost != null) {
+                    menuHost.setPatternManagementUploadEnabled(syncedPatternManagementUploadEnabled);
+                }
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -429,6 +504,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             @Override
             public void set(int value) {
                 syncedPatternManagementDisplayMode = value;
+                if (isClientSide() && menuHost != null) {
+                    menuHost.setPatternManagementDisplayMode(value);
+                }
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -440,6 +518,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             @Override
             public void set(int value) {
                 syncedPatternManagementShowSlots = value != 0;
+                if (isClientSide() && menuHost != null) {
+                    menuHost.setPatternManagementShowSlots(syncedPatternManagementShowSlots);
+                }
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -451,6 +532,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             @Override
             public void set(int value) {
                 syncedPatternManagementSearchMode = value;
+                if (isClientSide() && menuHost != null) {
+                    menuHost.setPatternManagementSearchMode(value);
+                }
             }
         });
         addDataSlot(new net.minecraft.world.inventory.DataSlot() {
@@ -500,7 +584,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 syncedManualAnvilCost = value;
             }
         });
-        registerClientAction(TOP_ACTION, TopActionPacket.Action.class, this::handleTopAction);
+        registerClientAction(TOP_ACTION, StreamCodec.of(
+                (buf, action) -> buf.writeEnum(action),
+                buf -> buf.readEnum(TopActionPacket.Action.class)), this::handleTopAction);
         registerClientAction(ACTION_CLEAR_MANUAL_TO_PLAYER, this::clearManualWorkspaceToPlayerInventory);
 
         // 创建玩家物品栏槽位
@@ -716,8 +802,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         @Override
-        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
-            return Pair.of(InventoryMenu.BLOCK_ATLAS, ARMOR_SLOT_TEXTURES[equipmentSlot.getIndex()]);
+        public Identifier getNoItemIcon() {
+            return ARMOR_SLOT_TEXTURES[equipmentSlot.getIndex()];
         }
 
         @Override
@@ -758,8 +844,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         @Override
-        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
-            return Pair.of(InventoryMenu.BLOCK_ATLAS, ARMOR_SLOT_TEXTURES[equipmentSlot.getIndex()]);
+        public Identifier getNoItemIcon() {
+            return ARMOR_SLOT_TEXTURES[equipmentSlot.getIndex()];
         }
 
         @Override
@@ -791,8 +877,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         @Override
-        public Pair<ResourceLocation, ResourceLocation> getNoItemIcon() {
-            return Pair.of(InventoryMenu.BLOCK_ATLAS, InventoryMenu.EMPTY_ARMOR_SLOT_SHIELD);
+        public Identifier getNoItemIcon() {
+            return InventoryMenu.EMPTY_ARMOR_SLOT_SHIELD;
         }
 
         @Override
@@ -835,6 +921,11 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         public int getSlotLimit(int slot) {
             return slot == 40 ? playerInventory.getMaxStackSize() : 0;
         }
+
+        @Override
+        public ResourceHandler<ItemResource> toResourceHandler() {
+            return new PlayerInternalInventory(playerInventory).toResourceHandler();
+        }
     }
 
     public final class WcwtCurioSlot extends SlotItemHandler implements WcwtActivatableSlot {
@@ -848,7 +939,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             this.identifier = spec.identifier();
             this.canToggleRendering = spec.canToggleRendering();
             this.renderStatus = spec.renderStatus();
-            setBackground(InventoryMenu.BLOCK_ATLAS, spec.icon());
+            setBackground(spec.icon());
         }
 
         public String getIdentifier() {
@@ -924,6 +1015,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         public void setMapping(long providerId, int providerSlot) {
+            if (this.providerId != providerId || this.providerSlot != providerSlot) {
+                this.clientDisplayStack = ItemStack.EMPTY;
+                this.clientDisplayDirty = false;
+            }
             this.providerId = providerId;
             this.providerSlot = providerSlot;
             this.active = providerId > 0 && providerSlot >= 0;
@@ -942,7 +1037,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             if (providerId <= 0 || providerSlot < 0 || isClientSide()) {
                 return null;
             }
-            var provider = PatternProviderIds.find(uploadTargets.providers(), providerId);
+            var provider = uploadTargets.providerById(providerId);
             if (provider == null) {
                 return null;
             }
@@ -1148,7 +1243,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             resultSlot.onTake(player, stack);
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.SMITHING_TABLE_USE, SoundSource.BLOCKS, 1.0F,
-                    player.level().random.nextFloat() * 0.1F + 0.9F);
+                    player.level().getRandom().nextFloat() * 0.1F + 0.9F);
             if (inv != null) {
                 for (int i = 0; i < 3; i++) {
                     inv.setItemDirect(i, this.inputSlots.getItem(i).copy());
@@ -1207,7 +1302,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             this.onTake(player, stack);
             player.level().playSound(null, player.getX(), player.getY(), player.getZ(),
                     SoundEvents.ANVIL_USE, SoundSource.BLOCKS, 1.0F,
-                    player.level().random.nextFloat() * 0.1F + 0.9F);
+                    player.level().getRandom().nextFloat() * 0.1F + 0.9F);
             if (inv != null) {
                 inv.setItemDirect(0, this.inputSlots.getItem(0).copy());
                 inv.setItemDirect(1, this.inputSlots.getItem(1).copy());
@@ -1485,9 +1580,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public void setPatternEncodingMode(EncodingMode mode) {
+        if (mode != EncodingMode.PROCESSING) pendingOmniversalRecipe = null;
         if (isClientSide()) {
             syncedPatternEncodingMode = mode.ordinal();
-            PacketDistributor.sendToServer(new PatternEncodingModePacket(mode));
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new PatternEncodingModePacket(containerId, mode));
             return;
         }
         if (patternEncodingLogic != null) {
@@ -1563,7 +1659,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         ItemStack result = recipe == null
                 ? ItemStack.EMPTY
-                : recipe.value().assemble(input, level.registryAccess());
+                : recipe.value().assemble(input);
         for (Slot slot : getSlots(SlotSemantics.CRAFTING_RESULT)) {
             slot.set(result.copy());
         }
@@ -1598,7 +1694,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
 
-        ItemStack result = recipe.value().assemble(input, level.registryAccess());
+        ItemStack result = recipe.value().assemble(input);
         if (!result.isItemEnabled(level.enabledFeatures())) {
             manualSmithingBridge.setSelectedRecipe(null);
             manualSmithingBridge.getResultContainer().setItem(0, ItemStack.EMPTY);
@@ -1646,13 +1742,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     @Nullable
-    public ResourceLocation getStonecuttingRecipeId() {
-        return patternEncodingLogic == null ? null : patternEncodingLogic.getStonecuttingRecipeId();
+    public Identifier getStonecuttingRecipeId() {
+        var key = patternEncodingLogic == null ? null : patternEncodingLogic.getStonecuttingRecipeId();
+        return key == null ? null : key.identifier();
     }
 
-    public void setStonecuttingRecipeId(ResourceLocation id) {
+    public void setStonecuttingRecipeId(@Nullable Identifier id) {
         if (patternEncodingLogic != null) {
-            patternEncodingLogic.setStonecuttingRecipeId(id);
+            patternEncodingLogic.setStonecuttingRecipeId(
+                    id == null ? null : ResourceKey.create(Registries.RECIPE, id));
             updatePatternPreview(EncodingMode.STONECUTTING);
             broadcastChanges();
         }
@@ -1702,6 +1800,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public void clearPatternEncoding() {
+        pendingOmniversalRecipe = null;
         if (patternEncodingLogic == null) {
             return;
         }
@@ -1720,7 +1819,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public boolean isPatternSubstitute() {
-        return patternEncodingLogic != null && patternEncodingLogic.isSubstitution();
+        return isClientSide() ? syncedPatternSubstitution
+                : patternEncodingLogic != null && patternEncodingLogic.isSubstitution();
     }
 
     public void setPatternSubstitute(boolean substitute) {
@@ -1731,7 +1831,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     public boolean isPatternFluidSubstitute() {
-        return patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution();
+        return isClientSide() ? syncedPatternFluidSubstitution
+                : patternEncodingLogic != null && patternEncodingLogic.isFluidSubstitution();
     }
 
     public void setPatternFluidSubstitute(boolean substitute) {
@@ -1831,6 +1932,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 wcwtMergeProcessingGuard = false;
             }
         }
+        if (isServerSide() && pendingProviderListRefresh && getPlayer() instanceof ServerPlayer serverPlayer) {
+            pendingProviderListRefresh = false;
+            PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer,
+                    pendingProviderListSearchText, uploadTargets.providers()));
+            lastSyncedProviderSignature = uploadTargets.signature();
+            patternProviderSyncCooldown = PATTERN_PROVIDER_SYNC_INTERVAL_TICKS;
+        }
         if (isServerSide() && getPlayer() instanceof ServerPlayer serverPlayer) {
             boolean shouldSyncProviders = shouldSyncPatternProviders(serverPlayer);
             if (shouldSyncProviders && patternProviderSyncCooldown <= 0) {
@@ -1838,7 +1946,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 // 内容签名去重：内容未变则跳过整包构建 + 序列化 + 发送，消除每秒重复推送上千样板的浪费。
                 long signature = uploadTargets.signature();
                 if (signature != lastSyncedProviderSignature) {
-                    PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer));
+                    PacketDistributor.sendToPlayer(serverPlayer,
+                            PatternProviderListPacket.buildForPlayer(serverPlayer, "", uploadTargets.providers()));
                     lastSyncedProviderSignature = signature;
                     didProviderSync = true;
                 }
@@ -1935,7 +2044,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (!isServerSide() || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
             return;
         }
-        long gameTime = serverPlayer.serverLevel().getGameTime();
+        long gameTime = serverPlayer.level().getGameTime();
         if (!subscribe) {
             lastPatternProviderRequestTick = gameTime;
             return;
@@ -1956,13 +2065,29 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (!isServerSide() || !(getPlayer() instanceof ServerPlayer serverPlayer)) {
             return true;
         }
-        long gameTime = serverPlayer.serverLevel().getGameTime();
+        long gameTime = serverPlayer.level().getGameTime();
         return gameTime - lastPatternProviderRequestTick >= 5L;
+    }
+
+    /** Visible pattern providers in terminal order, scanned at most once per server tick. */
+    public List<PatternContainer> getPatternProviders() {
+        return uploadTargets.providers();
+    }
+
+    @Nullable
+    public PatternContainer findPatternProvider(long providerId) {
+        return uploadTargets.providerById(providerId);
+    }
+
+    /** Pushes a fresh provider list on the next {@code broadcastChanges}, coalescing several actions per tick. */
+    public void markPatternProvidersDirty(@Nullable String searchText) {
+        pendingProviderListRefresh = true;
+        pendingProviderListSearchText = searchText;
     }
 
     private boolean shouldSyncPatternProviders(ServerPlayer serverPlayer) {
         return WcwtServerConfig.patternProviderActiveRefresh()
-                && serverPlayer.serverLevel().getGameTime() <= patternProviderSyncSubscriptionUntilTick;
+                && serverPlayer.level().getGameTime() <= patternProviderSyncSubscriptionUntilTick;
     }
 
     private static boolean isValidEncodingModeOrdinal(int ordinal) {
@@ -2020,7 +2145,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         for (int i = 0; i < processingOutputSlots.length; i++) {
             addSlot(processingOutputSlots[i] = new FakeSlot(encodedOutputs, i), WcwtSlotSemantics.WCWT_PATTERN_PROCESSING_OUTPUTS);
         }
-        processingOutputSlots[0].setIcon(appeng.client.gui.Icon.BACKGROUND_PRIMARY_OUTPUT);
+        processingOutputSlots[0].setIcon(appeng.util.Icon.BACKGROUND_PRIMARY_OUTPUT);
 
         addSlot(stonecuttingInputSlot = new FakeSlot(encodedInputs, 0), WcwtSlotSemantics.WCWT_PATTERN_STONECUTTING_INPUT);
         stonecuttingInputSlot.setHideAmount(true);
@@ -2067,7 +2192,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                               boolean fallbackToEditSlot) {
         if (isClientSide()) {
             logEncode("client clicked encode, mode={}", mode);
-            PacketDistributor.sendToServer(new EncodePatternPacket(mode, uploadEnabled, providerSearchText,
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new EncodePatternPacket(mode, uploadEnabled, providerSearchText,
                     fallbackToEditSlot));
             return;
         }
@@ -2086,6 +2211,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         ItemStack encodedPattern;
         try {
             encodedPattern = createEncodedPattern(mode);
+            if (mode == EncodingMode.PROCESSING && pendingOmniversalRecipe != null
+                    && encodedPattern != null && !encodedPattern.isEmpty()) {
+                encodedPattern = com.lhy.wcwt.compat.UselessModCompat.encode(
+                        encodedPattern, pendingOmniversalRecipe, getPlayer().level());
+                // A stale/mismatched selection must not consume a blank or overwrite an existing pattern.
+                if (encodedPattern.isEmpty()) return;
+            }
         } catch (Exception e) {
             if (DEBUG_ENCODE) {
                 com.lhy.wcwt.WcwtMod.LOGGER.warn("WCWT encode debug: exception mode={}", mode, e);
@@ -2094,6 +2226,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         if (encodedPattern == null || encodedPattern.isEmpty()) {
             logEncode("encoded pattern is empty, mode={}", mode);
+            if (pendingOmniversalRecipe != null) return;
             clearEncodedPatternOnly();
             return;
         }
@@ -2115,7 +2248,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             consumeBlankPatternForEncoding();
         }
 
-        ResourceLocation recipeId = resolveEncodedPatternRecipeId(mode);
+        Identifier recipeId = resolveEncodedPatternRecipeId(mode);
         String rawProviderSearchText = resolvePatternUploadSearchText(mode, providerSearchText, recipeId);
         String resolvedProviderSearchText = normalizeProviderSearchText(rawProviderSearchText);
         logPatternUploadDebug(
@@ -2128,11 +2261,42 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 getPlayer().getScoreboardName(), PatternUploadMetadata.getProviderSearchText(encodedPattern), encodedPattern);
 
         boolean editingExisting = PatternDetailsHelper.isEncodedPattern(encodeOutput);
+        boolean omniversal = mode == EncodingMode.PROCESSING && pendingOmniversalRecipe != null;
+        pendingOmniversalRecipe = null;
         encodedPatternSlot.set(encodedPattern);
+        // Inventory callbacks may convert or upload the result; always use the actual output slot.
+        encodedPattern = encodedPatternSlot.getItem();
         updatePatternPreview(mode);
 
-        if (uploadEnabled) {
-            if (tryUploadEncodedPattern(mode, encodedPattern, resolvedProviderSearchText)) {
+        if (encodedPattern.isEmpty()) {
+            tryFillBlankPatternFromNetwork();
+            broadcastChanges();
+            return;
+        }
+        if (omniversal && getPlayer() instanceof ServerPlayer serverPlayer) {
+            var result = com.lhy.wcwt.compat.UselessModCompat.upload(menuHost, encodedPattern, serverPlayer);
+            if (result != com.lhy.wcwt.compat.UselessModCompat.UploadResult.SKIPPED) {
+                encodedPatternSlot.set(ItemStack.EMPTY);
+                if (result == com.lhy.wcwt.compat.UselessModCompat.UploadResult.DUPLICATE) {
+                    var remainder = patternEncodingLogic.getBlankPatternInv().addItems(AEItems.BLANK_PATTERN.stack());
+                    if (!remainder.isEmpty()) serverPlayer.getInventory().placeItemBackInInventory(remainder, false);
+                }
+                tryFillBlankPatternFromNetwork();
+                broadcastChanges();
+                return;
+            }
+        }
+        if (uploadEnabled && !omniversal) {
+            boolean uploaded;
+            try {
+                uploaded = tryUploadEncodedPattern(mode, encodedPattern, resolvedProviderSearchText);
+            } catch (RuntimeException | LinkageError e) {
+                // The pattern is already in the output slot. An upload integration failing must not leave the
+                // encode half done, so it ends as a plain "not uploaded" encode and the cause is reported once.
+                warnUploadFailureOnce(e);
+                uploaded = false;
+            }
+            if (uploaded) {
                 encodedPatternSlot.set(ItemStack.EMPTY);
                 tryFillBlankPatternFromNetwork();
                 broadcastChanges();
@@ -2165,6 +2329,17 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         };
     }
 
+    private static final java.util.concurrent.atomic.AtomicBoolean UPLOAD_FAILURE_WARNED =
+            new java.util.concurrent.atomic.AtomicBoolean();
+
+    private static void warnUploadFailureOnce(Throwable cause) {
+        if (UPLOAD_FAILURE_WARNED.compareAndSet(false, true)) {
+            WcwtMod.LOGGER.warn("WCWT pattern auto-upload failed; the pattern stays in the output slot. Further failures are logged at debug level.", cause);
+        } else {
+            WcwtMod.LOGGER.debug("WCWT pattern auto-upload failed", cause);
+        }
+    }
+
     private boolean tryUploadEncodedPattern(EncodingMode mode, ItemStack encodedPattern,
                                             @Nullable String resolvedProviderSearchText) {
         if (mode != EncodingMode.PROCESSING) {
@@ -2177,9 +2352,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                         matrixUploadResult.state(), mode, encodedPattern);
                 return true;
             }
-            if (matrixUploadResult.state() == WcwtPatternUploadTargets.MatrixUploadState.DUPLICATE_ABORTED) {
-                logEncode("matrix duplicate detected but blank return failed, mode={}, encoded={}",
-                        mode, encodedPattern);
+            if (!matrixUploadResult.state().allowsProviderFallback()) {
+                logEncode("matrix upload stopped result={}, mode={}, encoded={}",
+                        matrixUploadResult.state(), mode, encodedPattern);
                 return false;
             }
         }
@@ -2214,8 +2389,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             serverPlayer.sendSystemMessage(Component.translatable(
                     "extendedae_plus.screen.upload.auto_upload_success", providerName));
         }
-        PacketDistributor.sendToPlayer(serverPlayer,
-                PatternProviderListPacket.buildForPlayer(serverPlayer, resolvedProviderSearchText));
+        PacketDistributor.sendToPlayer(serverPlayer, PatternProviderListPacket.buildForPlayer(serverPlayer,
+                resolvedProviderSearchText, uploadTargets.providers()));
         if (providerId > 0 && slot >= 0) {
             PacketDistributor.sendToPlayer(serverPlayer, new PatternProviderFocusPacket(providerId, slot));
         }
@@ -2243,7 +2418,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     @Nullable
     private String resolvePatternUploadSearchText(EncodingMode mode,
                                                   @Nullable String providerSearchText,
-                                                  @Nullable ResourceLocation recipeId) {
+                                                  @Nullable Identifier recipeId) {
         String normalized = normalizeProviderSearchText(providerSearchText);
         if (normalized != null) {
             return normalized;
@@ -2259,23 +2434,23 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     @Nullable
-    private ResourceLocation resolveEncodedPatternRecipeId(EncodingMode mode) {
+    private Identifier resolveEncodedPatternRecipeId(EncodingMode mode) {
         return switch (mode) {
             case CRAFTING -> resolveCraftingRecipeId();
             case SMITHING_TABLE -> resolveSmithingRecipeId();
-            case STONECUTTING -> patternEncodingLogic != null ? patternEncodingLogic.getStonecuttingRecipeId() : null;
+            case STONECUTTING -> getStonecuttingRecipeId();
             case PROCESSING -> null;
         };
     }
 
     @Nullable
-    private ResourceLocation resolveCraftingRecipeId() {
+    private Identifier resolveCraftingRecipeId() {
         getCraftingPatternPreview();
-        return currentPatternCraftingRecipe == null ? null : currentPatternCraftingRecipe.id();
+        return currentPatternCraftingRecipe == null ? null : currentPatternCraftingRecipe.id().identifier();
     }
 
     @Nullable
-    private ResourceLocation resolveSmithingRecipeId() {
+    private Identifier resolveSmithingRecipeId() {
         if (patternEncodingLogic == null
                 || !(patternEncodingLogic.getEncodedInputInv().getKey(0) instanceof AEItemKey template)
                 || !(patternEncodingLogic.getEncodedInputInv().getKey(1) instanceof AEItemKey base)
@@ -2285,7 +2460,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var input = new SmithingRecipeInput(template.toStack(), base.toStack(), addition.toStack());
         var level = getPlayer().level();
         var recipe = WcwtPolymorphCompat.getSmithingRecipe(this, input, level, getPlayer()).orElse(null);
-        return recipe != null ? recipe.id() : null;
+        return recipe != null ? recipe.id().identifier() : null;
     }
 
     @Nullable
@@ -2348,13 +2523,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 slotStack.grow(toInsert);
                 blankPatternSlot.set(slotStack);
             } else {
-                StorageHelper.poweredInsert(energySource, storage, blankKey, extracted, getActionSource());
+                returnExtracted(energySource, storage, blankKey, extracted);
                 return;
             }
 
             long leftover = extracted - toInsert;
             if (leftover > 0) {
-                StorageHelper.poweredInsert(energySource, storage, blankKey, leftover, getActionSource());
+                returnExtracted(energySource, storage, blankKey, leftover);
             }
             if (DEBUG_BLANK_PATTERN_SYNC) {
                 logBlankPatternSync("autofill.success",
@@ -2447,7 +2622,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
         if (isClientSide()) {
-            PacketDistributor.sendToServer(new TopActionPacket(TopActionPacket.Action.CLEAR_MANUAL_WORKSPACE));
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new TopActionPacket(containerId, TopActionPacket.Action.CLEAR_MANUAL_WORKSPACE));
             return;
         }
         clearManualWorkspaceToNetwork();
@@ -2499,6 +2674,37 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         broadcastChanges();
     }
 
+    /**
+     * Puts back something this menu already took out of the network. A powered insert can fall short when
+     * energy runs out, so the rest goes in unpowered (the energy was paid on extraction), and whatever the
+     * network still refuses goes to the player rather than vanishing.
+     */
+    private void returnExtracted(appeng.api.networking.energy.IEnergySource energy,
+                                 appeng.api.storage.MEStorage storage, AEKey key, long amount) {
+        if (amount <= 0) {
+            return;
+        }
+        long remaining = amount - StorageHelper.poweredInsert(energy, storage, key, amount, getActionSource());
+        if (remaining > 0) {
+            remaining -= storage.insert(key, remaining, Actionable.MODULATE, getActionSource());
+        }
+        if (remaining <= 0) {
+            return;
+        }
+        if (key instanceof AEItemKey itemKey) {
+            while (remaining > 0) {
+                int count = (int) Math.min(remaining, itemKey.getMaxStackSize());
+                ItemStack stack = itemKey.toStack(count);
+                if (!getPlayer().getInventory().add(stack)) {
+                    getPlayer().drop(stack, false);
+                }
+                remaining -= count;
+            }
+        } else {
+            WcwtMod.LOGGER.warn("WCWT could not return {} x {} to the network", remaining, key);
+        }
+    }
+
     private void restockManualWorkspaceInputsAeStyle(InternalInventory inventory, ItemStack[] before) {
         if (isClientSide() || menuHost == null || before == null) {
             return;
@@ -2526,7 +2732,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             ItemStack remainder = inventory.insertItem(slot, key.toStack(1), false);
             if (!remainder.isEmpty()) {
-                StorageHelper.poweredInsert(energySource, storage, key, remainder.getCount(), getActionSource());
+                returnExtracted(energySource, storage, key, remainder.getCount());
             }
         }
     }
@@ -2575,7 +2781,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             }
             ItemStack remaining = stack.copy();
             remaining.shrink((int) Math.min(inserted, Integer.MAX_VALUE));
-            target.setItemDirect(i, remaining);
+            target.setItemDirect(i, remaining.isEmpty() ? ItemStack.EMPTY : remaining);
             changed = true;
         }
         if (changed) {
@@ -2590,13 +2796,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
         if (getLocator() != null && !MenuOpener.open(menuType, getPlayer(), getLocator())) {
-            getPlayer().displayClientMessage(Component.translatable("gui.wcwt.top_action.unavailable"), true);
+            getPlayer().sendOverlayMessage(Component.translatable("gui.wcwt.top_action.unavailable"));
         }
     }
 
     public void openWcwtMagnetMenu() {
         if (isClientSide()) {
-            PacketDistributor.sendToServer(new TopActionPacket(TopActionPacket.Action.OPEN_MAGNET_MENU));
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new TopActionPacket(containerId, TopActionPacket.Action.OPEN_MAGNET_MENU));
             return;
         }
         openWcwtSubMenu(ModMenus.WCWT_MAGNET_MENU.get());
@@ -2604,7 +2810,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     public void openWcwtTrashMenu() {
         if (isClientSide()) {
-            PacketDistributor.sendToServer(new TopActionPacket(TopActionPacket.Action.OPEN_TRASH_MENU));
+            com.lhy.wcwt.network.WcwtPackets.sendToServer(new TopActionPacket(containerId, TopActionPacket.Action.OPEN_TRASH_MENU));
             return;
         }
         openWcwtSubMenu(ModMenus.WCWT_TRASH_MENU.get());
@@ -2614,6 +2820,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (patternPreviewSlot == null || patternEncodingLogic == null) {
             return;
         }
+        lastPatternPreviewMode = mode;
+        lastPatternPreviewInputs = snapshotPatternPreviewInputs();
+        lastPatternPreviewStonecuttingRecipe = patternEncodingLogic.getStonecuttingRecipeId();
 
         ItemStack preview = switch (mode) {
             case CRAFTING -> getCraftingPatternPreview();
@@ -2623,6 +2832,33 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         };
         patternPreviewSlot.setResultItem(preview);
         patternPreviewSlot.setActive(mode != EncodingMode.PROCESSING);
+    }
+
+    /**
+     * Client: the screen asks for the preview every frame, but it only changes with the mode, the encoding
+     * inputs or the selected stonecutting recipe. Recomputing it each frame meant a full crafting recipe
+     * lookup per frame while the grid held no matching recipe. Server-side callers use
+     * {@link #updatePatternPreview} directly so recipe selection changes always recompute.
+     */
+    public void updatePatternPreviewIfInputsChanged(EncodingMode mode) {
+        if (patternPreviewSlot == null || patternEncodingLogic == null) {
+            return;
+        }
+        if (mode == lastPatternPreviewMode
+                && Objects.equals(patternEncodingLogic.getStonecuttingRecipeId(), lastPatternPreviewStonecuttingRecipe)
+                && snapshotPatternPreviewInputs().equals(lastPatternPreviewInputs)) {
+            return;
+        }
+        updatePatternPreview(mode);
+    }
+
+    private List<GenericStack> snapshotPatternPreviewInputs() {
+        var inv = patternEncodingLogic.getEncodedInputInv();
+        List<GenericStack> inputs = new ArrayList<>(inv.size());
+        for (int i = 0; i < inv.size(); i++) {
+            inputs.add(inv.getStack(i));
+        }
+        return inputs;
     }
 
     private ItemStack getCraftingPatternPreview() {
@@ -2654,7 +2890,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         return currentPatternCraftingRecipe == null
                 ? ItemStack.EMPTY
-                : currentPatternCraftingRecipe.value().assemble(input, level.registryAccess());
+                : currentPatternCraftingRecipe.value().assemble(input);
     }
 
     private ItemStack getSmithingPatternPreview() {
@@ -2667,7 +2903,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var input = new SmithingRecipeInput(template.toStack(), base.toStack(), addition.toStack());
         var level = getPlayer().level();
         var recipe = WcwtPolymorphCompat.getSmithingRecipe(this, input, level, getPlayer()).orElse(null);
-        return recipe == null ? ItemStack.EMPTY : recipe.value().assemble(input, level.registryAccess());
+        return recipe == null ? ItemStack.EMPTY : recipe.value().assemble(input);
     }
 
     private ItemStack getStonecuttingPatternPreview() {
@@ -2682,11 +2918,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         var input = new SingleRecipeInput(inputKey.toStack());
-        var level = getPlayer().level();
-        var recipe = level.getRecipeManager()
-                .getRecipeFor(RecipeType.STONECUTTING, input, level, selectedRecipeId)
-                .orElse(null);
-        return recipe == null ? ItemStack.EMPTY : recipe.value().getResultItem(level.registryAccess()).copy();
+        for (var holder : stonecuttingRecipes) {
+            if (holder.id().equals(selectedRecipeId)) {
+                return holder.value().assemble(input);
+            }
+        }
+        return ItemStack.EMPTY;
     }
 
     @Nullable
@@ -2736,7 +2973,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     template, base, addition);
             return null;
         }
-        var output = AEItemKey.of(recipe.value().assemble(input, level.registryAccess()));
+        var output = AEItemKey.of(recipe.value().assemble(input));
         logEncode("smithing recipe found id={}, output={}", recipe.id(), output);
         return PatternDetailsHelper.encodeSmithingTablePattern(recipe, template, base, addition, output,
                 patternEncodingLogic.isSubstitution());
@@ -2744,7 +2981,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     @Nullable
     private ItemStack encodeStonecuttingPattern() {
-        if (patternEncodingLogic.getStonecuttingRecipeId() == null) {
+        var selectedRecipeId = patternEncodingLogic.getStonecuttingRecipeId();
+        if (selectedRecipeId == null) {
             logEncode("stonecutting recipe id is missing");
             return null;
         }
@@ -2754,16 +2992,20 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return null;
         }
 
+        updateStonecuttingRecipes();
         var input = new SingleRecipeInput(inputKey.toStack());
-        var level = getPlayer().level();
-        var recipe = level.getRecipeManager()
-                .getRecipeFor(RecipeType.STONECUTTING, input, level, patternEncodingLogic.getStonecuttingRecipeId())
-                .orElse(null);
+        RecipeHolder<StonecutterRecipe> recipe = null;
+        for (var holder : stonecuttingRecipes) {
+            if (holder.id().equals(selectedRecipeId)) {
+                recipe = holder;
+                break;
+            }
+        }
         if (recipe == null) {
             logEncode("stonecutting recipe not found, input={}", inputKey);
             return null;
         }
-        var output = AEItemKey.of(recipe.value().getResultItem(level.registryAccess()));
+        var output = AEItemKey.of(recipe.value().assemble(input));
         logEncode("stonecutting recipe found id={}, output={}", recipe.id(), output);
         return PatternDetailsHelper.encodeStonecuttingPattern(recipe, inputKey, output,
                 patternEncodingLogic.isSubstitution());
@@ -2804,6 +3046,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         var inputList = java.util.Arrays.asList(inputs);
         var outputList = java.util.Arrays.asList(outputs);
         ItemStack encodedSlotPattern = encodedPatternSlot == null ? ItemStack.EMPTY : encodedPatternSlot.getItem();
+        if (pendingOmniversalRecipe != null) {
+            return PatternDetailsHelper.encodeProcessingPattern(inputList, outputList);
+        }
         ItemStack advPattern = AdvancedAePatternCompat.encodeProcessingPattern(
                 encodedSlotPattern, inputList, outputList, getPlayer().level());
         if (advPattern != null && !advPattern.isEmpty()) {
@@ -2892,16 +3137,32 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private void updateStonecuttingRecipes() {
+        AEItemKey inputKey = patternEncodingLogic != null
+                && patternEncodingLogic.getEncodedInputInv().getKey(0) instanceof AEItemKey key ? key : null;
+        RecipeAccess recipeAccess = inputKey == null ? null : getPlayer().level().recipeAccess();
+        // The list only changes with the input or a recipe reload; the client asks for it every frame.
+        if (Objects.equals(inputKey, stonecuttingRecipesInputKey) && recipeAccess == stonecuttingRecipesManager) {
+            validateStonecuttingSelection();
+            return;
+        }
+        stonecuttingRecipesInputKey = inputKey;
+        stonecuttingRecipesManager = recipeAccess;
         stonecuttingRecipes.clear();
-        if (patternEncodingLogic == null
-                || !(patternEncodingLogic.getEncodedInputInv().getKey(0) instanceof AEItemKey inputKey)) {
+        if (inputKey == null || recipeAccess == null) {
             return;
         }
 
-        var level = getPlayer().level();
-        var recipeInput = new SingleRecipeInput(inputKey.toStack());
-        stonecuttingRecipes.addAll(level.getRecipeManager().getRecipesFor(RecipeType.STONECUTTING, recipeInput, level));
+        var selectable = recipeAccess.stonecutterRecipes().selectByInput(inputKey.toStack());
+        for (var entry : selectable.entries()) {
+            entry.recipe().recipe().ifPresent(stonecuttingRecipes::add);
+        }
+        validateStonecuttingSelection();
+    }
 
+    private void validateStonecuttingSelection() {
+        if (patternEncodingLogic == null) {
+            return;
+        }
         var selected = patternEncodingLogic.getStonecuttingRecipeId();
         if (selected != null && stonecuttingRecipes.stream().noneMatch(recipe -> recipe.id().equals(selected))) {
             patternEncodingLogic.setStonecuttingRecipeId(null);
@@ -2913,8 +3174,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return false;
         }
         ConfigInventory inputInv = patternEncodingLogic.getEncodedInputInv();
+        List<GenericStack> inputs = snapshotPatternPreviewInputs();
+        if (inputs.equals(lastMergedProcessingInputs)) {
+            return false;
+        }
         List<GenericStack> merged = mergeDenseProcessingInputsFromInventory(inputInv);
         if (slotsMatchMergedProcessingInputs(inputInv, merged)) {
+            lastMergedProcessingInputs = inputs;
             return false;
         }
         inputInv.beginBatch();
@@ -2925,6 +3191,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         } finally {
             inputInv.endBatch();
         }
+        lastMergedProcessingInputs = snapshotPatternPreviewInputs();
         return true;
     }
 
@@ -2978,6 +3245,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     public void transferJeiRecipe(List<@Nullable GenericStack> inputs, List<@Nullable GenericStack> outputs,
                                   boolean toCraftingGrid, EncodingMode mode) {
+        if (!toCraftingGrid) pendingOmniversalRecipe = null;
         if (inputs.stream().allMatch(java.util.Objects::isNull)
                 && outputs.stream().allMatch(java.util.Objects::isNull)) {
             return;
@@ -3016,6 +3284,15 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             outputInv.setStack(i, i < outputs.size() ? outputs.get(i) : null);
         }
         broadcastChanges();
+    }
+
+    public void transferOmniversalRecipe(List<@Nullable GenericStack> inputs, List<@Nullable GenericStack> outputs,
+                                        com.lhy.wcwt.compat.UselessModCompat.Selection selection) {
+        if (patternEncodingLogic == null || inputs.isEmpty() || outputs.isEmpty()
+                || inputs.size() > patternEncodingLogic.getEncodedInputInv().size()
+                || outputs.size() > patternEncodingLogic.getEncodedOutputInv().size()) return;
+        transferJeiRecipe(inputs, outputs, false, EncodingMode.PROCESSING);
+        pendingOmniversalRecipe = selection;
     }
 
     private static ItemStack toItemStack(@Nullable GenericStack stack) {
@@ -3132,18 +3409,27 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return ItemStack.EMPTY;
         }
         ItemStack original = sourceSlot.getItem().copy();
-        ItemStack toInsert = original.copy();
         int playerInventoryStart = getPlayerInventoryStartMenuIndex();
-        if (playerInventoryStart < 0 || !moveItemStackTo(toInsert, playerInventoryStart, slots.size(), true)) {
+        if (playerInventoryStart < 0) {
             return ItemStack.EMPTY;
         }
-        int moved = original.getCount() - toInsert.getCount();
-        if (moved <= 0) {
+        // Take from the provider first and hand out only what it actually released: a third-party pattern
+        // container may refuse or shorten the extraction.
+        ItemStack removed = sourceSlot.remove(original.getCount());
+        if (removed.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        sourceSlot.remove(moved);
+        ItemStack toInsert = removed.copy();
+        moveItemStackTo(toInsert, playerInventoryStart, slots.size(), true);
+        boolean movedAny = toInsert.getCount() < removed.getCount();
+        if (!toInsert.isEmpty()) {
+            ItemStack rest = sourceSlot.safeInsert(toInsert);
+            if (!rest.isEmpty() && !getPlayer().getInventory().add(rest)) {
+                getPlayer().drop(rest, false);
+            }
+        }
         sourceSlot.setChanged();
-        return original;
+        return movedAny ? original : ItemStack.EMPTY;
     }
 
     private ItemStack quickMovePlayerEquipmentToInventory(Player player, Slot sourceSlot) {
@@ -3171,11 +3457,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         ItemStack resultStack = manualSmithingResultSlot.getItem().copy();
-        ItemStack toInsert = resultStack.copy();
-        int playerInventoryStart = getPlayerInventoryStartMenuIndex();
-        if (playerInventoryStart < 0
-                || !moveItemStackTo(toInsert, playerInventoryStart, slots.size(), true)
-                || !toInsert.isEmpty()) {
+        if (!moveWholeStackToPlayerInventory(resultStack)) {
             return ItemStack.EMPTY;
         }
 
@@ -3189,14 +3471,40 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
 
         ItemStack resultStack = manualAnvilResultSlot.getItem().copy();
-        ItemStack toInsert = resultStack.copy();
-        int playerInventoryStart = getPlayerInventoryStartMenuIndex();
-        if (playerInventoryStart < 0 || !moveItemStackTo(toInsert, playerInventoryStart, slots.size(), true)) {
+        if (!moveWholeStackToPlayerInventory(resultStack)) {
             return ItemStack.EMPTY;
         }
 
         manualAnvilBridge.takeResult(player, resultStack.copy());
         return resultStack;
+    }
+
+    /**
+     * Moves a whole crafted result into the player inventory, or nothing at all. Workspace results consume
+     * their inputs as one unit, so a partial insert would either lose the remainder or skip the consumption.
+     */
+    private boolean moveWholeStackToPlayerInventory(ItemStack stack) {
+        int start = getPlayerInventoryStartMenuIndex();
+        if (start < 0 || stack.isEmpty()) {
+            return false;
+        }
+        int end = slots.size();
+        ItemStack[] snapshot = new ItemStack[end - start];
+        for (int i = start; i < end; i++) {
+            snapshot[i - start] = slots.get(i).getItem().copy();
+        }
+        ItemStack toInsert = stack.copy();
+        moveItemStackTo(toInsert, start, end, true);
+        if (toInsert.isEmpty()) {
+            return true;
+        }
+        for (int i = start; i < end; i++) {
+            Slot slot = slots.get(i);
+            if (!ItemStack.matches(slot.getItem(), snapshot[i - start])) {
+                slot.set(snapshot[i - start]);
+            }
+        }
+        return false;
     }
 
     private ItemStack tryMoveStackToCurioSlot(Player player, Slot sourceSlot, ItemStack sourceStack) {
@@ -3420,6 +3728,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         boolean craftedAny = false;
         RecipeHolder<CraftingRecipe> cachedAlternativesRecipe = null;
         ManualCraftingRecipeAlternatives cachedAlternatives = null;
+        manualCraftingActionSnapshot = null;
         try {
             for (int crafted = 0; crafted < maxTimesToCraft; crafted++) {
                 CraftingInput input = createManualCraftingInput(craftingMatrix);
@@ -3433,7 +3742,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                     }
                 }
 
-                ItemStack output = recipe.value().assemble(input, player.level().registryAccess());
+                ItemStack output = recipe.value().assemble(input);
                 if (output.isEmpty() || !ItemStack.isSameItemSameComponents(initialOutput, output)) {
                     return;
                 }
@@ -3463,6 +3772,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 }
             }
         } finally {
+            manualCraftingActionSnapshot = null;
             if (craftedAny) {
                 slotsChanged(craftingMatrix.toContainer());
                 // Let the normal server menu tick perform the full inventory broadcast once for the whole action.
@@ -3498,7 +3808,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         ItemStack[] before = snapshotManualCraftingGrid(craftingMatrix);
         ItemStack crafted = output.copy();
 
-        crafted.onCraftedBy(player.level(), player, crafted.getCount());
+        crafted.onCraftedBy(player, crafted.getCount());
         EventHooks.firePlayerCraftingEvent(player, crafted, craftingMatrix.toContainer());
 
         consumeManualCraftingIngredients(player, craftingMatrix, recipe);
@@ -3561,7 +3871,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             return;
         }
         var filter = ViewCellItem.createItemFilter(getViewCells());
-        KeyCounter availableStacks = null;
+        WcwtMeIngredientExtraction.AvailableItems availableStacks = null;
         for (int slot = 0; slot < Math.min(craftingMatrix.size(), before.length); slot++) {
             ItemStack previous = before[slot];
             if (previous == null || previous.isEmpty()) {
@@ -3577,7 +3887,13 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 continue;
             }
             if (availableStacks == null) {
-                availableStacks = storage.getAvailableStacks();
+                // One indexed snapshot per action: "craft all" used to copy the whole network inventory per craft
+                // and then walk every key of it per emptied slot.
+                if (manualCraftingActionSnapshot == null) {
+                    manualCraftingActionSnapshot = WcwtMeIngredientExtraction.AvailableItems.of(
+                            storage.getAvailableStacks(), filter);
+                }
+                availableStacks = manualCraftingActionSnapshot;
             }
             ItemStack replacement = extractManualCraftingReplacement(slot, previous, before, recipe, expectedOutput,
                     filter, availableStacks, recipeAlternatives);
@@ -3589,7 +3905,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private ItemStack extractManualCraftingReplacement(int slot, ItemStack previous, ItemStack[] before,
             RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
-            KeyCounter availableStacks, @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
+            WcwtMeIngredientExtraction.AvailableItems availableStacks, @Nullable ManualCraftingRecipeAlternatives recipeAlternatives) {
         ItemStack exact = extractManualCraftingExactReplacement(previous, filter);
         if (!exact.isEmpty()) {
             return exact;
@@ -3621,7 +3937,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private ItemStack extractManualCraftingAlternativeReplacement(int slot, ItemStack[] before,
             RecipeHolder<CraftingRecipe> recipe, ItemStack expectedOutput, @Nullable IPartitionList filter,
-            KeyCounter availableStacks, List<ItemStack> alternatives) {
+            WcwtMeIngredientExtraction.AvailableItems availableStacks, List<ItemStack> alternatives) {
         if (alternatives.isEmpty()) {
             return ItemStack.EMPTY;
         }
@@ -3686,34 +4002,31 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     private List<AEItemKey> manualCraftingReplacementCandidates(List<ItemStack> alternatives,
             @Nullable net.minecraft.world.item.crafting.Ingredient wideIngredient, @Nullable IPartitionList filter,
-            KeyCounter availableStacks) {
-        List<AEItemKey> candidates = new ArrayList<>();
-        for (ItemStack alternative : WcwtIngredientPriorities.deduplicateItemAlternatives(alternatives)) {
+            WcwtMeIngredientExtraction.AvailableItems availableStacks) {
+        List<ItemStack> orderedAlternatives = WcwtIngredientPriorities.deduplicateItemAlternatives(alternatives);
+        java.util.LinkedHashSet<AEItemKey> candidates = new java.util.LinkedHashSet<>();
+        for (ItemStack alternative : orderedAlternatives) {
             AEItemKey key = AEItemKey.of(alternative);
-            if (key != null
-                    && availableStacks.get(key) > 0
-                    && (filter == null || filter.isListed(key))
-                    && !candidates.contains(key)) {
+            if (key != null && availableStacks.amount(key) > 0 && (filter == null || filter.isListed(key))) {
                 candidates.add(key);
             }
         }
         if (WcwtStackMatching.requiresExactItemKeyMatch(alternatives)) {
-            return candidates;
+            return new ArrayList<>(candidates);
         }
-        for (Object2LongMap.Entry<AEKey> entry : availableStacks) {
-            if (entry.getLongValue() <= 0 || !(entry.getKey() instanceof AEItemKey itemKey)) {
+        // The snapshot is indexed by item and already filtered by the view cells. Only keys of the alternatives'
+        // items can match, so the whole network is never walked per slot.
+        for (ItemStack alternative : orderedAlternatives) {
+            if (alternative.isEmpty()) {
                 continue;
             }
-            if (filter != null && !filter.isListed(itemKey)) {
-                continue;
+            for (AEItemKey key : availableStacks.keysFor(alternative.getItem())) {
+                if (!candidates.contains(key) && WcwtStackMatching.matchesItemKey(key, alternatives, wideIngredient)) {
+                    candidates.add(key);
+                }
             }
-            if (!WcwtStackMatching.matchesItemKey(itemKey, alternatives, wideIngredient)
-                    || candidates.contains(itemKey)) {
-                continue;
-            }
-            candidates.add(itemKey);
         }
-        return candidates;
+        return new ArrayList<>(candidates);
     }
 
     private boolean isManualCraftingReplacementValid(int slot, ItemStack candidate, ItemStack[] before,
@@ -3730,7 +4043,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return recipe.value().matches(input, getPlayer().level())
                 && ItemStack.isSameItemSameComponents(
                         expectedOutput,
-                        recipe.value().assemble(input, getPlayer().level().registryAccess()));
+                        recipe.value().assemble(input));
     }
 
     private boolean tryFillManualCraftingContainerFromFluid(InternalInventory craftingMatrix, int slot,
@@ -3759,7 +4072,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         long extracted = StorageHelper.poweredExtraction(energySource, storage, fluidKey, amount, getActionSource());
         if (extracted < amount) {
             if (extracted > 0) {
-                StorageHelper.poweredInsert(energySource, storage, fluidKey, extracted, getActionSource());
+                returnExtracted(energySource, storage, fluidKey, extracted);
             }
             return false;
         }
@@ -3771,9 +4084,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         ItemStack filled = emptyContainer.copyWithCount(1);
         var fluidHandler = FluidUtil.getFluidHandler(filled).orElse(null);
         if (fluidHandler != null) {
-            int fillable = fluidHandler.fill(fluidKey.toStack(amount), Actionable.SIMULATE.getFluidAction());
+            int fillable = fluidHandler.fill(fluidKey.toStack(amount), IFluidHandler.FluidAction.SIMULATE);
             if (fillable >= amount) {
-                int filledAmount = fluidHandler.fill(fluidKey.toStack(amount), Actionable.MODULATE.getFluidAction());
+                int filledAmount = fluidHandler.fill(fluidKey.toStack(amount), IFluidHandler.FluidAction.EXECUTE);
                 if (filledAmount >= amount) {
                     return fluidHandler.getContainer();
                 }
@@ -3812,7 +4125,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 if (ingredient == null || ingredient.isEmpty() || !ingredient.test(previous)) {
                     continue;
                 }
-                for (ItemStack candidate : ingredient.getItems()) {
+                for (var holder : ingredient.items().toList()) {
+                    ItemStack candidate = new ItemStack(holder.value());
                     if (!candidate.isEmpty() && !containsSameItemAndComponents(result, candidate)) {
                         result.add(candidate.copyWithCount(1));
                     }
@@ -3823,7 +4137,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
         private List<Ingredient> getIngredients() {
             if (ingredients == null) {
-                ingredients = List.copyOf(CraftingRecipeUtil.getIngredients(recipe.value()));
+                ingredients = CraftingRecipeUtil.getIngredients(recipe.value()).stream()
+                        .flatMap(java.util.Optional::stream)
+                        .toList();
             }
             return ingredients;
         }
@@ -3886,8 +4202,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     }
 
     private int getPlayerInventoryStartMenuIndex() {
-        var inventory = getPlayerInventory();
-        int compartment = inventory.items.size();
+        int compartment = Inventory.INVENTORY_SIZE;
         int start = slots.size() - compartment;
         return start < 0 || start >= slots.size() ? -1 : start;
     }
@@ -4002,12 +4317,29 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      *  - 其他：0
      */
     public int getCellConfigInventorySize() {
-        var stack = getCurrentCellStack();
-        if (!stack.isEmpty() && stack.getItem() instanceof ICellWorkbenchItem cwi) {
-            var inv = cwi.getConfigInventory(stack);
+        var inv = currentCellConfigInventory();
+        if (cachedCellConfigIsCell) {
             return inv == null ? 0 : inv.size();
         }
         return cellCopyMode == CopyMode.KEEP_ON_REMOVE ? 63 : 0;
+    }
+
+    /**
+     * The config inventory of the current cell item, parsed again only when that item changes. Reading it is
+     * read-only on both sides; the server writes through the host's own copy.
+     */
+    @Nullable
+    private ConfigInventory currentCellConfigInventory() {
+        var stack = getCurrentCellStack();
+        if (!cachedCellConfigResolved || !ItemStack.matches(stack, cachedCellConfigStack)) {
+            cachedCellConfigStack = stack.copy();
+            cachedCellConfigIsCell = !stack.isEmpty() && stack.getItem() instanceof ICellWorkbenchItem;
+            cachedCellConfigInventory = cachedCellConfigIsCell
+                    ? ((ICellWorkbenchItem) stack.getItem()).getConfigInventory(stack)
+                    : null;
+            cachedCellConfigResolved = true;
+        }
+        return cachedCellConfigInventory;
     }
 
     /**
@@ -4016,9 +4348,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
      */
     @Nullable
     public GenericStack getCellConfigStack(int idx) {
-        var stack = getCurrentCellStack();
-        if (stack.isEmpty() || !(stack.getItem() instanceof ICellWorkbenchItem cwi)) return null;
-        var inv = cwi.getConfigInventory(stack);
+        var inv = currentCellConfigInventory();
         if (inv == null || idx < 0 || idx >= inv.size()) return null;
         return inv.getStack(idx);
     }
@@ -4027,11 +4357,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         if (key == null) {
             return true;
         }
-        var stack = getCurrentCellStack();
-        if (stack.isEmpty() || !(stack.getItem() instanceof ICellWorkbenchItem cwi)) {
-            return false;
-        }
-        var inv = cwi.getConfigInventory(stack);
+        var inv = currentCellConfigInventory();
         return inv != null && idx >= 0 && idx < inv.size() && inv.isAllowedIn(idx, key);
     }
 
@@ -4045,7 +4371,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         }
         var cwi = menuHost.getStorageCellWorkbenchItem();
         if (cwi != null && cellCopyMode == CopyMode.CLEAR_ON_REMOVE) {
-            return idx < cwi.getConfigInventory(menuHost.getStorageCellItem()).size();
+            // getConfigInventory may return null for third-party cells.
+            var inv = currentCellConfigInventory();
+            return inv != null && idx < inv.size();
         }
         return cellCopyMode == CopyMode.KEEP_ON_REMOVE;
     }
@@ -4216,7 +4544,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             for (var stack : stacks) {
                 if (stack != null) {
                     long maxAmount = 999999L * stack.what().getAmountPerUnit();
-                    if (stack.amount() * scale > maxAmount) {
+                    // Divide instead of multiply: amount * scale could wrap around for absurd amounts.
+                    if (stack.amount() > maxAmount / scale) {
                         return false;
                     }
                 }
@@ -4384,7 +4713,9 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
 
     public void convertSelectedPatternToResonating() {
         var host = getMenuHost();
-        if (host == null) {
+        // Resonating storage slots are disabled while their panel is closed, and a disabled slot drops writes.
+        if (host == null
+                || host.getCurrentExtendedUI() != IExtendedUIHost.ExtendedUIType.RESONATING_LIGHTNING_PATTERN_CODING) {
             return;
         }
         var cacheSlots = getPatternCacheSlots();
@@ -4404,7 +4735,12 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 storageFull = true;
                 break;
             }
-            targetSlot.set(resonating.copyWithCount(1));
+            ItemStack written = resonating.copyWithCount(1);
+            targetSlot.set(written);
+            if (!ItemStack.matches(targetSlot.getItem(), written)) {
+                storageFull = true;
+                break;
+            }
             cacheSlot.remove(1);
             converted++;
         }

@@ -2,7 +2,7 @@ package com.lhy.wcwt.compat;
 
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
@@ -36,7 +36,7 @@ public final class CuriosBridge {
                         new Class<?>[]{String.class, int.class}, identifier, slotIndex)
                 .filter(CustomPacketPayload.class::isInstance)
                 .map(CustomPacketPayload.class::cast)
-                .ifPresent(payload -> PacketDistributor.sendToServer(payload));
+                .ifPresent(payload -> com.lhy.wcwt.network.WcwtPackets.sendToServer(payload));
     }
 
     private static final class Impl {
@@ -69,7 +69,7 @@ public final class CuriosBridge {
                 int slots = stacksHandler.getSlots();
                 boolean canToggleRendering = stacksHandler.canToggleRendering();
                 var renderStatuses = stacksHandler.getRenders();
-                ResourceLocation icon = top.theillusivec4.curios.api.CuriosApi.getSlot(entry.getKey(), player.level())
+                Identifier icon = top.theillusivec4.curios.api.CuriosApi.getSlot(entry.getKey(), player.level())
                         .map(top.theillusivec4.curios.api.type.ISlotType::getIcon)
                         .orElse(null);
                 for (int slot = 0; slot < slots; slot++) {
@@ -90,7 +90,7 @@ public final class CuriosBridge {
             String identifier,
             int slotIndex,
             IItemHandlerModifiable handler,
-            ResourceLocation icon,
+            Identifier icon,
             boolean canToggleRendering,
             boolean renderStatus) {
     }

@@ -27,10 +27,9 @@ public final class ExtendedAeHighlight {
         } else {
             EAEHighlightHandler.highlight(pos, face, dimension, until, rotateFaceBox(pos, face));
         }
-        player.displayClientMessage(
+        player.sendSystemMessage(
                 MessageUtil.createEnhancedHighlightMessage(player, pos, dimension,
-                        "chat.ex_pattern_access_terminal.pos"),
-                false);
+                        "chat.ex_pattern_access_terminal.pos"));
         return true;
     }
 

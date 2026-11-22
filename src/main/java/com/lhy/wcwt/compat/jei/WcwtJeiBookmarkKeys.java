@@ -204,7 +204,7 @@ public final class WcwtJeiBookmarkKeys {
         List<ItemStack> allCandidates = new ArrayList<>();
         LinkedHashSet<AEKey> seen = new LinkedHashSet<>();
         addCandidates(allCandidates, seen, visibleAlternatives);
-        addCandidates(allCandidates, seen, Arrays.asList(ingredient.getItems()));
+        addCandidates(allCandidates, seen, ingredient.items().map(h -> new ItemStack(h.value())).toList());
 
         ItemStack best = ItemStack.EMPTY;
         int bestPriority = Integer.MAX_VALUE;

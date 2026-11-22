@@ -101,7 +101,7 @@ public final class CosmeticArmorReworkedBridge {
         if (manager == null) {
             return null;
         }
-        String methodName = player.level().isClientSide ? "getCosArmorInventoryClient" : "getCosArmorInventory";
+        String methodName = player.level().isClientSide() ? "getCosArmorInventoryClient" : "getCosArmorInventory";
         return WcwtReflect.findMethod(manager.getClass(), methodName, UUID.class)
                 .flatMap(method -> WcwtReflect.invoke(manager, method, player.getUUID()))
                 .orElse(null);
@@ -113,13 +113,13 @@ public final class CosmeticArmorReworkedBridge {
     }
 
     private static void sendSkinArmorPacket(int slot, boolean enabled) {
-        if (!FMLEnvironment.dist.isClient()) {
+        if (!FMLEnvironment.getDist().isClient()) {
             return;
         }
         WcwtReflect.construct(MOD_ID, PAYLOAD_SET_SKIN_ARMOR_CLASS,
                         new Class<?>[]{int.class, boolean.class}, slot, enabled)
                 .filter(CustomPacketPayload.class::isInstance)
                 .map(CustomPacketPayload.class::cast)
-                .ifPresent(payload -> PacketDistributor.sendToServer(payload));
+                .ifPresent(payload -> com.lhy.wcwt.network.WcwtPackets.sendToServer(payload));
     }
 }

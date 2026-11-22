@@ -2,7 +2,7 @@ package com.lhy.wcwt.compat;
 
 import appeng.menu.me.items.CraftingTermMenu;
 import appeng.util.CraftingRecipeUtil;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.neoforged.fml.ModList;
@@ -22,7 +22,7 @@ public final class Ae2HelpersCompat {
     }
 
     public static void watchMissingCraftingSlots(CraftingTermMenu menu, @Nullable Recipe<?> recipe) {
-        if (!available() || recipe == null || !Screen.hasControlDown()) {
+        if (!available() || recipe == null || !Minecraft.getInstance().hasControlDown()) {
             return;
         }
         Impl.watch(menu, recipe);
@@ -39,9 +39,9 @@ public final class Ae2HelpersCompat {
             var ingredients = CraftingRecipeUtil.ensure3by3CraftingMatrix(recipe);
             var slotToIngredient = new HashMap<Integer, Ingredient>();
             for (int i = 0; i < ingredients.size(); i++) {
-                Ingredient ingredient = ingredients.get(i);
-                if (!ingredient.isEmpty()) {
-                    slotToIngredient.put(i, ingredient);
+                var opt = ingredients.get(i);
+                if (opt.isPresent() && !opt.get().isEmpty()) {
+                    slotToIngredient.put(i, opt.get());
                 }
             }
             if (slotToIngredient.isEmpty()) {
@@ -49,7 +49,7 @@ public final class Ae2HelpersCompat {
             }
             var missing = menu.findMissingIngredients(slotToIngredient);
             if (!missing.craftableSlots().isEmpty()) {
-                AutoCraftingWatcher.INSTANCE.setPending(slotToIngredient, missing.craftableSlots());
+                AutoCraftingWatcher.INSTANCE.setPending(menu, slotToIngredient, missing.craftableSlots());
             }
         }
     }

@@ -2,11 +2,12 @@ package com.lhy.wcwt.client.gui.widgets;
 
 import appeng.client.gui.widgets.ITooltip;
 import com.lhy.wcwt.api.IExtendedUIHost;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
@@ -32,8 +33,8 @@ import java.util.List;
  */
 public class ExtendedUIButton extends Button implements ITooltip {
 
-    private static final ResourceLocation TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
+    private static final Identifier TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
 
     // ---- 底图 ----
     private static final int BG_U = 0, BG_V = 128, BG_W = 28, BG_H = 27;
@@ -58,22 +59,15 @@ public class ExtendedUIButton extends Button implements ITooltip {
     }
 
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+    protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
 
-        // 1. 渲染底图（按钮左上角向外扩展 4px，因为底图比按钮面大）
-        // 底图取自 wcwt_states.png (0,128) 28×27；如该位置精灵图还是占位色，可临时注释掉此行
-        guiGraphics.blit(TEXTURE, getX() - 4, getY() - 4, BG_U, BG_V, BG_W, BG_H, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, getX() - 4, getY() - 4, BG_U, BG_V, BG_W, BG_H, 256, 256);
 
-        // 2. 渲染按钮面（精灵图实际只有两种状态：普通 / 高亮）。
-        //    点击后 isActive()==true 一直保持高亮，直到对应面板关闭；
-        //    鼠标悬停也使用同一张高亮纹理。
         boolean highlighted = isActive() || isHovered();
         int btnU = highlighted ? BTN_U_HOVERED : BTN_U_NORMAL;
-        guiGraphics.blit(TEXTURE, getX()-1, getY(), btnU, BTN_V, BTN_W, BTN_H, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, getX() - 1, getY(), btnU, BTN_V, BTN_W, BTN_H, 256, 256);
 
-        // 3. 渲染各类型图标（居中叠加在按钮面上）。
-        //    高亮时部分按钮（如装饰盔甲）使用彩色图标，UV 在 getIconU(true) 中给出。
         int iconU = getIconU(highlighted);
         int iconV = getIconV(highlighted);
         int iconW = getIconWidth();
@@ -81,7 +75,7 @@ public class ExtendedUIButton extends Button implements ITooltip {
         int iconOffsetX = (BTN_W - iconW) / 2 + getIconRenderOffsetX();
         int iconOffsetY = (BTN_H - iconH) / 2 + getIconRenderOffsetY();
         int pressOffsetY = highlighted ? 1 : 0;
-        guiGraphics.blit(TEXTURE, getX() - 1 + iconOffsetX, getY() + iconOffsetY + pressOffsetY,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, getX() - 1 + iconOffsetX, getY() + iconOffsetY + pressOffsetY,
                 iconU, iconV, iconW, iconH, 256, 256);
     }
 

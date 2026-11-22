@@ -1,6 +1,6 @@
 package com.lhy.wcwt.client.gui.widgets;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
@@ -20,8 +20,8 @@ public class PlayerEntityWidget extends AbstractWidget {
     }
 
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        InventoryScreen.renderEntityInInventoryFollowsMouse(
+    protected void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        InventoryScreen.extractEntityInInventoryFollowsMouse(
                 guiGraphics,
                 getX(), getY(),
                 getX() + 46,

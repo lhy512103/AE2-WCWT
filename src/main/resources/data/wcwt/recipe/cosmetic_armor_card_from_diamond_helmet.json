@@ -8,12 +8,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "item": "minecraft:diamond_helmet"
-    }
+    "ae2:advanced_card",
+    "minecraft:diamond_helmet"
   ],
   "result": {
     "count": 1,

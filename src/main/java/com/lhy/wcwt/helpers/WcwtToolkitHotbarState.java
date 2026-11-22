@@ -7,6 +7,7 @@ import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.List;
@@ -44,7 +45,7 @@ public final class WcwtToolkitHotbarState {
     }
 
     public static int getSlot(Player player) {
-        return Math.floorMod(player.getInventory().selected, WcwtToolkitAccess.HOTBAR_SIZE);
+        return Math.floorMod(player.getInventory().getSelectedSlot(), WcwtToolkitAccess.HOTBAR_SIZE);
     }
 
     public static boolean isToolkitSelected(Player player) {
@@ -71,9 +72,9 @@ public final class WcwtToolkitHotbarState {
     /** A selection the client already made and shows; not echoed back. */
     public static void applyClientSelection(ServerPlayer player, Bar bar, int slot) {
         Bar before = getBar(player);
-        int slotBefore = player.getInventory().selected;
+        int slotBefore = player.getInventory().getSelectedSlot();
         applySelection(player, bar, slot, false);
-        if ((before != getBar(player) || slotBefore != player.getInventory().selected)
+        if ((before != getBar(player) || slotBefore != player.getInventory().getSelectedSlot())
                 && player.isUsingItem() && player.getUsedItemHand() == InteractionHand.MAIN_HAND) {
             player.stopUsingItem();
         }
@@ -81,7 +82,7 @@ public final class WcwtToolkitHotbarState {
 
     private static void applySelection(Player player, Bar bar, int slot, boolean notifyClient) {
         var state = state(player);
-        player.getInventory().selected = Math.floorMod(slot, WcwtToolkitAccess.HOTBAR_SIZE);
+        player.getInventory().setSelectedSlot(Math.floorMod(slot, WcwtToolkitAccess.HOTBAR_SIZE));
         Bar target = bar == Bar.CENTER || !state.hasCard ? Bar.CENTER : bar;
         if (state.page != target) {
             state.page = target;
@@ -153,6 +154,18 @@ public final class WcwtToolkitHotbarState {
         writeCell(player, index, stack);
     }
 
+    /**
+     * Better Combat temporarily exposes the offhand as the main hand while attacking. Preserve the
+     * stack references (including a stack consumed by tool breakage) and bypass placement rules:
+     * this is a temporary hand swap, not an insertion or an item to return to the player's inventory.
+     */
+    public static ItemStack swapSelectedToolkitForAttributes(Player player, ItemStack stack) {
+        int index = toolkitIndex(player);
+        ItemStack previous = stackAt(player, index);
+        writeCell(player, index, stack);
+        return previous;
+    }
+
     private static void writeCell(Player player, int index, ItemStack stack) {
         if (player.level().isClientSide()) {
             state(player).clientItems[index] = stack;
@@ -166,7 +179,9 @@ public final class WcwtToolkitHotbarState {
 
     /** Drops the selected extra-bar cell without touching the vanilla hotbar. */
     public static void dropSelected(ServerPlayer player, boolean all) {
-        if (!isToolkitSelected(player)) {
+        // A vanilla client only drops the held item with no screen open. While a menu is open, a toolkit cell
+        // may back it (for example a network tool's upgrade inventory), and emptying it would orphan that menu.
+        if (!isToolkitSelected(player) || player.containerMenu != player.inventoryMenu) {
             return;
         }
         ItemStack selected = getSelectedToolkit(player);
@@ -236,16 +251,33 @@ public final class WcwtToolkitHotbarState {
             return false;
         }
         inventory.setItemDirect(slot, entityStack.copyWithCount(1));
+        Item pickedUp = entityStack.getItem();
+        player.take(entity, 1);
         entityStack.shrink(1);
-        player.awardStat(Stats.ITEM_PICKED_UP.get(entityStack.getItem()), 1);
+        if (entityStack.isEmpty()) {
+            entity.discard();
+        }
+        player.awardStat(Stats.ITEM_PICKED_UP.get(pickedUp), 1);
         player.onItemPickup(entity);
         return true;
     }
 
+    /** Client view of the toolkit slot holding the network tool that backs AE2's toolbox; -1 for none. */
+    public static int clientNetworkToolSlot(Player player) {
+        return state(player).clientNetworkToolSlot;
+    }
+
+    /** Server toolkit size as synced to the client, or -1 before the first sync. */
+    public static int clientToolkitSize(Player player) {
+        return state(player).clientToolkitSize;
+    }
+
     public static void applyClientSync(Player player, boolean hasCard, List<ItemStack> items, List<ItemStack> memory,
-                                       int page) {
+                                       int page, int networkToolSlot, int toolkitSize) {
         var state = state(player);
         state.hasCard = hasCard;
+        state.clientNetworkToolSlot = networkToolSlot;
+        state.clientToolkitSize = toolkitSize;
         copyInto(state.clientItems, items);
         copyInto(state.clientMemory, memory);
         if (page >= 0 && page < Bar.values().length) {

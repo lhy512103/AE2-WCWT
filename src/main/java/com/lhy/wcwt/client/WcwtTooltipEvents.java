@@ -29,7 +29,7 @@ public final class WcwtTooltipEvents {
     }
 
     private static void appendWcwtQuantumBridgeTargets(List<Component> lines) {
-        if (BuiltInRegistries.ITEM.get(WcwtItemIds.AE2WTLIB_QUANTUM_BRIDGE_CARD) == Items.AIR) {
+        if (!BuiltInRegistries.ITEM.containsKey(WcwtItemIds.AE2WTLIB_QUANTUM_BRIDGE_CARD)) {
             return;
         }
 

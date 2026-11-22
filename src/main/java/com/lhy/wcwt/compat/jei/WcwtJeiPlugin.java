@@ -21,7 +21,7 @@ import mezz.jei.api.registration.IAdvancedRegistration;
 import mezz.jei.api.registration.IGuiHandlerRegistration;
 import mezz.jei.api.registration.IRecipeTransferRegistration;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
@@ -32,11 +32,11 @@ import java.util.List;
 
 @JeiPlugin
 public class WcwtJeiPlugin implements IModPlugin {
-    private static final ResourceLocation UID =
-            ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "jei_plugin");
+    private static final Identifier UID =
+            Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "jei_plugin");
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public Identifier getPluginUid() {
         return UID;
     }
 
@@ -194,7 +194,8 @@ public class WcwtJeiPlugin implements IModPlugin {
             return AEFluidKey.of(fluid);
         }
         if (raw instanceof SizedFluidIngredient sized) {
-            for (var fs : sized.getFluids()) {
+            for (var holder : sized.ingredient().fluids()) {
+                var fs = new FluidStack(holder.value(), sized.amount());
                 if (!fs.isEmpty()) return AEFluidKey.of(fs);
             }
         }

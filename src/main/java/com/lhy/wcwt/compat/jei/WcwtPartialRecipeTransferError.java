@@ -6,8 +6,8 @@ import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.recipe.transfer.IRecipeTransferError;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.List;
 
@@ -33,7 +33,7 @@ public final class WcwtPartialRecipeTransferError implements IRecipeTransferErro
 
     @Override
     public void getTooltip(ITooltipBuilder tooltip) {
-        tooltip.addAll(TransferHelper.createCraftingTooltip(missing, Screen.hasControlDown(), true));
+        tooltip.addAll(TransferHelper.createCraftingTooltip(missing, Minecraft.getInstance().hasControlDown(), true));
     }
 
     @Override
@@ -44,15 +44,15 @@ public final class WcwtPartialRecipeTransferError implements IRecipeTransferErro
     }
 
     @Override
-    public void showError(GuiGraphics guiGraphics,
+    public void showError(GuiGraphicsExtractor guiGraphics,
                           int mouseX,
                           int mouseY,
                           IRecipeSlotsView recipeSlotsView,
                           int recipeX,
                           int recipeY) {
         var poseStack = guiGraphics.pose();
-        poseStack.pushPose();
-        poseStack.translate(recipeX, recipeY, 400);
+        poseStack.pushMatrix();
+        poseStack.translate(recipeX, recipeY);
         try {
             for (var guiSlot : missing.missingSlots()) {
                 drawSlotHighlight(guiGraphics, guiSlot, TransferHelper.RED_SLOT_HIGHLIGHT_COLOR);
@@ -61,11 +61,11 @@ public final class WcwtPartialRecipeTransferError implements IRecipeTransferErro
                 drawSlotHighlight(guiGraphics, guiSlot, TransferHelper.BLUE_SLOT_HIGHLIGHT_COLOR);
             }
         } finally {
-            poseStack.popPose();
+            poseStack.popMatrix();
         }
     }
 
-    private void drawSlotHighlight(GuiGraphics guiGraphics, int ingredientIndex, int color) {
+    private void drawSlotHighlight(GuiGraphicsExtractor guiGraphics, int ingredientIndex, int color) {
         if (ingredientIndex < 0 || ingredientIndex >= slotViewsByIngredientIndex.size()) {
             return;
         }

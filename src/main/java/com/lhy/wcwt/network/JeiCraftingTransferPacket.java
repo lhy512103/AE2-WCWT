@@ -7,7 +7,7 @@ import appeng.parts.encoding.EncodingMode;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.Nullable;
 
@@ -18,7 +18,7 @@ public record JeiCraftingTransferPacket(List<@Nullable GenericStack> inputs, Lis
                                         boolean toCraftingGrid, EncodingMode mode)
         implements CustomPacketPayload {
     public static final Type<JeiCraftingTransferPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "jei_crafting_transfer"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "jei_crafting_transfer"));
     public static final StreamCodec<RegistryFriendlyByteBuf, JeiCraftingTransferPacket> STREAM_CODEC =
             StreamCodec.ofMember(JeiCraftingTransferPacket::write, JeiCraftingTransferPacket::decode);
 

@@ -1,17 +1,19 @@
 package com.lhy.wcwt.client.gui.panels;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Curios饰品面板
  * 显示饰品槽位网格（6列）和滚动条
  */
 public class CuriosPanel extends ExtendedUIPanel {
-    private static final ResourceLocation PANEL_TEXTURE = 
-        ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_curios.png");
+    private static final Identifier PANEL_TEXTURE = 
+        Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_curios.png");
     
     // 布局常量
     public static final int SLOT_SIZE = 18;
@@ -47,13 +49,12 @@ public class CuriosPanel extends ExtendedUIPanel {
     }
     
     @Override
-    protected void renderBackground(GuiGraphics guiGraphics) {
-        // 渲染面板背景纹理
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
+    protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
     }
     
     @Override
-    protected void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+    protected void renderContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         // 渲染标题
         var font = Minecraft.getInstance().font;
         WcwtTextRendering.drawString(guiGraphics, font,
@@ -64,8 +65,8 @@ public class CuriosPanel extends ExtendedUIPanel {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        return visible && super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(MouseButtonEvent event, boolean isDoubleClick) {
+        return visible && super.mouseClicked(event, isDoubleClick);
     }
 
     public int getColumns() {

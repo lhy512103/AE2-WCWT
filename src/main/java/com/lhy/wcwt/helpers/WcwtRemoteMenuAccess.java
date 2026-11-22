@@ -59,7 +59,7 @@ public final class WcwtRemoteMenuAccess {
             return false;
         }
 
-        ServerLevel level = player.server.getLevel(session.dimension);
+        ServerLevel level = player.level().getServer().getLevel(session.dimension);
         if (level == null || !level.isLoaded(session.pos)) {
             SESSIONS.remove(player.getUUID());
             return false;
@@ -83,6 +83,15 @@ public final class WcwtRemoteMenuAccess {
         if (session != null && session.menu == menu) {
             SESSIONS.remove(player.getUUID());
         }
+    }
+
+    /** A disconnect never closes the container, so the session is dropped with the player. */
+    public static void clear(ServerPlayer player) {
+        SESSIONS.remove(player.getUUID());
+    }
+
+    public static void clearAll() {
+        SESSIONS.clear();
     }
 
     private record Session(AbstractContainerMenu menu, ResourceKey<Level> dimension, BlockPos pos,

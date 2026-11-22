@@ -6,7 +6,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record PatternManagementUploadSettingPacket(boolean enabled,
@@ -14,7 +14,7 @@ public record PatternManagementUploadSettingPacket(boolean enabled,
                                                    boolean showSlots,
                                                    int searchMode) implements CustomPacketPayload {
     public static final Type<PatternManagementUploadSettingPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_upload_setting"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_management_upload_setting"));
 
     public static final StreamCodec<ByteBuf, PatternManagementUploadSettingPacket> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.BOOL,

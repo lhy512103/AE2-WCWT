@@ -11,7 +11,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
@@ -23,7 +23,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
     private static final boolean DEBUG_TOOLKIT = Boolean.getBoolean("wcwt.debug.toolkit");
     public static final Type<OpenToolkitHotkeyPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "open_toolkit_hotkey"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "open_toolkit_hotkey"));
 
     public static final StreamCodec<ByteBuf, OpenToolkitHotkeyPacket> STREAM_CODEC =
             StreamCodec.unit(new OpenToolkitHotkeyPacket());
@@ -44,10 +44,10 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
                                 : player.containerMenu.getClass().getName());
             }
 
-            if (openFromInventory(player)) {
+            if (openFromInventory(player) || openFromCurios(player)) {
                 return;
             }
-            openFromCurios(player);
+            WirelessComprehensiveWorkTerminalMenuHost.clearPendingExtendedUi(player);
         });
     }
 
@@ -87,8 +87,8 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
         if (cap == null) {
             return false;
         }
-        for (int slot = 0; slot < cap.getSlots(); slot++) {
-            ItemStack stack = cap.getStackInSlot(slot);
+        for (int slot = 0; slot < cap.size(); slot++) {
+            ItemStack stack = cap.getResource(slot).toStack(cap.getAmountAsInt(slot));
             if (!(stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem terminalItem)) {
                 continue;
             }

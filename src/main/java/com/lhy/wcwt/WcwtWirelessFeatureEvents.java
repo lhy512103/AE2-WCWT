@@ -8,7 +8,7 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
-import net.neoforged.neoforge.common.util.TriState;
+import net.minecraft.util.TriState;
 import net.neoforged.neoforge.event.entity.living.LivingEntityUseItemEvent;
 import net.neoforged.neoforge.event.entity.player.ArrowLooseEvent;
 import net.neoforged.neoforge.event.entity.player.ArrowNockEvent;
@@ -80,13 +80,34 @@ public class WcwtWirelessFeatureEvents {
             return;
         }
 
-        ItemStack crafted = event.getCrafting();
+        releaseCraftingLeftovers(player, event.getCrafting());
+    }
+
+    /**
+     * Terminals crafted without a player crafting event (crafter block, molecular assembler, ...) still
+     * carry their leftover upgrade cards; hand them out once such a terminal reaches a player's inventory.
+     */
+    @SubscribeEvent
+    public static void onPlayerTickReleaseLeftovers(PlayerTickEvent.Post event) {
+        if (!(event.getEntity() instanceof ServerPlayer player) || player.tickCount % 20 != 0) {
+            return;
+        }
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (!stack.isEmpty() && stack.has(ModComponents.CRAFTING_UPGRADE_LEFTOVERS.get())) {
+                releaseCraftingLeftovers(player, stack);
+            }
+        }
+    }
+
+    private static void releaseCraftingLeftovers(net.minecraft.world.entity.player.Player player, ItemStack crafted) {
         var leftovers = crafted.remove(ModComponents.CRAFTING_UPGRADE_LEFTOVERS.get());
         if (leftovers == null) {
             return;
         }
 
-        for (ItemStack leftover : leftovers.nonEmptyItems()) {
+        for (ItemStack leftover : leftovers.nonEmptyItemCopyStream().toList()) {
             ItemStack returned = leftover.copy();
             if (!player.addItem(returned)) {
                 player.drop(returned, false);

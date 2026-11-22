@@ -32,7 +32,7 @@ import de.mari_023.ae2wtlib.api.registration.AddTerminalEvent;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -62,7 +62,7 @@ public class WcwtMod {
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     private static final ResourceKey<CreativeModeTab> AE2WTLIB_TAB = ResourceKey.create(
             Registries.CREATIVE_MODE_TAB,
-            ResourceLocation.fromNamespaceAndPath("ae2wtlib", "main"));
+            Identifier.fromNamespaceAndPath("ae2wtlib", "main"));
 
     public WcwtMod(IEventBus modEventBus, ModContainer modContainer) {
         WcwtSlotSemantics.init();
@@ -123,7 +123,7 @@ public class WcwtMod {
             //   Upgrades.add(<升级卡 Item>, wcwt, <最大数量>, groupKey);
             // 升级卡 Item 的取法：
             //   - AE2 原生：appeng.core.definitions.AEItems.<名称>（如 ENERGY_CARD / CRAFTING_CARD / INVERTER_CARD / FUZZY_CARD ...）
-            //   - WTLib 的卡（QUANTUM_BRIDGE_CARD / MAGNET_CARD）：用 registerExternalUpgradeCard(...) 按 ResourceLocation 查找。
+            //   - WTLib 的卡（QUANTUM_BRIDGE_CARD / MAGNET_CARD）：用 registerExternalUpgradeCard(...) 按 Identifier 查找。
             //   - ae2importexportcard（输入卡 / 输出卡）：直接引用其 ModItems.IMPORT_CARD/EXPORT_CARD（需 compileOnly 依赖），模组未安装时跳过。
             // 注意：所有升级卡的最大数量之和不能超过 WirelessComprehensiveWorkTerminalItem.UPGRADE_INVENTORY_SIZE（当前 20），
             //       超出会导致后注册的升级显示不全。改这个上限去 WirelessComprehensiveWorkTerminalItem 里改 UPGRADE_INVENTORY_SIZE 常量。
@@ -131,13 +131,11 @@ public class WcwtMod {
             var wut = AE2wtlibAPI.getWUT();
             String groupKey = GuiText.WirelessTerminals.getTranslationKey();
             Upgrades.add(AEItems.ENERGY_CARD, wcwt, 10, groupKey);                              // 能源卡 ×10
-            registerExternalUpgradeCard(wcwt, ResourceLocation.fromNamespaceAndPath("ae2wtlib", "quantum_bridge_card"), 1, null, false); // 量子桥卡 ×1
+            registerExternalUpgradeCard(wcwt, Identifier.fromNamespaceAndPath("ae2wtlib", "quantum_bridge_card"), 1, null, false); // 量子桥卡 ×1
             registerExternalUpgradeCard(wcwt, "ae2wtlib", "magnet_card", 1, groupKey, false); // 磁力卡 ×1
             if (ModList.get().isLoaded("ae2importexportcard")) {
-                // 输入/输出卡是第三方模组（com.ultramega.ae2importexportcard）的物品，直接引用其注册表项，
-                // 不再用 ResourceLocation 反查 + namespace/path 字符串匹配。
-                Upgrades.add(com.ultramega.ae2importexportcard.registry.ModItems.IMPORT_CARD.get(), wcwt, 1, groupKey); // 输入卡 ×1
-                Upgrades.add(com.ultramega.ae2importexportcard.registry.ModItems.EXPORT_CARD.get(), wcwt, 1, groupKey); // 输出卡 ×1
+                registerExternalUpgradeCard(wcwt, "ae2importexportcard", "import_card", 1, groupKey, true);
+                registerExternalUpgradeCard(wcwt, "ae2importexportcard", "export_card", 1, groupKey, true);
             }
             Upgrades.add(ModItems.ADVANCED_CODING_CARD, wcwt, 1, groupKey);
             if (WcwtOptionalFeatureGates.isCosmeticArmorAvailable()) {
@@ -171,7 +169,7 @@ public class WcwtMod {
     private void addBuiltInPacks(AddPackFindersEvent event) {
         if (event.getPackType() == PackType.CLIENT_RESOURCES) {
             event.addPackFinders(
-                    ResourceLocation.fromNamespaceAndPath(MOD_ID, "resourcepacks/dark_ae_ui"),
+                    Identifier.fromNamespaceAndPath(MOD_ID, "resourcepacks/dark_ae_ui"),
                     PackType.CLIENT_RESOURCES,
                     Component.translatable("pack.wcwt.dark_ae_ui"),
                     PackSource.BUILT_IN,
@@ -181,10 +179,10 @@ public class WcwtMod {
     }
 
     private void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerItem(Capabilities.EnergyStorage.ITEM,
-                (stack, context) -> new PoweredItemCapabilities(stack,
-                        (WirelessComprehensiveWorkTerminalItem) ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()),
-                ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get());
+        var wcwt = ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get();
+        event.registerItem(Capabilities.Energy.ITEM,
+                (stack, context) -> new PoweredItemCapabilities(context, wcwt, wcwt),
+                wcwt);
     }
 
     /**
@@ -192,14 +190,14 @@ public class WcwtMod {
      */
     private static void registerExternalUpgradeCard(Item host, String namespace, String path, int max, String groupKey,
             boolean quietIfMissing) {
-        registerExternalUpgradeCard(host, ResourceLocation.fromNamespaceAndPath(namespace, path), max, groupKey,
+        registerExternalUpgradeCard(host, Identifier.fromNamespaceAndPath(namespace, path), max, groupKey,
                 quietIfMissing);
     }
 
-    private static void registerExternalUpgradeCard(Item host, ResourceLocation cardId, int max, String groupKey,
+    private static void registerExternalUpgradeCard(Item host, Identifier cardId, int max, String groupKey,
             boolean quietIfMissing) {
-        var card = BuiltInRegistries.ITEM.get(cardId);
-        if (card != null && card != Items.AIR) {
+        var card = BuiltInRegistries.ITEM.getOptional(cardId).orElse(Items.AIR);
+        if (card != Items.AIR) {
             Upgrades.add(card, host, max, groupKey);
             LOGGER.info("Registered compatible upgrade '{}' (×{}) for WCWT", cardId, max);
         } else if (quietIfMissing) {

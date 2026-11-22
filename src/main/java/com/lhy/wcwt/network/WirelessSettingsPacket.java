@@ -8,14 +8,14 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public record WirelessSettingsPacket(boolean pickBlock, boolean restock, boolean magnet, boolean pickupToMe,
                                      boolean craftIfMissing) implements CustomPacketPayload {
     public static final Type<WirelessSettingsPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "wireless_settings"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "wireless_settings"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, WirelessSettingsPacket> STREAM_CODEC =
             StreamCodec.composite(

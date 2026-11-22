@@ -1,7 +1,7 @@
 package com.lhy.wcwt.client;
 
 import com.lhy.wcwt.WcwtMod;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 
@@ -13,7 +13,7 @@ public final class WcwtClientGuiLayers {
     public static void register(RegisterGuiLayersEvent event) {
         event.registerAbove(
                 VanillaGuiLayers.HOTBAR,
-                ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_bar"),
+                Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "toolkit_bar"),
                 WcwtToolkitHud::renderGuiLayer);
     }
 }

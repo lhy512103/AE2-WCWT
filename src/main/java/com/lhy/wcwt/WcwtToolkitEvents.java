@@ -9,9 +9,9 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentEffectComponents;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -40,6 +40,15 @@ public final class WcwtToolkitEvents {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             WcwtToolkitSync.sendFull(player);
+        }
+    }
+
+    /** Pending toolkit writes of the dying player must reach the clone's persisted data. */
+    @SubscribeEvent
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        if (event.getOriginal() instanceof ServerPlayer original
+                && event.getEntity() instanceof ServerPlayer replacement) {
+            WcwtToolkitStore.copyOnClone(original, replacement);
         }
     }
 
@@ -104,7 +113,7 @@ public final class WcwtToolkitEvents {
     @Nullable
     private static InteractionResult equipFromSelected(Player player, boolean apply) {
         ItemStack hand = player.getItemInHand(InteractionHand.MAIN_HAND);
-        if (hand.isEmpty() || !(hand.getItem() instanceof Equipable)) {
+        if (hand.isEmpty() || !hand.has(DataComponents.EQUIPPABLE)) {
             return null;
         }
         EquipmentSlot slot = player.getEquipmentSlotForItem(hand);

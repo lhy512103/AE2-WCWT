@@ -5,16 +5,16 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-public record StonecuttingRecipeSelectionPacket(ResourceLocation recipeId) implements CustomPacketPayload {
+public record StonecuttingRecipeSelectionPacket(Identifier recipeId) implements CustomPacketPayload {
     public static final Type<StonecuttingRecipeSelectionPacket> TYPE =
-            new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "stonecutting_recipe_selection"));
+            new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "stonecutting_recipe_selection"));
 
     public static final StreamCodec<RegistryFriendlyByteBuf, StonecuttingRecipeSelectionPacket> STREAM_CODEC =
             StreamCodec.composite(
-                    ResourceLocation.STREAM_CODEC,
+                    Identifier.STREAM_CODEC,
                     StonecuttingRecipeSelectionPacket::recipeId,
                     StonecuttingRecipeSelectionPacket::new);
 

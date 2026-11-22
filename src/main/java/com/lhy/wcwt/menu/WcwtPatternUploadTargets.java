@@ -20,7 +20,9 @@ import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BooleanSupplier;
 import java.util.function.IntPredicate;
 import java.util.function.Supplier;
@@ -40,11 +42,17 @@ final class WcwtPatternUploadTargets {
 
     /**
      * Vanilla {@code broadcastChanges} reads every provider slot each tick and each read resolves its
-     * provider, so a network-wide scan is reused for the rest of the server tick.
+     * provider, so a network-wide scan is reused for the rest of the server tick. The scan itself is cheap;
+     * sorting needs every provider's terminal group, so the sorted view is only built once something asks for
+     * it, and slot lookups go through an id map instead.
      */
-    private long cachedProvidersTick = Long.MIN_VALUE;
+    private long cachedScanTick = Long.MIN_VALUE;
     @Nullable
-    private List<PatternContainer> cachedProviders;
+    private List<PatternContainer> cachedScan;
+    @Nullable
+    private Map<Long, PatternContainer> cachedById;
+    @Nullable
+    private List<PatternContainer> cachedSorted;
 
     WcwtPatternUploadTargets(Supplier<@Nullable IGrid> grid, Supplier<Player> player, BooleanSupplier serverSide,
                              IntPredicate returnBlankPatterns) {
@@ -54,18 +62,61 @@ final class WcwtPatternUploadTargets {
         this.returnBlankPatterns = returnBlankPatterns;
     }
 
+    /** Visible providers in terminal order. */
     List<PatternContainer> providers() {
-        Player currentPlayer = player.get();
-        if (serverSide.getAsBoolean() && currentPlayer != null) {
-            long tick = currentPlayer.level().getGameTime();
-            if (cachedProviders != null && cachedProvidersTick == tick) {
-                return cachedProviders;
-            }
-            cachedProviders = scanProviders();
-            cachedProvidersTick = tick;
-            return cachedProviders;
+        if (!refreshScanForTick()) {
+            return sortedCopy(scanProviders());
         }
-        return scanProviders();
+        if (cachedSorted == null) {
+            cachedSorted = sortedCopy(cachedScan);
+        }
+        return cachedSorted;
+    }
+
+    /** The provider a client slot mapping refers to, or {@code null} once it is gone. */
+    @Nullable
+    PatternContainer providerById(long id) {
+        if (id <= 0) {
+            return null;
+        }
+        if (!refreshScanForTick()) {
+            return PatternProviderIds.find(scanProviders(), id);
+        }
+        if (cachedById == null) {
+            var byId = new HashMap<Long, PatternContainer>(cachedScan.size() * 2);
+            for (var provider : cachedScan) {
+                byId.put(PatternProviderIds.idOf(provider), provider);
+            }
+            cachedById = byId;
+        }
+        return cachedById.get(id);
+    }
+
+    /** @return whether the per-tick cache applies; {@code cachedScan} is current when it does */
+    private boolean refreshScanForTick() {
+        Player currentPlayer = player.get();
+        if (!serverSide.getAsBoolean() || currentPlayer == null) {
+            return false;
+        }
+        long tick = currentPlayer.level().getGameTime();
+        if (cachedScan == null || cachedScanTick != tick) {
+            cachedScan = scanProviders();
+            cachedScanTick = tick;
+            cachedById = null;
+            cachedSorted = null;
+        }
+        return true;
+    }
+
+    private static List<PatternContainer> sortedCopy(List<PatternContainer> scanned) {
+        var sorted = new ArrayList<PatternContainer>(scanned.size());
+        for (var provider : scanned) {
+            if (provider.getTerminalGroup() != null) {
+                sorted.add(provider);
+            }
+        }
+        PatternProviderSorts.sortStable(sorted);
+        return sorted;
     }
 
     /**
@@ -110,6 +161,77 @@ final class WcwtPatternUploadTargets {
             return MatrixUploadResult.FAILURE;
         }
 
+        WcwtAutoUploadSystems systems = craftingUploadSystems(currentGrid, uploadStack, serverPlayer);
+        return systems.uploadIfUnique(() -> uploadToOnlyCraftingSystem(uploadStack, serverPlayer, currentGrid),
+                MatrixUploadResult.FAILURE, MatrixUploadResult.AMBIGUOUS);
+    }
+
+    private WcwtAutoUploadSystems craftingUploadSystems(IGrid currentGrid, ItemStack pattern, ServerPlayer player) {
+        var systems = new WcwtAutoUploadSystems();
+        boolean tianshuCrafting = false;
+        try {
+            tianshuCrafting = LightningTechCraftingUploadCompat.isCraftingPattern(pattern, player.level());
+        } catch (Throwable ignored) {
+            systems.markUncertain();
+        }
+        // EAEP also uploads to hidden matrix inventories, so terminal visibility must not hide ambiguity.
+        try {
+            for (var machineClass : currentGrid.getMachineClasses()) {
+                if (!PatternContainer.class.isAssignableFrom(machineClass)) {
+                    continue;
+                }
+                Class<? extends PatternContainer> containerClass = machineClass.asSubclass(PatternContainer.class);
+                var activeProviders = currentGrid.getActiveMachines(containerClass);
+                for (var provider : currentGrid.getMachines(containerClass)) {
+                    if (provider == null) {
+                        continue;
+                    }
+                    var inventory = provider.getTerminalPatternInventory();
+                    if (inventory == null || inventory.size() == 0) {
+                        continue;
+                    }
+                    if (tianshuCrafting && activeProviders.contains(provider)) {
+                        try {
+                            if (LightningTechCraftingUploadCompat.isTianshuCraftingArray(provider)) {
+                                Object system = LightningTechCraftingUploadCompat.craftingArraySystem(provider);
+                                if (system == null) {
+                                    systems.markUncertain();
+                                } else {
+                                    systems.add(system);
+                                }
+                            }
+                        } catch (Throwable ignored) {
+                            systems.markUncertain();
+                        }
+                    }
+                    try {
+                        if (activeProviders.contains(provider) && NeoEcoApiCompat.isEcoPatternProvider(provider)) {
+                            // The service exists even without a bus: only count it once a real bus is found.
+                            Object system = NeoEcoApiCompat.patternStorageSystem(currentGrid);
+                            if (system == null) {
+                                systems.markUncertain();
+                            } else {
+                                systems.add(system);
+                            }
+                        }
+                    } catch (Throwable ignored) {
+                        systems.markUncertain();
+                    }
+                    try {
+                        systems.add(ExtendedAePlusMatrixUploadCompat.assemblerMatrixSystem(provider));
+                    } catch (Throwable ignored) {
+                        systems.markUncertain();
+                    }
+                }
+            }
+        } catch (Throwable ignored) {
+            systems.markUncertain();
+        }
+        return systems;
+    }
+
+    private MatrixUploadResult uploadToOnlyCraftingSystem(ItemStack uploadStack, ServerPlayer serverPlayer,
+                                                          IGrid currentGrid) {
         try {
             MatrixUploadResult tianshuUpload = uploadToTianshuCraftingArray(uploadStack, serverPlayer);
             if (tianshuUpload.state() != MatrixUploadState.FAILURE) {
@@ -121,8 +243,7 @@ final class WcwtPatternUploadTargets {
             EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(uploadStack);
             if (ecoDuplicate.duplicate()) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
-                recordEaepProviderUpload(ecoDuplicate.provider(), ecoDuplicate.slot());
-                return MatrixUploadResult.uploaded(ecoDuplicate.providerId(), ecoDuplicate.slot());
+                return duplicateResult(uploadStack);
             }
             if (NeoEcoApiCompat.uploadPatternToEcoStorage(currentGrid, uploadStack.copy())) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
@@ -133,9 +254,7 @@ final class WcwtPatternUploadTargets {
         try {
             if (assemblerMatrixContainsPattern(uploadStack)) {
                 serverPlayer.sendSystemMessage(Component.translatable("extendedae_plus.message.matrix.duplicate"));
-                return returnBlankPatterns.test(uploadStack.getCount())
-                        ? MatrixUploadResult.DUPLICATE_RETURNED
-                        : MatrixUploadResult.DUPLICATE_ABORTED;
+                return duplicateResult(uploadStack);
             }
             if (ExtendedAePlusMatrixUploadCompat.uploadPatternToMatrix(serverPlayer, uploadStack.copy(), currentGrid)) {
                 return findMatrixUploadResult(uploadStack);
@@ -143,6 +262,13 @@ final class WcwtPatternUploadTargets {
         } catch (Throwable ignored) {
         }
         return MatrixUploadResult.FAILURE;
+    }
+
+    /** Nothing was inserted for a duplicate, so the blank pattern spent on encoding is handed back. */
+    private MatrixUploadResult duplicateResult(ItemStack encodedPattern) {
+        return returnBlankPatterns.test(encodedPattern.getCount())
+                ? MatrixUploadResult.DUPLICATE_RETURNED
+                : MatrixUploadResult.DUPLICATE_ABORTED;
     }
 
     UploadAttemptResult uploadToMatchingProvider(ItemStack encodedPattern, String searchText) {
@@ -186,13 +312,11 @@ final class WcwtPatternUploadTargets {
                 if (container != null
                         && container.isVisibleInTerminal()
                         && container.getTerminalPatternInventory() != null
-                        && container.getTerminalPatternInventory().size() > 0
-                        && container.getTerminalGroup() != null) {
+                        && container.getTerminalPatternInventory().size() > 0) {
                     providers.add(container);
                 }
             }
         }
-        providers.sort(PatternProviderSorts.STABLE);
         return providers;
     }
 
@@ -223,8 +347,7 @@ final class WcwtPatternUploadTargets {
                     provider, encodedPattern, serverPlayer.level());
             if (duplicateSlot >= 0) {
                 serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.tianshu_pattern_duplicate"));
-                recordEaepProviderUpload(provider, duplicateSlot);
-                return MatrixUploadResult.uploaded(PatternProviderIds.idOf(provider), duplicateSlot);
+                return duplicateResult(encodedPattern);
             }
             if (target == null && LightningTechCraftingUploadCompat.insertCraftingPattern(provider, encodedPattern, true)) {
                 target = provider;
@@ -322,6 +445,7 @@ final class WcwtPatternUploadTargets {
                 new MatrixUploadResult(MatrixUploadState.DUPLICATE_RETURNED, -1, -1);
         private static final MatrixUploadResult DUPLICATE_ABORTED =
                 new MatrixUploadResult(MatrixUploadState.DUPLICATE_ABORTED, -1, -1);
+        private static final MatrixUploadResult AMBIGUOUS = new MatrixUploadResult(MatrixUploadState.AMBIGUOUS, -1, -1);
         private static final MatrixUploadResult FAILURE = new MatrixUploadResult(MatrixUploadState.FAILURE, -1, -1);
 
         private static MatrixUploadResult uploaded(long providerId, int slot) {
@@ -333,7 +457,12 @@ final class WcwtPatternUploadTargets {
         UPLOADED,
         DUPLICATE_RETURNED,
         DUPLICATE_ABORTED,
-        FAILURE
+        AMBIGUOUS,
+        FAILURE;
+
+        boolean allowsProviderFallback() {
+            return this == FAILURE;
+        }
     }
 
     record UploadAttemptResult(boolean uploaded, boolean hadTarget, String providerName, long providerId, int slot) {

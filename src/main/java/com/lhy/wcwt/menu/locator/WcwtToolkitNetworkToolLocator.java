@@ -3,11 +3,12 @@ package com.lhy.wcwt.menu.locator;
 
 import org.jetbrains.annotations.Nullable;
 
+import appeng.api.inventories.InternalInventory;
 import appeng.core.definitions.AEItems;
 import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.menu.locator.ItemMenuHostLocator;
-import appeng.menu.locator.MenuLocators;
-import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
+import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
+import com.lhy.wcwt.helpers.WcwtToolkitStore;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import net.minecraft.network.FriendlyByteBuf;
@@ -17,6 +18,9 @@ import net.minecraft.world.phys.BlockHitResult;
 
 /**
  * 定位 WCWT 终端工具包中的 AE 网络工具。
+ *
+ * <p>AE2 在菜单打开期间每个服务端 tick 都会重新定位宿主物品，所以这里只读取按玩家共享的工具包库存，
+ * 不再为了读一格而构造整个终端宿主（那会解析终端 NBT 并扫描无线接入点）。
  */
 public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlot, int toolkitSlot)
         implements ItemMenuHostLocator {
@@ -36,21 +40,19 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
         if (toolkitSlot < 0) {
             return AEItems.NETWORK_TOOL.stack();
         }
-
-        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem wcwtItem)) {
-            return ItemStack.EMPTY;
-        }
-        ItemMenuHostLocator terminalLocator = switch (sourceKind) {
-            case INVENTORY -> MenuLocators.forInventorySlot(sourceSlot);
-            case CURIOS -> MenuLocators.forCurioSlot(sourceSlot);
-        };
-        var terminalHost = wcwtItem.getMenuHost(player, terminalLocator, null);
-        if (terminalHost == null) {
-            return ItemStack.EMPTY;
+        if (player.level().isClientSide()) {
+            // The client only mirrors the 18 extra-bar cells; the toolbox title still needs a network tool.
+            ItemStack mirrored = WcwtToolkitHotbarState.stackAt(player, toolkitSlot);
+            return mirrored.getItem() instanceof appeng.items.tools.NetworkToolItem
+                    ? mirrored
+                    : AEItems.NETWORK_TOOL.stack();
         }
 
-        var toolkit = terminalHost.getSubInventory(WirelessComprehensiveWorkTerminalMenuHost.INV_TOOLKIT);
-        if (toolkit == null || toolkitSlot < 0 || toolkitSlot >= toolkit.size()) {
+        if (!(terminalStack.getItem() instanceof WirelessComprehensiveWorkTerminalItem)) {
+            return ItemStack.EMPTY;
+        }
+        InternalInventory toolkit = WcwtToolkitStore.items(player, terminalStack);
+        if (toolkit == null || toolkitSlot >= toolkit.size()) {
             return ItemStack.EMPTY;
         }
         return toolkit.getStackInSlot(toolkitSlot);
@@ -88,10 +90,10 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
 
     private static ItemStack locateCurioStack(Player player, int curioSlot) {
         var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
-        if (cap == null || curioSlot < 0 || curioSlot >= cap.getSlots()) {
+        if (cap == null || curioSlot < 0 || curioSlot >= cap.size()) {
             return ItemStack.EMPTY;
         }
-        return cap.getStackInSlot(curioSlot);
+        return cap.getResource(curioSlot).toStack(cap.getAmountAsInt(curioSlot));
     }
 
     @Override

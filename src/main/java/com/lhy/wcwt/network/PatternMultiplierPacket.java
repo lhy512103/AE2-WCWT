@@ -7,7 +7,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
@@ -21,14 +21,11 @@ public record PatternMultiplierPacket(
     
     public static final CustomPacketPayload.Type<PatternMultiplierPacket> TYPE = 
         new CustomPacketPayload.Type<>(
-            ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_multiplier")
+            Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_multiplier")
         );
     
     public static final StreamCodec<ByteBuf, PatternMultiplierPacket> STREAM_CODEC = StreamCodec.composite(
-        ByteBufCodecs.VAR_INT.map(
-            ordinal -> PatternMultiplierButton.MultiplierType.values()[ordinal],
-            PatternMultiplierButton.MultiplierType::ordinal
-        ),
+        WcwtPacketLimits.enumCodec(PatternMultiplierButton.MultiplierType.values(), "pattern multiplier"),
         PatternMultiplierPacket::multiplierType,
         ByteBufCodecs.BOOL,
         PatternMultiplierPacket::applyToEditorProcessing,

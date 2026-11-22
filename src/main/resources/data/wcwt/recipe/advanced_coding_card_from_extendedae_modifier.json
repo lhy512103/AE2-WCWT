@@ -8,12 +8,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "item": "extendedae:pattern_modifier"
-    }
+    "ae2:advanced_card",
+    "extendedae:pattern_modifier"
   ],
   "result": {
     "count": 1,

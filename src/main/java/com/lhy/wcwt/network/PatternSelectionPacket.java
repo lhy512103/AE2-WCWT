@@ -6,7 +6,7 @@ import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
@@ -15,7 +15,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 public record PatternSelectionPacket(int slotIndex) implements CustomPacketPayload {
     
     public static final CustomPacketPayload.Type<PatternSelectionPacket> TYPE = 
-        new CustomPacketPayload.Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_selection"));
+        new CustomPacketPayload.Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "pattern_selection"));
     
     public static final StreamCodec<ByteBuf, PatternSelectionPacket> STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.VAR_INT,

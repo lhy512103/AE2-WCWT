@@ -1,11 +1,12 @@
 package com.lhy.wcwt.client.gui.widgets;
 
 import appeng.client.gui.widgets.ITooltip;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
@@ -15,8 +16,8 @@ import java.util.List;
  * 这是一个新功能，原版无线终端没有
  */
 public class OtherTypesDisplayButton extends Button implements ITooltip {
-    private static final ResourceLocation CHECKBOX_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
+    private static final Identifier CHECKBOX_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/checkbox.png");
     private static final int SWITCH_W = 22;
     private static final int SWITCH_H = 12;
 
@@ -35,12 +36,12 @@ public class OtherTypesDisplayButton extends Button implements ITooltip {
     }
     
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+    protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
         int srcX = isHovered() ? 22 : 0;
         int srcY = checked ? 40 : 28;
-        guiGraphics.blit(CHECKBOX_TEXTURE, getX(), getY(), width, height,
-                srcX, srcY, SWITCH_W, SWITCH_H, 64, 64);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, CHECKBOX_TEXTURE, getX(), getY(),
+                srcX, srcY, width, height, SWITCH_W, SWITCH_H, 64, 64);
     }
     
     @Override

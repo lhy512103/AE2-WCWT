@@ -15,12 +15,12 @@ public final class ModRecipes {
     public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<WirelessComprehensiveWorkTerminalRecipe>>
             WIRELESS_COMPREHENSIVE_WORK_TERMINAL = SERIALIZERS.register(
                     "wireless_comprehensive_work_terminal",
-                    WirelessComprehensiveWorkTerminalRecipe.Serializer::new);
+                    () -> WirelessComprehensiveWorkTerminalRecipe.SERIALIZER);
 
     public static final DeferredHolder<RecipeSerializer<?>, RecipeSerializer<WcwtUniversalTerminalCombineRecipe>>
             WCWT_UNIVERSAL_TERMINAL_COMBINE = SERIALIZERS.register(
                     "wcwt_universal_terminal_combine",
-                    WcwtUniversalTerminalCombineRecipe.Serializer::new);
+                    () -> WcwtUniversalTerminalCombineRecipe.SERIALIZER);
 
     private ModRecipes() {
     }

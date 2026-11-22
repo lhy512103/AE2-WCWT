@@ -173,6 +173,8 @@
   "wcwt.config.patternProviderActiveRefresh.tooltip": "ON: パターン管理エリアを開いている間、内容変更時にプロバイダー一覧を更新します。OFF: 明示的な要求時のみ更新します。",
   "wcwt.config.maxSyncedSlotsPerProvider": "プロバイダーごとの最大同期パターンスロット数",
   "wcwt.config.maxSyncedSlotsPerProvider.tooltip": "パターン管理エリアで各プロバイダーからクライアントへ同期する非空スロットの上限。超過分は表示されません（ログに警告）。大きい値はパケットサイズを増加させます。",
+  "wcwt.config.maxSyncedSlotsTotal": "同期パターンスロットの合計上限",
+  "wcwt.config.maxSyncedSlotsTotal.tooltip": "1 回のリストで全プロバイダー合計としてクライアントへ同期する非空スロットの上限。超過分は表示されません（警告は一度だけログに出ます）。非常に大きなネットワークでもプロバイダーリストを Minecraft のパケットサイズ制限内に収めます。",
   "wcwt.config.patternUploadFailFallbackToEditor": "保存失敗時は編集スロット優先",
   "wcwt.config.patternUploadFailFallbackToEditor.tooltip": "OFF: まずパターンキャッシュへ、満杯なら編集スロットへ戻します。ON: まず編集スロットへ戻します。",
   "wcwt.config.autoFillPatternProviderSearchWhenUploadDisabled": "アップロード無効時も供給器検索を自動入力",

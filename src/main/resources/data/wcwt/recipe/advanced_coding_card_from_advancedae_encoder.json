@@ -8,12 +8,8 @@
   ],
   "category": "misc",
   "ingredients": [
-    {
-      "item": "ae2:advanced_card"
-    },
-    {
-      "item": "advanced_ae:adv_pattern_encoder"
-    }
+    "ae2:advanced_card",
+    "advanced_ae:adv_pattern_encoder"
   ],
   "result": {
     "count": 1,

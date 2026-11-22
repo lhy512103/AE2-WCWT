@@ -2,11 +2,12 @@ package com.lhy.wcwt.client.gui.widgets;
 
 import appeng.client.gui.widgets.ITooltip;
 import com.lhy.wcwt.client.gui.WcwtTextRendering;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.renderer.Rect2i;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.List;
 
@@ -15,8 +16,8 @@ import java.util.List;
  * 用于调整样板编码中的数量
  */
 public class PatternMultiplierButton extends Button implements ITooltip {
-    private static final ResourceLocation TEXTURE = 
-        ResourceLocation.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
+    private static final Identifier TEXTURE = 
+        Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_states.png");
     
     public enum MultiplierType {
         SWAP("⇄", "gui.wcwt.multiplier.swap"),       // 主副切换
@@ -53,16 +54,16 @@ public class PatternMultiplierButton extends Button implements ITooltip {
     }
     
     @Override
-    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partial) {
+    protected void extractContents(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partial) {
         if (!visible) return;
         boolean pressedLook = isHovered();
-        
+
         // 选择底图纹理（17x16）
         int bgSrcX = pressedLook ? 224 : 192;
         int bgSrcY = 160;
-        
+
         // 渲染底图（纹理区域17x16，与按钮尺寸匹配）
-        guiGraphics.blit(TEXTURE, getX(), getY(), bgSrcX, bgSrcY, 17, 16, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, getX(), getY(), bgSrcX, bgSrcY, 17, 16, 256, 256);
         
         // 在按钮上绘制文本
         var font = net.minecraft.client.Minecraft.getInstance().font;

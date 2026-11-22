@@ -1,11 +1,12 @@
 package com.lhy.wcwt.network;
 
+import io.netty.handler.codec.DecoderException;
 import com.lhy.wcwt.WcwtMod;
 import net.minecraft.core.Direction;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
@@ -25,7 +26,7 @@ public record DirectionChangePacket(
 ) implements CustomPacketPayload {
     
     public static final Type<DirectionChangePacket> TYPE = 
-        new Type<>(ResourceLocation.fromNamespaceAndPath(WcwtMod.MOD_ID, "direction_change"));
+        new Type<>(Identifier.fromNamespaceAndPath(WcwtMod.MOD_ID, "direction_change"));
     
     public static final StreamCodec<RegistryFriendlyByteBuf, DirectionChangePacket> STREAM_CODEC = 
         StreamCodec.composite(
@@ -50,6 +51,9 @@ public record DirectionChangePacket(
                 public Direction decode(RegistryFriendlyByteBuf buf) {
                     int ordinal = buf.readByte();
                     if (ordinal < 0) return null;
+                    if (ordinal >= Direction.values().length) {
+                        throw new DecoderException("Unknown direction ordinal " + ordinal);
+                    }
                     return Direction.values()[ordinal];
                 }
                 
