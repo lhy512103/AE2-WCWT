@@ -4,14 +4,13 @@ import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.inventories.InternalInventory;
 import appeng.helpers.patternprovider.PatternContainer;
 import com.lhy.wcwt.WcwtMod;
-import com.lhy.wcwt.client.WirelessComprehensiveWorkTerminalScreen;
+import com.lhy.wcwt.client.WcwtClientPacketHandlers;
 import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.util.PatternProviderIds;
 import com.lhy.wcwt.util.PatternProviderSorts;
 import io.netty.buffer.ByteBuf;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -25,8 +24,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.Nullable;
@@ -62,14 +59,7 @@ public record PatternProviderListPacket(List<Entry> entries, String resolvedSear
     }
 
     public static void handle(PatternProviderListPacket packet, IPayloadContext context) {
-        context.enqueueWork(() -> handleClient(packet));
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    private static void handleClient(PatternProviderListPacket packet) {
-        if (Minecraft.getInstance().screen instanceof WirelessComprehensiveWorkTerminalScreen screen) {
-            screen.updatePatternProviders(packet.entries(), packet.resolvedSearchText());
-        }
+        context.enqueueWork(() -> WcwtClientPacketHandlers.handlePatternProviderList(packet));
     }
 
     public record Entry(long providerId,
