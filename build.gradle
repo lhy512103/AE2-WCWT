@@ -268,6 +268,8 @@ tasks.named("processResources", ProcessResources).configure {
 }
 
 tasks.named("jar", Jar).configure {
+    // Code is MIT; textures are CC BY-NC-SA 3.0. Ship both so redistributed jars keep the terms.
+    from(rootProject.file("LICENSE"), rootProject.file("LICENSE-ASSETS.md"), rootProject.file("LICENSE-CC-BY-NC-SA-3.0.txt"))
     manifest {
         attributes([
                 "Specification-Title"   : mod_id,
