@@ -246,12 +246,18 @@ Optional mods are resolved from Maven / CurseMaven / Modrinth. There are no loca
 
 ## License
 
-MIT License.
+- Code: MIT License (see `LICENSE`).
+- Textures: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA 3.0), the same license Applied Energistics 2 uses for its textures. This covers the textures under `assets/wcwt/textures/`, `assets/ae2/textures/guis/wcwt/` and the built-in dark AE-UI resource pack. See `LICENSE-ASSETS.md` for scope and attribution, and `LICENSE-CC-BY-NC-SA-3.0.txt` for the complete license text.
+  - Allowed: non-commercial use, modification and redistribution, with credit to the original authors and the same license for derivative works.
+  - Not allowed: commercial use.
+  - Not required: separate permission from the authors when the conditions above are met.
+- The MIT License does not replace the separate texture license. Third-party assets retain their original licenses and attribution.
 
 ## Credits
 
-- UI design, JSON layout, and texture assets: `xiaoleng5261`
+- UI design, JSON layout, and texture assets: `xiaoleng5261` (麦淇淋)
 - Dark AE-UI resource pack: `fish_dan_`
+- `rianfalltwilight-lab`: for the recent refactoring of the mod (#43, #44) and the migration to Minecraft / NeoForge 26.1.2 (#45)
 
 ---
 
@@ -396,9 +402,15 @@ Windows:
 
 ## 许可证
 
-MIT License。
+- 代码：MIT License（见 `LICENSE`）。
+- 材质：知识共享 署名-非商业性使用-相同方式共享 3.0 未本地化版本（CC BY-NC-SA 3.0），与 Applied Energistics 2 的材质协议相同，适用于 `assets/wcwt/textures/`、`assets/ae2/textures/guis/wcwt/` 下的材质和内置暗色 AE-UI 资源包。适用范围与署名见 `LICENSE-ASSETS.md`，完整协议文本见 `LICENSE-CC-BY-NC-SA-3.0.txt`。
+  - 允许：非商用使用、修改、二次分发，需标注原作者，衍生作品沿用相同协议。
+  - 禁止：商用使用。
+  - 无需：满足以上条件时，无需单独向作者申请许可。
+- MIT 许可证不能替代单独的材质协议。第三方资源保留其原有许可证与署名。
 
 ## 致谢
 
-- 界面 UI、JSON 布局与材质：`xiaoleng5261`
+- 界面 UI、JSON 布局与材质：`xiaoleng5261`（麦淇淋）
 - 暗色 AE-UI 资源包：`fish_dan_`
+- `rianfalltwilight-lab`：感谢近期对模组的重构（#43、#44）以及 Minecraft / NeoForge 26.1.2 的迁移工作（#45）

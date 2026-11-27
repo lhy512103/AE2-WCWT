@@ -41,6 +41,10 @@
 35. Changed: The mod version is 1.3.12 and the README states the same version.
 36. Added: Unit tests for the pull candidate index and reservation order, provider sorting, the enum packet codec, string clamping and the request-wide alternative limit, with one shared test bootstrap.
 37. Fixed: The toolkit layout sync and packet container checks compile with direct toolkit lookup and bounded enum decoding.
+38. Changed: Textures are licensed under CC BY-NC-SA 3.0, the same license AE2 uses for its textures, while the code stays MIT, and the jar ships both licenses with the full license text.
+39. Added: The README credits rianfalltwilight-lab for the recent refactoring and the Minecraft / NeoForge 26.1.2 migration.
+40. Changed: Development runtime dependencies are updated to Neo ECO AE 21.3.0, AE2 Lightning Tech 2.1.4-beta3, Thunderbolt Core 2.0.3 and Applied Create 1.1.8, and the sanitized Neo ECO AE jar keeps its nested computatio library while still dropping the Registrate copy that Create provides.
+41. Fixed: Item screens opened from the toolkit extra bar, such as the Shrink personal shrinking device, no longer disconnect the player, and screens that lock the held slot are refused with a hint instead.
 
 ### 中文
 
@@ -81,6 +85,10 @@
 35. 优化：版本号升至 1.3.12，README 同步更新。
 36. 新增：拉取候选索引与预留顺序、供应器排序、枚举包编解码、字符串限长和请求级备选上限的单元测试，并统一测试启动引导。
 37. 修复：工具包布局同步与容器校验兼容直接读取工具包和枚举范围校验。
+38. 优化：材质改用与 AE2 相同的 CC BY-NC-SA 3.0 协议，代码仍为 MIT，jar 内附带两份许可证与协议全文。
+39. 新增：README 致谢 rianfalltwilight-lab 的近期重构与 Minecraft / NeoForge 26.1.2 迁移工作。
+40. 优化：开发运行依赖更新至 Neo ECO AE 21.3.0、AE2 闪电科技 2.1.4-beta3、Thunderbolt Core 2.0.3 与 Applied Create 1.1.8，Neo ECO AE 开发 jar 保留内置的 computatio 库。
+41. 修复：工具包拓展栏打开 Shrink 个人缩放装置等物品界面被踢出服务器，锁定手持槽位的界面改为提示。
 
 
 ## v1.3.11

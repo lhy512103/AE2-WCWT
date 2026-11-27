@@ -12,7 +12,9 @@
     "WcwtPlayerMixin",
     "WcwtBetterCombatMixin",
     "WcwtMenuLocatorsMixin",
-    "WcwtToolkitDropMixin"
+    "WcwtToolkitDropMixin",
+    "WcwtToolkitUseItemMixin",
+    "WcwtToolkitOpenMenuMixin"
   ],
   "client": [
     "GuiMixin",

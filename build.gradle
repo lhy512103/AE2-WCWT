@@ -5,9 +5,43 @@ plugins {
     id 'net.neoforged.moddev' version '2.0.74'
 }
 
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import groovy.lang.Closure
+import java.util.zip.ZipFile
 import org.gradle.api.Action
 import org.gradle.api.file.FileCopyDetails
+
+// Rewrites a mod's Jar-in-Jar metadata without the listed nested artifacts, so the remaining
+// nested libraries still load while the dropped ones are provided by another mod.
+abstract class FilterJarJarMetadata extends DefaultTask {
+    @InputFiles
+    abstract ConfigurableFileCollection getSourceJar()
+
+    @Input
+    abstract ListProperty<String> getExcludedArtifacts()
+
+    @OutputFile
+    abstract RegularFileProperty getOutputFile()
+
+    @TaskAction
+    void filter() {
+        def excluded = excludedArtifacts.get() as Set
+        def metadata = [jars: []]
+        new ZipFile(sourceJar.singleFile).withCloseable { zip ->
+            def entry = zip.getEntry("META-INF/jarjar/metadata.json")
+            if (entry != null) {
+                metadata = new JsonSlurper().parse(zip.getInputStream(entry), "UTF-8")
+            }
+        }
+        metadata.jars = metadata.jars.findAll { jar ->
+            !excluded.contains("${jar.identifier.group}:${jar.identifier.artifact}".toString())
+        }
+        def out = outputFile.get().asFile
+        out.parentFile.mkdirs()
+        out.setText(JsonOutput.prettyPrint(JsonOutput.toJson(metadata)), "UTF-8")
+    }
+}
 
 class ExpandPropertiesAction implements Action<FileCopyDetails>, Serializable {
     private final Map<String, ?> properties
@@ -214,6 +248,13 @@ dependencies {
 
 def neoEcoSanitizedJar = layout.buildDirectory.file("neoeco/neoecoae-${neoecoae_version}-dev.jar")
 
+// Create already ships Registrate; keep Neo ECO AE's other nested libraries (such as computatio).
+def neoEcoJarJarMetadata = tasks.register("filterNeoEcoJarJarMetadata", FilterJarJarMetadata) {
+    sourceJar.from(configurations.neoEcoApi)
+    excludedArtifacts.add("com.tterrag.registrate:Registrate")
+    outputFile = layout.buildDirectory.file("neoeco/jarjar/metadata.json")
+}
+
 tasks.register("sanitizeNeoEcoJar", Jar) {
     archiveFileName = "neoecoae-${neoecoae_version}-dev.jar"
     destinationDirectory = layout.buildDirectory.dir("neoeco")
@@ -223,6 +264,9 @@ tasks.register("sanitizeNeoEcoJar", Jar) {
             exclude "META-INF/jarjar/Registrate-*.jar"
             exclude "META-INF/jarjar/metadata.json"
         }
+    }
+    from(neoEcoJarJarMetadata) {
+        into "META-INF/jarjar"
     }
 }
 
@@ -268,6 +312,8 @@ tasks.named("processResources", ProcessResources).configure {
 }
 
 tasks.named("jar", Jar).configure {
+    // Code is MIT; textures are CC BY-NC-SA 3.0. Ship both so redistributed jars keep the terms.
+    from(rootProject.file("LICENSE"), rootProject.file("LICENSE-ASSETS.md"), rootProject.file("LICENSE-CC-BY-NC-SA-3.0.txt"))
     manifest {
         attributes([
                 "Specification-Title"   : mod_id,

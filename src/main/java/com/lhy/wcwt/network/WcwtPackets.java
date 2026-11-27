@@ -109,6 +109,12 @@ public class WcwtPackets {
             WcwtRestockAmountsPacket::handle
         );
 
+        registrar.playToClient(
+            WcwtToolkitMenuBindPacket.TYPE,
+            WcwtToolkitMenuBindPacket.STREAM_CODEC,
+            WcwtToolkitMenuBindPacket::handle
+        );
+
         registrar.playToServer(
             JeiCraftingTransferPacket.TYPE,
             JeiCraftingTransferPacket.STREAM_CODEC,

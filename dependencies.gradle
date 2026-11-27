@@ -68,6 +68,9 @@ dependencies {
     localRuntime "curse.maven:libipn-679177:${libipn_file}"
     localRuntime "curse.maven:inventory-essentials-368825:8362286"
     localRuntime "curse.maven:balm-531761:8424824"
+    // Shrink is used to test toolkit extension slot menus; it requires PolyLib.
+    localRuntime "curse.maven:polylib-576589:7140477"
+    localRuntime "curse.maven:shrink_-426386:6194054"
 
     // Local runtime dependencies and integration targets
     localRuntime "curse.maven:glodium-957920:${glodium_file}"

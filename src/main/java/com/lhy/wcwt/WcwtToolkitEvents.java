@@ -19,6 +19,7 @@ import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingSwapItemsEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.tick.PlayerTickEvent;
@@ -72,6 +73,11 @@ public final class WcwtToolkitEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             WcwtToolkitStore.persist(player);
         }
+    }
+
+    @SubscribeEvent
+    public static void onContainerClose(PlayerContainerEvent.Close event) {
+        WcwtToolkitHand.unbindMenu(event.getEntity(), event.getContainer());
     }
 
     /**
