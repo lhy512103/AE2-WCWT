@@ -43,6 +43,7 @@
 37. Fixed: The toolkit layout sync and packet container checks compile with direct toolkit lookup and bounded enum decoding.
 38. Changed: Textures are licensed under CC BY-NC-SA 3.0, the same license AE2 uses for its textures, while the code stays MIT, and the jar ships both licenses with the full license text.
 39. Added: The README credits rianfalltwilight-lab for the recent refactoring and the Minecraft / NeoForge 26.1.2 migration.
+40. Changed: Development runtime dependencies are updated to Neo ECO AE 21.3.0, AE2 Lightning Tech 2.1.4-beta3, Thunderbolt Core 2.0.3 and Applied Create 1.1.8, and the sanitized Neo ECO AE jar keeps its nested computatio library while still dropping the Registrate copy that Create provides.
 
 ### 中文
 
@@ -85,6 +86,7 @@
 37. 修复：工具包布局同步与容器校验兼容直接读取工具包和枚举范围校验。
 38. 优化：材质改用与 AE2 相同的 CC BY-NC-SA 3.0 协议，代码仍为 MIT，jar 内附带两份许可证与协议全文。
 39. 新增：README 致谢 rianfalltwilight-lab 的近期重构与 Minecraft / NeoForge 26.1.2 迁移工作。
+40. 优化：开发运行依赖更新至 Neo ECO AE 21.3.0、AE2 闪电科技 2.1.4-beta3、Thunderbolt Core 2.0.3 与 Applied Create 1.1.8，Neo ECO AE 开发 jar 保留内置的 computatio 库。
 
 
 ## v1.3.11
