@@ -75,6 +75,7 @@
   "message.wcwt.rlpc.no_selected_pattern": "未选中可转换的样板。",
   "message.wcwt.rlpc.overload_converted": "已将选中样板转换为过载样板。",
   "message.wcwt.rlpc.overload_unsupported": "这个样板类型暂不支持过载转换。",
+  "message.wcwt.toolkit.menu_needs_vanilla_hotbar": "这个物品的界面需要在原版快捷栏中打开。",
   "message.wcwt.rlpc.resonating_only_processing": "只有处理样板可以转换为谐振样板。",
   "message.wcwt.rlpc.resonating_storage_full": "谐振样板缓存区已满。",
   "message.wcwt.rlpc.resonating_converted": "已转换 %s 个谐振样板。", 

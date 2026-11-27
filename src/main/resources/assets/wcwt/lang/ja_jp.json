@@ -69,6 +69,7 @@
   "message.wcwt.rlpc.no_selected_pattern": "変換可能なパターンが選択されていません。",
   "message.wcwt.rlpc.overload_converted": "選択したパターンを過負荷パターンに変換しました。",
   "message.wcwt.rlpc.overload_unsupported": "このパターン種別は過負荷変換に未対応です。",
+  "message.wcwt.toolkit.menu_needs_vanilla_hotbar": "このアイテムの画面はツールキットではなくバニラのホットバーから開いてください。",
   "message.wcwt.rlpc.resonating_only_processing": "共鳴パターンに変換できるのは処理パターンのみです。",
   "message.wcwt.rlpc.resonating_storage_full": "共鳴パターン保管領域が満杯です。",
   "message.wcwt.rlpc.resonating_converted": "%s 個の共鳴パターンを変換しました。",

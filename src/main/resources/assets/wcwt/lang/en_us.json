@@ -77,6 +77,7 @@
   "message.wcwt.rlpc.no_selected_pattern": "No convertible pattern is currently selected.",
   "message.wcwt.rlpc.overload_converted": "Converted the selected pattern to an overload pattern.",
   "message.wcwt.rlpc.overload_unsupported": "This pattern type is not currently supported for overload conversion.",
+  "message.wcwt.toolkit.menu_needs_vanilla_hotbar": "Open this item's screen from the vanilla hotbar instead of the toolkit hotbar.",
   "message.wcwt.rlpc.resonating_only_processing": "Only processing patterns can be converted to resonating patterns.",
   "message.wcwt.rlpc.resonating_storage_full": "The resonating pattern storage is full.",
   "message.wcwt.rlpc.resonating_converted": "Converted %s resonating pattern(s).",

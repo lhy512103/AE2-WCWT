@@ -69,6 +69,7 @@
   "message.wcwt.rlpc.no_selected_pattern": "Не выбран подходящий для преобразования шаблон.",
   "message.wcwt.rlpc.overload_converted": "Выбранный шаблон преобразован в перегруженный.",
   "message.wcwt.rlpc.overload_unsupported": "Этот тип шаблона пока не поддерживает перегрузочное преобразование.",
+  "message.wcwt.toolkit.menu_needs_vanilla_hotbar": "Откройте интерфейс этого предмета с обычной панели быстрого доступа, а не с панели набора инструментов.",
   "message.wcwt.rlpc.resonating_only_processing": "В резонансный можно преобразовать только шаблоны обработки.",
   "message.wcwt.rlpc.resonating_storage_full": "Хранилище резонансных шаблонов заполнено.",
   "message.wcwt.rlpc.resonating_converted": "Преобразовано резонансных шаблонов: %s.",

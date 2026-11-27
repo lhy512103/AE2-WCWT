@@ -1,6 +1,7 @@
 package com.lhy.wcwt.helpers;
 
 import appeng.util.inv.AppEngInternalInventory;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -36,6 +37,14 @@ public final class WcwtToolkitPlayerState {
     /** Server toolkit size as last told to the client; -1 before the first sync. */
     int lastSentToolkitSize = -1;
     int lastSentPageRevision = -1;
+
+    /** Menu opened by the selected extra-bar item that keeps the hand override; see {@link WcwtToolkitHand}. */
+    @Nullable
+    AbstractContainerMenu boundMenu;
+    /** Client: container id the server bound before its open-screen packet; -1 for none. */
+    int pendingBoundMenuId = -1;
+    /** Server: inside {@code ServerPlayerGameMode.useItem} with the extra-bar override active. */
+    boolean usingSelectedToolkit;
 
     long budgetTick = Long.MIN_VALUE;
     int budgetUsed;
