@@ -1,6 +1,6 @@
 # AE2 WCWT
 
-AE2 WCWT (Wireless Comprehensive Work Terminal) is an integrated wireless terminal for **Applied Energistics 2 / NeoForge 1.21.1**.
+AE2 WCWT (Wireless Comprehensive Work Terminal) is an integrated wireless terminal for **Applied Energistics 2 / NeoForge 26.1.2**.
 It is not just a wireless crafting terminal: it folds commonly used AE2 addon workflows into a single terminal item and a single UI.
 
 Current version: `v26.1.2-0.0.1`
@@ -21,7 +21,7 @@ missing-class errors from a stale IDE classpath.
 The repository contains a GitHub Actions workflow at `.github/workflows/publish.yml`. Publishing
 a GitHub Release builds the NeoForge jar from that release tag and publishes it to both CurseForge
 and Modrinth. The release tag must match `mod_version` in `gradle.properties`; for example,
-release tag `v1.3.11` requires `mod_version=1.3.11`.
+release tag `v26.1.2-0.0.1` requires `mod_version=26.1.2-0.0.1`.
 
 Configure these repository settings before using the workflow:
 
@@ -31,7 +31,7 @@ Configure these repository settings before using the workflow:
 - Repository secret `MODRINTH_TOKEN`: a Modrinth personal access token with the `CREATE_VERSION` scope.
 
 The workflow publishes the jar from `build/libs`, labels it as a NeoForge release for Minecraft
-`1.21.1`, and uses the GitHub Release body as the release description on both platforms.
+`26.1.2`, and uses the GitHub Release body as the release description on both platforms.
 
 ## Overview
 
@@ -50,9 +50,10 @@ The workflow publishes the jar from `build/libs`, labels it as a NeoForge releas
 
 ### Required
 
-- NeoForge `1.21.1`
-- Applied Energistics 2 `19.2.17+`
-- AE2 Wireless Terminal Library `19.4.1+` (currently built against `19.5.1`)
+- Minecraft `26.1.2`
+- NeoForge `26.1.2+` (currently built against `26.1.2.129`)
+- Applied Energistics 2 `26.1.0+` (currently built against `26.1.14-beta`)
+- AE2 Wireless Terminal Library `26.1.0+` (currently built against `26.1.3-beta`)
 
 AE2WTLib is a **hard dependency**. WCWT registers as a WTLib terminal and reuses its wireless settings, magnet card, quantum-bridge card, and Universal Terminal integration.
 
@@ -257,7 +258,7 @@ MIT License.
 
 # AE2 WCWT 中文说明
 
-AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistics 2 / NeoForge 1.21.1** 的综合型无线终端。
+AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistics 2 / NeoForge 26.1.2** 的综合型无线终端。
 目标不是只做“无线合成终端”，而是把 AE2 生态里常用、常切换、常要开很多界面的功能，集中到一把终端里。
 
 当前版本：`v26.1.2-0.0.1`
@@ -279,9 +280,10 @@ AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistic
 
 ### 必需
 
-- NeoForge `1.21.1`
-- Applied Energistics 2 `19.2.17+`
-- AE2 Wireless Terminal Library `19.4.1+`（当前构建对照 `19.5.1`）
+- Minecraft `26.1.2`
+- NeoForge `26.1.2+`（当前构建对照 `26.1.2.129`）
+- Applied Energistics 2 `26.1.0+`（当前构建对照 `26.1.14-beta`）
+- AE2 Wireless Terminal Library `26.1.0+`（当前构建对照 `26.1.3-beta`）
 
 AE2WTLib **是硬依赖**，不是可选模组。WCWT 作为 WTLib 终端注册，复用其无线设置、磁力卡、量子桥卡和无线通用终端切换。
 
