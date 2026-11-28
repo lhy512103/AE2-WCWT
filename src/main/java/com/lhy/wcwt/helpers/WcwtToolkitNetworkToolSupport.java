@@ -3,9 +3,9 @@ package com.lhy.wcwt.helpers;
 import org.jetbrains.annotations.Nullable;
 
 import appeng.core.definitions.AEItems;
-import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.items.contents.NetworkToolMenuHost;
 import appeng.items.tools.NetworkToolItem;
+import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
@@ -24,20 +24,37 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     public static NetworkToolMenuHost<?> findCardBackedNetworkToolHost(Player player) {
-        var fromCurios = findCardBackedInCurios(player);
-        if (fromCurios != null) {
-            return fromCurios;
+        var host = findCardBackedInCurios(player);
+        if (host == null) {
+            host = findCardBackedInInventory(player);
         }
-        return findCardBackedInInventory(player);
+        if (host != null) {
+            return host;
+        }
+        var hotbar = WcwtToolkitHotbarState.hasToolkitCard(player)
+                ? WcwtToolkitAccess.findHotbarTerminal(player, WcwtToolkitNetworkToolSupport::hasToolboxCard) : null;
+        if (player instanceof ServerPlayer serverPlayer) {
+            WcwtToolkitSync.ensureLayoutSynced(serverPlayer);
+        }
+        return hotbar == null ? null : createCardBackedHost(player, hotbar.locateItem(player),
+                new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.TOOLKIT,
+                        hotbar.toolkitIndex(), -1));
     }
 
     @Nullable
     public static NetworkToolMenuHost<?> findToolkitNetworkToolHost(Player player) {
-        var fromCurios = findInCurios(player);
-        if (fromCurios != null) {
-            return fromCurios;
+        var host = findInCurios(player);
+        if (host == null) {
+            host = findInInventory(player);
         }
-        return findInInventory(player);
+        if (host != null || !WcwtToolkitHotbarState.hasToolkitCard(player)) {
+            return host;
+        }
+        var hotbar = WcwtToolkitAccess.findHotbarTerminal(player,
+                stack -> stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem);
+        return hotbar == null ? null : createHostFromTerminal(player, hotbar.locateItem(player),
+                new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.TOOLKIT,
+                        hotbar.toolkitIndex(), 0));
     }
 
     @Nullable
@@ -56,12 +73,12 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     private static NetworkToolMenuHost<?> findCardBackedInCurios(Player player) {
-        var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
+        var cap = CuriosBridge.equippedItems(player);
         if (cap == null) {
             return null;
         }
-        for (int slot = 0; slot < cap.size(); slot++) {
-            var host = createCardBackedHost(player, cap.getResource(slot).toStack(cap.getAmountAsInt(slot)),
+        for (int slot = 0; slot < cap.getSlots(); slot++) {
+            var host = createCardBackedHost(player, cap.getStackInSlot(slot),
                     new WcwtToolkitNetworkToolLocator(
                             WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, slot, -1));
             if (host != null) {
@@ -74,12 +91,16 @@ public final class WcwtToolkitNetworkToolSupport {
     @Nullable
     private static NetworkToolMenuHost<?> createCardBackedHost(Player player, ItemStack terminalStack,
             WcwtToolkitNetworkToolLocator locator) {
-        if (!(terminalStack.getItem() instanceof ItemWT terminalItem)
-                || !terminalItem.getUpgrades(terminalStack).isInstalled(ModItems.TOOL_SLOTS_BOX_CARD.get())) {
+        if (!hasToolboxCard(terminalStack)) {
             return null;
         }
         return new WcwtSimulatedNetworkToolMenuHost(
                 (NetworkToolItem) AEItems.NETWORK_TOOL.asItem(), player, locator, terminalStack);
+    }
+
+    static boolean hasToolboxCard(ItemStack stack) {
+        return stack.getItem() instanceof ItemWT terminalItem
+                && terminalItem.getUpgrades(stack).isInstalled(ModItems.TOOL_SLOTS_BOX_CARD.get());
     }
 
     @Nullable
@@ -98,12 +119,12 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     private static NetworkToolMenuHost<?> findInCurios(Player player) {
-        var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
+        var cap = CuriosBridge.equippedItems(player);
         if (cap == null) {
             return null;
         }
-        for (int slot = 0; slot < cap.size(); slot++) {
-            ItemStack terminalStack = cap.getResource(slot).toStack(cap.getAmountAsInt(slot));
+        for (int slot = 0; slot < cap.getSlots(); slot++) {
+            ItemStack terminalStack = cap.getStackInSlot(slot);
             var host = createHostFromTerminal(player, terminalStack,
                     new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, slot, 0));
             if (host != null) {

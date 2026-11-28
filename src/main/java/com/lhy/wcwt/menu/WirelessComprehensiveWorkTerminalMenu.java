@@ -54,6 +54,9 @@ import com.lhy.wcwt.config.WcwtServerConfig;
 import com.lhy.wcwt.helpers.ToolkitItemRules;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.init.ModMenus;
+import com.lhy.wcwt.menu.locator.WcwtToolkitItemLocator;
+import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
+import com.lhy.wcwt.mixin.WcwtToolboxMenuAccessor;
 import com.lhy.wcwt.network.EncodePatternPacket;
 import com.lhy.wcwt.network.PatternEncodingModePacket;
 import com.lhy.wcwt.network.PatternEncodingOptionPacket;
@@ -615,7 +618,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         addSlot(new OffhandSlot(inventory), WcwtSlotSemantics.AE2WTLIB_OFFHAND);
     }
 
-    public static final class ToolkitSlot extends AppEngSlot {
+    public final class ToolkitSlot extends AppEngSlot {
         private final int toolkitIndex;
 
         ToolkitSlot(InternalInventory inventory, int toolkitIndex) {
@@ -631,6 +634,21 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         @Override
         public boolean mayPlace(ItemStack stack) {
             return ToolkitItemRules.mayPlace(toolkitIndex, stack);
+        }
+
+        @Override
+        public boolean mayPickup(Player player) {
+            if (menuHost != null && menuHost.getLocator() instanceof WcwtToolkitItemLocator locator
+                    && locator.toolkitIndex() == toolkitIndex) {
+                return false;
+            }
+            var toolboxHost = ((WcwtToolboxMenuAccessor) getToolbox()).wcwt$getHost();
+            if (toolboxHost != null && toolboxHost.getLocator() instanceof WcwtToolkitNetworkToolLocator locator
+                    && locator.sourceKind() == WcwtToolkitNetworkToolLocator.SourceKind.TOOLKIT
+                    && locator.sourceSlot() == toolkitIndex) {
+                return false;
+            }
+            return super.mayPickup(player);
         }
 
         @Override
@@ -3373,7 +3391,8 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             // quickMoveStack，从而把升级卡或显示元件误当成可批量转移的物品掏出来。在服务端源头拦截，
             // 不影响往这些槽内 shift 放入物品（那走的是 canMoveTo 目标判定）。
             if (isUpgradeLikeSemantic(getSlotSemantic(sourceSlot))
-                    || isManualOnlyEquipmentSlot(sourceSlot)) {
+                    || isManualOnlyEquipmentSlot(sourceSlot)
+                    || (sourceSlot instanceof ToolkitSlot && !sourceSlot.mayPickup(player))) {
                 return ItemStack.EMPTY;
             }
             if (isPlayerArmorSlot(sourceSlot)) {

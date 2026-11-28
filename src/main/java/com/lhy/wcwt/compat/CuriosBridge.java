@@ -7,6 +7,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
 import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,11 @@ public final class CuriosBridge {
 
     public static boolean isLoaded() {
         return ModList.get().isLoaded(MOD_ID);
+    }
+
+    @Nullable
+    public static IItemHandlerModifiable equippedItems(Player player) {
+        return isLoaded() ? Impl.equippedItems(player) : null;
     }
 
     public static List<CurioSlotSpec> getVisibleSlots(Player player) {
@@ -41,6 +47,13 @@ public final class CuriosBridge {
 
     private static final class Impl {
         private Impl() {
+        }
+
+        @Nullable
+        static IItemHandlerModifiable equippedItems(Player player) {
+            return top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player)
+                    .map(top.theillusivec4.curios.api.type.capability.ICuriosItemHandler::getEquippedCurios)
+                    .orElse(null);
         }
 
         static List<CurioSlotSpec> getVisibleSlots(Player player) {

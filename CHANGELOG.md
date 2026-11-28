@@ -33,6 +33,7 @@
 27. Fixed: The Curios slot for the wireless comprehensive work terminal displays its original icon.
 28. Fixed: The last wireless comprehensive work terminal can stay in the extra hotbar with its upgrade cards active.
 29. Fixed: A wireless universal terminal in the extra hotbar can switch terminals from its interface or with the cycle keybind.
+30. Fixed: The Network Tool Slot Box Card provides nine upgrade slots without a network tool, including when the terminal is equipped as a curio or kept in an extra hotbar.
 
 ### 中文
 
@@ -65,3 +66,4 @@
 27. 修复：恢复饰品栏的综合工作终端槽位底图。
 28. 修复：唯一的综合工作终端放入扩展快捷栏后仍可识别升级卡。
 29. 修复：扩展快捷栏的无线通用终端可用界面按钮和快捷键切换终端。
+30. 修复：安装网络工具卡槽包卡后，即使没有网络工具也可使用九个升级槽。
