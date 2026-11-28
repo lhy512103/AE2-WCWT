@@ -20,6 +20,7 @@
 14. Fixed: The provider search uses the current query when switching between inputs, outputs, and both.
 15. Added: The provider display button can filter to providers containing patterns.
 16. Fixed: Mapping operations, pattern-return shortcuts, and optional panel shortcuts report missing mods.
+17. Fixed: Opening the ExtendedAE Plus mapping screen from the terminal avoids duplicate background blur.
 
 ### 中文
 
@@ -39,3 +40,4 @@
 14. 修复：切换样板搜索模式时按当前搜索词筛选。
 15. 新增：仅显示含有样板的供应器。
 16. 修复：可选功能操作时提示缺少的模组。
+17. 修复：从终端打开映射管理界面时避免背景模糊崩溃。
