@@ -29,6 +29,7 @@
 23. Fixed: Compatible crafting patterns go to the ECO subsystem before a meteorite pattern provider when both are on the same network.
 24. Fixed: Swapping hands respects remembered toolkit slots and keeps a toolkit-card terminal accessible.
 25. Fixed: Toolkit memory shows translucent item icons and restores the normal appearance of occupied slots when editing ends.
+26. Fixed: A terminal without a toolkit card no longer prevents terminals in the extra hotbar from opening on right-click.
 
 ### 中文
 
@@ -57,3 +58,4 @@
 23. 修复：合成样板优先上传至生态合成子系统。
 24. 修复：扩展快捷栏换手时校验记忆槽位并保留可用终端。
 25. 修复：工具包记忆槽使用半透明图标，退出编辑后恢复实物显示。
+26. 修复：无卡终端遮蔽带卡终端时扩展快捷栏右键失效。

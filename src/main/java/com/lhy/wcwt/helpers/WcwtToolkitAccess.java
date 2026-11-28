@@ -17,10 +17,12 @@ public final class WcwtToolkitAccess {
     }
 
     public static boolean hasToolkitCard(Player player) {
-        if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
-            return hasToolkitCard(menu.getMenuHost().getItemStack());
+        // The terminal being opened and the terminal supplying the extra hotbars can be different.
+        if (hasCarriedToolkitTerminal(player, -1)) {
+            return true;
         }
-        return hasToolkitCard(findTerminal(player));
+        return player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu
+                && menu.getMenuHost() != null && hasToolkitCard(menu.getMenuHost().getItemStack());
     }
 
     public static boolean hasToolkitCard(ItemStack terminal) {
