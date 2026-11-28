@@ -16,6 +16,7 @@
 10. Added: Brought in IUCE's development dependencies with updated coordinates and separate profiles for optional integrations.
 11. Fixed: The key bindings screen shows the mod name for the terminal shortcuts.
 12. Fixed: Installed expansion panels can be opened from their buttons.
+13. Fixed: Pattern management slots show pattern icons and hidden-slot counts again and use the standard container slot highlight.
 
 ### 中文
 
@@ -31,3 +32,4 @@
 10. 新增：同步工业升级社区版的开发运行依赖，并更新兼容坐标。
 11. 修复：按键绑定分类显示模组名称。
 12. 修复：已安装卡片的扩展界面可以点击打开。
+13. 修复：恢复样板槽图标和隐藏槽位角标，并对齐原版悬停高亮。

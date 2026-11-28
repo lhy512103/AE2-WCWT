@@ -3506,7 +3506,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                         providerSlotSlot.setClientDisplayStack(stack);
                     }
                 }
-                showSlot(slot, slotX, slotY);
+                showSlot(slot, patternManagementSlotHitMinX(slotX), patternManagementSlotHitMinY(slotY));
                 mappings.add(new PatternProviderSlotSyncPacket.Mapping(mappingIndex, entry.providerId(), mappedProviderSlot));
             }
         }
@@ -3940,6 +3940,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         if (semantic == WcwtSlotSemantics.WCWT_PATTERN_PROVIDER) {
+            var stack = slot.getItem();
+            if (!stack.isEmpty()) {
+                var displayStack = getPatternDisplayStack(stack);
+                guiGraphics.item(displayStack, slot.x, slot.y);
+                guiGraphics.itemDecorations(font, displayStack, slot.x, slot.y);
+            }
             return;
         }
         int cacheIndex = getPatternCacheSlotIndex(slot);
@@ -4360,7 +4366,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (row instanceof PatternManagementHeaderRow header) {
                 renderPatternManagementHeader(guiGraphics, header, rowY, textColor, mouseX, mouseY);
             } else if (row instanceof PatternManagementSlotsRow slotsRow) {
-                renderPatternManagementSlots(guiGraphics, slotsRow, rowY, mouseX, mouseY);
+                renderPatternManagementSlots(guiGraphics, slotsRow, rowY);
             }
         }
     }
@@ -4474,8 +4480,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
-    private void renderPatternManagementSlots(GuiGraphicsExtractor guiGraphics, PatternManagementSlotsRow row, int rowY,
-                                              int mouseX, int mouseY) {
+    private void renderPatternManagementSlots(GuiGraphicsExtractor guiGraphics, PatternManagementSlotsRow row, int rowY) {
         for (int col = 0; col < row.slots().size(); col++) {
             int slot = row.slots().get(col);
             int x = patternManagementPage.left() + col * PATTERN_MANAGEMENT_SLOT_STEP;
@@ -4495,32 +4500,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_MANAGEMENT_TEXTURE, x, y + cropTop, 0, cropTop,
                     drawW, drawH,
                     256, 256);
-            int scissorX = leftPos + x;
-            int scissorY = topPos + y + cropTop;
-            guiGraphics.enableScissor(scissorX, scissorY, scissorX + drawW, scissorY + drawH);
-            ItemStack stack = slot < 0 ? ItemStack.EMPTY : getPatternProviderSlotDisplayStack(row.entry(), slot);
-            if (!stack.isEmpty()) {
-                ItemStack displayStack = getPatternDisplayStack(stack);
-                int ix = patternManagementSlotHitMinX(x);
-                int iy = patternManagementSlotHitMinY(y);
-                guiGraphics.item(displayStack, ix, iy);
-                guiGraphics.itemDecorations(font, displayStack, ix, iy);
-            }
             if (slot < 0) {
+                guiGraphics.enableScissor(x, y + cropTop, x + drawW, y + cropTop + drawH);
                 int hiddenSlots = Math.max(0, row.entry().inventorySize() - row.entry().slots().size());
                 String count = Integer.toString(hiddenSlots);
                 var pose = guiGraphics.pose();
                 pose.pushMatrix();
                 pose.translate(
                         patternManagementSlotHitMinX(x) + PATTERN_MANAGEMENT_SLOT_HIT_SIZE,
-                        patternManagementSlotHitMinY(y) - 1);
+                        patternManagementSlotHitMinY(y));
                 pose.scale(PATTERN_MANAGEMENT_BADGE_SCALE, PATTERN_MANAGEMENT_BADGE_SCALE);
                 guiGraphics.text(font, count, -font.width(count), 0, 0xFFFFFFFF, true);
                 pose.popMatrix();
-            }
-            guiGraphics.disableScissor();
-            if (isMouseOverPatternManagementSlot(mouseX, mouseY, x, y)) {
-                renderPatternManagementSlotHighlight(guiGraphics, x, y);
+                guiGraphics.disableScissor();
             }
             if (shouldHighlightPatternManagementSearchResult(row.entry().providerId(), slot)) {
                 renderPatternManagementSearchSlotHighlight(guiGraphics, x, y);
@@ -4554,25 +4546,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isMouseOverPatternManagementSlot(int mouseX, int mouseY, int bgX, int bgY) {
-        int relX = mouseX - leftPos;
-        int relY = mouseY - topPos;
-        int hx = patternManagementSlotHitMinX(bgX);
-        int hy = patternManagementSlotHitMinY(bgY);
-        return relX >= hx
-                && relX < hx + PATTERN_MANAGEMENT_SLOT_HIT_SIZE
-                && relY >= hy
-                && relY < hy + PATTERN_MANAGEMENT_SLOT_HIT_SIZE;
-    }
-
-    private void renderPatternManagementSlotHighlight(GuiGraphicsExtractor guiGraphics, int bgX, int bgY) {
-        int x = patternManagementSlotHitMinX(bgX);
-        int y = patternManagementSlotHitMinY(bgY);
-        int s = PATTERN_MANAGEMENT_SLOT_HIT_SIZE;
-        guiGraphics.fill(x, y - 1, x + s + 1, y, 0xFFDAFFFF);
-        guiGraphics.fill(x - 1, y + s, x + s + 1, y + s + 1, 0xFFDAFFFF);
-        guiGraphics.fill(x - 1, y - 2, x, y + s + 1, 0xFFDAFFFF);
-        guiGraphics.fill(x + s, y - 2, x + s + 1, y + s + 1, 0xFFDAFFFF);
-        guiGraphics.fill(x, y, x + s, y + s, 0x669CD3FF);
+        return inRect(mouseX - leftPos, mouseY - topPos, patternManagementSlotHitMinX(bgX),
+                patternManagementSlotHitMinY(bgY), PATTERN_MANAGEMENT_SLOT_HIT_SIZE, PATTERN_MANAGEMENT_SLOT_HIT_SIZE);
     }
 
     private void renderFocusedPatternManagementSlotHighlight(GuiGraphicsExtractor guiGraphics, int bgX, int bgY) {
