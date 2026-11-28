@@ -22,6 +22,7 @@
 16. Fixed: Mapping operations, pattern-return shortcuts, and optional panel shortcuts report missing mods.
 17. Fixed: Opening the ExtendedAE Plus mapping screen from the terminal avoids duplicate background blur.
 18. Changed: The default development runtime uses the CurseForge AE2WTLib build and includes ExtendedAE Plus, AdvancedAE, NeoEcoAE, and Mekanism Version Locked.
+19. Fixed: Opening the pattern mapping screen directly from ExtendedAE Plus no longer crashes due to duplicate background blur.
 
 ### 中文
 
@@ -43,3 +44,4 @@
 16. 修复：可选功能操作时提示缺少的模组。
 17. 修复：从终端打开映射管理界面时避免背景模糊崩溃。
 18. 新增：将无线终端库、扩展模组和通用机械移植版纳入默认开发环境。
+19. 修复：从扩展模组原生入口打开样板映射管理界面时崩溃。
