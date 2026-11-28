@@ -9,7 +9,9 @@ on:
       tag_name:
         description: Release tag to build and publish
         required: true
-        default: v26.1.2-0.0.1
+
+concurrency:
+  group: publish-${{ github.event.release.tag_name || inputs.tag_name }}
 
 permissions:
   contents: write
@@ -18,24 +20,18 @@ jobs:
   publish:
     name: Publish to CurseForge and Modrinth
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag_name }}
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '25'
-          cache: gradle
+          ref: refs/tags/${{ env.RELEASE_TAG }}
 
       - name: Read mod metadata
         id: metadata
         env:
-          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
           CURSEFORGE_PROJECT_ID_VALUE: ${{ vars.CURSEFORGE_PROJECT_ID }}
           MODRINTH_PROJECT_ID_VALUE: ${{ vars.MODRINTH_PROJECT_ID }}
           CURSEFORGE_TOKEN_VALUE: ${{ secrets.CURSEFORGE_TOKEN }}
@@ -50,6 +46,7 @@ jobs:
           echo "mod_id=$(get_property mod_id)" >> "$GITHUB_OUTPUT"
           echo "mod_version=$(get_property mod_version)" >> "$GITHUB_OUTPUT"
           echo "minecraft_version=$(get_property minecraft_version)" >> "$GITHUB_OUTPUT"
+          echo "java_version=$(get_property java_version)" >> "$GITHUB_OUTPUT"
 
           version="$(get_property mod_version)"
           release_version="${RELEASE_TAG#v}"
@@ -68,19 +65,25 @@ jobs:
             exit 1
           fi
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ steps.metadata.outputs.java_version }}
+          cache: gradle
+
       - name: Build mod
         run: ./gradlew build --no-daemon
 
       - name: Read GitHub Release notes
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
         run: gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .body > release-notes.md
 
       - name: Upload jar to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.tag_name }}
+          tag_name: ${{ env.RELEASE_TAG }}
           files: build/libs/${{ steps.metadata.outputs.mod_id }}-${{ steps.metadata.outputs.mod_version }}.jar
           fail_on_unmatched_files: true
 

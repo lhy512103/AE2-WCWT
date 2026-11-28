@@ -18,10 +18,13 @@ missing-class errors from a stale IDE classpath.
 
 ## Automated Publishing
 
-The repository contains a GitHub Actions workflow at `.github/workflows/publish.yml`. Publishing
-a GitHub Release builds the NeoForge jar from that release tag and publishes it to both CurseForge
-and Modrinth. The release tag must match `mod_version` in `gradle.properties`; for example,
-release tag `v26.1.2-0.0.1` requires `mod_version=26.1.2-0.0.1`.
+Publishing a GitHub Release from a tag on `neoforge-26.1.2` triggers the
+`Build and Publish` workflow. Create the tag at the commit you want to release.
+For example, tag `v26.1.2-0.0.1` must point to a commit with
+`mod_version=26.1.2-0.0.1` in `gradle.properties`. The workflow uses the tag's
+configured JDK and attaches the NeoForge jar to the GitHub Release before publishing
+it to CurseForge and Modrinth. To run it manually for an existing release, select
+`neoforge-26.1.2` in Actions and enter its tag.
 
 Configure these repository settings before using the workflow:
 
