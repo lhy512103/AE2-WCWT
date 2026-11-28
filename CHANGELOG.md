@@ -37,6 +37,7 @@
 31. Updated: Synced the credits and texture license with the main branch and included both licenses in the mod jar.
 32. Fixed: Cleaned up Java compiler warnings by removing unused imports, migrating deprecated APIs, and validating reflected provider types.
 33. Updated: The release workflow builds the selected tag with its configured JDK and publishes the NeoForge jar to GitHub, CurseForge, and Modrinth.
+34. Fixed: The required JEI transfer bridge compiles cleanly in both Eclipse and Gradle.
 
 ### 中文
 
@@ -73,3 +74,4 @@
 31. 优化：同步致谢与材质许可证，并将协议文件打包进模组。
 32. 修复：清理未使用导入，迁移废弃接口并校验反射返回类型。
 33. 优化：发布流程按标签读取构建版本，并分发至三平台。
+34. 修复：消除配方转移兼容入口的编辑器警告。
