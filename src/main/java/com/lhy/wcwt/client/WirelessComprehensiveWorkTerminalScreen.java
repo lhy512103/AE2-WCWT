@@ -4327,14 +4327,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagementToggleButton(guiGraphics, patternManagementDisplayModeButton,
                 patternManagementDisplayMode.iconU(), patternManagementDisplayMode.iconV(),
                 containsPatterns ? WCWT_PATTERN_ICONS_TEXTURE : AE2_STATES_TEXTURE,
-                displayModeAtlasSize, displayModeAtlasSize, mouseX, mouseY, false);
+                displayModeAtlasSize, 16, mouseX, mouseY, false);
         renderPatternManagementToggleButton(guiGraphics, patternManagementDisplaySlotsButton,
                 patternManagementShowSlots ? 80 : 64, 80,
-                AE2_STATES_TEXTURE, 256, 256, mouseX, mouseY, !patternManagementShowSlots);
+                AE2_STATES_TEXTURE, 256, 16, mouseX, mouseY, !patternManagementShowSlots);
         renderPatternManagementUploadToggleButton(guiGraphics, mouseX, mouseY);
         renderPatternManagementToggleButton(guiGraphics, patternManagementSearchModeButton,
                 patternManagementSearchMode.iconU(), patternManagementSearchMode.iconV(),
-                WCWT_PATTERN_ICONS_TEXTURE, 64, 64, mouseX, mouseY, false);
+                WCWT_PATTERN_ICONS_TEXTURE, 64, 12, mouseX, mouseY, false);
 
         renderPatternManagementButtonText(guiGraphics, patternManagementAddButton,
                 PATTERN_MANAGEMENT_ADD_TEXT, 0xFFFFFF, mouseX, mouseY);
@@ -4720,7 +4720,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void renderPatternManagementToggleButton(GuiGraphicsExtractor guiGraphics, ExtendedPanelLayout.Rect rect,
                                                      int iconU, int iconV, Identifier iconTexture,
-                                                     int iconTextureWidth, int iconTextureHeight,
+                                                     int iconTextureSize, int iconSourceSize,
                                                      int mouseX, int mouseY, boolean active) {
         boolean hover = mouseX >= leftPos + rect.left() && mouseX < leftPos + rect.left() + rect.width()
                 && mouseY >= topPos + rect.top() && mouseY < topPos + rect.top() + rect.height();
@@ -4733,10 +4733,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int iconH = rect.height();
         int iconX = rect.left() + (rect.width() - iconW) / 2;
         int iconY = rect.top() + (rect.height() - iconH) / 2 + pressOffsetY;
-        int sourceW = iconTextureWidth == 64 ? 12 : 16;
-        int sourceH = iconTextureWidth == 64 ? 12 : 16;
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, iconTexture, iconX, iconY, iconU, iconV,
-                iconW, iconH, sourceW, sourceH, iconTextureWidth, iconTextureHeight);
+                iconW, iconH, iconSourceSize, iconSourceSize, iconTextureSize, iconTextureSize);
     }
 
     private void renderPatternManagementUploadToggleButton(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {

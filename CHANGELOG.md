@@ -24,6 +24,7 @@
 18. Changed: The default development runtime uses the CurseForge AE2WTLib build and includes ExtendedAE Plus, AdvancedAE, NeoEcoAE, and Mekanism Version Locked.
 19. Fixed: Opening the pattern mapping screen directly from ExtendedAE Plus no longer crashes due to duplicate background blur.
 20. Fixed: Switching to the work terminal from the wireless universal terminal no longer disconnects the client.
+21. Fixed: The providers-with-patterns icon matches the size of the other provider filters.
 
 ### 中文
 
@@ -47,3 +48,4 @@
 18. 新增：将无线终端库、扩展模组和通用机械移植版纳入默认开发环境。
 19. 修复：从扩展模组原生入口打开样板映射管理界面时崩溃。
 20. 修复：无线通用终端切换到综合工作终端时断开连接。
+21. 修复：统一样板供应器筛选图标大小。
