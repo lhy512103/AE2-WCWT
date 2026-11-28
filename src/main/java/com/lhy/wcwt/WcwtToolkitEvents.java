@@ -1,6 +1,5 @@
 package com.lhy.wcwt;
 
-import com.lhy.wcwt.helpers.WcwtToolkitAccess;
 import com.lhy.wcwt.helpers.WcwtToolkitHand;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import com.lhy.wcwt.helpers.WcwtToolkitStore;
@@ -99,8 +98,7 @@ public final class WcwtToolkitEvents {
     public static void onSwapHands(LivingSwapItemsEvent.Hands event) {
         if (event.getEntity() instanceof Player player && WcwtToolkitHand.isOverrideActive(player)) {
             ItemStack toMain = event.getItemSwappedToMainHand();
-            if (!WcwtToolkitHotbarState.acceptsSelectedStack(player, toMain)
-                    || !WcwtToolkitAccess.canReplaceOffhand(player, event.getItemSwappedToOffHand())) {
+            if (!WcwtToolkitHotbarState.acceptsSelectedStack(player, toMain)) {
                 event.setCanceled(true);
             }
         }

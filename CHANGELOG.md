@@ -31,6 +31,7 @@
 25. Fixed: Toolkit memory shows translucent item icons and restores the normal appearance of occupied slots when editing ends.
 26. Fixed: A terminal without a toolkit card no longer prevents terminals in the extra hotbar from opening on right-click.
 27. Fixed: The Curios slot for the wireless comprehensive work terminal displays its original icon.
+28. Fixed: The last wireless comprehensive work terminal can stay in the extra hotbar with its upgrade cards active.
 
 ### 中文
 
@@ -61,3 +62,4 @@
 25. 修复：工具包记忆槽使用半透明图标，退出编辑后恢复实物显示。
 26. 修复：无卡终端遮蔽带卡终端时扩展快捷栏右键失效。
 27. 修复：恢复饰品栏的综合工作终端槽位底图。
+28. 修复：唯一的综合工作终端放入扩展快捷栏后仍可识别升级卡。

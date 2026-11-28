@@ -4,6 +4,7 @@ import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.menu.locator.MenuLocators;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.compat.CuriosBridge;
+import com.lhy.wcwt.helpers.WcwtToolkitAccess;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.codec.StreamCodec;
@@ -37,7 +38,9 @@ public record OpenTerminalHotkeyPacket() implements CustomPacketPayload {
             if (openFromInventory(player)) {
                 return;
             }
-            openFromCurios(player);
+            if (!openFromCurios(player)) {
+                WcwtToolkitAccess.openHotbarTerminal(player, stack -> true);
+            }
         });
     }
 
