@@ -48,6 +48,9 @@ public class WcwtJeiPlugin implements IModPlugin {
     @Override
     public void registerGuiHandlers(IGuiHandlerRegistration registration) {
         registration.addGuiScreenHandler(WirelessComprehensiveWorkTerminalScreen.class, screen -> {
+            if (screen.width <= 1 || screen.height <= 1) {
+                return null;
+            }
             var bounds = screen.getJeiGuiBounds();
             return new IGuiProperties() {
                 @Override
