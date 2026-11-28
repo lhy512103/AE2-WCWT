@@ -1960,6 +1960,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean triggerExtendedUiHotkey(IExtendedUIHost.ExtendedUIType type) {
+        String missingMod = switch (type) {
+            case COSMETIC_ARMOR -> WcwtOptionalFeatureGates.isCosmeticArmorAvailable() ? null : "Cosmetic Armor Reworked";
+            case CURIOS -> WcwtOptionalFeatureGates.isCuriosAvailable() ? null : "Curios API";
+            case RESONATING_LIGHTNING_PATTERN_CODING -> WcwtOptionalFeatureGates.isResonatingLightningPatternCodingAvailable()
+                    ? null : "AE2 Crystal Science / AE2 Lightning Tech";
+            default -> null;
+        };
+        if (missingMod != null) {
+            displayPatternManagementMessage(missingModMessage(missingMod));
+            return true;
+        }
         // A deliberate refresh: bypass the per-tick gate.
         extendedUiAvailabilityMaskResolved = false;
         refreshExtendedUiAvailabilityMask();
@@ -1982,8 +1993,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void handleEncodePatternButton() {
-        if (PlusPresence.available() && Minecraft.getInstance().hasShiftDown()) {
-            PlusMappingClient.requestReturnLastPattern();
+        if (Minecraft.getInstance().hasShiftDown()) {
+            if (PlusPresence.available()) {
+                PlusMappingClient.requestReturnLastPattern();
+            } else {
+                displayPatternManagementMessage(missingModMessage("ExtendedAE Plus"));
+            }
             if (encodePatternButton != null) {
                 encodePatternButton.setFocused(false);
             }
@@ -5367,6 +5382,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int relX = (int) Math.round(mouseX - leftPos);
         int relY = (int) Math.round(mouseY - topPos);
 
+        if (!PlusPresence.available() && isPatternManagementMappingButton(relX, relY)) {
+            playPatternManagementClickSound();
+            displayPatternManagementMessage(missingModMessage("ExtendedAE Plus"));
+            return true;
+        }
         if (inRect(relX, relY, patternManagementAddButton)) {
             playPatternManagementClickSound();
             String searchText = patternManageSearchField != null ? patternManageSearchField.getValue() : "";
@@ -5405,18 +5425,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (inRect(relX, relY, patternManagementCancelButton)) {
             playPatternManagementClickSound();
-            if (PlusPresence.available()) {
-                minecraft.setScreen(PlusMappingClient.openMappingScreen(this));
-                return true;
-            }
-            if (patternManageSearchField != null) {
-                patternManageSearchField.setValue("");
-            }
-            if (patternManageMappingField != null) {
-                patternManageMappingField.setValue("");
-            }
-            rebuildPatternManagementRows();
-            patternProviderSlotLayoutDirty = true;
+            minecraft.setScreen(PlusMappingClient.openMappingScreen(this));
             return true;
         }
         if (inRect(relX, relY, patternManagementDisplayModeButton)) {
@@ -5520,6 +5529,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (player != null) {
             player.sendOverlayMessage(message);
         }
+    }
+
+    private static Component missingModMessage(String name) {
+        return Component.translatable("gui.wcwt.integration.mod_missing", name);
+    }
+
+    private boolean isPatternManagementMappingButton(int x, int y) {
+        return inRect(x, y, patternManagementAddButton) || inRect(x, y, patternManagementReloadButton)
+                || inRect(x, y, patternManagementDeleteButton) || inRect(x, y, patternManagementCancelButton);
     }
 
     private void playPatternManagementClickSound() {
@@ -6176,6 +6194,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         int relX = mouseX - leftPos;
         int relY = mouseY - topPos;
+        if (!PlusPresence.available() && isPatternManagementMappingButton(relX, relY)) {
+            return missingModMessage("ExtendedAE Plus");
+        }
         if (inRect(relX, relY, patternManagementAddButton)) {
             return Component.translatable("gui.wcwt.pattern_management.add_mapping.tooltip");
         }
@@ -6518,8 +6539,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         @Override
         public List<Component> getTooltipMessage() {
-            if (PlusPresence.available() && Minecraft.getInstance().hasShiftDown()) {
-                return List.of(Component.translatable("extendedae_plus.button.return_last_pattern"));
+            if (Minecraft.getInstance().hasShiftDown()) {
+                return List.of(PlusPresence.available()
+                        ? Component.translatable("extendedae_plus.button.return_last_pattern")
+                        : missingModMessage("ExtendedAE Plus"));
             }
             return super.getTooltipMessage();
         }

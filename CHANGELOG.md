@@ -19,6 +19,7 @@
 13. Fixed: Pattern management slots show pattern icons and hidden-slot counts again and use the standard container slot highlight.
 14. Fixed: The provider search uses the current query when switching between inputs, outputs, and both.
 15. Added: The provider display button can filter to providers containing patterns.
+16. Fixed: Mapping operations, pattern-return shortcuts, and optional panel shortcuts report missing mods.
 
 ### 中文
 
@@ -37,3 +38,4 @@
 13. 修复：恢复样板槽图标和隐藏槽位角标，并对齐原版悬停高亮。
 14. 修复：切换样板搜索模式时按当前搜索词筛选。
 15. 新增：仅显示含有样板的供应器。
+16. 修复：可选功能操作时提示缺少的模组。

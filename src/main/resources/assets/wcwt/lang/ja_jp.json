@@ -101,6 +101,7 @@
   "gui.wcwt.pattern_management.display_mode.visible": "可視のみ",
   "gui.wcwt.pattern_management.display_mode.not_full": "未満杯のみ",
   "gui.wcwt.pattern_management.display_mode.contains_patterns": "パターンが入っている供給器",
+  "gui.wcwt.integration.mod_missing": "%s がインストールされていません",
   "gui.wcwt.pattern_management.search_mode.tooltip": "検索モードを切替: %s",
   "gui.wcwt.batch.pattern_multiplier": "ぞうしょく",
   "gui.wcwt.batch.item_substitution": "物品置換",
