@@ -314,7 +314,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean requestedPatternProviders;
     private long lastPatternProviderRefreshRequestMs;
     private long lastPatternProviderSubscriptionRequestMs;
-    private String resolvedPatternManagementSearchText = "";
     private List<PatternProviderSlotSyncPacket.Mapping> lastPatternProviderSlotSync = List.of();
     private boolean forcePatternProviderSlotSnapshot;
     private final ExtendedPanelLayout mainLayout = ExtendedPanelLayout.load(
@@ -2000,9 +1999,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         String resolvedSearchKey = searchKey == null || searchKey.isBlank()
                 ? ""
                 : resolveClientProviderSearchText(searchKey);
-        if (!resolvedSearchKey.isBlank()) {
-            resolvedPatternManagementSearchText = resolvedSearchKey;
-        }
         if ((patternManagementUploadEnabled
                 || WcwtClientConfig.autoFillPatternProviderSearchWhenUploadDisabled())
                 && searchKey != null && !searchKey.isBlank()
@@ -2015,9 +2011,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         setFocused(null);
         boolean effectiveUpload = com.lhy.wcwt.compat.plus.PlusAutoUploadSettingsClient
                 .effectiveUploadEnabled(patternManagementUploadEnabled);
-        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, field={}, resolvedField={}",
+        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, field={}",
                 patternEncodingMode, effectiveUpload, searchKey, resolvedSearchKey,
-                currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
+                currentPatternManagementSearchText());
         com.lhy.wcwt.network.WcwtPackets.sendToServer(new EncodePatternPacket(patternEncodingMode, effectiveUpload,
                 resolvedSearchKey,
                 WcwtClientConfig.patternUploadFailFallbackToEditor()));
@@ -2742,7 +2738,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void onPatternManagementSearchChanged() {
-        resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
         rebuildPatternManagementRows();
         patternProviderSlotLayoutDirty = true;
         refreshPatternProviders();
@@ -2753,29 +2748,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             frameSyncProviderListRequests++;
         }
         com.lhy.wcwt.network.WcwtPackets.sendToServer(new PatternProviderListPacket.Request(
-                subscribe, resolvedPatternManagementSearchTextForRequest()));
+                subscribe, resolveClientProviderSearchText(currentPatternManagementSearchText())));
     }
 
     private String currentPatternManagementSearchText() {
         return patternManageSearchField != null ? patternManageSearchField.getValue() : "";
     }
 
-    private String resolvedPatternManagementSearchTextForRequest() {
-        String resolved = resolveClientProviderSearchText(currentPatternManagementSearchText());
-        resolvedPatternManagementSearchText = resolved;
-        return resolved;
-    }
-
     public void updatePatternProviders(List<PatternProviderListPacket.Entry> entries, String resolvedSearchText) {
         long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
         patternProviders.clear();
         patternProviders.addAll(entries);
-        String incomingResolvedSearchText = resolvedSearchText == null ? "" : resolvedSearchText.trim();
-        if (!incomingResolvedSearchText.isEmpty() || currentPatternManagementSearchText().trim().isEmpty()) {
-            resolvedPatternManagementSearchText = incomingResolvedSearchText;
-        }
-        logPatternUploadDebug("client provider list received entries={}, searchField={}, resolvedSearchText={}, storedResolved={}",
-                entries.size(), currentPatternManagementSearchText(), resolvedSearchText, resolvedPatternManagementSearchText);
+        logPatternUploadDebug("client provider list received entries={}, searchField={}, requestSearchText={}",
+                entries.size(), currentPatternManagementSearchText(), resolvedSearchText);
         selectedPatternProviderId = patternProviders.stream().anyMatch(entry -> entry.providerId() == selectedPatternProviderId)
                 ? selectedPatternProviderId : -1;
         selectedPatternProviderSlot = selectedPatternProviderId >= 0 ? selectedPatternProviderSlot : -1;
@@ -3221,16 +3206,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
         patternManagementRows.clear();
         patternManagementSearchHighlightSlots.clear();
-        String rawFilter = patternManageSearchField != null ? patternManageSearchField.getValue().trim() : "";
-        String resolvedFilter = resolvedPatternManagementSearchText.trim();
-        String filter = (!resolvedFilter.isEmpty() ? resolvedFilter : rawFilter).toLowerCase(Locale.ROOT);
+        String query = currentPatternManagementSearchText().trim();
+        String providerFilter = resolveClientProviderSearchText(query).toLowerCase(Locale.ROOT);
+        String patternFilter = query.toLowerCase(Locale.ROOT);
         Map<PatternContainerGroup, List<PatternProviderListPacket.Entry>> providersByGroup = new LinkedHashMap<>();
         boolean compactEmptySlots = WcwtClientConfig.patternManagementAutoCompactEmptySlots();
         // Resolving a display name translates a component; compute each entry's sort key once, not per comparison.
         Map<PatternProviderListPacket.Entry, String> sortKeys = new IdentityHashMap<>();
         patternProviders.stream()
                 .filter(this::isPatternProviderVisibleInManagement)
-                .filter(entry -> filter.isEmpty() || patternProviderMatches(entry, filter))
+                .filter(entry -> patternFilter.isEmpty() || patternProviderMatches(entry, providerFilter, patternFilter))
                 .sorted(Comparator.comparing(entry -> sortKeys.computeIfAbsent(entry,
                         ignored -> providerDisplayText(entry).toLowerCase(Locale.ROOT))))
                 .forEach(entry -> providersByGroup
@@ -3265,14 +3250,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         });
         if (DEBUG_PERF) {
             long totalNs = System.nanoTime() - startNs;
-            if (totalNs >= PERF_LOG_THRESHOLD_NS || !filter.isEmpty()) {
+            if (totalNs >= PERF_LOG_THRESHOLD_NS || !patternFilter.isEmpty()) {
                 WcwtMod.LOGGER.info(
                         "WCWT perf: rebuildPatternManagementRows totalMs={}, providers={}, rows={}, filterEmpty={}, filterLen={}, showSlots={}, displayMode={}, searchMode={}",
                         String.format(java.util.Locale.ROOT, "%.3f", totalNs / 1_000_000.0D),
                         patternProviders.size(),
                         patternManagementRows.size(),
-                        filter.isEmpty(),
-                        filter.length(),
+                        patternFilter.isEmpty(),
+                        patternFilter.length(),
                         patternManagementShowSlots,
                         patternManagementDisplayMode,
                         patternManagementSearchMode);
@@ -3316,13 +3301,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return entry.group().name().getString();
     }
 
-    private boolean patternProviderMatches(PatternProviderListPacket.Entry entry, String filter) {
-        if (JecSearchCompat.contains(providerDisplayText(entry), filter)) {
-            return true;
-        }
-        boolean matched = false;
+    private boolean patternProviderMatches(PatternProviderListPacket.Entry entry, String providerFilter, String patternFilter) {
+        boolean matched = JecSearchCompat.contains(providerDisplayText(entry), providerFilter);
         for (var slotEntry : entry.slots().int2ObjectEntrySet()) {
-            if (patternStackMatches(slotEntry.getValue(), filter)) {
+            if (patternStackMatches(slotEntry.getValue(), patternFilter)) {
                 patternManagementSearchHighlightSlots.add(new PatternManagementSlotKey(entry.providerId(), slotEntry.getIntKey()));
                 matched = true;
             }
@@ -5391,7 +5373,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     : "gui.wcwt.pattern_management.mapping_failed"));
             if (localMappingAdded && patternManageSearchField != null) {
                 patternManageSearchField.setValue(mappingText.trim());
-                resolvedPatternManagementSearchText = resolveClientProviderSearchText(mappingText);
             }
             refreshPatternProviders();
             clearPatternManagementMappingField();
@@ -5400,7 +5381,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (inRect(relX, relY, patternManagementReloadButton)) {
             playPatternManagementClickSound();
             ExtendedAePlusUploadCompat.loadRecipeTypeNames();
-            resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
+            rebuildPatternManagementRows();
+            patternProviderSlotLayoutDirty = true;
             displayPatternManagementMessage(Component.translatable("gui.wcwt.pattern_management.mapping_reloaded"));
             refreshPatternProviders();
             return true;
@@ -5409,7 +5391,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             playPatternManagementClickSound();
             String mappingText = patternManageMappingField != null ? patternManageMappingField.getValue() : "";
             int removed = ExtendedAePlusUploadCompat.removeMappingsByCnValue(mappingText);
-            resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
+            rebuildPatternManagementRows();
+            patternProviderSlotLayoutDirty = true;
             displayPatternManagementMessage(Component.translatable(
                     "gui.wcwt.pattern_management.mapping_deleted", removed));
             refreshPatternProviders();
@@ -5459,7 +5442,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             patternManagementSearchMode = patternManagementSearchMode.next();
             rebuildPatternManagementRows();
             patternProviderSlotLayoutDirty = true;
-            refreshPatternProviders();
             sendPatternManagementSettings();
             return true;
         }
@@ -5616,7 +5598,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 action,
                 providerId,
                 cacheSlot,
-                resolvedPatternManagementSearchTextForRequest(),
+                currentPatternManagementSearchText(),
                 patternManageMappingField != null ? patternManageMappingField.getValue() : "");
     }
 
@@ -5642,7 +5624,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 PatternManagementActionPacket.Action.OPEN_PROVIDER_UI,
                 entry.providerId(),
                 -1,
-                resolvedPatternManagementSearchTextForRequest(),
+                resolveClientProviderSearchText(currentPatternManagementSearchText()),
                 "",
                 WcwtClientConfig.patternManagementShiftQuickEnabled(),
                 hasLocation,

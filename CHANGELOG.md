@@ -17,6 +17,7 @@
 11. Fixed: The key bindings screen shows the mod name for the terminal shortcuts.
 12. Fixed: Installed expansion panels can be opened from their buttons.
 13. Fixed: Pattern management slots show pattern icons and hidden-slot counts again and use the standard container slot highlight.
+14. Fixed: The provider search uses the current query when switching between inputs, outputs, and both.
 
 ### 中文
 
@@ -33,3 +34,4 @@
 11. 修复：按键绑定分类显示模组名称。
 12. 修复：已安装卡片的扩展界面可以点击打开。
 13. 修复：恢复样板槽图标和隐藏槽位角标，并对齐原版悬停高亮。
+14. 修复：切换样板搜索模式时按当前搜索词筛选。
