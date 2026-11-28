@@ -2,6 +2,7 @@ package com.lhy.wcwt.pull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -17,6 +18,12 @@ import net.minecraft.world.item.crafting.Ingredient;
 
 public final class WcwtStackMatching {
     private WcwtStackMatching() {
+    }
+
+    public static Stream<ItemStack> ingredientCandidates(Ingredient ingredient) {
+        var custom = ingredient.getCustomIngredient();
+        var items = custom == null ? ingredient.getValues().stream() : custom.items();
+        return items.map(item -> new ItemStack(item.value()));
     }
 
     public static final class UniqueStacks {

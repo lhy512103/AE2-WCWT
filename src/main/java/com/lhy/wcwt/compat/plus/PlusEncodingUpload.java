@@ -9,7 +9,6 @@ import com.extendedae_plus.network.ReturnLastPatternC2SPacket;
 import com.lhy.wcwt.compat.JecSearchCompat;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;

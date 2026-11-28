@@ -17,7 +17,6 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.Optional;
 
@@ -46,6 +45,7 @@ public class WcwtCraftingRecipeTransferHandler
     }
 
     @Override
+    @SuppressWarnings("removal") // JEI still requires this abstract overload.
     public IRecipeTransferError transferRecipe(WirelessComprehensiveWorkTerminalMenu menu,
                                                RecipeHolder<CraftingRecipe> recipeHolder,
                                                IRecipeSlotsView recipeSlots,

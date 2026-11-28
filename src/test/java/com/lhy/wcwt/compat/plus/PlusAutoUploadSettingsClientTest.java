@@ -78,6 +78,7 @@ class PlusAutoUploadSettingsClientTest {
     }
 
     private static final class ProviderScreen {
+        @SuppressWarnings("unused") // Read reflectively by the settings bridge.
         private static boolean autoUploadUniqueMatchEnabled = true;
     }
 
@@ -85,10 +86,12 @@ class PlusAutoUploadSettingsClientTest {
     }
 
     private static final class IncompatibleSettingScreen {
+        @SuppressWarnings("unused")
         private static String autoUploadUniqueMatchEnabled = "true";
     }
 
     private static final class InstanceSettingScreen {
+        @SuppressWarnings("unused")
         private boolean autoUploadUniqueMatchEnabled = true;
     }
 }

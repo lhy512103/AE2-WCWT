@@ -12,13 +12,13 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
-import net.minecraft.server.Bootstrap;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.component.CustomModelData;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.neoforged.neoforge.common.crafting.DataComponentIngredient;
+import net.neoforged.neoforge.network.connection.ConnectionType;
 import net.neoforged.neoforge.registries.RegistryBuilder;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -117,7 +117,7 @@ class WcwtComponentIngredientEncodingTest {
                 syncedRegistry(BuiltInRegistries.ITEM, List.of(Items.DIAMOND)),
                 syncedRegistry(BuiltInRegistries.DATA_COMPONENT_TYPE,
                         List.of(DataComponents.CUSTOM_MODEL_DATA, DataComponents.RARITY))));
-        var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), packetRegistries);
+        var buffer = new RegistryFriendlyByteBuf(Unpooled.buffer(), packetRegistries, ConnectionType.OTHER);
         try {
             JeiCraftingTransferPacket.STREAM_CODEC.encode(buffer, packet);
             var decoded = JeiCraftingTransferPacket.STREAM_CODEC.decode(buffer);
@@ -141,7 +141,7 @@ class WcwtComponentIngredientEncodingTest {
     }
 
     private static ItemStack firstExample(Ingredient ingredient) {
-        return new ItemStack(ingredient.items().findFirst().orElseThrow().value());
+        return WcwtStackMatching.ingredientCandidates(ingredient).findFirst().orElseThrow();
     }
 
     private static ItemStack resolve(WcwtIngredientPriorities.PriorityContext context, Ingredient ingredient,

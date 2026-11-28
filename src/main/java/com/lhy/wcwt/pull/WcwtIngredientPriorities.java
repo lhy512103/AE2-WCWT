@@ -167,8 +167,7 @@ public final class WcwtIngredientPriorities {
             }
         }
 
-        var items = ingredient.items().map(h -> new ItemStack(h.value())).toList();
-        return !items.isEmpty() ? items.getFirst().copy() : ItemStack.EMPTY;
+        return WcwtStackMatching.ingredientCandidates(ingredient).findFirst().orElse(ItemStack.EMPTY);
     }
 
     public static ItemStack chooseBestItemForEncoding(PriorityContext context,
@@ -187,7 +186,7 @@ public final class WcwtIngredientPriorities {
             return bestNetworkIngredient;
         }
 
-        var items = ingredient.items().map(h -> new ItemStack(h.value())).toList();
+        var items = WcwtStackMatching.ingredientCandidates(ingredient).toList();
         if (items.isEmpty()) {
             return ItemStack.EMPTY;
         }

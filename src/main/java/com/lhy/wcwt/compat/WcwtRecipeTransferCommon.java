@@ -10,6 +10,7 @@ import com.lhy.wcwt.compat.plus.PlusRecipeMappingClient;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
+import com.lhy.wcwt.pull.WcwtStackMatching;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -19,7 +20,6 @@ import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,7 +70,7 @@ public final class WcwtRecipeTransferCommon {
         List<ItemStack> allCandidates = new ArrayList<>();
         LinkedHashSet<AEKey> seen = new LinkedHashSet<>();
         addCandidates(allCandidates, seen, visibleAlternatives);
-        addCandidates(allCandidates, seen, ingredient.items().map(h -> new ItemStack(h.value())).toList());
+        addCandidates(allCandidates, seen, WcwtStackMatching.ingredientCandidates(ingredient).toList());
 
         ItemStack best = ItemStack.EMPTY;
         int bestPriority = Integer.MAX_VALUE;

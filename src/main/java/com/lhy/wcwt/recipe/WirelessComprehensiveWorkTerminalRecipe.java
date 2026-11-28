@@ -8,7 +8,6 @@ import com.lhy.wcwt.init.ModRecipes;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.mojang.serialization.MapCodec;
 import de.mari_023.ae2wtlib.api.terminal.ItemWT;
-import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;

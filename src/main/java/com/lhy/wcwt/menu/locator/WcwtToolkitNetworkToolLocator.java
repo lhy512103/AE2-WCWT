@@ -85,17 +85,9 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
     public ItemStack locateTerminalStack(Player player) {
         return switch (sourceKind) {
             case INVENTORY -> player.getInventory().getItem(sourceSlot);
-            case CURIOS -> locateCurioStack(player, sourceSlot);
+            case CURIOS -> CuriosBridge.equippedItem(player, sourceSlot);
             case TOOLKIT -> WcwtToolkitHotbarState.stackAt(player, sourceSlot);
         };
-    }
-
-    private static ItemStack locateCurioStack(Player player, int curioSlot) {
-        var cap = CuriosBridge.equippedItems(player);
-        if (cap == null || curioSlot < 0 || curioSlot >= cap.getSlots()) {
-            return ItemStack.EMPTY;
-        }
-        return cap.getStackInSlot(curioSlot);
     }
 
     @Override

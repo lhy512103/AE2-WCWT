@@ -35,6 +35,7 @@
 29. Fixed: A wireless universal terminal in the extra hotbar can switch terminals from its interface or with the cycle keybind.
 30. Fixed: The Network Tool Slot Box Card provides nine upgrade slots without a network tool, including when the terminal is equipped as a curio or kept in an extra hotbar.
 31. Updated: Synced the credits and texture license with the main branch and included both licenses in the mod jar.
+32. Fixed: Cleaned up Java compiler warnings by removing unused imports, migrating deprecated APIs, and validating reflected provider types.
 
 ### 中文
 
@@ -69,3 +70,4 @@
 29. 修复：扩展快捷栏的无线通用终端可用界面按钮和快捷键切换终端。
 30. 修复：安装网络工具卡槽包卡后，即使没有网络工具也可使用九个升级槽。
 31. 优化：同步致谢与材质许可证，并将协议文件打包进模组。
+32. 修复：清理未使用导入，迁移废弃接口并校验反射返回类型。

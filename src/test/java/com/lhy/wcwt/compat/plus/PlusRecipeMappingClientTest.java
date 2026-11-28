@@ -26,7 +26,7 @@ class PlusRecipeMappingClientTest {
 
     @Test
     void jeiEntryUsesTheRuntimeCategoryBeforeRecipeIdFallback() throws ReflectiveOperationException {
-        var type = mezz.jei.api.recipe.RecipeType.create("wcwt_test", "pressing", Object.class);
+        var type = mezz.jei.api.recipe.types.IRecipeType.create(CATEGORY, Object.class);
         var category = proxy(mezz.jei.api.recipe.category.IRecipeCategory.class,
                 method -> net.minecraft.network.chat.Component.literal("压印器"));
         var helpers = proxy(mezz.jei.api.helpers.IJeiHelpers.class,

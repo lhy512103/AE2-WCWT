@@ -73,12 +73,9 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     private static NetworkToolMenuHost<?> findCardBackedInCurios(Player player) {
-        var cap = CuriosBridge.equippedItems(player);
-        if (cap == null) {
-            return null;
-        }
-        for (int slot = 0; slot < cap.getSlots(); slot++) {
-            var host = createCardBackedHost(player, cap.getStackInSlot(slot),
+        var equipped = CuriosBridge.equippedItems(player);
+        for (int slot = 0; slot < equipped.size(); slot++) {
+            var host = createCardBackedHost(player, equipped.get(slot),
                     new WcwtToolkitNetworkToolLocator(
                             WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, slot, -1));
             if (host != null) {
@@ -119,12 +116,9 @@ public final class WcwtToolkitNetworkToolSupport {
 
     @Nullable
     private static NetworkToolMenuHost<?> findInCurios(Player player) {
-        var cap = CuriosBridge.equippedItems(player);
-        if (cap == null) {
-            return null;
-        }
-        for (int slot = 0; slot < cap.getSlots(); slot++) {
-            ItemStack terminalStack = cap.getStackInSlot(slot);
+        var equipped = CuriosBridge.equippedItems(player);
+        for (int slot = 0; slot < equipped.size(); slot++) {
+            ItemStack terminalStack = equipped.get(slot);
             var host = createHostFromTerminal(player, terminalStack,
                     new WcwtToolkitNetworkToolLocator(WcwtToolkitNetworkToolLocator.SourceKind.CURIOS, slot, 0));
             if (host != null) {

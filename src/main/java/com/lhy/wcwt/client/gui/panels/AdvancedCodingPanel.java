@@ -26,14 +26,12 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import appeng.api.config.CopyMode;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import appeng.api.storage.cells.ICellWorkbenchItem;
 import appeng.client.gui.style.Blitter;
 import appeng.util.Icon;
 import appeng.client.gui.widgets.ITooltip;

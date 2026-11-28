@@ -1,13 +1,14 @@
 package com.lhy.wcwt.compat;
 
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.items.IItemHandlerModifiable;
-import net.neoforged.neoforge.network.PacketDistributor;
-import org.jetbrains.annotations.Nullable;
+import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.CuriosSlotTypes;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +23,12 @@ public final class CuriosBridge {
         return ModList.get().isLoaded(MOD_ID);
     }
 
-    @Nullable
-    public static IItemHandlerModifiable equippedItems(Player player) {
-        return isLoaded() ? Impl.equippedItems(player) : null;
+    public static List<ItemStack> equippedItems(Player player) {
+        return isLoaded() ? Impl.equippedItems(player) : List.of();
+    }
+
+    public static ItemStack equippedItem(Player player, int slot) {
+        return isLoaded() && slot >= 0 ? Impl.equippedItem(player, slot) : ItemStack.EMPTY;
     }
 
     public static List<CurioSlotSpec> getVisibleSlots(Player player) {
@@ -49,11 +53,35 @@ public final class CuriosBridge {
         private Impl() {
         }
 
-        @Nullable
-        static IItemHandlerModifiable equippedItems(Player player) {
-            return top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player)
-                    .map(top.theillusivec4.curios.api.type.capability.ICuriosItemHandler::getEquippedCurios)
-                    .orElse(null);
+        static List<ItemStack> equippedItems(Player player) {
+            var handler = CuriosApi.getCuriosInventory(player).orElse(null);
+            if (handler == null) {
+                return List.of();
+            }
+            // Keep Curios' flattened slot order and read the actual stacks so card updates persist.
+            var items = new ArrayList<ItemStack>();
+            for (var group : handler.getCurios().values()) {
+                var stacks = group.getStacks();
+                for (int slot = 0; slot < stacks.getSlots(); slot++) {
+                    items.add(stacks.getStackInSlot(slot));
+                }
+            }
+            return items;
+        }
+
+        static ItemStack equippedItem(Player player, int slot) {
+            var handler = CuriosApi.getCuriosInventory(player).orElse(null);
+            if (handler != null) {
+                for (var group : handler.getCurios().values()) {
+                    var stacks = group.getStacks();
+                    int size = stacks.getSlots();
+                    if (slot < size) {
+                        return stacks.getStackInSlot(slot);
+                    }
+                    slot -= size;
+                }
+            }
+            return ItemStack.EMPTY;
         }
 
         static List<CurioSlotSpec> getVisibleSlots(Player player) {
@@ -65,7 +93,7 @@ public final class CuriosBridge {
         }
 
         private static List<CurioSlotSpec> collectVisibleSlots(Player player) {
-            var handler = top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(player).orElse(null);
+            var handler = CuriosApi.getCuriosInventory(player).orElse(null);
             if (handler == null) {
                 return List.of();
             }
@@ -76,20 +104,16 @@ public final class CuriosBridge {
                     continue;
                 }
                 var itemHandler = stacksHandler.getStacks();
-                if (!(itemHandler instanceof IItemHandlerModifiable modifiable)) {
-                    continue;
-                }
                 int slots = stacksHandler.getSlots();
                 boolean canToggleRendering = stacksHandler.canToggleRendering();
                 var renderStatuses = stacksHandler.getRenders();
-                Identifier icon = top.theillusivec4.curios.api.CuriosApi.getSlot(entry.getKey(), player.level())
-                        .map(top.theillusivec4.curios.api.type.ISlotType::getIcon)
-                        .orElse(null);
+                var type = CuriosSlotTypes.getSlotType(entry.getKey(), player.level().isClientSide());
+                Identifier icon = type == null ? null : type.getIcon();
                 for (int slot = 0; slot < slots; slot++) {
                     result.add(new CurioSlotSpec(
                             entry.getKey(),
                             slot,
-                            modifiable,
+                            itemHandler,
                             icon,
                             canToggleRendering,
                             slot >= renderStatuses.size() || Boolean.TRUE.equals(renderStatuses.get(slot))));
@@ -99,6 +123,8 @@ public final class CuriosBridge {
         }
     }
 
+    // Curios supplies equipment slots through the legacy handler, including equip and unequip rules.
+    @SuppressWarnings("removal")
     public record CurioSlotSpec(
             String identifier,
             int slotIndex,

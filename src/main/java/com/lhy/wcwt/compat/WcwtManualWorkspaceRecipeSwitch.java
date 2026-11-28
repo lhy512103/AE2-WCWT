@@ -4,7 +4,6 @@ import appeng.parts.encoding.EncodingMode;
 import com.lhy.wcwt.config.WcwtClientConfig;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.ManualWorkspaceModePacket;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 public final class WcwtManualWorkspaceRecipeSwitch {
