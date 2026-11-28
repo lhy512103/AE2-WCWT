@@ -238,5 +238,12 @@
   "advancements.wcwt.obtain_terminal.title": "我嘞個雷霆大終端！",
   "advancements.wcwt.obtain_terminal.description": "獲得 ME 綜合工作終端",
   "advancements.wcwt.obtain_non_universal_terminal.title": "什麼？雷霆大終端都沒法滿足你了嘛！",
-  "advancements.wcwt.obtain_non_universal_terminal.description": "獲得無線綜合非通用終端"
+  "advancements.wcwt.obtain_non_universal_terminal.description": "獲得無線綜合非通用終端",
+  "gui.wcwt.pattern_management.search_mode.output": "當前：輸出",
+  "gui.wcwt.pattern_management.search_mode.input": "當前：輸入",
+  "gui.wcwt.pattern_management.search_mode.input_output": "當前：輸入和輸出",
+  "gui.wcwt.pattern_management.highlight.tooltip": "在世界中高亮顯示樣板供應器。",
+  "gui.wcwt.pattern_management.show_slots": "顯示樣板槽位",
+  "gui.wcwt.pattern_management.hide_slots": "隱藏樣板槽位",
+  "gui.wcwt.curios.toggle": "切換飾品槽顯示"
 }

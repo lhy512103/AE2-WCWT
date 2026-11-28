@@ -232,5 +232,12 @@
   "advancements.wcwt.obtain_terminal.title": "Громовой большой терминал!",
   "advancements.wcwt.obtain_terminal.description": "Получите беспроводной комплексный рабочий терминал ME",
   "advancements.wcwt.obtain_non_universal_terminal.title": "Что? Даже громового терминала недостаточно?",
-  "advancements.wcwt.obtain_non_universal_terminal.description": "Получите беспроводной комплексный неуниверсальный терминал ME"
+  "advancements.wcwt.obtain_non_universal_terminal.description": "Получите беспроводной комплексный неуниверсальный терминал ME",
+  "gui.wcwt.pattern_management.search_mode.output": "Текущий: Выход",
+  "gui.wcwt.pattern_management.search_mode.input": "Текущий: Вход",
+  "gui.wcwt.pattern_management.search_mode.input_output": "Текущий: Вход и выход",
+  "gui.wcwt.pattern_management.highlight.tooltip": "Подсветить поставщика шаблонов в мире.",
+  "gui.wcwt.pattern_management.show_slots": "Показать слоты шаблонов",
+  "gui.wcwt.pattern_management.hide_slots": "Скрыть слоты шаблонов",
+  "gui.wcwt.curios.toggle": "Переключить отображение слота украшений"
 }

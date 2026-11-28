@@ -243,5 +243,12 @@
   "advancements.wcwt.obtain_terminal.title": "我嘞个雷霆大终端！",
   "advancements.wcwt.obtain_terminal.description": "获得ME综合工作终端",
   "advancements.wcwt.obtain_non_universal_terminal.title": "什么？雷霆大终端都没法满足你了嘛！",
-  "advancements.wcwt.obtain_non_universal_terminal.description": "获得无线综合非通用终端"
+  "advancements.wcwt.obtain_non_universal_terminal.description": "获得无线综合非通用终端",
+  "gui.wcwt.pattern_management.search_mode.output": "当前：输出",
+  "gui.wcwt.pattern_management.search_mode.input": "当前：输入",
+  "gui.wcwt.pattern_management.search_mode.input_output": "当前：输入和输出",
+  "gui.wcwt.pattern_management.highlight.tooltip": "在世界中高亮显示样板供应器。",
+  "gui.wcwt.pattern_management.show_slots": "显示样板槽位",
+  "gui.wcwt.pattern_management.hide_slots": "隐藏样板槽位",
+  "gui.wcwt.curios.toggle": "切换饰品槽显示"
 }

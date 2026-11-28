@@ -426,8 +426,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final Point HIDDEN_SLOT_POS = new Point(-9999, -9999);
     private static final Identifier CURIOS_INVENTORY_TEXTURE =
             Identifier.fromNamespaceAndPath("curios", "textures/gui/curios/inventory.png");
-    private static final Identifier EAE_ICONS_TEXTURE =
-            Identifier.fromNamespaceAndPath("extendedae", "textures/guis/nicons.png");
+    private static final Identifier WCWT_PATTERN_ICONS_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_pattern_icons.png");
     private static final Identifier AE2_STATES_TEXTURE =
             Identifier.fromNamespaceAndPath("ae2", "textures/guis/states.png");
     private static final Identifier AE2_CHECKBOX_TEXTURE =
@@ -450,7 +450,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final Identifier AE2_PATTERN_MODES_TEXTURE =
             Identifier.fromNamespaceAndPath("ae2", "textures/guis/pattern_modes.png");
     private static final Identifier WTLIB_ICONS_TEXTURE =
-            Identifier.fromNamespaceAndPath("ae2", "textures/wtlib/guis/icons.png");
+            Identifier.fromNamespaceAndPath("ae2wtlib_api", "textures/guis/icons.png");
     private static final int AE2_RADIO_UNCHECKED_U = 28;
     private static final int AE2_RADIO_UNCHECKED_V = 0;
     private static final int AE2_RADIO_UNCHECKED_FOCUS_U = 42;
@@ -4327,7 +4327,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagementUploadToggleButton(guiGraphics, mouseX, mouseY);
         renderPatternManagementToggleButton(guiGraphics, patternManagementSearchModeButton,
                 patternManagementSearchMode.iconU(), patternManagementSearchMode.iconV(),
-                EAE_ICONS_TEXTURE, 64, 64, mouseX, mouseY, false);
+                WCWT_PATTERN_ICONS_TEXTURE, 64, 64, mouseX, mouseY, false);
 
         renderPatternManagementButtonText(guiGraphics, patternManagementAddButton,
                 PATTERN_MANAGEMENT_ADD_TEXT, 0xFFFFFF, mouseX, mouseY);
@@ -5008,7 +5008,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void renderPatternManagementHighlightButton(GuiGraphicsExtractor guiGraphics, ExtendedPanelLayout.Rect rect) {
-        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, EAE_ICONS_TEXTURE, rect.left(), rect.top(),
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_PATTERN_ICONS_TEXTURE, rect.left(), rect.top(),
                 PATTERN_MANAGEMENT_HIGHLIGHT_ICON_U, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_V,
                 PATTERN_MANAGEMENT_HIGHLIGHT_ICON_W, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_H,
                 PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_W, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_H, 64, 64);
@@ -6108,7 +6108,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         var curioToggleSlot = getCurioToggleSlotAt(mouseX, mouseY);
         if (curioToggleSlot != null) {
-            guiGraphics.setTooltipForNextFrame(font, Component.translatable("gui.curios.toggle"), mouseX, mouseY);
+            guiGraphics.setTooltipForNextFrame(font, Component.translatable("gui.wcwt.curios.toggle"), mouseX, mouseY);
             return;
         }
 
@@ -6233,8 +6233,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (inRect(relX, relY, patternManagementDisplaySlotsButton)) {
             return Component.translatable(patternManagementShowSlots
-                    ? "gui.expatternprovider.hide_slots"
-                    : "gui.expatternprovider.show_slots");
+                    ? "gui.wcwt.pattern_management.hide_slots"
+                    : "gui.wcwt.pattern_management.show_slots");
         }
         if (inRect(relX, relY, patternManagementAutoUploadButton)) {
             return Component.translatable(patternManagementUploadEnabled
@@ -6260,7 +6260,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return switch (buttonHit.button()) {
                 case UPLOAD -> Component.translatable("gui.wcwt.pattern_management.upload.tooltip");
                 case UI -> Component.translatable("gui.wcwt.pattern_management.open_ui.tooltip");
-                case HIGHLIGHT -> Component.translatable("gui.extendedae.ex_pattern_access_terminal.tooltip.03");
+                case HIGHLIGHT -> Component.translatable("gui.wcwt.pattern_management.highlight.tooltip");
             };
         }
         var hit = getPatternManagementHeaderAt(relX, relY);
@@ -6509,9 +6509,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private enum PatternManagementSearchMode {
-        OUT(16, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.01"),
-        IN(0, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.02"),
-        IN_OUT(32, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.03");
+        OUT(16, 48, "gui.wcwt.pattern_management.search_mode.output"),
+        IN(0, 48, "gui.wcwt.pattern_management.search_mode.input"),
+        IN_OUT(32, 48, "gui.wcwt.pattern_management.search_mode.input_output");
 
         private final int iconU;
         private final int iconV;

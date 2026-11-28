@@ -245,5 +245,12 @@
   "advancements.wcwt.obtain_terminal.title": "What a Thunder Terminal!",
   "advancements.wcwt.obtain_terminal.description": "Obtain a ME Wireless Comprehensive Work Terminal",
   "advancements.wcwt.obtain_non_universal_terminal.title": "What? Even the Thunder Terminal Wasn't Enough?",
-  "advancements.wcwt.obtain_non_universal_terminal.description": "Obtain a ME Wireless Comprehensive Non-Universal Terminal"
+  "advancements.wcwt.obtain_non_universal_terminal.description": "Obtain a ME Wireless Comprehensive Non-Universal Terminal",
+  "gui.wcwt.pattern_management.search_mode.output": "Current: Output",
+  "gui.wcwt.pattern_management.search_mode.input": "Current: Input",
+  "gui.wcwt.pattern_management.search_mode.input_output": "Current: Input and Output",
+  "gui.wcwt.pattern_management.highlight.tooltip": "Highlight the pattern provider in world.",
+  "gui.wcwt.pattern_management.show_slots": "Show pattern slots",
+  "gui.wcwt.pattern_management.hide_slots": "Hide pattern slots",
+  "gui.wcwt.curios.toggle": "Toggle rendering of curio slot"
 }

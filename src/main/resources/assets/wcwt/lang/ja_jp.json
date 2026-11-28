@@ -230,5 +230,12 @@
   "advancements.wcwt.obtain_terminal.title": "なんという雷鳴の大端末！",
   "advancements.wcwt.obtain_terminal.description": "ME 総合作業端末を入手する",
   "advancements.wcwt.obtain_non_universal_terminal.title": "何？雷鳴の大端末でも満足できないの？",
-  "advancements.wcwt.obtain_non_universal_terminal.description": "ME ワイヤレス総合非汎用端末を入手する"
+  "advancements.wcwt.obtain_non_universal_terminal.description": "ME ワイヤレス総合非汎用端末を入手する",
+  "gui.wcwt.pattern_management.search_mode.output": "現在：出力",
+  "gui.wcwt.pattern_management.search_mode.input": "現在：入力",
+  "gui.wcwt.pattern_management.search_mode.input_output": "現在：入力と出力",
+  "gui.wcwt.pattern_management.highlight.tooltip": "ワールド内でパターン供給器をハイライトします。",
+  "gui.wcwt.pattern_management.show_slots": "パターンスロットを表示",
+  "gui.wcwt.pattern_management.hide_slots": "パターンスロットを非表示",
+  "gui.wcwt.curios.toggle": "装飾品スロットの表示を切替"
 }

@@ -9,6 +9,8 @@
 3. Changed: README, the publish workflow and AGENTS.md now describe Minecraft 26.1.2, NeoForge 26.1.2 and version 26.1.2-0.0.1.
 4. Changed: Added .gitattributes so text files use LF line endings and Windows batch scripts use CRLF.
 5. Fixed: GUI texture rendering now uses the correct blit overload with RenderPipelines.GUI_TEXTURED, restoring pattern encoding area backgrounds, manual workspace backgrounds, pattern management backgrounds, and panel textures that were missing due to the Minecraft 26.1.2 GuiGraphicsExtractor API change.
+6. Fixed: WTLib magnet and trash button icons now load from the correct ae2wtlib_api namespace path (ae2wtlib_api:textures/guis/icons.png), fixing missing icons on the top bar.
+7. Fixed: Pattern management search-mode and highlight buttons no longer depend on ExtendedAE's texture; replaced with our own wcwt_pattern_icons.png. Added missing lang keys (search_mode.output/input/input_output, highlight.tooltip, show_slots, hide_slots, curios.toggle) to all five lang files so tooltips now show translated text instead of raw keys.
 
 ### 中文
 
@@ -17,3 +19,5 @@
 3. 优化：README、发布工作流和开发约定改为 26.1.2 版本描述。
 4. 新增：添加 .gitattributes，文本文件统一为 LF 换行，.bat 脚本保持 CRLF。
 5. 修复：界面贴图改用带渲染管线的 blit 重载，样板编码区、工作台区、样板管理区和面板背景不再缺失。
+6. 修复：无线终端库磁铁和清空按钮图标改用正确的 ae2wtlib_api 命名空间路径，顶部栏图标不再缺失。
+7. 修复：样板管理区搜索模式和高亮按钮贴图改用自有图集 wcwt_pattern_icons.png，不再依赖 ExtendedAE；为五个语言文件补充缺失的译名键（搜索模式、高亮、显示/隐藏槽位、饰品槽切换）。
