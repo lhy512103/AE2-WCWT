@@ -39,9 +39,10 @@ configurations {
     localRuntime {
         exclude group: "mezz.jei"
     }
+    developmentRuntime
     clientLocalRuntime
     jeiRuntime
-    runtimeClasspath.extendsFrom localRuntime
+    runtimeClasspath.extendsFrom localRuntime, developmentRuntime
 }
 
 sourceSets {
@@ -98,6 +99,13 @@ repositories {
         content {
             includeGroup "top.theillusivec4.curios"
         }
+    }
+    ivy {
+        name = 'AppliedMekanisticsPortReleases'
+        url = 'https://github.com/victor0hxz/Applied-Mekanistics-Version-Locked/releases/download'
+        patternLayout { artifact '[revision]/[artifact]-26.1.2-[revision].[ext]' }
+        metadataSources { artifact() }
+        content { includeModule 'io.github.victor0hxz', 'Applied-Mekanistics-Version-Locked' }
     }
     exclusiveContent {
         forRepository {
@@ -169,7 +177,7 @@ dependencies {
 // Tests compile against optional-mod APIs, while runtime loads only core NeoForge/AE2/AE2WTLib mods.
 sourceSets.test {
     compileClasspath += sourceSets.main.compileClasspath
-    runtimeClasspath += sourceSets.main.runtimeClasspath
+    runtimeClasspath += configurations.localRuntime
 }
 
 tasks.named('test', Test).configure {

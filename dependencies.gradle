@@ -4,7 +4,7 @@ dependencies {
     compileOnly "de.mari_023:ae2wtlib:${ae2wtlib_version}"
 
     // AE2 addons (26.1.2)
-    compileOnly "maven.modrinth:extended-ae:${extendedae_modrinth}"
+    compileOnly "curse.maven:ex-pattern-provider-892005:${extendedae_curseforge}"
     compileOnly "maven.modrinth:glodium:${glodium_modrinth}"
     compileOnly "maven.modrinth:extendedae-plus:${extendedae_plus_modrinth}"
     compileOnly "maven.modrinth:advancedae:${advancedae_modrinth}"
@@ -25,6 +25,38 @@ dependencies {
     localRuntime "de.mari_023:ae2wtlib:${ae2wtlib_version}"
     localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
 
+    // Shared client/server development mods from the IUCE runtime
+    developmentRuntime "net.mezzdev.config:mezz_config-${minecraft_version}-neoforge:0.7.1"
+    developmentRuntime "curse.maven:ex-pattern-provider-892005:${extendedae_curseforge}"
+    developmentRuntime 'curse.maven:ae2-crystal-science-1435174:8133403'
+    developmentRuntime "maven.modrinth:glodium:${glodium_modrinth}"
+    developmentRuntime 'maven.modrinth:jade:Pr1h4azo'
+
     // Local runtime recipe viewer
     jeiRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
+
+    // Local runtime – optional compatibility stack (activate with -PcompatibilityRuntime)
+    if (providers.gradleProperty('compatibilityRuntime').isPresent()) {
+        developmentRuntime "maven.modrinth:extendedae-plus:${extendedae_plus_modrinth}"
+        developmentRuntime "maven.modrinth:advancedae:${advancedae_modrinth}"
+        developmentRuntime 'maven.modrinth:geckolib:1MNDO4Vd'
+        developmentRuntime 'maven.modrinth:sophisticated-core:GS7Op9hS'
+        developmentRuntime 'curse.maven:mekanism-version-locked-1713956:9267959'
+        developmentRuntime "io.github.victor0hxz:Applied-Mekanistics-Version-Locked:${applied_mekanistics_port_version}"
+        if (providers.gradleProperty('ecoRuntime').isPresent()) {
+            developmentRuntime "maven.modrinth:neoecoae:${neoecoae_modrinth}"
+            developmentRuntime "maven.modrinth:B1CBVXHX:${ldlib_modrinth}"
+        } else {
+            developmentRuntime "maven.modrinth:ae2-lightning-tech:${ae2lt_modrinth}"
+        }
+    }
+
+    // Client-only runtime (UI mods – active during client run only)
+    clientLocalRuntime 'curse.maven:mouse-tweaks-60089:7840778'
+    clientLocalRuntime 'curse.maven:just-enough-characters-250702:9163773'
+    clientLocalRuntime 'curse.maven:modern-ui-352491:8248720'
+    clientLocalRuntime 'curse.maven:sodium-394468:8859590'
+    if (providers.gradleProperty('emiRuntime').isPresent()) {
+        clientLocalRuntime "maven.modrinth:pf-emi:${pf_emi_modrinth}"
+    }
 }

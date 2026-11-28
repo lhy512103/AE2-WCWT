@@ -13,6 +13,7 @@
 7. Fixed: Pattern management search-mode and highlight buttons no longer depend on ExtendedAE's texture; replaced with our own wcwt_pattern_icons.png. Added missing lang keys (search_mode.output/input/input_output, highlight.tooltip, show_slots, hide_slots, curios.toggle) to all five lang files so tooltips now show translated text instead of raw keys.
 8. Fixed: Advanced coding card recipes load only when their optional ingredients are registered.
 9. Fixed: JEI waits for the terminal screen to initialize before it reads the screen dimensions.
+10. Added: Brought in IUCE's development dependencies with updated coordinates and separate profiles for optional integrations.
 
 ### 中文
 
@@ -25,3 +26,4 @@
 7. 修复：样板管理区搜索模式和高亮按钮贴图改用自有图集 wcwt_pattern_icons.png，不再依赖 ExtendedAE；为五个语言文件补充缺失的译名键（搜索模式、高亮、显示/隐藏槽位、饰品槽切换）。
 8. 修复：高级编码卡配方仅在可选材料已注册时加载。
 9. 修复：终端界面初始化前跳过配方查看器的尺寸查询。
+10. 新增：同步工业升级社区版的开发运行依赖，并更新兼容坐标。
