@@ -1,10 +1,10 @@
 package com.lhy.wcwt;
 
+import com.lhy.wcwt.helpers.WcwtToolkitAccess;
 import com.lhy.wcwt.helpers.WcwtToolkitHand;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import com.lhy.wcwt.helpers.WcwtToolkitStore;
 import com.lhy.wcwt.helpers.WcwtToolkitSync;
-import com.lhy.wcwt.helpers.ToolkitItemRules;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
@@ -95,11 +95,12 @@ public final class WcwtToolkitEvents {
         }
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.LOWEST)
     public static void onSwapHands(LivingSwapItemsEvent.Hands event) {
         if (event.getEntity() instanceof Player player && WcwtToolkitHand.isOverrideActive(player)) {
             ItemStack toMain = event.getItemSwappedToMainHand();
-            if (!toMain.isEmpty() && !ToolkitItemRules.isBaseToolkitCandidate(toMain)) {
+            if (!WcwtToolkitHotbarState.acceptsSelectedStack(player, toMain)
+                    || !WcwtToolkitAccess.canReplaceOffhand(player, event.getItemSwappedToOffHand())) {
                 event.setCanceled(true);
             }
         }

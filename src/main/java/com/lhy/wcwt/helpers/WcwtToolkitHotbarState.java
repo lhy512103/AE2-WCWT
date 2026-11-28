@@ -131,6 +131,15 @@ public final class WcwtToolkitHotbarState {
         return stackAt(player, toolkitIndex(player));
     }
 
+    public static boolean acceptsSelectedStack(Player player, ItemStack stack) {
+        if (stack.isEmpty()) {
+            return true;
+        }
+        ItemStack remembered = memoryAt(player, toolkitIndex(player));
+        return ToolkitItemRules.isBaseToolkitCandidate(stack)
+                && (remembered.isEmpty() || remembered.is(stack.getItem()));
+    }
+
     /**
      * Writes the selected cell. Vanilla sometimes puts a stack the toolkit cannot hold into the main
      * hand, such as the empty bucket after pouring or the armor displaced by equipping; the cell is

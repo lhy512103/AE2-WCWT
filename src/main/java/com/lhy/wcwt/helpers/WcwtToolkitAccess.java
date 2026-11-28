@@ -5,9 +5,9 @@ import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import de.mari_023.ae2wtlib.api.registration.WTDefinition;
 import de.mari_023.ae2wtlib.api.terminal.WUTHandler;
+import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.Nullable;
 
 public final class WcwtToolkitAccess {
     public static final int HOTBAR_SIZE = 9;
@@ -17,9 +17,8 @@ public final class WcwtToolkitAccess {
     }
 
     public static boolean hasToolkitCard(Player player) {
-        var host = existingHost(player);
-        if (host != null) {
-            return hasToolkitCard(host.getItemStack());
+        if (player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu) {
+            return hasToolkitCard(menu.getMenuHost().getItemStack());
         }
         return hasToolkitCard(findTerminal(player));
     }
@@ -30,10 +29,26 @@ public final class WcwtToolkitAccess {
                 && upgradeable.getUpgrades(terminal).isInstalled(ModItems.TOOLKIT_CARD.get());
     }
 
-    @Nullable
-    private static WirelessComprehensiveWorkTerminalMenuHost existingHost(Player player) {
-        return player.containerMenu instanceof WirelessComprehensiveWorkTerminalMenu menu
-                ? menu.getMenuHost() : null;
+    public static boolean canReplaceOffhand(Player player, ItemStack replacement) {
+        var terminal = WTDefinition.of("wcwt");
+        return !isToolkitTerminal(player.getOffhandItem(), terminal)
+                || isToolkitTerminal(replacement, terminal)
+                || hasCarriedToolkitTerminal(player, Inventory.SLOT_OFFHAND);
+    }
+
+    private static boolean hasCarriedToolkitTerminal(Player player, int excludedSlot) {
+        var terminal = WTDefinition.of("wcwt");
+        var inventory = player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            if (slot != excludedSlot && isToolkitTerminal(inventory.getItem(slot), terminal)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isToolkitTerminal(ItemStack stack, WTDefinition terminal) {
+        return WUTHandler.hasTerminal(stack, terminal) && hasToolkitCard(stack);
     }
 
     /**

@@ -27,6 +27,7 @@
 21. Fixed: The providers-with-patterns icon matches the size of the other provider filters.
 22. Fixed: Restored the original work terminal icon in the wireless universal terminal switcher.
 23. Fixed: Compatible crafting patterns go to the ECO subsystem before a meteorite pattern provider when both are on the same network.
+24. Fixed: Swapping hands respects remembered toolkit slots and keeps a toolkit-card terminal accessible.
 
 ### 中文
 
@@ -53,3 +54,4 @@
 21. 修复：统一样板供应器筛选图标大小。
 22. 修复：恢复综合工作终端的切换图标。
 23. 修复：合成样板优先上传至生态合成子系统。
+24. 修复：扩展快捷栏换手时校验记忆槽位并保留可用终端。
