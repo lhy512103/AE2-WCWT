@@ -32,6 +32,7 @@
 26. Fixed: A terminal without a toolkit card no longer prevents terminals in the extra hotbar from opening on right-click.
 27. Fixed: The Curios slot for the wireless comprehensive work terminal displays its original icon.
 28. Fixed: The last wireless comprehensive work terminal can stay in the extra hotbar with its upgrade cards active.
+29. Fixed: A wireless universal terminal in the extra hotbar can switch terminals from its interface or with the cycle keybind.
 
 ### 中文
 
@@ -63,3 +64,4 @@
 26. 修复：无卡终端遮蔽带卡终端时扩展快捷栏右键失效。
 27. 修复：恢复饰品栏的综合工作终端槽位底图。
 28. 修复：唯一的综合工作终端放入扩展快捷栏后仍可识别升级卡。
+29. 修复：扩展快捷栏的无线通用终端可用界面按钮和快捷键切换终端。

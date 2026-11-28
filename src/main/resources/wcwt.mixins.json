@@ -12,6 +12,8 @@
     "WcwtPlayerMixin",
     "WcwtBetterCombatMixin",
     "WcwtMenuLocatorsMixin",
+    "WcwtCycleTerminalPacketMixin",
+    "WcwtWtlibLocatingServiceMixin",
     "WcwtToolkitDropMixin"
   ],
   "client": [
