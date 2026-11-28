@@ -208,8 +208,7 @@ public final class WcwtToolkitHud {
                 graphics.item(player, stack, itemX, itemY, seedOffset + i);
                 graphics.itemDecorations(minecraft.font, stack, itemX, itemY);
             } else if (!memory.isEmpty()) {
-                graphics.item(player, memory, itemX, itemY, seedOffset + i);
-                graphics.fill(itemX, itemY, itemX + 16, itemY + 16, 0x80202020);
+                WcwtToolkitMemoryIcon.extract(graphics, memory, itemX, itemY, seedOffset + i);
             }
         }
     }

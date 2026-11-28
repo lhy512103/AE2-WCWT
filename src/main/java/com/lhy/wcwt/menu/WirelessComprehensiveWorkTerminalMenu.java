@@ -61,6 +61,7 @@ import com.lhy.wcwt.network.PatternModePacket;
 import com.lhy.wcwt.network.PatternProviderFocusPacket;
 import com.lhy.wcwt.network.PatternProviderListPacket;
 import com.lhy.wcwt.network.PatternProviderSlotSyncPacket;
+import com.lhy.wcwt.network.ToolkitMemorySyncPacket;
 import com.lhy.wcwt.network.TopActionPacket;
 import com.lhy.wcwt.network.WcwtPullRecipeInputsPacket.RequestedIngredient;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
@@ -294,6 +295,7 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
     private long lastSyncedProviderSignature = Long.MIN_VALUE;
     /** Set by management actions; the next {@code broadcastChanges} pushes one list for all of them. */
     private boolean pendingProviderListRefresh;
+    private boolean sentToolkitMemory;
     @Nullable
     private String pendingProviderListSearchText;
     private boolean initializingMenu = true;
@@ -1370,6 +1372,16 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
         return !getToolkitMemoryStack(toolkitIndex).isEmpty();
     }
 
+    public void applyToolkitMemorySnapshot(int firstSlot, List<ItemStack> memories) {
+        var memory = toolkitMemoryInventory();
+        if (memory == null || firstSlot < 0 || firstSlot >= memory.size()) {
+            return;
+        }
+        for (int i = 0; i < Math.min(memories.size(), memory.size() - firstSlot); i++) {
+            memory.setItemDirect(firstSlot + i, memories.get(i));
+        }
+    }
+
     public void setToolkitMemorySlot(int toolkitIndex, boolean rememberFromSlot) {
         if (!isToolkitMemorySlot(toolkitIndex)) {
             return;
@@ -1380,17 +1392,28 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
                 || toolkitIndex >= toolkit.size()) {
             return;
         }
-        if (!rememberFromSlot) {
-            memory.setItemDirect(toolkitIndex, ItemStack.EMPTY);
-            broadcastChanges();
+        ItemStack stack = rememberFromSlot ? toolkit.getStackInSlot(toolkitIndex) : ItemStack.EMPTY;
+        if (rememberFromSlot && stack.isEmpty()) {
             return;
         }
-        ItemStack stack = toolkit.getStackInSlot(toolkitIndex);
-        if (stack.isEmpty()) {
-            return;
+        ItemStack remembered = stack.copyWithCount(1);
+        memory.setItemDirect(toolkitIndex, remembered);
+        if (getPlayer() instanceof ServerPlayer serverPlayer) {
+            PacketDistributor.sendToPlayer(serverPlayer,
+                    new ToolkitMemorySyncPacket(containerId, toolkitIndex, List.of(remembered.copy())));
         }
-        memory.setItemDirect(toolkitIndex, stack.copyWithCount(1));
         broadcastChanges();
+    }
+
+    private void sendToolkitMemorySnapshot(ServerPlayer player) {
+        var memory = toolkitMemoryInventory();
+        if (memory != null) {
+            List<ItemStack> snapshot = new ArrayList<>(memory.size());
+            for (int slot = 0; slot < memory.size(); slot++) {
+                snapshot.add(memory.getStackInSlot(slot).copy());
+            }
+            PacketDistributor.sendToPlayer(player, new ToolkitMemorySyncPacket(containerId, 0, snapshot));
+        }
     }
 
     private boolean toolkitMemoryMatches(int toolkitIndex, ItemStack stack) {
@@ -1940,6 +1963,10 @@ public class WirelessComprehensiveWorkTerminalMenu extends CraftingTermMenu impl
             patternProviderSyncCooldown = PATTERN_PROVIDER_SYNC_INTERVAL_TICKS;
         }
         if (isServerSide() && getPlayer() instanceof ServerPlayer serverPlayer) {
+            if (!sentToolkitMemory && serverPlayer.containerMenu == this) {
+                sentToolkitMemory = true;
+                sendToolkitMemorySnapshot(serverPlayer);
+            }
             boolean shouldSyncProviders = shouldSyncPatternProviders(serverPlayer);
             if (shouldSyncProviders && patternProviderSyncCooldown <= 0) {
                 long stageStartNs = DEBUG_PERF ? System.nanoTime() : 0L;

@@ -16,6 +16,9 @@
   ],
   "client": [
     "GuiMixin",
+    "WcwtGuiGraphicsAccessor",
+    "WcwtGuiRendererMixin",
+    "WcwtPictureInPictureRendererMixin",
     "WcwtMinecraftPickBlockMixin",
     "WcwtPlusMappingScreenMixin"
   ],

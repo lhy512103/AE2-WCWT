@@ -421,7 +421,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SEARCH_MATCH_BG_ALPHA = 0x3C;
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
     private static final int PLAYER_INVENTORY_SLOT_HIT_SIZE = 18;
-    private static final float TOOLKIT_MEMORY_GHOST_ALPHA = 0.38F;
     private static final Point HIDDEN_SLOT_POS = new Point(-9999, -9999);
     private static final Identifier CURIOS_INVENTORY_TEXTURE =
             Identifier.fromNamespaceAndPath("curios", "textures/gui/curios/inventory.png");
@@ -3954,13 +3953,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     SELECTED_PATTERN_BG_SIZE, SELECTED_PATTERN_BG_SIZE,
                     256, 256);
         }
-        if (shouldRenderToolkitMemoryInsteadOfSlot(semantic, slot)) {
-            renderToolkitMemoryGhost(guiGraphics, slot);
-        } else {
+        ItemStack toolkitMemory = slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot
+                && (toolkitMemoryMode || !slot.hasItem())
+                ? menu.getToolkitMemoryStack(toolkitSlot.toolkitLogicalIndex()) : ItemStack.EMPTY;
+        if (toolkitMemory.isEmpty()) {
             super.extractSlot(guiGraphics, slot, mouseX, mouseY);
-            if (semantic == WcwtSlotSemantics.WCWT_TOOLKIT) {
-                renderToolkitMemoryGhost(guiGraphics, slot);
-            }
+        } else {
+            WcwtToolkitMemoryIcon.extract(guiGraphics, toolkitMemory, slot.x, slot.y, 0);
         }
         renderFavoritedIndicator(guiGraphics, slot);
         renderCraftablePatternIndicator(guiGraphics, slot);
@@ -4420,27 +4419,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 rect.width(),
                 rect.height());
         return toolkitMemoryButton;
-    }
-
-    private void renderToolkitMemoryGhost(GuiGraphicsExtractor guiGraphics, Slot slot) {
-        if (!(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot)
-                || !menu.hasToolkitMemory(toolkitSlot.toolkitLogicalIndex())) {
-            return;
-        }
-        ItemStack memory = menu.getToolkitMemoryStack(toolkitSlot.toolkitLogicalIndex());
-        if (memory.isEmpty()) {
-            return;
-        }
-        guiGraphics.item(memory, slot.x, slot.y);
-        guiGraphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, 0x80202020);
-    }
-
-    private boolean shouldRenderToolkitMemoryInsteadOfSlot(@Nullable appeng.menu.SlotSemantic semantic, Slot slot) {
-        return toolkitMemoryMode
-                && semantic == WcwtSlotSemantics.WCWT_TOOLKIT
-                && menu.hasToolkitMemory(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot
-                ? toolkitSlot.toolkitLogicalIndex()
-                : -1);
     }
 
     private void renderPatternManagementHeader(GuiGraphicsExtractor guiGraphics, PatternManagementHeaderRow row,
@@ -5756,7 +5734,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return true;
         }
         com.lhy.wcwt.network.WcwtPackets.sendToServer(new ToolkitMemorySlotPacket(menu.containerId, slotIndex, button == 0));
-        menu.setToolkitMemorySlot(slotIndex, button == 0);
         playPatternManagementClickSound();
         return true;
     }
