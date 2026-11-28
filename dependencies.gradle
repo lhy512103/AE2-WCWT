@@ -22,7 +22,7 @@ dependencies {
     // Local runtime core mods
     localRuntime "org.appliedenergistics:appliedenergistics2:${ae2_version}"
     localRuntime "org.appliedenergistics:guideme:${guideme_version}"
-    localRuntime "de.mari_023:ae2wtlib:${ae2wtlib_version}"
+    localRuntime 'curse.maven:applied-energistics-2-wireless-terminals-459929:9568092'
     localRuntime "top.theillusivec4.curios:curios-neoforge:${curios_version}"
 
     // Shared client/server development mods from the IUCE runtime
@@ -31,24 +31,25 @@ dependencies {
     developmentRuntime 'curse.maven:ae2-crystal-science-1435174:8133403'
     developmentRuntime "maven.modrinth:glodium:${glodium_modrinth}"
     developmentRuntime 'maven.modrinth:jade:Pr1h4azo'
+    developmentRuntime "maven.modrinth:extendedae-plus:${extendedae_plus_modrinth}"
+    developmentRuntime "maven.modrinth:advancedae:${advancedae_modrinth}"
+    developmentRuntime 'maven.modrinth:geckolib:1MNDO4Vd'
+    developmentRuntime 'curse.maven:mekanism-version-locked-1713956:9267959'
+    // NeoEcoAE requires a newer Lightning Tech than the available 26.1.2 build.
+    if (providers.gradleProperty('lightningRuntime').isPresent()) {
+        developmentRuntime "maven.modrinth:ae2-lightning-tech:${ae2lt_modrinth}"
+    } else {
+        developmentRuntime "maven.modrinth:neoecoae:${neoecoae_modrinth}"
+        developmentRuntime "maven.modrinth:B1CBVXHX:${ldlib_modrinth}"
+    }
 
     // Local runtime recipe viewer
     jeiRuntime "mezz.jei:jei-${minecraft_version}-neoforge:${jei_version}"
 
     // Local runtime – optional compatibility stack (activate with -PcompatibilityRuntime)
     if (providers.gradleProperty('compatibilityRuntime').isPresent()) {
-        developmentRuntime "maven.modrinth:extendedae-plus:${extendedae_plus_modrinth}"
-        developmentRuntime "maven.modrinth:advancedae:${advancedae_modrinth}"
-        developmentRuntime 'maven.modrinth:geckolib:1MNDO4Vd'
         developmentRuntime 'maven.modrinth:sophisticated-core:GS7Op9hS'
-        developmentRuntime 'curse.maven:mekanism-version-locked-1713956:9267959'
         developmentRuntime "io.github.victor0hxz:Applied-Mekanistics-Version-Locked:${applied_mekanistics_port_version}"
-        if (providers.gradleProperty('ecoRuntime').isPresent()) {
-            developmentRuntime "maven.modrinth:neoecoae:${neoecoae_modrinth}"
-            developmentRuntime "maven.modrinth:B1CBVXHX:${ldlib_modrinth}"
-        } else {
-            developmentRuntime "maven.modrinth:ae2-lightning-tech:${ae2lt_modrinth}"
-        }
     }
 
     // Client-only runtime (UI mods – active during client run only)

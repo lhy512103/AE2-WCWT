@@ -21,6 +21,7 @@
 15. Added: The provider display button can filter to providers containing patterns.
 16. Fixed: Mapping operations, pattern-return shortcuts, and optional panel shortcuts report missing mods.
 17. Fixed: Opening the ExtendedAE Plus mapping screen from the terminal avoids duplicate background blur.
+18. Changed: The default development runtime uses the CurseForge AE2WTLib build and includes ExtendedAE Plus, AdvancedAE, NeoEcoAE, and Mekanism Version Locked.
 
 ### 中文
 
@@ -41,3 +42,4 @@
 15. 新增：仅显示含有样板的供应器。
 16. 修复：可选功能操作时提示缺少的模组。
 17. 修复：从终端打开映射管理界面时避免背景模糊崩溃。
+18. 新增：将无线终端库、扩展模组和通用机械移植版纳入默认开发环境。
