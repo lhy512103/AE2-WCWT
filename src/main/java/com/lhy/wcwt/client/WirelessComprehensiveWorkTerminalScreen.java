@@ -3269,6 +3269,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return switch (patternManagementDisplayMode) {
             case ALL, VISIBLE -> true;
             case NOT_FULL -> entry.slots().size() < entry.inventorySize();
+            case CONTAINS_PATTERNS -> !entry.slots().isEmpty();
         };
     }
 
@@ -4306,9 +4307,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagementTextButton(guiGraphics, patternManagementReloadButton, mouseX, mouseY);
         renderPatternManagementTextButton(guiGraphics, patternManagementDeleteButton, mouseX, mouseY);
         renderPatternManagementTextButton(guiGraphics, patternManagementCancelButton, mouseX, mouseY);
+        boolean containsPatterns = patternManagementDisplayMode == PatternManagementDisplayMode.CONTAINS_PATTERNS;
+        int displayModeAtlasSize = containsPatterns ? 64 : 256;
         renderPatternManagementToggleButton(guiGraphics, patternManagementDisplayModeButton,
                 patternManagementDisplayMode.iconU(), patternManagementDisplayMode.iconV(),
-                AE2_STATES_TEXTURE, 256, 256, mouseX, mouseY, false);
+                containsPatterns ? WCWT_PATTERN_ICONS_TEXTURE : AE2_STATES_TEXTURE,
+                displayModeAtlasSize, displayModeAtlasSize, mouseX, mouseY, false);
         renderPatternManagementToggleButton(guiGraphics, patternManagementDisplaySlotsButton,
                 patternManagementShowSlots ? 80 : 64, 80,
                 AE2_STATES_TEXTURE, 256, 256, mouseX, mouseY, !patternManagementShowSlots);
@@ -6435,7 +6439,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private enum PatternManagementDisplayMode {
         ALL(112, 80, "gui.wcwt.pattern_management.display_mode.all"),
         VISIBLE(96, 80, "gui.wcwt.pattern_management.display_mode.visible"),
-        NOT_FULL(128, 80, "gui.wcwt.pattern_management.display_mode.not_full");
+        NOT_FULL(128, 80, "gui.wcwt.pattern_management.display_mode.not_full"),
+        CONTAINS_PATTERNS(48, 48, "gui.wcwt.pattern_management.display_mode.contains_patterns");
 
         private final int iconU;
         private final int iconV;

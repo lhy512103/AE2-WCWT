@@ -108,6 +108,7 @@
   "gui.wcwt.pattern_management.display_mode.all": "全部供應器",
   "gui.wcwt.pattern_management.display_mode.visible": "顯示可見供應器",
   "gui.wcwt.pattern_management.display_mode.not_full": "顯示未滿供應器",
+  "gui.wcwt.pattern_management.display_mode.contains_patterns": "含有樣板的供應器",
   "gui.wcwt.pattern_management.search_mode.tooltip": "切換搜索模式：%s",
   "gui.wcwt.batch.pattern_multiplier": "樣板倍增器",
   "gui.wcwt.batch.item_substitution": "物品替換",

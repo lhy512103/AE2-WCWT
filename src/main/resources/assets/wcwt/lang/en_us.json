@@ -110,6 +110,7 @@
   "gui.wcwt.pattern_management.display_mode.all": "All providers",
   "gui.wcwt.pattern_management.display_mode.visible": "Visible providers",
   "gui.wcwt.pattern_management.display_mode.not_full": "Non-full providers",
+  "gui.wcwt.pattern_management.display_mode.contains_patterns": "Providers with patterns",
   "gui.wcwt.pattern_management.search_mode.tooltip": "Switch search mode: %s",
   "gui.wcwt.batch.pattern_multiplier": "SCALE",
   "gui.wcwt.batch.item_substitution": "Item Swap",

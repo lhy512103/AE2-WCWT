@@ -102,6 +102,7 @@
   "gui.wcwt.pattern_management.display_mode.all": "Все",
   "gui.wcwt.pattern_management.display_mode.visible": "Видимые",
   "gui.wcwt.pattern_management.display_mode.not_full": "Не полные",
+  "gui.wcwt.pattern_management.display_mode.contains_patterns": "Поставщики с шаблонами",
   "gui.wcwt.pattern_management.search_mode.tooltip": "Переключить режим поиска: %s",
   "gui.wcwt.batch.pattern_multiplier": "Множитель шаблонов",
   "gui.wcwt.batch.item_substitution": "Замена предметов",
