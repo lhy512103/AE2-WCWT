@@ -65,7 +65,11 @@ public final class ExtendedAePlusMatrixUploadCompat {
             }
             return null;
         }
-        // EAEP's matrix uploader also accepts AE2CS hosts selected by this class-name check.
+        return null;
+    }
+
+    public static Object meteoriteProviderSystem(PatternContainer provider) {
+        // Match EAEP's matrix uploader's AE2 Crystal Science detection.
         if (isUploadAvailable() && provider.getClass().getName().contains("MeteoritePatternProvider")
                 && provider instanceof PatternProviderLogicHost host) {
             return host.getLogic();

@@ -16,8 +16,6 @@ import appeng.core.network.serverbound.InventoryActionPacket;
 import appeng.helpers.InventoryAction;
 import appeng.menu.slot.AppEngSlot;
 import appeng.client.gui.widgets.ActionButton;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
 import appeng.client.gui.widgets.AETextField;
 import appeng.client.gui.widgets.AECheckbox;
 import appeng.client.gui.widgets.TabButton;
@@ -81,7 +79,6 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu.WcwtActivatableSl
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.Renderable;
@@ -105,7 +102,6 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.neoforged.fml.ModList;
 import com.mojang.blaze3d.platform.InputConstants;
-import net.neoforged.neoforge.network.PacketDistributor;
 import appeng.parts.encoding.EncodingMode;
 import appeng.api.implementations.blockentities.PatternContainerGroup;
 import org.anti_ad.mc.ipn.api.IPNButton;
@@ -314,7 +310,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private boolean requestedPatternProviders;
     private long lastPatternProviderRefreshRequestMs;
     private long lastPatternProviderSubscriptionRequestMs;
-    private String resolvedPatternManagementSearchText = "";
     private List<PatternProviderSlotSyncPacket.Mapping> lastPatternProviderSlotSync = List.of();
     private boolean forcePatternProviderSlotSnapshot;
     private final ExtendedPanelLayout mainLayout = ExtendedPanelLayout.load(
@@ -422,12 +417,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final int PATTERN_MANAGEMENT_SEARCH_MATCH_BG_ALPHA = 0x3C;
     private static final boolean DEBUG_REPO = Boolean.getBoolean("wcwt.debug.repo");
     private static final int PLAYER_INVENTORY_SLOT_HIT_SIZE = 18;
-    private static final float TOOLKIT_MEMORY_GHOST_ALPHA = 0.38F;
     private static final Point HIDDEN_SLOT_POS = new Point(-9999, -9999);
     private static final Identifier CURIOS_INVENTORY_TEXTURE =
             Identifier.fromNamespaceAndPath("curios", "textures/gui/curios/inventory.png");
-    private static final Identifier EAE_ICONS_TEXTURE =
-            Identifier.fromNamespaceAndPath("extendedae", "textures/guis/nicons.png");
+    private static final Identifier WCWT_PATTERN_ICONS_TEXTURE =
+            Identifier.fromNamespaceAndPath("ae2", "textures/guis/wcwt/wcwt_pattern_icons.png");
     private static final Identifier AE2_STATES_TEXTURE =
             Identifier.fromNamespaceAndPath("ae2", "textures/guis/states.png");
     private static final Identifier AE2_CHECKBOX_TEXTURE =
@@ -450,7 +444,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private static final Identifier AE2_PATTERN_MODES_TEXTURE =
             Identifier.fromNamespaceAndPath("ae2", "textures/guis/pattern_modes.png");
     private static final Identifier WTLIB_ICONS_TEXTURE =
-            Identifier.fromNamespaceAndPath("ae2", "textures/wtlib/guis/icons.png");
+            Identifier.fromNamespaceAndPath("ae2wtlib_api", "textures/guis/icons.png");
     private static final int AE2_RADIO_UNCHECKED_U = 28;
     private static final int AE2_RADIO_UNCHECKED_V = 0;
     private static final int AE2_RADIO_UNCHECKED_FOCUS_U = 42;
@@ -1200,6 +1194,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         guiGraphics.blit(
+                RenderPipelines.GUI_TEXTURED,
                 WCWT_GUI_TEXTURE,
                 offsetX + pinnedRowOverlayRect.left(),
                 offsetY + pinnedRowOverlayRect.top(),
@@ -1960,6 +1955,17 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean triggerExtendedUiHotkey(IExtendedUIHost.ExtendedUIType type) {
+        String missingMod = switch (type) {
+            case COSMETIC_ARMOR -> WcwtOptionalFeatureGates.isCosmeticArmorAvailable() ? null : "Cosmetic Armor Reworked";
+            case CURIOS -> WcwtOptionalFeatureGates.isCuriosAvailable() ? null : "Curios API";
+            case RESONATING_LIGHTNING_PATTERN_CODING -> WcwtOptionalFeatureGates.isResonatingLightningPatternCodingAvailable()
+                    ? null : "AE2 Crystal Science / AE2 Lightning Tech";
+            default -> null;
+        };
+        if (missingMod != null) {
+            displayPatternManagementMessage(missingModMessage(missingMod));
+            return true;
+        }
         // A deliberate refresh: bypass the per-tick gate.
         extendedUiAvailabilityMaskResolved = false;
         refreshExtendedUiAvailabilityMask();
@@ -1982,8 +1988,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void handleEncodePatternButton() {
-        if (PlusPresence.available() && Minecraft.getInstance().hasShiftDown()) {
-            PlusMappingClient.requestReturnLastPattern();
+        if (Minecraft.getInstance().hasShiftDown()) {
+            if (PlusPresence.available()) {
+                PlusMappingClient.requestReturnLastPattern();
+            } else {
+                displayPatternManagementMessage(missingModMessage("ExtendedAE Plus"));
+            }
             if (encodePatternButton != null) {
                 encodePatternButton.setFocused(false);
             }
@@ -1999,9 +2009,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         String resolvedSearchKey = searchKey == null || searchKey.isBlank()
                 ? ""
                 : resolveClientProviderSearchText(searchKey);
-        if (!resolvedSearchKey.isBlank()) {
-            resolvedPatternManagementSearchText = resolvedSearchKey;
-        }
         if ((patternManagementUploadEnabled
                 || WcwtClientConfig.autoFillPatternProviderSearchWhenUploadDisabled())
                 && searchKey != null && !searchKey.isBlank()
@@ -2014,9 +2021,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         setFocused(null);
         boolean effectiveUpload = com.lhy.wcwt.compat.plus.PlusAutoUploadSettingsClient
                 .effectiveUploadEnabled(patternManagementUploadEnabled);
-        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, field={}, resolvedField={}",
+        logPatternUploadDebug("client encode send mode={}, uploadEnabled={}, searchKey={}, resolvedSearchKey={}, field={}",
                 patternEncodingMode, effectiveUpload, searchKey, resolvedSearchKey,
-                currentPatternManagementSearchText(), resolvedPatternManagementSearchText);
+                currentPatternManagementSearchText());
         com.lhy.wcwt.network.WcwtPackets.sendToServer(new EncodePatternPacket(patternEncodingMode, effectiveUpload,
                 resolvedSearchKey,
                 WcwtClientConfig.patternUploadFailFallbackToEditor()));
@@ -2741,7 +2748,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void onPatternManagementSearchChanged() {
-        resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
         rebuildPatternManagementRows();
         patternProviderSlotLayoutDirty = true;
         refreshPatternProviders();
@@ -2752,29 +2758,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             frameSyncProviderListRequests++;
         }
         com.lhy.wcwt.network.WcwtPackets.sendToServer(new PatternProviderListPacket.Request(
-                subscribe, resolvedPatternManagementSearchTextForRequest()));
+                subscribe, resolveClientProviderSearchText(currentPatternManagementSearchText())));
     }
 
     private String currentPatternManagementSearchText() {
         return patternManageSearchField != null ? patternManageSearchField.getValue() : "";
     }
 
-    private String resolvedPatternManagementSearchTextForRequest() {
-        String resolved = resolveClientProviderSearchText(currentPatternManagementSearchText());
-        resolvedPatternManagementSearchText = resolved;
-        return resolved;
-    }
-
     public void updatePatternProviders(List<PatternProviderListPacket.Entry> entries, String resolvedSearchText) {
         long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
         patternProviders.clear();
         patternProviders.addAll(entries);
-        String incomingResolvedSearchText = resolvedSearchText == null ? "" : resolvedSearchText.trim();
-        if (!incomingResolvedSearchText.isEmpty() || currentPatternManagementSearchText().trim().isEmpty()) {
-            resolvedPatternManagementSearchText = incomingResolvedSearchText;
-        }
-        logPatternUploadDebug("client provider list received entries={}, searchField={}, resolvedSearchText={}, storedResolved={}",
-                entries.size(), currentPatternManagementSearchText(), resolvedSearchText, resolvedPatternManagementSearchText);
+        logPatternUploadDebug("client provider list received entries={}, searchField={}, requestSearchText={}",
+                entries.size(), currentPatternManagementSearchText(), resolvedSearchText);
         selectedPatternProviderId = patternProviders.stream().anyMatch(entry -> entry.providerId() == selectedPatternProviderId)
                 ? selectedPatternProviderId : -1;
         selectedPatternProviderSlot = selectedPatternProviderId >= 0 ? selectedPatternProviderSlot : -1;
@@ -3220,16 +3216,16 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         long startNs = DEBUG_PERF ? System.nanoTime() : 0L;
         patternManagementRows.clear();
         patternManagementSearchHighlightSlots.clear();
-        String rawFilter = patternManageSearchField != null ? patternManageSearchField.getValue().trim() : "";
-        String resolvedFilter = resolvedPatternManagementSearchText.trim();
-        String filter = (!resolvedFilter.isEmpty() ? resolvedFilter : rawFilter).toLowerCase(Locale.ROOT);
+        String query = currentPatternManagementSearchText().trim();
+        String providerFilter = resolveClientProviderSearchText(query).toLowerCase(Locale.ROOT);
+        String patternFilter = query.toLowerCase(Locale.ROOT);
         Map<PatternContainerGroup, List<PatternProviderListPacket.Entry>> providersByGroup = new LinkedHashMap<>();
         boolean compactEmptySlots = WcwtClientConfig.patternManagementAutoCompactEmptySlots();
         // Resolving a display name translates a component; compute each entry's sort key once, not per comparison.
         Map<PatternProviderListPacket.Entry, String> sortKeys = new IdentityHashMap<>();
         patternProviders.stream()
                 .filter(this::isPatternProviderVisibleInManagement)
-                .filter(entry -> filter.isEmpty() || patternProviderMatches(entry, filter))
+                .filter(entry -> patternFilter.isEmpty() || patternProviderMatches(entry, providerFilter, patternFilter))
                 .sorted(Comparator.comparing(entry -> sortKeys.computeIfAbsent(entry,
                         ignored -> providerDisplayText(entry).toLowerCase(Locale.ROOT))))
                 .forEach(entry -> providersByGroup
@@ -3264,14 +3260,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         });
         if (DEBUG_PERF) {
             long totalNs = System.nanoTime() - startNs;
-            if (totalNs >= PERF_LOG_THRESHOLD_NS || !filter.isEmpty()) {
+            if (totalNs >= PERF_LOG_THRESHOLD_NS || !patternFilter.isEmpty()) {
                 WcwtMod.LOGGER.info(
                         "WCWT perf: rebuildPatternManagementRows totalMs={}, providers={}, rows={}, filterEmpty={}, filterLen={}, showSlots={}, displayMode={}, searchMode={}",
                         String.format(java.util.Locale.ROOT, "%.3f", totalNs / 1_000_000.0D),
                         patternProviders.size(),
                         patternManagementRows.size(),
-                        filter.isEmpty(),
-                        filter.length(),
+                        patternFilter.isEmpty(),
+                        patternFilter.length(),
                         patternManagementShowSlots,
                         patternManagementDisplayMode,
                         patternManagementSearchMode);
@@ -3283,6 +3279,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return switch (patternManagementDisplayMode) {
             case ALL, VISIBLE -> true;
             case NOT_FULL -> entry.slots().size() < entry.inventorySize();
+            case CONTAINS_PATTERNS -> !entry.slots().isEmpty();
         };
     }
 
@@ -3315,13 +3312,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return entry.group().name().getString();
     }
 
-    private boolean patternProviderMatches(PatternProviderListPacket.Entry entry, String filter) {
-        if (JecSearchCompat.contains(providerDisplayText(entry), filter)) {
-            return true;
-        }
-        boolean matched = false;
+    private boolean patternProviderMatches(PatternProviderListPacket.Entry entry, String providerFilter, String patternFilter) {
+        boolean matched = JecSearchCompat.contains(providerDisplayText(entry), providerFilter);
         for (var slotEntry : entry.slots().int2ObjectEntrySet()) {
-            if (patternStackMatches(slotEntry.getValue(), filter)) {
+            if (patternStackMatches(slotEntry.getValue(), patternFilter)) {
                 patternManagementSearchHighlightSlots.add(new PatternManagementSlotKey(entry.providerId(), slotEntry.getIntKey()));
                 matched = true;
             }
@@ -3505,7 +3499,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                         providerSlotSlot.setClientDisplayStack(stack);
                     }
                 }
-                showSlot(slot, slotX, slotY);
+                showSlot(slot, patternManagementSlotHitMinX(slotX), patternManagementSlotHitMinY(slotY));
                 mappings.add(new PatternProviderSlotSyncPacket.Mapping(mappingIndex, entry.providerId(), mappedProviderSlot));
             }
         }
@@ -3939,6 +3933,12 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         if (semantic == WcwtSlotSemantics.WCWT_PATTERN_PROVIDER) {
+            var stack = slot.getItem();
+            if (!stack.isEmpty()) {
+                var displayStack = getPatternDisplayStack(stack);
+                guiGraphics.item(displayStack, slot.x, slot.y);
+                guiGraphics.itemDecorations(font, displayStack, slot.x, slot.y);
+            }
             return;
         }
         int cacheIndex = getPatternCacheSlotIndex(slot);
@@ -3949,13 +3949,13 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     SELECTED_PATTERN_BG_SIZE, SELECTED_PATTERN_BG_SIZE,
                     256, 256);
         }
-        if (shouldRenderToolkitMemoryInsteadOfSlot(semantic, slot)) {
-            renderToolkitMemoryGhost(guiGraphics, slot);
-        } else {
+        ItemStack toolkitMemory = slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot
+                && (toolkitMemoryMode || !slot.hasItem())
+                ? menu.getToolkitMemoryStack(toolkitSlot.toolkitLogicalIndex()) : ItemStack.EMPTY;
+        if (toolkitMemory.isEmpty()) {
             super.extractSlot(guiGraphics, slot, mouseX, mouseY);
-            if (semantic == WcwtSlotSemantics.WCWT_TOOLKIT) {
-                renderToolkitMemoryGhost(guiGraphics, slot);
-            }
+        } else {
+            WcwtToolkitMemoryIcon.extract(guiGraphics, toolkitMemory, slot.x, slot.y, 0);
         }
         renderFavoritedIndicator(guiGraphics, slot);
         renderCraftablePatternIndicator(guiGraphics, slot);
@@ -4150,7 +4150,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderManualWorkspaceBackground(guiGraphics, offsetX, offsetY);
         renderPatternEncodingBackground(guiGraphics, offsetX, offsetY);
         if (isToolkitExpandedInManagementArea()) {
-            guiGraphics.blit(WCWT_TOOLS_TEXTURE,
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_TOOLS_TEXTURE,
                     offsetX + managementToolkitBackgroundRect.left(), offsetY + managementToolkitBackgroundRect.top(),
                     0, 0,
                     managementToolkitBackgroundRect.width(), managementToolkitBackgroundRect.height(),
@@ -4168,7 +4168,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 new ExtendedPanelLayout.Rect(78, imageHeight - 213, 88, 58), imageWidth, imageHeight);
         int srcY = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.SMITHING ? 0 : 59;
         int renderHeight = Math.min(rect.height(), 58);
-        guiGraphics.blit(WCWT_EXTENDED_CRAFTING_TEXTURE,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_EXTENDED_CRAFTING_TEXTURE,
                 offsetX + rect.left(), offsetY + rect.top(),
                 0, srcY, rect.width(), renderHeight, 256, 256);
     }
@@ -4183,7 +4183,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             case SMITHING_TABLE -> 70;
             case STONECUTTING -> 140;
         };
-        guiGraphics.blit(AE2_PATTERN_MODES_TEXTURE,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, AE2_PATTERN_MODES_TEXTURE,
                 offsetX + inputBase.left() + PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT,
                 offsetY + inputBase.top() + PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT,
                 srcX, srcY, PATTERN_ENCODING_BG_WIDTH, PATTERN_ENCODING_BG_HEIGHT, 256, 256);
@@ -4317,16 +4317,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderPatternManagementTextButton(guiGraphics, patternManagementReloadButton, mouseX, mouseY);
         renderPatternManagementTextButton(guiGraphics, patternManagementDeleteButton, mouseX, mouseY);
         renderPatternManagementTextButton(guiGraphics, patternManagementCancelButton, mouseX, mouseY);
+        boolean containsPatterns = patternManagementDisplayMode == PatternManagementDisplayMode.CONTAINS_PATTERNS;
+        int displayModeAtlasSize = containsPatterns ? 64 : 256;
         renderPatternManagementToggleButton(guiGraphics, patternManagementDisplayModeButton,
                 patternManagementDisplayMode.iconU(), patternManagementDisplayMode.iconV(),
-                AE2_STATES_TEXTURE, 256, 256, mouseX, mouseY, false);
+                containsPatterns ? WCWT_PATTERN_ICONS_TEXTURE : AE2_STATES_TEXTURE,
+                displayModeAtlasSize, 16, mouseX, mouseY, false);
         renderPatternManagementToggleButton(guiGraphics, patternManagementDisplaySlotsButton,
                 patternManagementShowSlots ? 80 : 64, 80,
-                AE2_STATES_TEXTURE, 256, 256, mouseX, mouseY, !patternManagementShowSlots);
+                AE2_STATES_TEXTURE, 256, 16, mouseX, mouseY, !patternManagementShowSlots);
         renderPatternManagementUploadToggleButton(guiGraphics, mouseX, mouseY);
         renderPatternManagementToggleButton(guiGraphics, patternManagementSearchModeButton,
                 patternManagementSearchMode.iconU(), patternManagementSearchMode.iconV(),
-                EAE_ICONS_TEXTURE, 64, 64, mouseX, mouseY, false);
+                WCWT_PATTERN_ICONS_TEXTURE, 64, 12, mouseX, mouseY, false);
 
         renderPatternManagementButtonText(guiGraphics, patternManagementAddButton,
                 PATTERN_MANAGEMENT_ADD_TEXT, 0xFFFFFF, mouseX, mouseY);
@@ -4359,14 +4362,14 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             if (row instanceof PatternManagementHeaderRow header) {
                 renderPatternManagementHeader(guiGraphics, header, rowY, textColor, mouseX, mouseY);
             } else if (row instanceof PatternManagementSlotsRow slotsRow) {
-                renderPatternManagementSlots(guiGraphics, slotsRow, rowY, mouseX, mouseY);
+                renderPatternManagementSlots(guiGraphics, slotsRow, rowY);
             }
         }
     }
 
     private void renderPatternManagementBackground(GuiGraphicsExtractor guiGraphics) {
         if (!patternManagementShowSlots) {
-            guiGraphics.blit(WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE,
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE,
                     patternManagementPage.left(), patternManagementPage.top(),
                     0, 0,
                     patternManagementPage.width(), patternManagementPage.height(),
@@ -4414,27 +4417,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         return toolkitMemoryButton;
     }
 
-    private void renderToolkitMemoryGhost(GuiGraphicsExtractor guiGraphics, Slot slot) {
-        if (!(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot)
-                || !menu.hasToolkitMemory(toolkitSlot.toolkitLogicalIndex())) {
-            return;
-        }
-        ItemStack memory = menu.getToolkitMemoryStack(toolkitSlot.toolkitLogicalIndex());
-        if (memory.isEmpty()) {
-            return;
-        }
-        guiGraphics.item(memory, slot.x, slot.y);
-        guiGraphics.fill(slot.x, slot.y, slot.x + 16, slot.y + 16, 0x80202020);
-    }
-
-    private boolean shouldRenderToolkitMemoryInsteadOfSlot(@Nullable appeng.menu.SlotSemantic semantic, Slot slot) {
-        return toolkitMemoryMode
-                && semantic == WcwtSlotSemantics.WCWT_TOOLKIT
-                && menu.hasToolkitMemory(slot instanceof WirelessComprehensiveWorkTerminalMenu.ToolkitSlot toolkitSlot
-                ? toolkitSlot.toolkitLogicalIndex()
-                : -1);
-    }
-
     private void renderPatternManagementHeader(GuiGraphicsExtractor guiGraphics, PatternManagementHeaderRow row,
                                                int rowY, int textColor, int mouseX, int mouseY) {
         if (patternManagementShowSlots && row.containsProvider(selectedPatternProviderId)) {
@@ -4473,8 +4455,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
     }
 
-    private void renderPatternManagementSlots(GuiGraphicsExtractor guiGraphics, PatternManagementSlotsRow row, int rowY,
-                                              int mouseX, int mouseY) {
+    private void renderPatternManagementSlots(GuiGraphicsExtractor guiGraphics, PatternManagementSlotsRow row, int rowY) {
         for (int col = 0; col < row.slots().size(); col++) {
             int slot = row.slots().get(col);
             int x = patternManagementPage.left() + col * PATTERN_MANAGEMENT_SLOT_STEP;
@@ -4494,32 +4475,19 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_MANAGEMENT_TEXTURE, x, y + cropTop, 0, cropTop,
                     drawW, drawH,
                     256, 256);
-            int scissorX = leftPos + x;
-            int scissorY = topPos + y + cropTop;
-            guiGraphics.enableScissor(scissorX, scissorY, scissorX + drawW, scissorY + drawH);
-            ItemStack stack = slot < 0 ? ItemStack.EMPTY : getPatternProviderSlotDisplayStack(row.entry(), slot);
-            if (!stack.isEmpty()) {
-                ItemStack displayStack = getPatternDisplayStack(stack);
-                int ix = patternManagementSlotHitMinX(x);
-                int iy = patternManagementSlotHitMinY(y);
-                guiGraphics.item(displayStack, ix, iy);
-                guiGraphics.itemDecorations(font, displayStack, ix, iy);
-            }
             if (slot < 0) {
+                guiGraphics.enableScissor(x, y + cropTop, x + drawW, y + cropTop + drawH);
                 int hiddenSlots = Math.max(0, row.entry().inventorySize() - row.entry().slots().size());
                 String count = Integer.toString(hiddenSlots);
                 var pose = guiGraphics.pose();
                 pose.pushMatrix();
                 pose.translate(
                         patternManagementSlotHitMinX(x) + PATTERN_MANAGEMENT_SLOT_HIT_SIZE,
-                        patternManagementSlotHitMinY(y) - 1);
+                        patternManagementSlotHitMinY(y));
                 pose.scale(PATTERN_MANAGEMENT_BADGE_SCALE, PATTERN_MANAGEMENT_BADGE_SCALE);
                 guiGraphics.text(font, count, -font.width(count), 0, 0xFFFFFFFF, true);
                 pose.popMatrix();
-            }
-            guiGraphics.disableScissor();
-            if (isMouseOverPatternManagementSlot(mouseX, mouseY, x, y)) {
-                renderPatternManagementSlotHighlight(guiGraphics, x, y);
+                guiGraphics.disableScissor();
             }
             if (shouldHighlightPatternManagementSearchResult(row.entry().providerId(), slot)) {
                 renderPatternManagementSearchSlotHighlight(guiGraphics, x, y);
@@ -4553,25 +4521,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private boolean isMouseOverPatternManagementSlot(int mouseX, int mouseY, int bgX, int bgY) {
-        int relX = mouseX - leftPos;
-        int relY = mouseY - topPos;
-        int hx = patternManagementSlotHitMinX(bgX);
-        int hy = patternManagementSlotHitMinY(bgY);
-        return relX >= hx
-                && relX < hx + PATTERN_MANAGEMENT_SLOT_HIT_SIZE
-                && relY >= hy
-                && relY < hy + PATTERN_MANAGEMENT_SLOT_HIT_SIZE;
-    }
-
-    private void renderPatternManagementSlotHighlight(GuiGraphicsExtractor guiGraphics, int bgX, int bgY) {
-        int x = patternManagementSlotHitMinX(bgX);
-        int y = patternManagementSlotHitMinY(bgY);
-        int s = PATTERN_MANAGEMENT_SLOT_HIT_SIZE;
-        guiGraphics.fill(x, y - 1, x + s + 1, y, 0xFFDAFFFF);
-        guiGraphics.fill(x - 1, y + s, x + s + 1, y + s + 1, 0xFFDAFFFF);
-        guiGraphics.fill(x - 1, y - 2, x, y + s + 1, 0xFFDAFFFF);
-        guiGraphics.fill(x + s, y - 2, x + s + 1, y + s + 1, 0xFFDAFFFF);
-        guiGraphics.fill(x, y, x + s, y + s, 0x669CD3FF);
+        return inRect(mouseX - leftPos, mouseY - topPos, patternManagementSlotHitMinX(bgX),
+                patternManagementSlotHitMinY(bgY), PATTERN_MANAGEMENT_SLOT_HIT_SIZE, PATTERN_MANAGEMENT_SLOT_HIT_SIZE);
     }
 
     private void renderFocusedPatternManagementSlotHighlight(GuiGraphicsExtractor guiGraphics, int bgX, int bgY) {
@@ -4743,7 +4694,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void renderPatternManagementToggleButton(GuiGraphicsExtractor guiGraphics, ExtendedPanelLayout.Rect rect,
                                                      int iconU, int iconV, Identifier iconTexture,
-                                                     int iconTextureWidth, int iconTextureHeight,
+                                                     int iconTextureSize, int iconSourceSize,
                                                      int mouseX, int mouseY, boolean active) {
         boolean hover = mouseX >= leftPos + rect.left() && mouseX < leftPos + rect.left() + rect.width()
                 && mouseY >= topPos + rect.top() && mouseY < topPos + rect.top() + rect.height();
@@ -4756,10 +4707,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int iconH = rect.height();
         int iconX = rect.left() + (rect.width() - iconW) / 2;
         int iconY = rect.top() + (rect.height() - iconH) / 2 + pressOffsetY;
-        int sourceW = iconTextureWidth == 64 ? 12 : 16;
-        int sourceH = iconTextureWidth == 64 ? 12 : 16;
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, iconTexture, iconX, iconY, iconU, iconV,
-                iconW, iconH, sourceW, sourceH, iconTextureWidth, iconTextureHeight);
+                iconW, iconH, iconSourceSize, iconSourceSize, iconTextureSize, iconTextureSize);
     }
 
     private void renderPatternManagementUploadToggleButton(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
@@ -5007,7 +4956,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private void renderPatternManagementHighlightButton(GuiGraphicsExtractor guiGraphics, ExtendedPanelLayout.Rect rect) {
-        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, EAE_ICONS_TEXTURE, rect.left(), rect.top(),
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_PATTERN_ICONS_TEXTURE, rect.left(), rect.top(),
                 PATTERN_MANAGEMENT_HIGHLIGHT_ICON_U, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_V,
                 PATTERN_MANAGEMENT_HIGHLIGHT_ICON_W, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_H,
                 PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_W, PATTERN_MANAGEMENT_HIGHLIGHT_ICON_SRC_H, 64, 64);
@@ -5405,6 +5354,11 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         int relX = (int) Math.round(mouseX - leftPos);
         int relY = (int) Math.round(mouseY - topPos);
 
+        if (!PlusPresence.available() && isPatternManagementMappingButton(relX, relY)) {
+            playPatternManagementClickSound();
+            displayPatternManagementMessage(missingModMessage("ExtendedAE Plus"));
+            return true;
+        }
         if (inRect(relX, relY, patternManagementAddButton)) {
             playPatternManagementClickSound();
             String searchText = patternManageSearchField != null ? patternManageSearchField.getValue() : "";
@@ -5415,7 +5369,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                     : "gui.wcwt.pattern_management.mapping_failed"));
             if (localMappingAdded && patternManageSearchField != null) {
                 patternManageSearchField.setValue(mappingText.trim());
-                resolvedPatternManagementSearchText = resolveClientProviderSearchText(mappingText);
             }
             refreshPatternProviders();
             clearPatternManagementMappingField();
@@ -5424,7 +5377,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (inRect(relX, relY, patternManagementReloadButton)) {
             playPatternManagementClickSound();
             ExtendedAePlusUploadCompat.loadRecipeTypeNames();
-            resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
+            rebuildPatternManagementRows();
+            patternProviderSlotLayoutDirty = true;
             displayPatternManagementMessage(Component.translatable("gui.wcwt.pattern_management.mapping_reloaded"));
             refreshPatternProviders();
             return true;
@@ -5433,7 +5387,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             playPatternManagementClickSound();
             String mappingText = patternManageMappingField != null ? patternManageMappingField.getValue() : "";
             int removed = ExtendedAePlusUploadCompat.removeMappingsByCnValue(mappingText);
-            resolvedPatternManagementSearchText = resolveClientProviderSearchText(currentPatternManagementSearchText());
+            rebuildPatternManagementRows();
+            patternProviderSlotLayoutDirty = true;
             displayPatternManagementMessage(Component.translatable(
                     "gui.wcwt.pattern_management.mapping_deleted", removed));
             refreshPatternProviders();
@@ -5442,18 +5397,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (inRect(relX, relY, patternManagementCancelButton)) {
             playPatternManagementClickSound();
-            if (PlusPresence.available()) {
-                minecraft.setScreen(PlusMappingClient.openMappingScreen(this));
-                return true;
-            }
-            if (patternManageSearchField != null) {
-                patternManageSearchField.setValue("");
-            }
-            if (patternManageMappingField != null) {
-                patternManageMappingField.setValue("");
-            }
-            rebuildPatternManagementRows();
-            patternProviderSlotLayoutDirty = true;
+            minecraft.setScreen(PlusMappingClient.openMappingScreen(this));
             return true;
         }
         if (inRect(relX, relY, patternManagementDisplayModeButton)) {
@@ -5483,7 +5427,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             patternManagementSearchMode = patternManagementSearchMode.next();
             rebuildPatternManagementRows();
             patternProviderSlotLayoutDirty = true;
-            refreshPatternProviders();
             sendPatternManagementSettings();
             return true;
         }
@@ -5558,6 +5501,15 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         if (player != null) {
             player.sendOverlayMessage(message);
         }
+    }
+
+    private static Component missingModMessage(String name) {
+        return Component.translatable("gui.wcwt.integration.mod_missing", name);
+    }
+
+    private boolean isPatternManagementMappingButton(int x, int y) {
+        return inRect(x, y, patternManagementAddButton) || inRect(x, y, patternManagementReloadButton)
+                || inRect(x, y, patternManagementDeleteButton) || inRect(x, y, patternManagementCancelButton);
     }
 
     private void playPatternManagementClickSound() {
@@ -5640,7 +5592,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 action,
                 providerId,
                 cacheSlot,
-                resolvedPatternManagementSearchTextForRequest(),
+                currentPatternManagementSearchText(),
                 patternManageMappingField != null ? patternManageMappingField.getValue() : "");
     }
 
@@ -5666,7 +5618,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 PatternManagementActionPacket.Action.OPEN_PROVIDER_UI,
                 entry.providerId(),
                 -1,
-                resolvedPatternManagementSearchTextForRequest(),
+                resolveClientProviderSearchText(currentPatternManagementSearchText()),
                 "",
                 WcwtClientConfig.patternManagementShiftQuickEnabled(),
                 hasLocation,
@@ -5778,7 +5730,6 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return true;
         }
         com.lhy.wcwt.network.WcwtPackets.sendToServer(new ToolkitMemorySlotPacket(menu.containerId, slotIndex, button == 0));
-        menu.setToolkitMemorySlot(slotIndex, button == 0);
         playPatternManagementClickSound();
         return true;
     }
@@ -6107,7 +6058,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         var curioToggleSlot = getCurioToggleSlotAt(mouseX, mouseY);
         if (curioToggleSlot != null) {
-            guiGraphics.setTooltipForNextFrame(font, Component.translatable("gui.curios.toggle"), mouseX, mouseY);
+            guiGraphics.setTooltipForNextFrame(font, Component.translatable("gui.wcwt.curios.toggle"), mouseX, mouseY);
             return;
         }
 
@@ -6214,6 +6165,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         int relX = mouseX - leftPos;
         int relY = mouseY - topPos;
+        if (!PlusPresence.available() && isPatternManagementMappingButton(relX, relY)) {
+            return missingModMessage("ExtendedAE Plus");
+        }
         if (inRect(relX, relY, patternManagementAddButton)) {
             return Component.translatable("gui.wcwt.pattern_management.add_mapping.tooltip");
         }
@@ -6232,8 +6186,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         }
         if (inRect(relX, relY, patternManagementDisplaySlotsButton)) {
             return Component.translatable(patternManagementShowSlots
-                    ? "gui.expatternprovider.hide_slots"
-                    : "gui.expatternprovider.show_slots");
+                    ? "gui.wcwt.pattern_management.hide_slots"
+                    : "gui.wcwt.pattern_management.show_slots");
         }
         if (inRect(relX, relY, patternManagementAutoUploadButton)) {
             return Component.translatable(patternManagementUploadEnabled
@@ -6259,7 +6213,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return switch (buttonHit.button()) {
                 case UPLOAD -> Component.translatable("gui.wcwt.pattern_management.upload.tooltip");
                 case UI -> Component.translatable("gui.wcwt.pattern_management.open_ui.tooltip");
-                case HIGHLIGHT -> Component.translatable("gui.extendedae.ex_pattern_access_terminal.tooltip.03");
+                case HIGHLIGHT -> Component.translatable("gui.wcwt.pattern_management.highlight.tooltip");
             };
         }
         var hit = getPatternManagementHeaderAt(relX, relY);
@@ -6477,7 +6431,8 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     private enum PatternManagementDisplayMode {
         ALL(112, 80, "gui.wcwt.pattern_management.display_mode.all"),
         VISIBLE(96, 80, "gui.wcwt.pattern_management.display_mode.visible"),
-        NOT_FULL(128, 80, "gui.wcwt.pattern_management.display_mode.not_full");
+        NOT_FULL(128, 80, "gui.wcwt.pattern_management.display_mode.not_full"),
+        CONTAINS_PATTERNS(48, 48, "gui.wcwt.pattern_management.display_mode.contains_patterns");
 
         private final int iconU;
         private final int iconV;
@@ -6508,9 +6463,9 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
     }
 
     private enum PatternManagementSearchMode {
-        OUT(16, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.01"),
-        IN(0, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.02"),
-        IN_OUT(32, 48, "gui.extendedae.ex_pattern_access_terminal.search_mode.03");
+        OUT(16, 48, "gui.wcwt.pattern_management.search_mode.output"),
+        IN(0, 48, "gui.wcwt.pattern_management.search_mode.input"),
+        IN_OUT(32, 48, "gui.wcwt.pattern_management.search_mode.input_output");
 
         private final int iconU;
         private final int iconV;
@@ -6555,8 +6510,10 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
         @Override
         public List<Component> getTooltipMessage() {
-            if (PlusPresence.available() && Minecraft.getInstance().hasShiftDown()) {
-                return List.of(Component.translatable("extendedae_plus.button.return_last_pattern"));
+            if (Minecraft.getInstance().hasShiftDown()) {
+                return List.of(PlusPresence.available()
+                        ? Component.translatable("extendedae_plus.button.return_last_pattern")
+                        : missingModMessage("ExtendedAE Plus"));
             }
             return super.getTooltipMessage();
         }

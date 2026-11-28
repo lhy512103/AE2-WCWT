@@ -5,11 +5,8 @@ import appeng.api.stacks.AEKeyTypes;
 import appeng.api.stacks.AEKeyTypesInternal;
 import net.minecraft.SharedConstants;
 import net.minecraft.server.Bootstrap;
-import net.neoforged.fml.loading.LoadingModList;
 import net.neoforged.neoforge.registries.RegistryBuilder;
 
-import java.util.List;
-import java.util.Map;
 
 /**
  * Brings up vanilla registries and AE2's item key type for unit tests that touch {@code ItemStack} or

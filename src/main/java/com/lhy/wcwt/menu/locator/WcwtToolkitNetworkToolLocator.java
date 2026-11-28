@@ -5,8 +5,8 @@ import org.jetbrains.annotations.Nullable;
 
 import appeng.api.inventories.InternalInventory;
 import appeng.core.definitions.AEItems;
-import appeng.integration.modules.curios.CuriosIntegration;
 import appeng.menu.locator.ItemMenuHostLocator;
+import com.lhy.wcwt.compat.CuriosBridge;
 import com.lhy.wcwt.helpers.WcwtToolkitHotbarState;
 import com.lhy.wcwt.helpers.WcwtToolkitStore;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
@@ -27,7 +27,8 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
 
     public enum SourceKind {
         INVENTORY,
-        CURIOS
+        CURIOS,
+        TOOLKIT
     }
 
     @Override
@@ -84,16 +85,9 @@ public record WcwtToolkitNetworkToolLocator(SourceKind sourceKind, int sourceSlo
     public ItemStack locateTerminalStack(Player player) {
         return switch (sourceKind) {
             case INVENTORY -> player.getInventory().getItem(sourceSlot);
-            case CURIOS -> locateCurioStack(player, sourceSlot);
+            case CURIOS -> CuriosBridge.equippedItem(player, sourceSlot);
+            case TOOLKIT -> WcwtToolkitHotbarState.stackAt(player, sourceSlot);
         };
-    }
-
-    private static ItemStack locateCurioStack(Player player, int curioSlot) {
-        var cap = player.getCapability(CuriosIntegration.ITEM_HANDLER);
-        if (cap == null || curioSlot < 0 || curioSlot >= cap.size()) {
-            return ItemStack.EMPTY;
-        }
-        return cap.getResource(curioSlot).toStack(cap.getAmountAsInt(curioSlot));
     }
 
     @Override

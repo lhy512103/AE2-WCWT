@@ -5,6 +5,7 @@ import appeng.integration.modules.curios.CuriosIntegration;
 import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.api.IExtendedUIHost;
 import com.lhy.wcwt.compat.CuriosBridge;
+import com.lhy.wcwt.helpers.WcwtToolkitAccess;
 import com.lhy.wcwt.helpers.WirelessComprehensiveWorkTerminalMenuHost;
 import com.lhy.wcwt.item.WirelessComprehensiveWorkTerminalItem;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
@@ -45,6 +46,11 @@ public record OpenToolkitHotkeyPacket() implements CustomPacketPayload {
             }
 
             if (openFromInventory(player) || openFromCurios(player)) {
+                return;
+            }
+            WirelessComprehensiveWorkTerminalMenuHost.setPendingExtendedUi(player, IExtendedUIHost.ExtendedUIType.TOOLKIT);
+            if (WcwtToolkitAccess.openHotbarTerminal(player, WcwtToolkitAccess::hasToolkitCard)) {
+                applyToolkitUiIfOpen(player);
                 return;
             }
             WirelessComprehensiveWorkTerminalMenuHost.clearPendingExtendedUi(player);

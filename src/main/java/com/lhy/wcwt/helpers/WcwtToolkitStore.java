@@ -10,7 +10,6 @@ import com.lhy.wcwt.init.ModComponents;
 import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
@@ -41,6 +40,21 @@ public final class WcwtToolkitStore {
 
     public static int configuredSize() {
         return Math.max(WcwtServerConfig.MIN_TOOLKIT_SLOTS, WcwtServerConfig.toolkitSlotCount());
+    }
+
+    /** Finds saved toolkit items even if the terminal that enables the hotbars is inside them. */
+    @Nullable
+    static InternalInventory existingItems(Player player) {
+        var items = WcwtToolkitHotbarState.state(player).items;
+        if (items != null) {
+            return items;
+        }
+        boolean hasSavedItems = player.getPersistentData().getCompound(PLAYER_PERSISTED_TAG)
+                .flatMap(tag -> tag.getCompound(WCWT_PLAYER_DATA_TAG))
+                .flatMap(tag -> tag.getCompound(PLAYER_TOOLKIT_DATA_TAG))
+                .flatMap(tag -> tag.getList(ITEMS_TAG))
+                .filter(list -> !list.isEmpty()).isPresent();
+        return hasSavedItems ? items(player, null) : null;
     }
 
     /** Live server toolkit; {@code null} on the client. */

@@ -17,7 +17,7 @@
   "gui.wcwt.extended_ui.toolkit": "Toolkit",
   "gui.wcwt.extended_ui.resonating_lightning_pattern_coding": "Resonating Overload Encoder",
   "gui.wcwt.extended_ui.none": "Close Extended UI",
-  "key.wcwt.category": "WCWT",
+  "key.category.wcwt.category": "AE2 WCWT",
   "key.ae2.wireless_wcwt_terminal": "Open ME WCWT",
   "key.wcwt.open_advanced_coding": "Open Advanced Coding",
   "key.wcwt.open_cosmetic_armor": "Open Cosmetic Armor",
@@ -110,6 +110,8 @@
   "gui.wcwt.pattern_management.display_mode.all": "All providers",
   "gui.wcwt.pattern_management.display_mode.visible": "Visible providers",
   "gui.wcwt.pattern_management.display_mode.not_full": "Non-full providers",
+  "gui.wcwt.pattern_management.display_mode.contains_patterns": "Providers with patterns",
+  "gui.wcwt.integration.mod_missing": "Required mod missing: %s",
   "gui.wcwt.pattern_management.search_mode.tooltip": "Switch search mode: %s",
   "gui.wcwt.batch.pattern_multiplier": "SCALE",
   "gui.wcwt.batch.item_substitution": "Item Swap",
@@ -245,5 +247,12 @@
   "advancements.wcwt.obtain_terminal.title": "What a Thunder Terminal!",
   "advancements.wcwt.obtain_terminal.description": "Obtain a ME Wireless Comprehensive Work Terminal",
   "advancements.wcwt.obtain_non_universal_terminal.title": "What? Even the Thunder Terminal Wasn't Enough?",
-  "advancements.wcwt.obtain_non_universal_terminal.description": "Obtain a ME Wireless Comprehensive Non-Universal Terminal"
+  "advancements.wcwt.obtain_non_universal_terminal.description": "Obtain a ME Wireless Comprehensive Non-Universal Terminal",
+  "gui.wcwt.pattern_management.search_mode.output": "Current: Output",
+  "gui.wcwt.pattern_management.search_mode.input": "Current: Input",
+  "gui.wcwt.pattern_management.search_mode.input_output": "Current: Input and Output",
+  "gui.wcwt.pattern_management.highlight.tooltip": "Highlight the pattern provider in world.",
+  "gui.wcwt.pattern_management.show_slots": "Show pattern slots",
+  "gui.wcwt.pattern_management.hide_slots": "Hide pattern slots",
+  "gui.wcwt.curios.toggle": "Toggle rendering of curio slot"
 }

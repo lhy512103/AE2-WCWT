@@ -17,7 +17,6 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
-import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.Optional;
 
@@ -45,13 +44,22 @@ public class WcwtCraftingRecipeTransferHandler
         return RecipeTypes.CRAFTING;
     }
 
+    // JEI still requires this overload. Use separate suppression keys for javac and Eclipse.
     @Override
+    @SuppressWarnings({"removal", "all"})
     public IRecipeTransferError transferRecipe(WirelessComprehensiveWorkTerminalMenu menu,
                                                RecipeHolder<CraftingRecipe> recipeHolder,
                                                IRecipeSlotsView recipeSlots,
                                                Player player,
                                                boolean maxTransfer,
                                                boolean doTransfer) {
+        return transferCraftingRecipe(menu, recipeHolder, recipeSlots, doTransfer);
+    }
+
+    private IRecipeTransferError transferCraftingRecipe(WirelessComprehensiveWorkTerminalMenu menu,
+                                                        RecipeHolder<CraftingRecipe> recipeHolder,
+                                                        IRecipeSlotsView recipeSlots,
+                                                        boolean doTransfer) {
         if (!WcwtClientConfig.enableRecipePullTransfer()) {
             return null;
         }

@@ -163,6 +163,7 @@ final class WcwtPatternUploadTargets {
 
         WcwtAutoUploadSystems systems = craftingUploadSystems(currentGrid, uploadStack, serverPlayer);
         return systems.uploadIfUnique(() -> uploadToOnlyCraftingSystem(uploadStack, serverPlayer, currentGrid),
+                () -> uploadToEco(uploadStack, serverPlayer, currentGrid),
                 MatrixUploadResult.FAILURE, MatrixUploadResult.AMBIGUOUS);
     }
 
@@ -207,18 +208,17 @@ final class WcwtPatternUploadTargets {
                     try {
                         if (activeProviders.contains(provider) && NeoEcoApiCompat.isEcoPatternProvider(provider)) {
                             // The service exists even without a bus: only count it once a real bus is found.
-                            Object system = NeoEcoApiCompat.patternStorageSystem(currentGrid);
-                            if (system == null) {
-                                systems.markUncertain();
-                            } else {
-                                systems.add(system);
-                            }
+                            systems.addEco(NeoEcoApiCompat.patternStorageSystem(currentGrid));
                         }
                     } catch (Throwable ignored) {
                         systems.markUncertain();
                     }
                     try {
                         systems.add(ExtendedAePlusMatrixUploadCompat.assemblerMatrixSystem(provider));
+                        Object meteoriteProvider = ExtendedAePlusMatrixUploadCompat.meteoriteProviderSystem(provider);
+                        if (meteoriteProvider != null) {
+                            systems.addMeteoriteProvider(meteoriteProvider);
+                        }
                     } catch (Throwable ignored) {
                         systems.markUncertain();
                     }
@@ -240,24 +240,38 @@ final class WcwtPatternUploadTargets {
         } catch (Throwable ignored) {
         }
         try {
-            EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(uploadStack);
-            if (ecoDuplicate.duplicate()) {
-                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
-                return duplicateResult(uploadStack);
-            }
-            if (NeoEcoApiCompat.uploadPatternToEcoStorage(currentGrid, uploadStack.copy())) {
-                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
-                return findEcoUploadResult(uploadStack);
-            }
-        } catch (Throwable ignored) {
-        }
-        try {
             if (assemblerMatrixContainsPattern(uploadStack)) {
                 serverPlayer.sendSystemMessage(Component.translatable("extendedae_plus.message.matrix.duplicate"));
                 return duplicateResult(uploadStack);
             }
             if (ExtendedAePlusMatrixUploadCompat.uploadPatternToMatrix(serverPlayer, uploadStack.copy(), currentGrid)) {
                 return findMatrixUploadResult(uploadStack);
+            }
+        } catch (Throwable ignored) {
+        }
+        return MatrixUploadResult.FAILURE;
+    }
+
+    private MatrixUploadResult uploadToEco(ItemStack uploadStack, ServerPlayer serverPlayer, IGrid currentGrid) {
+        try {
+            EcoUploadDuplicateResult ecoDuplicate = findEcoDuplicatePattern(uploadStack);
+            if (ecoDuplicate.duplicate()) {
+                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
+                return duplicateResult(uploadStack);
+            }
+            var result = NeoEcoApiCompat.uploadPatternToEcoStorage(currentGrid, uploadStack.copy());
+            if (result == NeoEcoApiCompat.UploadResult.INSERTED) {
+                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_uploaded"));
+                try {
+                    return findEcoUploadResult(uploadStack);
+                } catch (RuntimeException | LinkageError ignored) {
+                    // The insertion already succeeded even if its display slot cannot be found.
+                    return MatrixUploadResult.UPLOADED;
+                }
+            }
+            if (result == NeoEcoApiCompat.UploadResult.DUPLICATE) {
+                serverPlayer.sendSystemMessage(Component.translatable("message.wcwt.eco_pattern_duplicate"));
+                return duplicateResult(uploadStack);
             }
         } catch (Throwable ignored) {
         }

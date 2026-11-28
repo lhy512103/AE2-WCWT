@@ -4,7 +4,7 @@ import com.lhy.wcwt.WcwtMod;
 import com.lhy.wcwt.init.ModItems;
 import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModList;
-import top.theillusivec4.curios.api.CuriosApi;
+import top.theillusivec4.curios.api.CuriosSlotTypes;
 
 public final class WcwtCuriosCompat {
     public static final String TERMINAL_SLOT = "wireless_comprehensive_work_terminal";
@@ -19,7 +19,7 @@ public final class WcwtCuriosCompat {
             return;
         }
 
-        CuriosApi.registerCurioPredicate(TERMINAL_SLOT_VALIDATOR,
-                result -> result.stack().is(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()));
+        CuriosSlotTypes.registerPredicate(TERMINAL_SLOT_VALIDATOR,
+                (context, stack) -> stack.is(ModItems.WIRELESS_COMPREHENSIVE_WORK_TERMINAL.get()));
     }
 }

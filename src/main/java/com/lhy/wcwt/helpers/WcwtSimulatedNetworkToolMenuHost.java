@@ -13,9 +13,7 @@ import appeng.util.inv.InternalInventoryHost;
 import appeng.util.inv.filter.IAEItemFilter;
 import com.google.common.primitives.Ints;
 import com.lhy.wcwt.init.ModComponents;
-import com.lhy.wcwt.init.ModItems;
 import com.lhy.wcwt.menu.locator.WcwtToolkitNetworkToolLocator;
-import de.mari_023.ae2wtlib.api.terminal.ItemWT;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.ItemContainerContents;
@@ -55,10 +53,7 @@ public final class WcwtSimulatedNetworkToolMenuHost extends NetworkToolMenuHost<
     @Override
     public boolean isValid() {
         ItemStack current = terminalLocator.locateTerminalStack(getPlayer());
-        return !current.isEmpty()
-                && current == terminalStack
-                && current.getItem() instanceof ItemWT terminalItem
-                && terminalItem.getUpgrades(current).isInstalled(ModItems.TOOL_SLOTS_BOX_CARD.get());
+        return current == terminalStack && WcwtToolkitNetworkToolSupport.hasToolboxCard(current);
     }
 
     private AppEngInternalInventory createInventory(Player player) {

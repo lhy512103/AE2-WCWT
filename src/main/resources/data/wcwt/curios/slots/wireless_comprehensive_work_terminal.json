@@ -3,7 +3,7 @@
   "size": 1,
   "operation": "SET",
   "order": 900,
-  "icon": "wcwt:item/wireless_comprehensive_work_terminal_curio",
+  "icon": "wcwt:slot/wireless_comprehensive_work_terminal_curio",
   "add_cosmetic": false,
   "use_native_gui": true,
   "render_toggle": false,

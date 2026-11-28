@@ -205,6 +205,12 @@ public class WcwtPackets {
             ToolkitMemorySlotPacket::handle
         );
 
+        registrar.playToClient(
+            ToolkitMemorySyncPacket.TYPE,
+            ToolkitMemorySyncPacket.STREAM_CODEC,
+            ToolkitMemorySyncPacket::handle
+        );
+
         registrar.playToServer(
             WcwtToolkitHotbarSelectionPacket.TYPE,
             WcwtToolkitHotbarSelectionPacket.STREAM_CODEC,

@@ -7,13 +7,13 @@ import mezz.jei.api.ingredients.ITypedIngredient;
 import mezz.jei.api.runtime.IBookmarkOverlay;
 import com.lhy.wcwt.compat.emi.EmiStackCompat;
 import com.lhy.wcwt.compat.reflect.WcwtReflect;
+import com.lhy.wcwt.pull.WcwtStackMatching;
 import mezz.jei.api.runtime.IJeiRuntime;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -204,7 +204,7 @@ public final class WcwtJeiBookmarkKeys {
         List<ItemStack> allCandidates = new ArrayList<>();
         LinkedHashSet<AEKey> seen = new LinkedHashSet<>();
         addCandidates(allCandidates, seen, visibleAlternatives);
-        addCandidates(allCandidates, seen, ingredient.items().map(h -> new ItemStack(h.value())).toList());
+        addCandidates(allCandidates, seen, WcwtStackMatching.ingredientCandidates(ingredient).toList());
 
         ItemStack best = ItemStack.EMPTY;
         int bestPriority = Integer.MAX_VALUE;

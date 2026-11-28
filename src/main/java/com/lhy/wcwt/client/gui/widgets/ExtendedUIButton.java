@@ -64,7 +64,7 @@ public class ExtendedUIButton extends Button implements ITooltip {
 
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, getX() - 4, getY() - 4, BG_U, BG_V, BG_W, BG_H, 256, 256);
 
-        boolean highlighted = isActive() || isHovered();
+        boolean highlighted = isPanelOpen() || isHovered();
         int btnU = highlighted ? BTN_U_HOVERED : BTN_U_NORMAL;
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, TEXTURE, getX() - 1, getY(), btnU, BTN_V, BTN_W, BTN_H, 256, 256);
 
@@ -146,7 +146,7 @@ public class ExtendedUIButton extends Button implements ITooltip {
     }
 
     /** 返回当前按钮对应的扩展UI是否正在展示。 */
-    public boolean isActive() {
+    private boolean isPanelOpen() {
         return host.getCurrentExtendedUI() == uiType;
     }
 }

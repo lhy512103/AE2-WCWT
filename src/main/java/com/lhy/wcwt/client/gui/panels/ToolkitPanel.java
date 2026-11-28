@@ -3,6 +3,7 @@ import com.lhy.wcwt.client.gui.WcwtTextRendering;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 
@@ -51,7 +52,7 @@ public class ToolkitPanel extends ExtendedUIPanel {
 
     @Override
     protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
     }
 
     @Override

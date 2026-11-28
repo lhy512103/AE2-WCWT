@@ -60,7 +60,7 @@ public final class WcwtComponentIngredientEncoding {
             return available;
         }
 
-        // getItems() is only a predicate example: a previous stage can produce additional components.
+        // A previous recipe stage can produce components absent from the ingredient's display example.
         for (ItemStack result : recipeResults.get()) {
             if (!result.isEmpty() && ingredient.test(result)) {
                 return result.copyWithCount(1);
@@ -71,8 +71,7 @@ public final class WcwtComponentIngredientEncoding {
                 return visible.copyWithCount(1);
             }
         }
-        var first = ingredient.items().findFirst();
-        return first.isEmpty() ? ItemStack.EMPTY : new ItemStack(first.get().value(), 1);
+        return WcwtStackMatching.ingredientCandidates(ingredient).findFirst().orElse(ItemStack.EMPTY);
     }
 
     private static ItemStack preferred(@Nullable Map<AEKey, Integer> priorities, Ingredient ingredient) {

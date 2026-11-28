@@ -25,7 +25,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.TooltipFlag;
 import net.neoforged.fml.ModList;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -142,7 +141,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
     @Override
     protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
     }
 
     @Override

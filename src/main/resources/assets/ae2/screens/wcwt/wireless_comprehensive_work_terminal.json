@@ -223,6 +223,11 @@
     }
   },
   "widgets": {
+    "terminalSelection": {
+      "$comment": "无线通用终端的终端切换面板。",
+      "left": -15,
+      "bottom": 200
+    },
     "verticalToolbar": {
       "$comment": "左侧 AE2 垂直工具栏锚点。",
       "left": 3,

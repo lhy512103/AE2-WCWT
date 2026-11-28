@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_25",
   "mixins": [
     "WcwtNetworkToolItemMixin",
+    "WcwtToolboxMenuAccessor",
     "WcwtRemoteMenuMixin",
     "WcwtServerPlayerRestockMixin",
     "WcwtServerPlayerGameModeMixin",
@@ -12,11 +13,17 @@
     "WcwtPlayerMixin",
     "WcwtBetterCombatMixin",
     "WcwtMenuLocatorsMixin",
+    "WcwtCycleTerminalPacketMixin",
+    "WcwtWtlibLocatingServiceMixin",
     "WcwtToolkitDropMixin"
   ],
   "client": [
     "GuiMixin",
-    "WcwtMinecraftPickBlockMixin"
+    "WcwtGuiGraphicsAccessor",
+    "WcwtGuiRendererMixin",
+    "WcwtPictureInPictureRendererMixin",
+    "WcwtMinecraftPickBlockMixin",
+    "WcwtPlusMappingScreenMixin"
   ],
   "injectors": {
     "defaultRequire": 1

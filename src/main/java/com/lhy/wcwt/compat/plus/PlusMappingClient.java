@@ -22,10 +22,21 @@ public final class PlusMappingClient {
     }
 
     public static Screen openMappingScreen(Screen parent) {
-        return new RecipeTypeMappingScreen(parent);
+        return new MappingScreen(parent);
     }
 
     public static void requestReturnLastPattern() {
         PlusEncodingUpload.requestReturnLastPattern();
+    }
+
+    private static final class MappingScreen extends RecipeTypeMappingScreen {
+        private MappingScreen(Screen parent) {
+            super(parent);
+        }
+
+        @Override
+        public boolean isInGameUi() {
+            return true;
+        }
     }
 }

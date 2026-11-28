@@ -154,9 +154,13 @@ public final class PlusPatternUploadApi {
     }
 
     public static List<PatternContainer> listAvailableProvidersFromGrid(IGrid grid) {
-        return call(new String[]{LEGACY, PROVIDER}, "listAvailableProvidersFromGrid",
-                new Class<?>[]{IGrid.class}, grid).filter(List.class::isInstance)
-                .map(value -> (List<PatternContainer>) value).orElseGet(List::of);
+        var result = call(new String[]{LEGACY, PROVIDER}, "listAvailableProvidersFromGrid",
+                new Class<?>[]{IGrid.class}, grid);
+        if (result.orElse(null) instanceof List<?> providers) {
+            return providers.stream().filter(PatternContainer.class::isInstance)
+                    .map(PatternContainer.class::cast).toList();
+        }
+        return List.of();
     }
 
     public static ItemStack insertIntoAccessiblePatternSlots(PatternContainer provider, ItemStack pattern,

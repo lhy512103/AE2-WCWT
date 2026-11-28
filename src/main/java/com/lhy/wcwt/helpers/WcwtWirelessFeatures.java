@@ -454,7 +454,7 @@ public final class WcwtWirelessFeatures {
                 return new TerminalTarget(locator.locateItem(player), locator);
             }
         }
-        return null;
+        return findHotbarTerminalTarget(player, WcwtWirelessFeatures::hasMagnetCard);
     }
 
     @Nullable
@@ -491,8 +491,22 @@ public final class WcwtWirelessFeatures {
                 return new TerminalTarget(stack, MenuLocators.forInventorySlot(i));
             }
         }
+        var hotbar = findHotbarTerminalTarget(player, predicate);
+        if (hotbar != null) {
+            return hotbar;
+        }
         debugMagnet(player, "terminal target not found");
         return null;
+    }
+
+    @Nullable
+    private static TerminalTarget findHotbarTerminalTarget(Player player, java.util.function.Predicate<ItemStack> predicate) {
+        if (!WcwtToolkitHotbarState.hasToolkitCard(player)) {
+            return null;
+        }
+        var locator = WcwtToolkitAccess.findHotbarTerminal(player,
+                stack -> stack.getItem() instanceof WirelessComprehensiveWorkTerminalItem && predicate.test(stack));
+        return locator == null ? null : new TerminalTarget(locator.locateItem(player), locator);
     }
 
     private static IGrid getGrid(ServerPlayer player, TerminalTarget terminalTarget) {

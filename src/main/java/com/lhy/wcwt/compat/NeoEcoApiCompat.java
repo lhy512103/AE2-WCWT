@@ -17,19 +17,23 @@ public final class NeoEcoApiCompat {
         return mods != null && mods.isLoaded("neoecoae");
     }
 
-    public static boolean uploadPatternToEcoStorage(IGrid grid, ItemStack pattern) {
-        if (!isAvailable()) {
-            return false;
+    public static UploadResult uploadPatternToEcoStorage(IGrid grid, ItemStack pattern) {
+        IECOPatternStorage storage = getPatternStorage(grid);
+        if (storage == null) {
+            return UploadResult.REJECTED;
         }
-        IECOPatternStorageService service = grid.getService(IECOPatternStorageService.class);
-        if (service == null) {
-            return false;
-        }
-        IECOPatternStorage storage = service.getPatternStorage();
-        return storage != null && storage.insertPattern(pattern);
+        return switch (storage.insertPatternWithResult(pattern)) {
+            case INSERTED -> UploadResult.INSERTED;
+            case ALREADY_PRESENT -> UploadResult.DUPLICATE;
+            default -> UploadResult.REJECTED;
+        };
     }
 
     public static Object patternStorageSystem(IGrid grid) {
+        return getPatternStorage(grid);
+    }
+
+    private static IECOPatternStorage getPatternStorage(IGrid grid) {
         if (!isAvailable()) {
             return null;
         }
@@ -39,5 +43,11 @@ public final class NeoEcoApiCompat {
 
     public static boolean isEcoPatternProvider(PatternContainer provider) {
         return isAvailable() && provider instanceof IECOPatternStorage;
+    }
+
+    public enum UploadResult {
+        INSERTED,
+        DUPLICATE,
+        REJECTED
     }
 }

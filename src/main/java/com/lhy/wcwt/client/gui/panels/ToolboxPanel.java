@@ -1,6 +1,7 @@
 package com.lhy.wcwt.client.gui.panels;
 
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -32,7 +33,7 @@ public class ToolboxPanel extends ExtendedUIPanel {
     protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
         // 渲染卡槽箱背景
         // 纹理位置: (69, 62, 59, 66) in extra_panels.png
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 69, 62, width, height, 128, 128);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEXTURE, x, y, 69, 62, width, height, 128, 128);
     }
     
     @Override

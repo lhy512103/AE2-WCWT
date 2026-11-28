@@ -1,9 +1,9 @@
 # AE2 WCWT
 
-AE2 WCWT (Wireless Comprehensive Work Terminal) is an integrated wireless terminal for **Applied Energistics 2 / NeoForge 1.21.1**.
+AE2 WCWT (Wireless Comprehensive Work Terminal) is an integrated wireless terminal for **Applied Energistics 2 / NeoForge 26.1.2**.
 It is not just a wireless crafting terminal: it folds commonly used AE2 addon workflows into a single terminal item and a single UI.
 
-Current version: `v1.3.12`
+Current version: `v26.1.2-0.0.1`
 
 ## IDE dependency refresh
 
@@ -18,10 +18,13 @@ missing-class errors from a stale IDE classpath.
 
 ## Automated Publishing
 
-The repository contains a GitHub Actions workflow at `.github/workflows/publish.yml`. Publishing
-a GitHub Release builds the NeoForge jar from that release tag and publishes it to both CurseForge
-and Modrinth. The release tag must match `mod_version` in `gradle.properties`; for example,
-release tag `v1.3.11` requires `mod_version=1.3.11`.
+Publishing a GitHub Release from a tag on `neoforge-26.1.2` triggers the
+`Build and Publish` workflow. Create the tag at the commit you want to release.
+For example, tag `v26.1.2-0.0.1` must point to a commit with
+`mod_version=26.1.2-0.0.1` in `gradle.properties`. The workflow uses the tag's
+configured JDK and attaches the NeoForge jar to the GitHub Release before publishing
+it to CurseForge and Modrinth. To run it manually for an existing release, select
+`neoforge-26.1.2` in Actions and enter its tag.
 
 Configure these repository settings before using the workflow:
 
@@ -31,7 +34,7 @@ Configure these repository settings before using the workflow:
 - Repository secret `MODRINTH_TOKEN`: a Modrinth personal access token with the `CREATE_VERSION` scope.
 
 The workflow publishes the jar from `build/libs`, labels it as a NeoForge release for Minecraft
-`1.21.1`, and uses the GitHub Release body as the release description on both platforms.
+`26.1.2`, and uses the GitHub Release body as the release description on both platforms.
 
 ## Overview
 
@@ -50,9 +53,10 @@ The workflow publishes the jar from `build/libs`, labels it as a NeoForge releas
 
 ### Required
 
-- NeoForge `1.21.1`
-- Applied Energistics 2 `19.2.17+`
-- AE2 Wireless Terminal Library `19.4.1+` (currently built against `19.5.1`)
+- Minecraft `26.1.2`
+- NeoForge `26.1.2+` (currently built against `26.1.2.129`)
+- Applied Energistics 2 `26.1.0+` (currently built against `26.1.14-beta`)
+- AE2 Wireless Terminal Library `26.1.0+` (currently built against `26.1.3-beta`)
 
 AE2WTLib is a **hard dependency**. WCWT registers as a WTLib terminal and reuses its wireless settings, magnet card, quantum-bridge card, and Universal Terminal integration.
 
@@ -246,21 +250,27 @@ Optional mods are resolved from Maven / CurseMaven / Modrinth. There are no loca
 
 ## License
 
-MIT License.
+- Code: MIT License (see `LICENSE`).
+- Textures: Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported (CC BY-NC-SA 3.0), the same license Applied Energistics 2 uses for its textures. This covers the textures under `assets/wcwt/textures/`, `assets/ae2/textures/guis/wcwt/` and the built-in dark AE-UI resource pack. See `LICENSE-ASSETS.md` for scope and attribution, and `LICENSE-CC-BY-NC-SA-3.0.txt` for the complete license text.
+  - Allowed: non-commercial use, modification and redistribution, with credit to the original authors and the same license for derivative works.
+  - Not allowed: commercial use.
+  - Not required: separate permission from the authors when the conditions above are met.
+- The MIT License does not replace the separate texture license. Third-party assets retain their original licenses and attribution.
 
 ## Credits
 
-- UI design, JSON layout, and texture assets: `xiaoleng5261`
+- UI design, JSON layout, and texture assets: `xiaoleng5261` (麦淇淋)
 - Dark AE-UI resource pack: `fish_dan_`
+- `rianfalltwilight-lab`: for the recent refactoring of the mod (#43, #44) and the migration to Minecraft / NeoForge 26.1.2 (#45)
 
 ---
 
 # AE2 WCWT 中文说明
 
-AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistics 2 / NeoForge 1.21.1** 的综合型无线终端。
+AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistics 2 / NeoForge 26.1.2** 的综合型无线终端。
 目标不是只做“无线合成终端”，而是把 AE2 生态里常用、常切换、常要开很多界面的功能，集中到一把终端里。
 
-当前版本：`v1.3.12`
+当前版本：`v26.1.2-0.0.1`
 
 ## 特性概览
 
@@ -279,9 +289,10 @@ AE2 WCWT（Wireless Comprehensive Work Terminal）是面向 **Applied Energistic
 
 ### 必需
 
-- NeoForge `1.21.1`
-- Applied Energistics 2 `19.2.17+`
-- AE2 Wireless Terminal Library `19.4.1+`（当前构建对照 `19.5.1`）
+- Minecraft `26.1.2`
+- NeoForge `26.1.2+`（当前构建对照 `26.1.2.129`）
+- Applied Energistics 2 `26.1.0+`（当前构建对照 `26.1.14-beta`）
+- AE2 Wireless Terminal Library `26.1.0+`（当前构建对照 `26.1.3-beta`）
 
 AE2WTLib **是硬依赖**，不是可选模组。WCWT 作为 WTLib 终端注册，复用其无线设置、磁力卡、量子桥卡和无线通用终端切换。
 
@@ -396,9 +407,15 @@ Windows:
 
 ## 许可证
 
-MIT License。
+- 代码：MIT License（见 `LICENSE`）。
+- 材质：知识共享 署名-非商业性使用-相同方式共享 3.0 未本地化版本（CC BY-NC-SA 3.0），与 Applied Energistics 2 的材质协议相同，适用于 `assets/wcwt/textures/`、`assets/ae2/textures/guis/wcwt/` 下的材质和内置暗色 AE-UI 资源包。适用范围与署名见 `LICENSE-ASSETS.md`，完整协议文本见 `LICENSE-CC-BY-NC-SA-3.0.txt`。
+  - 允许：非商用使用、修改、二次分发，需标注原作者，衍生作品沿用相同协议。
+  - 禁止：商用使用。
+  - 无需：满足以上条件时，无需单独向作者申请许可。
+- MIT 许可证不能替代单独的材质协议。第三方资源保留其原有许可证与署名。
 
 ## 致谢
 
-- 界面 UI、JSON 布局与材质：`xiaoleng5261`
+- 界面 UI、JSON 布局与材质：`xiaoleng5261`（麦淇淋）
 - 暗色 AE-UI 资源包：`fish_dan_`
+- `rianfalltwilight-lab`：感谢近期对模组的重构（#43、#44）以及 Minecraft / NeoForge 26.1.2 的迁移工作（#45）

@@ -1,0 +1,12 @@
+# Store and check out text files with LF line endings.
+* text=auto eol=lf
+
+# Windows batch scripts need CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary assets.
+*.png binary
+*.jar binary
+*.ogg binary
+*.nbt binary

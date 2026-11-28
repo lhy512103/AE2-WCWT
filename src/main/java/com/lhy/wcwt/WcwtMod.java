@@ -83,7 +83,9 @@ public class WcwtMod {
                                     returnToMainMenu),
                             ModMenus.WCWT_MENU_TYPE,
                             terminalItem,
-                            Icon.CRAFTING)
+                            new Icon(0, 0, 16, 16, new Icon.Texture(
+                                    Identifier.fromNamespaceAndPath(MOD_ID,
+                                            "textures/guis/wcwt_terminal_switch_button.png"), 16, 16)))
                     .hotkeyName("wireless_wcwt_terminal")
                     .upgradeCount(WirelessComprehensiveWorkTerminalItem.UPGRADE_INVENTORY_SIZE)
                     .addTerminal();

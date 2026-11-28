@@ -20,6 +20,7 @@ import com.lhy.wcwt.menu.WirelessComprehensiveWorkTerminalMenu;
 import com.lhy.wcwt.network.JeiCraftingTransferPacket;
 import com.lhy.wcwt.pull.WcwtIngredientPriorities;
 import com.lhy.wcwt.pull.WcwtComponentIngredientEncoding;
+import com.lhy.wcwt.pull.WcwtStackMatching;
 import mezz.jei.api.gui.ingredient.IRecipeSlotView;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.ingredients.ITypedIngredient;
@@ -37,7 +38,6 @@ import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.crafting.SizedFluidIngredient;
-import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.WeakHashMap;
@@ -542,11 +542,8 @@ public class WcwtRecipeTransferHandler
         if (ingredient.isEmpty()) {
             return null;
         }
-        var first = ingredient.items().findFirst();
-        if (first.isEmpty()) {
-            return null;
-        }
-        return GenericStack.fromItemStack(new ItemStack(first.get().value(), 1));
+        return WcwtStackMatching.ingredientCandidates(ingredient).findFirst()
+                .map(GenericStack::fromItemStack).orElse(null);
     }
 
     @Nullable
