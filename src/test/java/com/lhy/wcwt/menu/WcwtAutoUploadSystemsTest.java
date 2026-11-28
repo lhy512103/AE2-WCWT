@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.lhy.wcwt.menu.WcwtPatternUploadTargets.MatrixUploadState.AMBIGUOUS;
+import static com.lhy.wcwt.menu.WcwtPatternUploadTargets.MatrixUploadState.DUPLICATE_RETURNED;
 import static com.lhy.wcwt.menu.WcwtPatternUploadTargets.MatrixUploadState.FAILURE;
 import static com.lhy.wcwt.menu.WcwtPatternUploadTargets.MatrixUploadState.UPLOADED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -18,7 +19,7 @@ class WcwtAutoUploadSystemsTest {
         systems.add(null);
         var result = systems.uploadIfUnique(() -> {
             throw new AssertionError("No matrix target must not run insertion or duplicate handling");
-        }, FAILURE, AMBIGUOUS);
+        }, WcwtAutoUploadSystemsTest::unexpectedUpload, FAILURE, AMBIGUOUS);
         assertEquals(FAILURE, result);
         assertTrue(result.allowsProviderFallback());
     }
@@ -31,7 +32,7 @@ class WcwtAutoUploadSystemsTest {
         assertEquals(UPLOADED, systems.uploadIfUnique(() -> {
             writes.incrementAndGet();
             return UPLOADED;
-        }, FAILURE, AMBIGUOUS));
+        }, WcwtAutoUploadSystemsTest::unexpectedUpload, FAILURE, AMBIGUOUS));
         assertEquals(1, writes.get());
     }
 
@@ -49,7 +50,7 @@ class WcwtAutoUploadSystemsTest {
         assertEquals(UPLOADED, systems.uploadIfUnique(() -> {
             uploads.incrementAndGet();
             return UPLOADED;
-        }, FAILURE, AMBIGUOUS));
+        }, WcwtAutoUploadSystemsTest::unexpectedUpload, FAILURE, AMBIGUOUS));
         assertEquals(1, uploads.get());
     }
 
@@ -57,9 +58,32 @@ class WcwtAutoUploadSystemsTest {
     void ecoBusesShareTheirAggregatedStorageIdentity() {
         Object aggregatedStorage = new Object();
         var systems = new WcwtAutoUploadSystems();
-        systems.add(aggregatedStorage);
-        systems.add(aggregatedStorage);
-        assertEquals(UPLOADED, systems.uploadIfUnique(() -> UPLOADED, FAILURE, AMBIGUOUS));
+        systems.addEco(aggregatedStorage);
+        systems.addEco(aggregatedStorage);
+        assertEquals(UPLOADED, systems.uploadIfUnique(WcwtAutoUploadSystemsTest::unexpectedUpload,
+                () -> UPLOADED, FAILURE, AMBIGUOUS));
+    }
+
+    @Test
+    void ecoSuccessAndDuplicateBothTakePriorityOverMeteoriteProviders() {
+        var systems = new WcwtAutoUploadSystems();
+        systems.addEco(new Object());
+        systems.addMeteoriteProvider(new Object());
+        assertEquals(UPLOADED, systems.uploadIfUnique(WcwtAutoUploadSystemsTest::unexpectedUpload,
+                () -> UPLOADED, FAILURE, AMBIGUOUS));
+        assertEquals(DUPLICATE_RETURNED, systems.uploadIfUnique(WcwtAutoUploadSystemsTest::unexpectedUpload,
+                () -> DUPLICATE_RETURNED, FAILURE, AMBIGUOUS));
+    }
+
+    @Test
+    void ecoRejectionCanFallBackToOneMeteoriteProvider() {
+        var systems = new WcwtAutoUploadSystems();
+        systems.addEco(new Object());
+        systems.addMeteoriteProvider(new Object());
+        assertEquals(UPLOADED, systems.uploadIfUnique(() -> UPLOADED, () -> FAILURE, FAILURE, AMBIGUOUS));
+        systems.addMeteoriteProvider(new Object());
+        assertEquals(AMBIGUOUS, systems.uploadIfUnique(WcwtAutoUploadSystemsTest::unexpectedUpload,
+                () -> FAILURE, FAILURE, AMBIGUOUS));
     }
 
     @Test
@@ -75,13 +99,13 @@ class WcwtAutoUploadSystemsTest {
         Object ecoStorage = new Object();
         Object matrixCluster = new Object();
         var ecoFirst = new WcwtAutoUploadSystems();
-        ecoFirst.add(ecoStorage);
+        ecoFirst.addEco(ecoStorage);
         ecoFirst.add(matrixCluster);
         assertAmbiguousWithoutSideEffects(ecoFirst);
 
         var matrixFirst = new WcwtAutoUploadSystems();
         matrixFirst.add(matrixCluster);
-        matrixFirst.add(ecoStorage);
+        matrixFirst.addEco(ecoStorage);
         assertAmbiguousWithoutSideEffects(matrixFirst);
     }
 
@@ -107,7 +131,7 @@ class WcwtAutoUploadSystemsTest {
         var result = systems.uploadIfUnique(() -> {
             insertsOrDuplicateReturns.incrementAndGet();
             return UPLOADED;
-        }, FAILURE, AMBIGUOUS);
+        }, WcwtAutoUploadSystemsTest::unexpectedUpload, FAILURE, AMBIGUOUS);
         // This is the same result contract consumed by the menu before the named-provider branch.
         if (result.allowsProviderFallback()) {
             namedProviderUploads.incrementAndGet();
@@ -116,6 +140,10 @@ class WcwtAutoUploadSystemsTest {
         assertFalse(result.allowsProviderFallback());
         assertEquals(0, insertsOrDuplicateReturns.get());
         assertEquals(0, namedProviderUploads.get());
+    }
+
+    private static <T> T unexpectedUpload() {
+        throw new AssertionError("Unexpected upload callback");
     }
 
     private record PatternCore(Object backing) {

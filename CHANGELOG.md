@@ -26,6 +26,7 @@
 20. Fixed: Switching to the work terminal from the wireless universal terminal no longer disconnects the client.
 21. Fixed: The providers-with-patterns icon matches the size of the other provider filters.
 22. Fixed: Restored the original work terminal icon in the wireless universal terminal switcher.
+23. Fixed: Compatible crafting patterns go to the ECO subsystem before a meteorite pattern provider when both are on the same network.
 
 ### 中文
 
@@ -51,3 +52,4 @@
 20. 修复：无线通用终端切换到综合工作终端时断开连接。
 21. 修复：统一样板供应器筛选图标大小。
 22. 修复：恢复综合工作终端的切换图标。
+23. 修复：合成样板优先上传至生态合成子系统。

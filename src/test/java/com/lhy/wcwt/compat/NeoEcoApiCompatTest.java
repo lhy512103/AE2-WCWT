@@ -10,6 +10,6 @@ class NeoEcoApiCompatTest {
         assertFalse(NeoEcoApiCompat.isAvailable());
         assertFalse(NeoEcoApiCompat.isEcoPatternProvider(null));
         assertNull(NeoEcoApiCompat.patternStorageSystem(null));
-        assertFalse(NeoEcoApiCompat.uploadPatternToEcoStorage(null, null));
+        assertEquals(NeoEcoApiCompat.UploadResult.REJECTED, NeoEcoApiCompat.uploadPatternToEcoStorage(null, null));
     }
 }
