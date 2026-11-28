@@ -15,7 +15,7 @@
   "gui.wcwt.extended_ui.toolkit": "工具包",
   "gui.wcwt.extended_ui.resonating_lightning_pattern_coding": "谐振过载编码器",
   "gui.wcwt.extended_ui.none": "关闭扩展UI",
-  "key.wcwt.category": "WCWT",
+  "key.category.wcwt.category": "AE2 WCWT",
   "key.ae2.wireless_wcwt_terminal": "打开 ME 综合工作终端",
   "key.wcwt.open_advanced_coding": "打开高级编码",
   "key.wcwt.open_cosmetic_armor": "打开装饰盔甲",
