@@ -2,8 +2,8 @@
   "type": "minecraft:crafting_shapeless",
   "neoforge:conditions": [
     {
-      "type": "neoforge:item_exists",
-      "item": "extendedae:pattern_modifier"
+      "type": "neoforge:registered",
+      "value": "extendedae:pattern_modifier"
     }
   ],
   "category": "misc",
