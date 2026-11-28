@@ -142,7 +142,7 @@ public class ResonatingLightningPatternCodingPanel extends ExtendedUIPanel imple
 
     @Override
     protected void renderBackground(GuiGraphicsExtractor guiGraphics) {
-        guiGraphics.blit(PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, PANEL_TEXTURE, x, y, 0, 0, width, height, 256, 256);
     }
 
     @Override

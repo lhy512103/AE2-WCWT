@@ -8,6 +8,7 @@
 2. Fixed: Clientbound pattern provider packets hand off to a client-only handler class instead of using `@OnlyIn`, so NeoForge 26.1.2 no longer reports a loading issue for the mod.
 3. Changed: README, the publish workflow and AGENTS.md now describe Minecraft 26.1.2, NeoForge 26.1.2 and version 26.1.2-0.0.1.
 4. Changed: Added .gitattributes so text files use LF line endings and Windows batch scripts use CRLF.
+5. Fixed: GUI texture rendering now uses the correct blit overload with RenderPipelines.GUI_TEXTURED, restoring pattern encoding area backgrounds, manual workspace backgrounds, pattern management backgrounds, and panel textures that were missing due to the Minecraft 26.1.2 GuiGraphicsExtractor API change.
 
 ### 中文
 
@@ -15,3 +16,4 @@
 2. 修复：移除 `@OnlyIn`，样板供应器客户端包改由客户端处理类处理。
 3. 优化：README、发布工作流和开发约定改为 26.1.2 版本描述。
 4. 新增：添加 .gitattributes，文本文件统一为 LF 换行，.bat 脚本保持 CRLF。
+5. 修复：界面贴图改用带渲染管线的 blit 重载，样板编码区、工作台区、样板管理区和面板背景不再缺失。

@@ -1200,6 +1200,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             return;
         }
         guiGraphics.blit(
+                RenderPipelines.GUI_TEXTURED,
                 WCWT_GUI_TEXTURE,
                 offsetX + pinnedRowOverlayRect.left(),
                 offsetY + pinnedRowOverlayRect.top(),
@@ -4150,7 +4151,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
         renderManualWorkspaceBackground(guiGraphics, offsetX, offsetY);
         renderPatternEncodingBackground(guiGraphics, offsetX, offsetY);
         if (isToolkitExpandedInManagementArea()) {
-            guiGraphics.blit(WCWT_TOOLS_TEXTURE,
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_TOOLS_TEXTURE,
                     offsetX + managementToolkitBackgroundRect.left(), offsetY + managementToolkitBackgroundRect.top(),
                     0, 0,
                     managementToolkitBackgroundRect.width(), managementToolkitBackgroundRect.height(),
@@ -4168,7 +4169,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
                 new ExtendedPanelLayout.Rect(78, imageHeight - 213, 88, 58), imageWidth, imageHeight);
         int srcY = mode == WirelessComprehensiveWorkTerminalMenu.ManualWorkspaceMode.SMITHING ? 0 : 59;
         int renderHeight = Math.min(rect.height(), 58);
-        guiGraphics.blit(WCWT_EXTENDED_CRAFTING_TEXTURE,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_EXTENDED_CRAFTING_TEXTURE,
                 offsetX + rect.left(), offsetY + rect.top(),
                 0, srcY, rect.width(), renderHeight, 256, 256);
     }
@@ -4183,7 +4184,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
             case SMITHING_TABLE -> 70;
             case STONECUTTING -> 140;
         };
-        guiGraphics.blit(AE2_PATTERN_MODES_TEXTURE,
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, AE2_PATTERN_MODES_TEXTURE,
                 offsetX + inputBase.left() + PATTERN_ENCODING_BG_X_OFFSET_FROM_INPUT,
                 offsetY + inputBase.top() + PATTERN_ENCODING_BG_Y_OFFSET_FROM_INPUT,
                 srcX, srcY, PATTERN_ENCODING_BG_WIDTH, PATTERN_ENCODING_BG_HEIGHT, 256, 256);
@@ -4366,7 +4367,7 @@ public class WirelessComprehensiveWorkTerminalScreen extends CraftingTermScreen<
 
     private void renderPatternManagementBackground(GuiGraphicsExtractor guiGraphics) {
         if (!patternManagementShowSlots) {
-            guiGraphics.blit(WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE,
+            guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WCWT_PATTERN_MANAGEMENT_HIDDEN_BG_TEXTURE,
                     patternManagementPage.left(), patternManagementPage.top(),
                     0, 0,
                     patternManagementPage.width(), patternManagementPage.height(),
